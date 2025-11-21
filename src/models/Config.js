@@ -22,6 +22,14 @@ const configSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  requestChannelId: {
+    type: String,
+    default: null,
+  },
+  requestRoles: {
+    type: [String],
+    default: [],
+  },
 });
 
 const Config = mongoose.model('Config', configSchema);

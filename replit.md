@@ -30,16 +30,23 @@ Discord bot for the SΛRP GTA 5 PS5 Roleplay Community. This bot provides staff 
    - `/removesareportrole` - Admins remove roles from SA report pings
    - Reports formatted with the official San Andreas Report template
 
-4. **Permission System**
+4. **Request System**
+   - `/request` - Submit a user request (Vehicle, Role, Item, RP Change)
+   - `/setrequestchannel` - Admins set the channel where requests are sent
+   - `/addrequestrole` - Admins add roles to ping for requests (optional)
+   - `/removerequestrole` - Admins remove roles from request pings
+   - Requests handled within 72 hours if approved
+
+5. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
 
-5. **Database**
+6. **Database**
    - MongoDB Atlas integration via Mongoose
    - Staff model: type, userId, username, roleId, roleName, addedBy, addedAt
-   - Config model: guildId, reportChannelId, reportRoles, saReportChannelId, saReportRoles
+   - Config model: guildId, reportChannelId, reportRoles, saReportChannelId, saReportRoles, requestChannelId, requestRoles
 
 ## Project Structure
 ```
@@ -61,7 +68,11 @@ src/
 │   ├── sareport.js          # San Andreas report form command (2-part)
 │   ├── sareportchannel.js   # Set SA report channel command
 │   ├── addsareportrole.js   # Add SA report role command
-│   └── removesareportrole.js # Remove SA report role command
+│   ├── removesareportrole.js # Remove SA report role command
+│   ├── request.js           # User request form command
+│   ├── setrequestchannel.js # Set request channel command
+│   ├── addrequestrole.js    # Add request role command
+│   └── removerequestrole.js # Remove request role command
 ├── handlers/
 │   └── modalHandler.js      # Modal submission handler
 └── utils/

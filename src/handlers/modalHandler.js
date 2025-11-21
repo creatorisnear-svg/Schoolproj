@@ -22,6 +22,8 @@ export async function handleModalSubmit(interaction) {
     await handleSAReportPart1(interaction);
   } else if (interaction.customId.startsWith('sareport_part2_')) {
     await handleSAReportPart2(interaction);
+  } else if (interaction.customId === 'request') {
+    await handleRequest(interaction);
   }
 }
 
@@ -185,6 +187,64 @@ async function handleSAReportPart2(interaction) {
     tempReportData.delete(userId);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while submitting your report. Please try again or contact an administrator.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleRequest(interaction) {
+  const requestType = interaction.fields.getTextInputValue('requestType');
+  const requestDetails = interaction.fields.getTextInputValue('requestDetails');
+  const reason = interaction.fields.getTextInputValue('reason') || 'N/A';
+
+  try {
+    const config = await Config.findOne({ guildId: interaction.guildId });
+
+    if (!config || !config.requestChannelId) {
+      return interaction.reply({
+        embeds: [errorEmbed('No request channel has been configured. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    const requestChannel = await interaction.guild.channels.fetch(config.requestChannelId);
+
+    if (!requestChannel) {
+      return interaction.reply({
+        embeds: [errorEmbed('The configured request channel could not be found. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    const requestEmbed = new EmbedBuilder()
+      .setColor('#9b59b6')
+      .setTitle('__**User Request**__')
+      .setDescription(`> **${requestType}**\n>\n> ${requestDetails}`)
+      .addFields(
+        { name: '__Reason/Justification__', value: reason, inline: false },
+        { name: '__Submitted By__', value: `${interaction.user} (${interaction.user.tag})`, inline: false }
+      )
+      .setTimestamp()
+      .setFooter({ text: 'SΛRP GTA 5 PS5 Roleplay • We will handle this within 72 hours if approved' });
+
+    let roleMentions = '';
+    if (config.requestRoles && config.requestRoles.length > 0) {
+      roleMentions = config.requestRoles.map(roleId => `<@&${roleId}>`).join(' ');
+    }
+
+    await requestChannel.send({
+      content: roleMentions || undefined,
+      embeds: [requestEmbed],
+    });
+
+    return interaction.reply({
+      embeds: [successEmbed('Your request has been submitted successfully! We will review it and get back to you within 72 hours if approved.')],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error submitting request:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while submitting your request. Please try again or contact an administrator.')],
       ephemeral: true,
     });
   }
