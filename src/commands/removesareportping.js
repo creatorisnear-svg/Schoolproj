@@ -4,17 +4,17 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('removerequestrole')
-  .setDescription('Remove a role from being pinged when user requests are submitted')
+  .setName('removesareportping')
+  .setDescription('Remove a role from being pinged when San Andreas Reports are submitted')
   .addRoleOption(option =>
     option.setName('role')
-      .setDescription('The role to remove from request pings')
+      .setDescription('The role to remove from SA report pings')
       .setRequired(true));
 
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can remove request roles.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can remove SA report roles.')],
       ephemeral: true,
     });
   }
@@ -24,26 +24,26 @@ export async function execute(interaction) {
   try {
     const config = await Config.findOne({ guildId: interaction.guildId });
 
-    if (!config || !config.requestRoles.includes(role.id)) {
+    if (!config || !config.saReportRoles.includes(role.id)) {
       return interaction.reply({
-        embeds: [errorEmbed(`${role.name} is not in the request ping list.`)],
+        embeds: [errorEmbed(`${role.name} is not in the SA report ping list.`)],
         ephemeral: true,
       });
     }
 
     await Config.findOneAndUpdate(
       { guildId: interaction.guildId },
-      { $pull: { requestRoles: role.id } },
+      { $pull: { saReportRoles: role.id } },
       { new: true }
     );
 
     return interaction.reply({
-      embeds: [successEmbed(`${role} will no longer be pinged for user requests.`)],
+      embeds: [successEmbed(`${role} will no longer be pinged for San Andreas Reports.`)],
     });
   } catch (error) {
-    console.error('Error removing request role:', error);
+    console.error('Error removing SA report role:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while removing the request role. Please try again.')],
+      embeds: [errorEmbed('An error occurred while removing the SA report role. Please try again.')],
       ephemeral: true,
     });
   }

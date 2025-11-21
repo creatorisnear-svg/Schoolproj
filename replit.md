@@ -26,15 +26,15 @@ Discord bot for the SΛRP GTA 5 PS5 Roleplay Community. This bot provides staff 
      - Part 1: Suspect, Vehicle, Date & Time, Location, Summary of Events
      - Part 2: Violations, Fine Amount, Jail Time, Notes, Officer Callsign & Agency
    - `/sareportchannel` - Admins set the channel where SA reports are sent
-   - `/addsareportrole` - Admins add roles to ping for SA reports (optional)
-   - `/removesareportrole` - Admins remove roles from SA report pings
+   - `/addsareportping` - Admins add roles to ping for SA reports (optional)
+   - `/removesareportping` - Admins remove roles from SA report pings
    - Reports formatted with the official San Andreas Report template
 
 4. **Request System**
    - `/request` - Submit a user request (Vehicle, Role, Item, RP Change)
    - `/setrequestchannel` - Admins set the channel where requests are sent
-   - `/addrequestrole` - Admins add roles to ping for requests (optional)
-   - `/removerequestrole` - Admins remove roles from request pings
+   - `/addrequestping` - Admins add roles to ping for requests (optional)
+   - `/removerequestping` - Admins remove roles from request pings
    - Requests handled within 72 hours if approved
 
 5. **Permission System**
@@ -67,12 +67,12 @@ src/
 │   ├── removereportrole.js  # Remove report role command
 │   ├── sareport.js          # San Andreas report form command (2-part)
 │   ├── sareportchannel.js   # Set SA report channel command
-│   ├── addsareportrole.js   # Add SA report role command
-│   ├── removesareportrole.js # Remove SA report role command
+│   ├── addsareportping.js   # Add SA report ping role command
+│   ├── removesareportping.js # Remove SA report ping role command
 │   ├── request.js           # User request form command
 │   ├── setrequestchannel.js # Set request channel command
-│   ├── addrequestrole.js    # Add request role command
-│   └── removerequestrole.js # Remove request role command
+│   ├── addrequestping.js    # Add request ping role command
+│   └── removerequestping.js # Remove request ping role command
 ├── handlers/
 │   └── modalHandler.js      # Modal submission handler
 └── utils/
