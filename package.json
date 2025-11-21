@@ -1,0 +1,19 @@
+{
+  "name": "sarp-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for SΛRP GTA 5 PS5 Roleplay Community",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": ["discord", "bot", "gta5", "roleplay"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "mongoose": "^8.0.3",
+    "dotenv": "^16.3.1"
+  }
+}
