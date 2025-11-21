@@ -14,14 +14,23 @@ Discord bot for the SΛRP GTA 5 PS5 Roleplay Community. This bot provides staff 
    - `/removestaff` - Administrators can remove users or roles from bot staff
    - `/stafflist` - Staff members can view all current bot staff (staff-only command)
 
-2. **Permission System**
+2. **911 Report System**
+   - `/911` - Submit a 911 report form (modal popup with fields: Issue, Location, Suspects, Description, Contact)
+   - `/setreportchannel` - Admins set the channel where 911 reports are sent
+   - `/addreportrole` - Admins add roles to ping for reports (LEO, EMS, etc.)
+   - `/removereportrole` - Admins remove roles from report pings
+   - Reports sent as embeds to configured channel with role mentions
+
+3. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
+   - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
 
-3. **Database**
+4. **Database**
    - MongoDB Atlas integration via Mongoose
-   - Staff model tracks: userId, username, roleId, roleName, addedBy, addedAt
+   - Staff model: type, userId, username, roleId, roleName, addedBy, addedAt
+   - Config model: guildId, reportChannelId, reportRoles
 
 ## Project Structure
 ```
@@ -30,11 +39,18 @@ src/
 ├── config/
 │   └── database.js          # MongoDB connection configuration
 ├── models/
-│   └── Staff.js             # Mongoose schema for staff members
+│   ├── Staff.js             # Mongoose schema for staff members
+│   └── Config.js            # Mongoose schema for server config
 ├── commands/
 │   ├── addstaff.js          # Add staff command
 │   ├── removestaff.js       # Remove staff command
-│   └── stafflist.js         # List all staff command
+│   ├── stafflist.js         # List all staff command
+│   ├── 911.js               # 911 report form command
+│   ├── setreportchannel.js  # Set report channel command
+│   ├── addreportrole.js     # Add report role command
+│   └── removereportrole.js  # Remove report role command
+├── handlers/
+│   └── modalHandler.js      # Modal submission handler
 └── utils/
     ├── embedBuilder.js      # Helper functions for creating embeds
     └── permissions.js       # Permission checking utilities

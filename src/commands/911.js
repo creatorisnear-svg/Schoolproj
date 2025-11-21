@@ -12,42 +12,42 @@ export async function execute(interaction) {
   const issueInput = new TextInputBuilder()
     .setCustomId('issue')
     .setLabel('Issue')
-    .setPlaceholder('Describe the issue...')
+    .setPlaceholder('What happened? (e.g., Armed Robbery, Car Accident)')
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
   const locationInput = new TextInputBuilder()
     .setCustomId('location')
     .setLabel('Location')
-    .setPlaceholder('Where did this happen?')
+    .setPlaceholder('Where did this happen? (e.g., Legion Square)')
     .setStyle(TextInputStyle.Short)
     .setRequired(true);
 
-  const suspectsInput = new TextInputBuilder()
-    .setCustomId('suspects')
-    .setLabel('Suspects Involved')
-    .setPlaceholder('Names or number of suspects')
-    .setStyle(TextInputStyle.Short)
+  const suspectsDescInput = new TextInputBuilder()
+    .setCustomId('suspectsDescription')
+    .setLabel('Suspects & Vehicle Information')
+    .setPlaceholder('Include: # of suspects, names, physical description, vehicle make/model/color, etc.')
+    .setStyle(TextInputStyle.Paragraph)
     .setRequired(false);
 
-  const descriptionInput = new TextInputBuilder()
-    .setCustomId('description')
-    .setLabel('Suspect & Vehicle Description')
-    .setPlaceholder('Describe suspects and vehicles...')
-    .setStyle(TextInputStyle.Paragraph)
+  const lastSeenInput = new TextInputBuilder()
+    .setCustomId('lastSeen')
+    .setLabel('Last Seen')
+    .setPlaceholder('Last known location or direction of travel...')
+    .setStyle(TextInputStyle.Short)
     .setRequired(false);
 
   const contactInput = new TextInputBuilder()
     .setCustomId('contact')
     .setLabel('How can we contact you if needed?')
-    .setPlaceholder('Discord tag, in-game name, etc.')
+    .setPlaceholder('Discord tag, in-game name, phone number, etc.')
     .setStyle(TextInputStyle.Short)
     .setRequired(false);
 
   const row1 = new ActionRowBuilder().addComponents(issueInput);
   const row2 = new ActionRowBuilder().addComponents(locationInput);
-  const row3 = new ActionRowBuilder().addComponents(suspectsInput);
-  const row4 = new ActionRowBuilder().addComponents(descriptionInput);
+  const row3 = new ActionRowBuilder().addComponents(suspectsDescInput);
+  const row4 = new ActionRowBuilder().addComponents(lastSeenInput);
   const row5 = new ActionRowBuilder().addComponents(contactInput);
 
   modal.addComponents(row1, row2, row3, row4, row5);

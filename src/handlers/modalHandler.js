@@ -11,8 +11,8 @@ export async function handleModalSubmit(interaction) {
 async function handle911Report(interaction) {
   const issue = interaction.fields.getTextInputValue('issue');
   const location = interaction.fields.getTextInputValue('location');
-  const suspects = interaction.fields.getTextInputValue('suspects') || 'N/A';
-  const description = interaction.fields.getTextInputValue('description') || 'N/A';
+  const suspectsDescription = interaction.fields.getTextInputValue('suspectsDescription') || 'N/A';
+  const lastSeen = interaction.fields.getTextInputValue('lastSeen') || 'N/A';
   const contact = interaction.fields.getTextInputValue('contact') || 'N/A';
 
   try {
@@ -40,8 +40,8 @@ async function handle911Report(interaction) {
       .addFields(
         { name: '📋 Issue', value: issue, inline: false },
         { name: '📍 Location', value: location, inline: false },
-        { name: '👤 Suspects Involved', value: suspects, inline: false },
-        { name: '🔍 Suspect & Vehicle Description', value: description, inline: false },
+        { name: '👤 Suspects & Vehicle Information', value: suspectsDescription, inline: false },
+        { name: '🔍 Last Seen', value: lastSeen, inline: false },
         { name: '📞 Contact Information', value: contact, inline: false },
         { name: '👮 Submitted By', value: `${interaction.user.tag} (${interaction.user})`, inline: false }
       )
