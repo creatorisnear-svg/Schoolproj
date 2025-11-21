@@ -49,5 +49,15 @@ Once secrets are added, the bot will automatically start. Check the console for:
 - `/removestaff @role` - Remove a role from bot staff (Admin only)
 - `/stafflist` - View all bot staff members (Staff only)
 
+## HTTP Server & UptimeRobot Support
+
+The bot includes a built-in HTTP server for health monitoring:
+- Main endpoint: `http://localhost:3000/`
+- Health check: `http://localhost:3000/health`
+
+Perfect for use with UptimeRobot to keep your bot alive 24/7!
+
+**Deploying to Koyeb?** Check out [DEPLOYMENT.md](./DEPLOYMENT.md) for a complete guide on deploying to Koyeb and setting up UptimeRobot monitoring.
+
 ## Support
 All commands respond with Discord embeds featuring SΛRP branding.

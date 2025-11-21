@@ -1,4 +1,6 @@
 import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
+import express from 'express';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDatabase } from './config/database.js';
 import { fileURLToPath } from 'url';
@@ -6,6 +8,9 @@ import { dirname, join } from 'path';
 import fs from 'fs';
 
 dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 const client = new Client({
   intents: [
@@ -146,11 +151,34 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    bot: client.user ? client.user.tag : 'Not logged in yet',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    bot: client.user ? 'online' : 'offline',
+    uptime: process.uptime(),
+  });
+});
+
 async function startBot() {
   try {
     await connectDatabase();
     
     await client.login(process.env.DISCORD_TOKEN);
+    
+    app.listen(PORT, () => {
+      console.log(`🌐 HTTP server running on port ${PORT}`);
+      console.log(`📡 Health check endpoint: http://localhost:${PORT}/health`);
+    });
   } catch (error) {
     console.error('❌ Failed to start bot:', error);
     process.exit(1);
