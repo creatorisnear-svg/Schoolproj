@@ -44,6 +44,8 @@ src/
 - `DISCORD_TOKEN` - Discord bot token from Discord Developer Portal
 - `MONGODB_URI` - MongoDB Atlas connection string
 
+**Note**: User dismissed the Replit Discord integration. Using manual secret management instead via the Secrets panel.
+
 ## Setup Instructions
 1. Create a Discord bot at https://discord.com/developers/applications
 2. Enable required intents: Guilds, Guild Members
