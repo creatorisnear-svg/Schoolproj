@@ -21,16 +21,25 @@ Discord bot for the SΛRP GTA 5 PS5 Roleplay Community. This bot provides staff 
    - `/removereportrole` - Admins remove roles from report pings
    - Reports sent as embeds to configured channel with role mentions
 
-3. **Permission System**
+3. **San Andreas Report System**
+   - `/sareport` - Submit a San Andreas Report via two-part modal form
+     - Part 1: Suspect, Vehicle, Date & Time, Location, Summary of Events
+     - Part 2: Violations, Fine Amount, Jail Time, Notes, Officer Callsign & Agency
+   - `/sareportchannel` - Admins set the channel where SA reports are sent
+   - `/addsareportrole` - Admins add roles to ping for SA reports (optional)
+   - `/removesareportrole` - Admins remove roles from SA report pings
+   - Reports formatted with the official San Andreas Report template
+
+4. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
 
-4. **Database**
+5. **Database**
    - MongoDB Atlas integration via Mongoose
    - Staff model: type, userId, username, roleId, roleName, addedBy, addedAt
-   - Config model: guildId, reportChannelId, reportRoles
+   - Config model: guildId, reportChannelId, reportRoles, saReportChannelId, saReportRoles
 
 ## Project Structure
 ```
@@ -48,7 +57,11 @@ src/
 │   ├── 911.js               # 911 report form command
 │   ├── setreportchannel.js  # Set report channel command
 │   ├── addreportrole.js     # Add report role command
-│   └── removereportrole.js  # Remove report role command
+│   ├── removereportrole.js  # Remove report role command
+│   ├── sareport.js          # San Andreas report form command (2-part)
+│   ├── sareportchannel.js   # Set SA report channel command
+│   ├── addsareportrole.js   # Add SA report role command
+│   └── removesareportrole.js # Remove SA report role command
 ├── handlers/
 │   └── modalHandler.js      # Modal submission handler
 └── utils/
