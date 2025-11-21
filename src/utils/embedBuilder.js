@@ -16,7 +16,7 @@ export function createEmbed(options = {}) {
 
 export function successEmbed(description) {
   return createEmbed({
-    title: '✅ Success',
+    title: '__**Success**__',
     description,
     color: '#00ff00',
   });
@@ -24,7 +24,7 @@ export function successEmbed(description) {
 
 export function errorEmbed(description) {
   return createEmbed({
-    title: '❌ Error',
+    title: '__**Error**__',
     description,
     color: '#ff0000',
   });

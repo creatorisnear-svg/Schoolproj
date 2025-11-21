@@ -36,14 +36,14 @@ async function handle911Report(interaction) {
 
     const reportEmbed = new EmbedBuilder()
       .setColor('#ff0000')
-      .setTitle('🚨 911 REPORT')
+      .setTitle('__**911 REPORT**__')
       .addFields(
-        { name: '📋 Issue', value: issue, inline: false },
-        { name: '📍 Location', value: location, inline: false },
-        { name: '👤 Suspects & Vehicle Information', value: suspectsDescription, inline: false },
-        { name: '🔍 Last Seen', value: lastSeen, inline: false },
-        { name: '📞 Contact Information', value: contact, inline: false },
-        { name: '👮 Submitted By', value: `${interaction.user.tag} (${interaction.user})`, inline: false }
+        { name: '__Issue__', value: issue, inline: false },
+        { name: '__Location__', value: location, inline: false },
+        { name: '__Suspects & Vehicle Information__', value: suspectsDescription, inline: false },
+        { name: '__Last Seen__', value: lastSeen, inline: false },
+        { name: '__Contact Information__', value: contact, inline: false },
+        { name: '__Submitted By__', value: `${interaction.user.tag} (${interaction.user})`, inline: false }
       )
       .setTimestamp()
       .setFooter({ text: 'SΛRP GTA 5 PS5 Roleplay' });

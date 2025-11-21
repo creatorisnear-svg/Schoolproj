@@ -20,19 +20,19 @@ export async function execute(interaction) {
 
     if (staffMembers.length === 0) {
       return interaction.reply({
-        embeds: [infoEmbed('📋 Staff List', 'No staff members have been added yet.')],
+        embeds: [infoEmbed('__**Staff List**__', 'No staff members have been added yet.')],
       });
     }
 
     const staffList = staffMembers.map((staff, index) => {
-      const type = staff.type === 'role' ? '🎭 Role' : '👤 User';
+      const type = staff.type === 'role' ? 'Role' : 'User';
       const name = staff.type === 'role' ? staff.roleName : staff.username;
       const addedDate = new Date(staff.addedAt).toLocaleDateString();
-      return `${index + 1}. ${type} **${name}** (Added: ${addedDate})`;
+      return `${index + 1}. **${type}:** ${name} *(Added: ${addedDate})*`;
     }).join('\n');
 
-    const embed = infoEmbed('📋 SΛRP Bot Staff List', staffList);
-    embed.addFields({ name: 'Total Staff Members', value: `${staffMembers.length}`, inline: true });
+    const embed = infoEmbed('__**SΛRP Bot Staff List**__', staffList);
+    embed.addFields({ name: '__Total Staff Members__', value: `${staffMembers.length}`, inline: true });
 
     return interaction.reply({ embeds: [embed] });
   } catch (error) {
