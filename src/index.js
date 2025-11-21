@@ -171,14 +171,14 @@ app.get('/health', (req, res) => {
 
 async function startBot() {
   try {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🌐 HTTP server running on port ${PORT}`);
+      console.log(`📡 Health check available at /health`);
+    });
+    
     await connectDatabase();
     
     await client.login(process.env.DISCORD_TOKEN);
-    
-    app.listen(PORT, () => {
-      console.log(`🌐 HTTP server running on port ${PORT}`);
-      console.log(`📡 Health check endpoint: http://localhost:${PORT}/health`);
-    });
   } catch (error) {
     console.error('❌ Failed to start bot:', error);
     process.exit(1);
