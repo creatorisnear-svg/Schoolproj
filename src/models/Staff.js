@@ -1,14 +1,18 @@
 import mongoose from 'mongoose';
 
 const staffSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['user', 'role'],
+    required: true,
+  },
   userId: {
     type: String,
-    required: true,
-    unique: true,
+    default: null,
   },
   username: {
     type: String,
-    required: true,
+    default: null,
   },
   roleId: {
     type: String,
@@ -27,6 +31,9 @@ const staffSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+staffSchema.index({ type: 1, userId: 1 });
+staffSchema.index({ type: 1, roleId: 1 });
 
 const Staff = mongoose.model('Staff', staffSchema);
 

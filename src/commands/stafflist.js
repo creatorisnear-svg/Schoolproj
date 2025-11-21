@@ -25,8 +25,8 @@ export async function execute(interaction) {
     }
 
     const staffList = staffMembers.map((staff, index) => {
-      const type = staff.roleId ? '🎭 Role' : '👤 User';
-      const name = staff.roleName || staff.username;
+      const type = staff.type === 'role' ? '🎭 Role' : '👤 User';
+      const name = staff.type === 'role' ? staff.roleName : staff.username;
       const addedDate = new Date(staff.addedAt).toLocaleDateString();
       return `${index + 1}. ${type} **${name}** (Added: ${addedDate})`;
     }).join('\n');

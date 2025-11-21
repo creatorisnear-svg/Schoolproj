@@ -35,7 +35,7 @@ export async function execute(interaction) {
 
   try {
     if (user) {
-      const existingStaff = await Staff.findOne({ userId: user.id });
+      const existingStaff = await Staff.findOne({ type: 'user', userId: user.id });
       if (existingStaff) {
         return interaction.reply({
           embeds: [errorEmbed(`${user.tag} is already a staff member.`)],
@@ -44,6 +44,7 @@ export async function execute(interaction) {
       }
 
       await Staff.create({
+        type: 'user',
         userId: user.id,
         username: user.tag,
         addedBy: interaction.user.id,
@@ -55,7 +56,7 @@ export async function execute(interaction) {
     }
 
     if (role) {
-      const existingStaff = await Staff.findOne({ roleId: role.id });
+      const existingStaff = await Staff.findOne({ type: 'role', roleId: role.id });
       if (existingStaff) {
         return interaction.reply({
           embeds: [errorEmbed(`The role ${role.name} is already a staff role.`)],
@@ -64,8 +65,7 @@ export async function execute(interaction) {
       }
 
       await Staff.create({
-        userId: role.id,
-        username: `Role: ${role.name}`,
+        type: 'role',
         roleId: role.id,
         roleName: role.name,
         addedBy: interaction.user.id,
