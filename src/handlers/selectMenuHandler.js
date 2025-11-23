@@ -12,6 +12,7 @@ function createSetupMenu() {
     { id: 'set_rp_tag', label: 'Set RP Tag (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
     { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
+    { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -40,6 +41,7 @@ function createWelcomeSetupMenu() {
     { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
     { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
     { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
+    { id: 'welcome_setup_done', label: '✅ Done - Close Setup' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -206,6 +208,14 @@ async function handleVerifySetupMenu(interaction) {
 
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'verify_setup_done') {
+      return interaction.update({
+        content: '✅ **Verification system setup complete!** The menu has been closed. Your verification system is now active.',
+        components: [],
+        embeds: [],
+      });
     }
   } catch (error) {
     console.error('Error handling verify setup menu:', error);
@@ -632,6 +642,14 @@ async function handleWelcomeSetupMenu(interaction) {
 
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'welcome_setup_done') {
+      return interaction.update({
+        content: '✅ **Welcome system setup complete!** The menu has been closed. Your welcome system is now active.',
+        components: [],
+        embeds: [],
+      });
     }
   } catch (error) {
     console.error('Error handling welcome setup menu:', error);
