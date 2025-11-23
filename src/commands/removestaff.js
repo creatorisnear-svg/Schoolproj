@@ -35,10 +35,10 @@ export async function execute(interaction) {
 
   try {
     if (user) {
-      const result = await Staff.deleteOne({ type: 'user', userId: user.id });
+      const result = await Staff.deleteOne({ guildId: interaction.guildId, type: 'user', userId: user.id });
       if (result.deletedCount === 0) {
         return interaction.reply({
-          embeds: [errorEmbed(`${user.tag} is not a staff member.`)],
+          embeds: [errorEmbed(`${user.tag} is not a staff member in this server.`)],
           ephemeral: true,
         });
       }
@@ -49,10 +49,10 @@ export async function execute(interaction) {
     }
 
     if (role) {
-      const result = await Staff.deleteOne({ type: 'role', roleId: role.id });
+      const result = await Staff.deleteOne({ guildId: interaction.guildId, type: 'role', roleId: role.id });
       if (result.deletedCount === 0) {
         return interaction.reply({
-          embeds: [errorEmbed(`The role ${role.name} is not a staff role.`)],
+          embeds: [errorEmbed(`The role ${role.name} is not a staff role in this server.`)],
           ephemeral: true,
         });
       }

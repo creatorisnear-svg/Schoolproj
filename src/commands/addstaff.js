@@ -35,15 +35,16 @@ export async function execute(interaction) {
 
   try {
     if (user) {
-      const existingStaff = await Staff.findOne({ type: 'user', userId: user.id });
+      const existingStaff = await Staff.findOne({ guildId: interaction.guildId, type: 'user', userId: user.id });
       if (existingStaff) {
         return interaction.reply({
-          embeds: [errorEmbed(`${user.tag} is already a staff member.`)],
+          embeds: [errorEmbed(`${user.tag} is already a staff member in this server.`)],
           ephemeral: true,
         });
       }
 
       await Staff.create({
+        guildId: interaction.guildId,
         type: 'user',
         userId: user.id,
         username: user.tag,
@@ -56,15 +57,16 @@ export async function execute(interaction) {
     }
 
     if (role) {
-      const existingStaff = await Staff.findOne({ type: 'role', roleId: role.id });
+      const existingStaff = await Staff.findOne({ guildId: interaction.guildId, type: 'role', roleId: role.id });
       if (existingStaff) {
         return interaction.reply({
-          embeds: [errorEmbed(`The role ${role.name} is already a staff role.`)],
+          embeds: [errorEmbed(`The role ${role.name} is already a staff role in this server.`)],
           ephemeral: true,
         });
       }
 
       await Staff.create({
+        guildId: interaction.guildId,
         type: 'role',
         roleId: role.id,
         roleName: role.name,

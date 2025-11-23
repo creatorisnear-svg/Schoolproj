@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 
 const staffSchema = new mongoose.Schema({
+  guildId: {
+    type: String,
+    required: true,
+  },
   type: {
     type: String,
     enum: ['user', 'role'],
@@ -32,8 +36,8 @@ const staffSchema = new mongoose.Schema({
   },
 });
 
-staffSchema.index({ type: 1, userId: 1 });
-staffSchema.index({ type: 1, roleId: 1 });
+staffSchema.index({ guildId: 1, type: 1, userId: 1 });
+staffSchema.index({ guildId: 1, type: 1, roleId: 1 });
 
 const Staff = mongoose.model('Staff', staffSchema);
 

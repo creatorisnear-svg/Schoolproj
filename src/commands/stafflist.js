@@ -16,11 +16,11 @@ export async function execute(interaction) {
   }
 
   try {
-    const staffMembers = await Staff.find({});
+    const staffMembers = await Staff.find({ guildId: interaction.guildId });
 
     if (staffMembers.length === 0) {
       return interaction.reply({
-        embeds: [infoEmbed('__**Staff List**__', 'No staff members have been added yet.')],
+        embeds: [infoEmbed('__**Staff List**__', 'No staff members have been added yet for this server.')],
       });
     }
 

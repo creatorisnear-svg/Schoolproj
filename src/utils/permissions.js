@@ -1,8 +1,8 @@
 import Staff from '../models/Staff.js';
 
-export async function isStaff(userId) {
+export async function isStaff(userId, guildId) {
   try {
-    const staff = await Staff.findOne({ type: 'user', userId });
+    const staff = await Staff.findOne({ guildId, type: 'user', userId });
     return staff !== null;
   } catch (error) {
     console.error('Error checking staff status:', error);
@@ -15,7 +15,7 @@ export async function isAdmin(member) {
 }
 
 export async function checkStaffPermission(interaction) {
-  const directStaff = await isStaff(interaction.user.id);
+  const directStaff = await isStaff(interaction.user.id, interaction.guildId);
   const adminMember = await isAdmin(interaction.member);
   
   if (directStaff || adminMember) {
@@ -26,6 +26,7 @@ export async function checkStaffPermission(interaction) {
     const memberRoleIds = interaction.member.roles.cache.map(role => role.id);
     
     const staffRoleCount = await Staff.countDocuments({
+      guildId: interaction.guildId,
       type: 'role',
       roleId: { $in: memberRoleIds }
     });
