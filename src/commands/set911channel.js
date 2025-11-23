@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('setreportchannel')
+  .setName('set911channel')
   .setDescription('Set the 911 channel where emergency reports will be sent')
   .addChannelOption(option =>
     option.setName('channel')

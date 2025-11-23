@@ -4,17 +4,17 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('removereportrole')
-  .setDescription('Remove a role from being pinged when 911 reports are submitted')
+  .setName('add911role')
+  .setDescription('Add a role to be pinged when 911 reports are submitted (e.g., LEO, EMS)')
   .addRoleOption(option =>
     option.setName('role')
-      .setDescription('The role to remove from 911 report pings')
+      .setDescription('The role to ping for 911 reports')
       .setRequired(true));
 
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can remove report roles.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can add 911 roles.')],
       ephemeral: true,
     });
   }
@@ -24,26 +24,26 @@ export async function execute(interaction) {
   try {
     const config = await Config.findOne({ guildId: interaction.guildId });
 
-    if (!config || !config.reportRoles.includes(role.id)) {
+    if (config && config.reportRoles.includes(role.id)) {
       return interaction.reply({
-        embeds: [errorEmbed(`${role.name} is not in the report ping list.`)],
+        embeds: [errorEmbed(`${role.name} is already in the 911 role list.`)],
         ephemeral: true,
       });
     }
 
     await Config.findOneAndUpdate(
       { guildId: interaction.guildId },
-      { $pull: { reportRoles: role.id } },
-      { new: true }
+      { $addToSet: { reportRoles: role.id } },
+      { upsert: true, new: true }
     );
 
     return interaction.reply({
-      embeds: [successEmbed(`${role} will no longer be pinged for 911 reports.`)],
+      embeds: [successEmbed(`${role} will now be pinged when 911 reports are submitted.`)],
     });
   } catch (error) {
-    console.error('Error removing report role:', error);
+    console.error('Error adding 911 role:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while removing the report role. Please try again.')],
+      embeds: [errorEmbed('An error occurred while adding the 911 role. Please try again.')],
       ephemeral: true,
     });
   }
