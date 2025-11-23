@@ -1,6 +1,7 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
-import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import Welcome from '../models/Welcome.js';
+import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function createSetupMenu() {
   const steps = [
@@ -53,6 +54,10 @@ export async function handleSelectMenu(interaction) {
   
   if (interaction.customId === 'select_verified_role_menu') {
     await handleVerifiedRoleSelect(interaction);
+  }
+
+  if (interaction.customId === 'welcome_channel_select') {
+    await handleWelcomeSystemChannelSelect(interaction);
   }
 }
 
@@ -455,6 +460,48 @@ async function handleVerifiedRoleSelect(interaction) {
     });
   } catch (error) {
     console.error('Error setting verified role:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeSystemChannelSelect(interaction) {
+  try {
+    const selectedChannelId = interaction.values[0];
+    const channel = await interaction.guild.channels.fetch(selectedChannelId);
+
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let welcome = await Welcome.findOne({ guildId: interaction.guildId });
+    
+    if (welcome) {
+      welcome.channelId = channel.id;
+      await welcome.save();
+    } else {
+      await Welcome.create({
+        guildId: interaction.guildId,
+        channelId: channel.id,
+      });
+    }
+
+    const embed = infoEmbed(
+      '__**Welcome System**__',
+      `✅ Welcome channel set to ${channel}!\n\n**Current Welcome Message:**\n${welcome?.welcomeMessage || 'Welcome to the server, {user}! We\'re glad to have you here.'}\n\n**Current Welcome DM:**\n${welcome?.welcomeDM || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.'}\n\nUse \`/setwelcomemessage\` and \`/setwelcomedm\` to customize these messages.\n\n✨ New members will now see a profile picture embed with their welcome message!`
+    );
+
+    return interaction.update({
+      embeds: [embed],
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting welcome channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       ephemeral: true,

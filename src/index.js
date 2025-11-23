@@ -121,6 +121,9 @@ client.on('interactionCreate', async interaction => {
 client.on('guildMemberAdd', async member => {
   try {
     const { default: Verification } = await import('./models/Verification.js');
+    const { default: Welcome } = await import('./models/Welcome.js');
+    const { EmbedBuilder } = await import('discord.js');
+
     const verification = await Verification.findOne({ guildId: member.guild.id });
 
     if (verification && verification.unverifiedRoleId) {
@@ -130,8 +133,52 @@ client.on('guildMemberAdd', async member => {
         console.log(`✅ Assigned unverified role to ${member.user.tag}`);
       }
     }
+
+    const welcome = await Welcome.findOne({ guildId: member.guild.id });
+
+    if (welcome) {
+      const channel = await member.guild.channels.fetch(welcome.channelId).catch(() => null);
+
+      if (channel && channel.isTextBased()) {
+        const welcomeMessage = welcome.welcomeMessage
+          .replace(/{user}/g, `<@${member.id}>`)
+          .replace(/{server}/g, member.guild.name);
+
+        const welcomeDM = welcome.welcomeDM
+          .replace(/{user}/g, member.user.username)
+          .replace(/{server}/g, member.guild.name);
+
+        const profileEmbed = new EmbedBuilder()
+          .setColor('#0099ff')
+          .setTitle(`Welcome ${member.user.username}!`)
+          .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+          .setDescription(welcomeMessage)
+          .setFooter({ text: `Member #${member.guild.memberCount}` })
+          .setTimestamp();
+
+        await channel.send({
+          embeds: [profileEmbed],
+        });
+
+        const dmEmbed = new EmbedBuilder()
+          .setColor('#0099ff')
+          .setTitle(`Welcome to ${member.guild.name}!`)
+          .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+          .setDescription(welcomeDM)
+          .setFooter({ text: 'EverLink' })
+          .setTimestamp();
+
+        await member.send({
+          embeds: [dmEmbed],
+        }).catch(() => {
+          console.log(`Could not send DM to ${member.user.tag}. They may have DMs disabled.`);
+        });
+
+        console.log(`✅ Sent welcome message to ${member.user.tag}`);
+      }
+    }
   } catch (error) {
-    console.error('Error assigning unverified role on member join:', error);
+    console.error('Error in guildMemberAdd event:', error);
   }
 });
 
