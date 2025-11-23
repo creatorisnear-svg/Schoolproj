@@ -8,6 +8,7 @@ function createSetupMenu() {
     { id: 'select_welcome_channel', label: 'Select Welcome Channel' },
     { id: 'select_unverified_role', label: 'Select Unverified Role' },
     { id: 'select_verified_role', label: 'Select Verified Role' },
+    { id: 'set_rp_tag', label: 'Set RP Tag (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
     { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
   ];
@@ -115,6 +116,23 @@ async function handleVerifySetupMenu(interaction) {
         components: [row],
         ephemeral: true,
       });
+    }
+
+    if (choice === 'set_rp_tag') {
+      const modal = new ModalBuilder()
+        .setCustomId('setup_rp_tag_modal')
+        .setTitle('Set RP Tag');
+
+      const input = new TextInputBuilder()
+        .setCustomId('rp_tag')
+        .setLabel('Enter your server RP tag')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('e.g., SARP, CARP, LARP')
+        .setRequired(true)
+        .setMaxLength(10);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
     }
 
     if (choice === 'set_custom_question') {
@@ -256,6 +274,19 @@ export async function handleSetupModals(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Verified role set to ${role}!`)],
+        ephemeral: true,
+      });
+    }
+
+    if (customId === 'setup_rp_tag_modal') {
+      const rpTag = interaction.fields.getTextInputValue('rp_tag');
+      verification.rpTag = rpTag;
+      await verification.save();
+
+      const menuOptions = createSetupMenu();
+      return interaction.reply({
+        content: `✅ RP tag set to: "${rpTag}"\n\n${menuOptions.content}`,
+        components: menuOptions.components,
         ephemeral: true,
       });
     }

@@ -30,6 +30,10 @@ const verificationSchema = new mongoose.Schema({
     type: String,
     default: 'Welcome to our community! You have been verified and can now access all member channels.',
   },
+  rpTag: {
+    type: String,
+    default: null,
+  },
 });
 
 const Verification = mongoose.model('Verification', verificationSchema);

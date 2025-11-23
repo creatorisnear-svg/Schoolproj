@@ -105,6 +105,15 @@ async function handleVerifyModal(interaction) {
       await interaction.member.roles.remove(unverifiedRole);
     }
 
+    if (verification.rpTag) {
+      const newNickname = `${verification.rpTag} | ${psnxbox}`;
+      try {
+        await interaction.member.setNickname(newNickname);
+      } catch (error) {
+        console.error('Error setting nickname:', error);
+      }
+    }
+
     const dmMessage = verification.verifyDMMessage || 'Welcome to our community! You have been verified and can now access all member channels.';
     await interaction.user.send({
       embeds: [new EmbedBuilder()
