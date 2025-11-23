@@ -30,6 +30,10 @@ const configSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  staffCanBypassLinks: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const Config = mongoose.model('Config', configSchema);

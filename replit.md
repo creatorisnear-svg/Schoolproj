@@ -45,11 +45,12 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - `/antipromotingenable` - Staff enable anti-promoting and set log channel
    - `/whitelistlink` - Staff add/remove allowed invite links to whitelist
    - `/staffwhitelistlink` - Admin add/remove staff members to invite whitelist
+   - `/whitelistlinkstaff true/false` - Admin toggle whether staff can bypass anti-promoting
    - Auto-detects Discord invite links in messages
    - Deletes messages containing non-whitelisted invite links
    - DMs user with formatted embed explaining deletion
    - Logs incident to configured channel with user and link details
-   - Default: Staff members are whitelisted (can share links without deletion)
+   - Default: Staff members can share links (enabled). Admins can disable via `/whitelistlinkstaff false`
 
 6. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
@@ -69,7 +70,7 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
    - Verification model: guildId, enabled, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
    - Welcome model: guildId, enabled, channelId, welcomeMessage, welcomeDM
-   - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, antiPromotingLogChannelId, whitelistedInviteLinks, whitelistedStaffIds
+   - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, antiPromotingLogChannelId, whitelistedInviteLinks, whitelistedStaffIds, staffCanBypassLinks
 
 ## Project Structure
 ```
@@ -93,7 +94,8 @@ src/
 │   ├── welcomesystemsetup.js # Welcome system setup command
 │   ├── antipromotingenable.js # Enable anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
-│   ├── staffwhitelistlink.js # Whitelist/remove staff command
+│   ├── staffwhitelistlink.js # Whitelist/remove staff members command
+│   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
 │   ├── 911.js               # 911 report form command
 │   ├── set911channel.js     # Set 911 report channel command
 │   ├── add911role.js        # Add 911 report role command
