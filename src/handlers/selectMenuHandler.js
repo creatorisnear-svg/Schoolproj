@@ -212,9 +212,9 @@ async function handleVerifySetupMenu(interaction) {
 
     if (choice === 'verify_setup_done') {
       return interaction.update({
-        content: '✅ **Verification system setup complete!** The menu has been closed. Your verification system is now active.',
+        content: '',
         components: [],
-        embeds: [],
+        embeds: [successEmbed('Verification system setup is complete. Your verification system is now active.')],
       });
     }
   } catch (error) {
@@ -231,6 +231,7 @@ export async function handleSetupModals(interaction) {
 
   try {
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    let welcome = await Welcome.findOne({ guildId: interaction.guildId });
 
     if (customId === 'setup_verify_channel_modal') {
       const channelId = interaction.fields.getTextInputValue('channel_id');
@@ -336,7 +337,8 @@ export async function handleSetupModals(interaction) {
 
       const menuOptions = createSetupMenu();
       return interaction.reply({
-        content: `✅ RP tag set to: "${rpTag}"\n\n${menuOptions.content}`,
+        content: '',
+        embeds: [infoEmbed('RP Tag Set', `Tag: ${rpTag}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -349,7 +351,8 @@ export async function handleSetupModals(interaction) {
 
       const menuOptions = createSetupMenu();
       return interaction.reply({
-        content: `✅ ${question ? `Custom question set to: "${question}"` : 'Custom question removed!'}\n\n${menuOptions.content}`,
+        content: '',
+        embeds: [infoEmbed('Custom Question Updated', question ? `Question: ${question}\n\nSelect your next option below to continue setup.` : 'Custom question removed. Select your next option below.')],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -362,7 +365,8 @@ export async function handleSetupModals(interaction) {
 
       const menuOptions = createSetupMenu();
       return interaction.reply({
-        content: `✅ DM message updated!\n\n${menuOptions.content}`,
+        content: '',
+        embeds: [infoEmbed('DM Message Updated', 'Verification DM has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -370,7 +374,6 @@ export async function handleSetupModals(interaction) {
 
     if (customId === 'setup_welcome_message_modal') {
       const message = interaction.fields.getTextInputValue('welcome_message') || 'Welcome to the server, {user}! We\'re glad to have you here.';
-      let welcome = await Welcome.findOne({ guildId: interaction.guildId });
 
       if (!welcome) {
         welcome = new Welcome({ guildId: interaction.guildId });
@@ -381,7 +384,8 @@ export async function handleSetupModals(interaction) {
 
       const menuOptions = createWelcomeSetupMenu();
       return interaction.reply({
-        content: `✅ Welcome message updated!\n\n${menuOptions.content}`,
+        content: '',
+        embeds: [infoEmbed('Welcome Message Updated', 'Channel message has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -389,7 +393,6 @@ export async function handleSetupModals(interaction) {
 
     if (customId === 'setup_welcome_dm_modal') {
       const message = interaction.fields.getTextInputValue('welcome_dm') || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.';
-      let welcome = await Welcome.findOne({ guildId: interaction.guildId });
 
       if (!welcome) {
         welcome = new Welcome({ guildId: interaction.guildId });
@@ -400,7 +403,8 @@ export async function handleSetupModals(interaction) {
 
       const menuOptions = createWelcomeSetupMenu();
       return interaction.reply({
-        content: `✅ Welcome DM updated!\n\n${menuOptions.content}`,
+        content: '',
+        embeds: [infoEmbed('Welcome DM Updated', 'Welcome DM has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -448,9 +452,9 @@ async function handleVerifyChannelSelect(interaction) {
 
     const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `✅ Verify channel set to ${channel} and verification button sent!\n\n${menuOptions.content}`,
+      content: '',
+      embeds: [infoEmbed('Verify Channel Set', `Channel: ${channel}\n\nVerification button has been sent. Select your next option below to continue setup.`)],
       components: menuOptions.components,
-      embeds: [],
     });
   } catch (error) {
     console.error('Error setting verify channel:', error);
@@ -508,9 +512,9 @@ async function handleUnverifiedRoleSelect(interaction) {
 
     const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `✅ Unverified role set to ${role}!\n\n${menuOptions.content}`,
+      content: '',
+      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
-      embeds: [],
     });
   } catch (error) {
     console.error('Error setting unverified role:', error);
@@ -538,9 +542,9 @@ async function handleVerifiedRoleSelect(interaction) {
 
     const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `✅ Verified role set to ${role}!\n\n${menuOptions.content}`,
+      content: '',
+      embeds: [infoEmbed('Verified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
-      embeds: [],
     });
   } catch (error) {
     console.error('Error setting verified role:', error);
@@ -646,9 +650,9 @@ async function handleWelcomeSetupMenu(interaction) {
 
     if (choice === 'welcome_setup_done') {
       return interaction.update({
-        content: '✅ **Welcome system setup complete!** The menu has been closed. Your welcome system is now active.',
+        content: '',
         components: [],
-        embeds: [],
+        embeds: [successEmbed('Welcome system setup is complete. Your welcome system is now active.')],
       });
     }
   } catch (error) {
@@ -677,9 +681,9 @@ async function handleWelcomeSetupChannelSelect(interaction) {
 
     const menuOptions = createWelcomeSetupMenu();
     return interaction.update({
-      content: `✅ Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
+      content: '',
+      embeds: [infoEmbed('Welcome Channel Set', `Channel: ${channel}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
-      embeds: [],
     });
   } catch (error) {
     console.error('Error setting welcome channel:', error);
