@@ -105,6 +105,11 @@ client.on('interactionCreate', async interaction => {
     await handleSelectMenu(interaction);
   }
 
+  if (interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) {
+    const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+    await handleSelectMenu(interaction);
+  }
+
   if (interaction.isButton()) {
     if (interaction.customId === 'verify_button') {
       const { data, execute } = await import('./commands/verify.js');

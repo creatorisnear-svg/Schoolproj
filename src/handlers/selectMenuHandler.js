@@ -1,10 +1,26 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType } from 'discord.js';
 import Verification from '../models/Verification.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'verify_setup_menu') {
     await handleVerifySetupMenu(interaction);
+  }
+  
+  if (interaction.customId === 'select_verify_channel_menu') {
+    await handleVerifyChannelSelect(interaction);
+  }
+  
+  if (interaction.customId === 'select_welcome_channel_menu') {
+    await handleWelcomeChannelSelect(interaction);
+  }
+  
+  if (interaction.customId === 'select_unverified_role_menu') {
+    await handleUnverifiedRoleSelect(interaction);
+  }
+  
+  if (interaction.customId === 'select_verified_role_menu') {
+    await handleVerifiedRoleSelect(interaction);
   }
 }
 
@@ -13,67 +29,61 @@ async function handleVerifySetupMenu(interaction) {
 
   try {
     if (choice === 'select_verify_channel') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_verify_channel_modal')
-        .setTitle('Set Verify Channel');
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('select_verify_channel_menu')
+        .setPlaceholder('Select the verify channel')
+        .setChannelTypes(ChannelType.GuildText);
 
-      const input = new TextInputBuilder()
-        .setCustomId('channel_id')
-        .setLabel('Enter Verify Channel ID')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('Right-click channel, copy ID')
-        .setRequired(true);
+      const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
+      return interaction.reply({
+        content: 'Select the channel where users can verify:',
+        components: [row],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'select_welcome_channel') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_welcome_channel_modal')
-        .setTitle('Set Welcome Channel');
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('select_welcome_channel_menu')
+        .setPlaceholder('Select the welcome channel')
+        .setChannelTypes(ChannelType.GuildText);
 
-      const input = new TextInputBuilder()
-        .setCustomId('channel_id')
-        .setLabel('Enter Welcome Channel ID')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('Right-click channel, copy ID')
-        .setRequired(true);
+      const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
+      return interaction.reply({
+        content: 'Select the channel where welcome messages will be sent:',
+        components: [row],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'select_unverified_role') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_unverified_role_modal')
-        .setTitle('Set Unverified Role');
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('select_unverified_role_menu')
+        .setPlaceholder('Select the unverified role');
 
-      const input = new TextInputBuilder()
-        .setCustomId('role_id')
-        .setLabel('Enter Unverified Role ID')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('Right-click role, copy ID')
-        .setRequired(true);
+      const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
+      return interaction.reply({
+        content: 'Select the role that unverified members will have:',
+        components: [row],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'select_verified_role') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_verified_role_modal')
-        .setTitle('Set Verified Role');
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('select_verified_role_menu')
+        .setPlaceholder('Select the verified role');
 
-      const input = new TextInputBuilder()
-        .setCustomId('role_id')
-        .setLabel('Enter Verified Role ID')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('Right-click role, copy ID')
-        .setRequired(true);
+      const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
+      return interaction.reply({
+        content: 'Select the role that verified members will receive:',
+        components: [row],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'set_custom_question') {
@@ -242,6 +252,139 @@ export async function handleSetupModals(interaction) {
     }
   } catch (error) {
     console.error('Error handling setup modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleVerifyChannelSelect(interaction) {
+  try {
+    const channel = interaction.channels.first();
+    
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.verifyChannelId = channel.id;
+    await verification.save();
+
+    const { ButtonBuilder, ActionRowBuilder: ARB, EmbedBuilder } = await import('discord.js');
+    const verifyButton = new ButtonBuilder()
+      .setCustomId('verify_button')
+      .setLabel('Click Here to Verify')
+      .setStyle(1);
+
+    const verifyEmbed = new EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle('✅ Server Verification')
+      .setDescription('Click the button below to verify and access all member channels!')
+      .setFooter({ text: 'EverLink' });
+
+    await channel.send({
+      embeds: [verifyEmbed],
+      components: [new ARB().addComponents(verifyButton)],
+    });
+
+    return interaction.update({
+      content: `Verify channel set to ${channel} and verification button sent!`,
+      components: [],
+      embeds: [successEmbed(`Verify channel set to ${channel} and verification button sent!`)],
+    });
+  } catch (error) {
+    console.error('Error setting verify channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeChannelSelect(interaction) {
+  try {
+    const channel = interaction.channels.first();
+    
+    if (!channel) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.welcomeChannelId = channel.id;
+    await verification.save();
+
+    return interaction.update({
+      content: `Welcome channel set to ${channel}!`,
+      components: [],
+      embeds: [successEmbed(`Welcome channel set to ${channel}!`)],
+    });
+  } catch (error) {
+    console.error('Error setting welcome channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleUnverifiedRoleSelect(interaction) {
+  try {
+    const role = interaction.roles.first();
+    
+    if (!role) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid role.')],
+        ephemeral: true,
+      });
+    }
+
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.unverifiedRoleId = role.id;
+    await verification.save();
+
+    return interaction.update({
+      content: `Unverified role set to ${role}!`,
+      components: [],
+      embeds: [successEmbed(`Unverified role set to ${role}!`)],
+    });
+  } catch (error) {
+    console.error('Error setting unverified role:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleVerifiedRoleSelect(interaction) {
+  try {
+    const role = interaction.roles.first();
+    
+    if (!role) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid role.')],
+        ephemeral: true,
+      });
+    }
+
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.verifiedRoleId = role.id;
+    await verification.save();
+
+    return interaction.update({
+      content: `Verified role set to ${role}!`,
+      components: [],
+      embeds: [successEmbed(`Verified role set to ${role}!`)],
+    });
+  } catch (error) {
+    console.error('Error setting verified role:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       ephemeral: true,
