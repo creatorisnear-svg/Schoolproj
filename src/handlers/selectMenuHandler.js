@@ -913,6 +913,7 @@ async function handleStrikeSetupMenu(interaction) {
           .setCustomId(`strike_action_select_${i}`)
           .setPlaceholder(`Choose action for Strike ${i}`)
           .addOptions(
+            { label: 'No Action', value: 'none' },
             { label: 'Kick', value: 'kick' },
             { label: 'Timeout (mute)', value: 'timeout' },
             { label: 'Ban', value: 'ban' }
@@ -1024,10 +1025,11 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
       strikeConfig.strikes[strikeKey].duration = null;
       await strikeConfig.save();
 
+      const actionLabel = action === 'none' ? 'No Action' : action.charAt(0).toUpperCase() + action.slice(1);
       const menuOptions = createStrikeSetupMenu();
       return interaction.update({
         content: '',
-        embeds: [infoEmbed(`Strike ${strikeLevel} Action Set`, `Action: ${action}\n\nSelect your next option below to continue setup.`)],
+        embeds: [infoEmbed(`Strike ${strikeLevel} Action Set`, `Action: ${actionLabel}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
       });
     }

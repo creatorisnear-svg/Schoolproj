@@ -65,13 +65,13 @@ export async function execute(interaction) {
     await strikeUser.save();
 
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-    let actionTaken = 'None';
+    let actionTaken = 'No action taken';
 
     if (targetMember) {
       const strikeKey = `strike${strikeLevel}`;
       const strikeConfig_data = strikeConfig.strikes[strikeKey];
 
-      if (strikeConfig_data && strikeConfig_data.action) {
+      if (strikeConfig_data && strikeConfig_data.action && strikeConfig_data.action !== 'none') {
         const action = strikeConfig_data.action;
 
         if (action === 'kick') {
@@ -93,6 +93,21 @@ export async function execute(interaction) {
           await targetMember.roles.add(role).catch(() => {});
         }
       }
+
+      // Send DM to struck member
+      const strikeDM = new EmbedBuilder()
+        .setColor('#ff6b6b')
+        .setTitle('⚠️ You Have Been Striked')
+        .addFields(
+          { name: 'Striked By', value: interaction.user.username, inline: false },
+          { name: 'Reason', value: reason, inline: false },
+          { name: 'Strike Level', value: `${strikeLevel}/4`, inline: false },
+          { name: 'Action Taken', value: actionTaken, inline: false }
+        )
+        .setTimestamp()
+        .setFooter({ text: 'EverLink' });
+
+      await targetUser.send({ embeds: [strikeDM] }).catch(() => {});
     }
 
     const config = await Config.findOne({ guildId: interaction.guildId });
