@@ -20,7 +20,7 @@ async function handle911Report(interaction) {
 
     if (!config || !config.reportChannelId) {
       return interaction.reply({
-        embeds: [errorEmbed('No report channel has been configured. Please contact an administrator.')],
+        embeds: [errorEmbed('No 911 channel has been configured. Please contact an administrator.')],
         ephemeral: true,
       });
     }
@@ -29,7 +29,7 @@ async function handle911Report(interaction) {
 
     if (!reportChannel) {
       return interaction.reply({
-        embeds: [errorEmbed('The configured report channel could not be found. Please contact an administrator.')],
+        embeds: [errorEmbed('The configured 911 channel could not be found. Please contact an administrator.')],
         ephemeral: true,
       });
     }
@@ -46,7 +46,7 @@ async function handle911Report(interaction) {
         { name: '__Submitted By__', value: `${interaction.user.tag} (${interaction.user})`, inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'SΛRP GTA 5 PS5 Roleplay' });
+      .setFooter({ text: 'EverLink' });
 
     let roleMentions = '';
     if (config.reportRoles && config.reportRoles.length > 0) {

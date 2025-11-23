@@ -1,7 +1,7 @@
 {
-  "name": "sarp-discord-bot",
+  "name": "everlink-discord-bot",
   "version": "1.0.0",
-  "description": "Discord bot for SΛRP GTA 5 PS5 Roleplay Community",
+  "description": "Discord bot for EverLink Community",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

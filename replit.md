@@ -1,7 +1,7 @@
-# SΛRP Discord Bot
+# EverLink Discord Bot
 
 ## Overview
-Discord bot for the SΛRP GTA 5 PS5 Roleplay Community. This bot provides staff management functionality with a permission system that allows administrators to add/remove staff members and roles. All bot responses use Discord embeds with SΛRP branding.
+Discord bot for the EverLink Community. This bot provides staff management functionality with a permission system that allows administrators to add/remove staff members and roles. All bot responses use Discord embeds with EverLink branding.
 
 ## Current State
 - **Status**: In Development
@@ -98,9 +98,8 @@ Planned deployment to **Koyeb** after all commands are implemented.
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- SΛRP branding on all embeds (footer: "SΛRP GTA 5 PS5 Roleplay")
+- EverLink branding on all embeds (footer: "EverLink")
 - MongoDB for persistent data storage
-- GTA 5 roleplay community focus
 
 ## Next Steps
 - Additional roleplay-specific commands

@@ -5,16 +5,16 @@ import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setreportchannel')
-  .setDescription('Set the channel where 911 reports will be sent')
+  .setDescription('Set the 911 channel where emergency reports will be sent')
   .addChannelOption(option =>
     option.setName('channel')
-      .setDescription('The channel for 911 reports')
+      .setDescription('The 911 channel for emergency reports')
       .setRequired(true));
 
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can set the report channel.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can set the 911 channel.')],
       ephemeral: true,
     });
   }
@@ -39,9 +39,9 @@ export async function execute(interaction) {
       embeds: [successEmbed(`911 reports will now be sent to ${channel}`)],
     });
   } catch (error) {
-    console.error('Error setting report channel:', error);
+    console.error('Error setting 911 channel:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while setting the report channel. Please try again.')],
+      embeds: [errorEmbed('An error occurred while setting the 911 channel. Please try again.')],
       ephemeral: true,
     });
   }

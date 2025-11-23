@@ -1,10 +1,10 @@
-# SΛRP Discord Bot Setup Guide
+# EverLink Discord Bot Setup Guide
 
 ## Quick Start
 
 ### 1. Get Your Discord Bot Token
 1. Go to https://discord.com/developers/applications
-2. Click "New Application" and name it "SΛRP Bot"
+2. Click "New Application" and name it "EverLink Bot"
 3. Go to the "Bot" section in the left sidebar
 4. Click "Reset Token" to generate your bot token
 5. **Important**: Enable these intents under "Privileged Gateway Intents":
@@ -31,13 +31,13 @@ Click the "Secrets" tab (lock icon) in Replit and add:
 1. Go back to Discord Developer Portal → Your Application → OAuth2 → URL Generator
 2. Select scopes: `bot`, `applications.commands`
 3. Select bot permissions: `Administrator` (or minimum: Send Messages, Embed Links, Use Slash Commands)
-4. Copy the generated URL and open it to invite the bot to your SΛRP server
+4. Copy the generated URL and open it to invite the bot to your server
 
 ### 5. Run the Bot
 Once secrets are added, the bot will automatically start. Check the console for:
 ```
 ✅ Connected to MongoDB Atlas successfully
-🤖 Bot logged in as SΛRP Bot#1234
+🤖 Bot logged in as EverLink Bot#1234
 ✅ Successfully reloaded application (/) commands globally.
 ```
 
@@ -60,4 +60,4 @@ Perfect for use with UptimeRobot to keep your bot alive 24/7!
 **Deploying to Koyeb?** Check out [DEPLOYMENT.md](./DEPLOYMENT.md) for a complete guide on deploying to Koyeb and setting up UptimeRobot monitoring.
 
 ## Support
-All commands respond with Discord embeds featuring SΛRP branding.
+All commands respond with Discord embeds featuring EverLink branding.

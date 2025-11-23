@@ -51,7 +51,7 @@ UptimeRobot will ping your bot every 5 minutes to keep it alive and monitor its 
 1. Click "Add New Monitor"
 2. Configure the monitor:
    - **Monitor Type**: HTTP(s)
-   - **Friendly Name**: SARP Discord Bot
+   - **Friendly Name**: EverLink Discord Bot
    - **URL**: `https://your-app-name.koyeb.app/health`
    - **Monitoring Interval**: 5 minutes (free tier)
    - **Monitor Timeout**: 30 seconds
