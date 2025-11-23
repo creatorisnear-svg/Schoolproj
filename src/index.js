@@ -17,6 +17,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -180,6 +181,12 @@ client.on('guildMemberAdd', async member => {
   } catch (error) {
     console.error('Error in guildMemberAdd event:', error);
   }
+});
+
+client.on('messageCreate', async message => {
+  if (!message.guild || message.author.bot) return;
+  const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
+  await handleAntiPromoting(message);
 });
 
 app.get('/', (req, res) => {

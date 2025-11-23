@@ -41,25 +41,35 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - `/remove911role` - Staff remove roles from report pings
    - Reports sent as embeds to configured channel with role mentions
 
-5. **Permission System**
+5. **Anti-Promoting System** (Per-Server)
+   - `/antipromotingenable` - Staff enable anti-promoting and set log channel
+   - `/whitelistlink` - Staff add/remove allowed invite links to whitelist
+   - `/staffwhitelistlink` - Admin add/remove staff members to invite whitelist
+   - Auto-detects Discord invite links in messages
+   - Deletes messages containing non-whitelisted invite links
+   - DMs user with formatted embed explaining deletion
+   - Logs incident to configured channel with user and link details
+   - Default: Staff members are whitelisted (can share links without deletion)
+
+6. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
    - Per-server permission checking
 
-6. **System Enable/Disable** (Per-Server)
+7. **System Enable/Disable** (Per-Server)
    - Verification and welcome systems must be enabled before setup
    - Disabled systems are completely non-functional (no automatic features)
    - Toggle with `/verifysystem enabled:true/false` and `/welcomesystem enabled:true/false`
    - All responses use Discord embeds for clean, professional UI
 
-7. **Database** (Per-Server Storage)
+8. **Database** (Per-Server Storage)
    - MongoDB Atlas integration via Mongoose
    - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
    - Verification model: guildId, enabled, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
    - Welcome model: guildId, enabled, channelId, welcomeMessage, welcomeDM
-   - Config model: guildId, reportChannelId, reportRoles
+   - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, antiPromotingLogChannelId, whitelistedInviteLinks, whitelistedStaffIds
 
 ## Project Structure
 ```
@@ -81,16 +91,21 @@ src/
 │   ├── verify.js            # Verification button command
 │   ├── welcomesystem.js     # Toggle welcome system enabled/disabled
 │   ├── welcomesystemsetup.js # Welcome system setup command
+│   ├── antipromotingenable.js # Enable anti-promoting command
+│   ├── whitelistlink.js     # Whitelist/remove invite links command
+│   ├── staffwhitelistlink.js # Whitelist/remove staff command
 │   ├── 911.js               # 911 report form command
 │   ├── set911channel.js     # Set 911 report channel command
 │   ├── add911role.js        # Add 911 report role command
 │   └── remove911role.js     # Remove 911 report role command
 ├── handlers/
 │   ├── modalHandler.js      # Modal submission handler (checks enabled status)
-│   └── selectMenuHandler.js # Select menu handler (checks enabled status)
+│   ├── selectMenuHandler.js # Select menu handler (checks enabled status)
+│   └── antiPromotingHandler.js # Anti-promoting message handler
 └── utils/
     ├── embedBuilder.js      # Helper functions for creating embeds
-    └── permissions.js       # Permission checking utilities
+    ├── permissions.js       # Permission checking utilities
+    └── inviteDetector.js    # Utility to detect Discord invite links
 ```
 
 ## Environment Variables Required

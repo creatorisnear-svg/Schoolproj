@@ -1,6 +1,7 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
+import Config from '../models/Config.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function createSetupMenu() {
@@ -66,6 +67,10 @@ function createWelcomeSetupMenu() {
 }
 
 export async function handleSelectMenu(interaction) {
+  if (interaction.customId === 'antipromotion_log_channel') {
+    await handleAntiPromotingLogChannel(interaction);
+  }
+
   if (interaction.customId === 'verify_setup_menu') {
     await handleVerifySetupMenu(interaction);
   }
@@ -657,6 +662,35 @@ async function handleWelcomeSetupMenu(interaction) {
     }
   } catch (error) {
     console.error('Error handling welcome setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleAntiPromotingLogChannel(interaction) {
+  try {
+    const channel = interaction.channels.first();
+    
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+    config.antiPromotingEnabled = true;
+    config.antiPromotingLogChannelId = channel.id;
+    await config.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Anti-Promoting System Enabled', `Log channel: ${channel}\n\nThe anti-promoting system is now active. Invite links will be deleted and logged.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting anti-promoting log channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       ephemeral: true,
