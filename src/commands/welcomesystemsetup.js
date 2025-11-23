@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import Welcome from '../models/Welcome.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystemsetup')
@@ -10,6 +11,15 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      ephemeral: true,
+    });
+  }
+
+  const welcome = await Welcome.findOne({ guildId: interaction.guildId });
+  
+  if (!welcome || !welcome.enabled) {
+    return interaction.reply({
+      embeds: [errorEmbed('The welcome system must be enabled before you can set it up. Use `/welcomesystem` to enable it first.')],
       ephemeral: true,
     });
   }

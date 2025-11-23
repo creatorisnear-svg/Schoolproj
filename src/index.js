@@ -126,7 +126,7 @@ client.on('guildMemberAdd', async member => {
 
     const verification = await Verification.findOne({ guildId: member.guild.id });
 
-    if (verification && verification.unverifiedRoleId) {
+    if (verification && verification.enabled && verification.unverifiedRoleId) {
       const unverifiedRole = member.guild.roles.cache.get(verification.unverifiedRoleId);
       if (unverifiedRole) {
         await member.roles.add(unverifiedRole);
@@ -136,7 +136,7 @@ client.on('guildMemberAdd', async member => {
 
     const welcome = await Welcome.findOne({ guildId: member.guild.id });
 
-    if (welcome) {
+    if (welcome && welcome.enabled) {
       const channel = await member.guild.channels.fetch(welcome.channelId).catch(() => null);
 
       if (channel && channel.isTextBased()) {

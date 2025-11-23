@@ -15,6 +15,15 @@ export async function execute(interaction) {
     });
   }
 
+  const verification = await Verification.findOne({ guildId: interaction.guildId });
+  
+  if (!verification || !verification.enabled) {
+    return interaction.reply({
+      embeds: [errorEmbed('The verification system must be enabled before you can set it up. Use `/verifysystem` to enable it first.')],
+      ephemeral: true,
+    });
+  }
+
   const steps = [
     { id: 'select_verify_channel', label: 'Select Verify Channel' },
     { id: 'select_welcome_channel', label: 'Select Welcome Channel' },

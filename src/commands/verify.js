@@ -10,9 +10,16 @@ export async function execute(interaction) {
   try {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
 
-    if (!verification || !verification.verifyChannelId) {
+    if (!verification || !verification.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('Verification system is not configured. Please contact an administrator.')],
+        embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    if (!verification.verifyChannelId) {
+      return interaction.reply({
+        embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
         ephemeral: true,
       });
     }

@@ -6,9 +6,13 @@ const welcomeSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  enabled: {
+    type: Boolean,
+    default: false,
+  },
   channelId: {
     type: String,
-    required: true,
+    default: null,
   },
   welcomeMessage: {
     type: String,

@@ -6,6 +6,10 @@ const verificationSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  enabled: {
+    type: Boolean,
+    default: false,
+  },
   verifyChannelId: {
     type: String,
     default: null,

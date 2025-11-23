@@ -83,7 +83,14 @@ async function handleVerifyModal(interaction) {
   try {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
 
-    if (!verification || !verification.verifiedRoleId) {
+    if (!verification || !verification.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    if (!verification.verifiedRoleId) {
       return interaction.reply({
         embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
         ephemeral: true,
