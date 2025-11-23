@@ -357,6 +357,44 @@ export async function handleSetupModals(interaction) {
         ephemeral: true,
       });
     }
+
+    if (customId === 'setup_welcome_message_modal') {
+      const message = interaction.fields.getTextInputValue('welcome_message') || 'Welcome to the server, {user}! We\'re glad to have you here.';
+      let welcome = await Welcome.findOne({ guildId: interaction.guildId });
+
+      if (!welcome) {
+        welcome = new Welcome({ guildId: interaction.guildId });
+      }
+
+      welcome.welcomeMessage = message;
+      await welcome.save();
+
+      const menuOptions = createWelcomeSetupMenu();
+      return interaction.reply({
+        content: `✅ Welcome message updated!\n\n${menuOptions.content}`,
+        components: menuOptions.components,
+        ephemeral: true,
+      });
+    }
+
+    if (customId === 'setup_welcome_dm_modal') {
+      const message = interaction.fields.getTextInputValue('welcome_dm') || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.';
+      let welcome = await Welcome.findOne({ guildId: interaction.guildId });
+
+      if (!welcome) {
+        welcome = new Welcome({ guildId: interaction.guildId });
+      }
+
+      welcome.welcomeDM = message;
+      await welcome.save();
+
+      const menuOptions = createWelcomeSetupMenu();
+      return interaction.reply({
+        content: `✅ Welcome DM updated!\n\n${menuOptions.content}`,
+        components: menuOptions.components,
+        ephemeral: true,
+      });
+    }
   } catch (error) {
     console.error('Error handling setup modal:', error);
     return interaction.reply({
