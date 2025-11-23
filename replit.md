@@ -44,7 +44,6 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
 5. **Anti-Promoting System** (Per-Server)
    - `/antipromotingenable` - Staff enable anti-promoting and set log channel
    - `/whitelistlink` - Staff add/remove allowed invite links to whitelist
-   - `/staffwhitelistlink` - Admin add/remove staff members to invite whitelist
    - `/whitelistlinkstaff true/false` - Admin toggle whether staff can bypass anti-promoting
    - Auto-detects Discord invite links in messages
    - Deletes messages containing non-whitelisted invite links
@@ -94,7 +93,6 @@ src/
 │   ├── welcomesystemsetup.js # Welcome system setup command
 │   ├── antipromotingenable.js # Enable anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
-│   ├── staffwhitelistlink.js # Whitelist/remove staff members command
 │   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
 │   ├── 911.js               # 911 report form command
 │   ├── set911channel.js     # Set 911 report channel command
