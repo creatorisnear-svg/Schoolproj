@@ -35,6 +35,34 @@ function createSetupMenu() {
   };
 }
 
+function createWelcomeSetupMenu() {
+  const steps = [
+    { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
+    { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
+    { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
+  ];
+
+  const menu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('welcome_setup_menu')
+        .setPlaceholder('Choose a setup option...')
+        .addOptions(
+          steps.map(step => ({
+            label: step.label,
+            value: step.id,
+            description: `Configure ${step.label.toLowerCase()}`,
+          }))
+        )
+    );
+
+  return {
+    content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
+    components: [menu],
+    ephemeral: true
+  };
+}
+
 export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'verify_setup_menu') {
     await handleVerifySetupMenu(interaction);
@@ -58,6 +86,14 @@ export async function handleSelectMenu(interaction) {
 
   if (interaction.customId === 'welcome_channel_select') {
     await handleWelcomeSystemChannelSelect(interaction);
+  }
+
+  if (interaction.customId === 'welcome_setup_menu') {
+    await handleWelcomeSetupMenu(interaction);
+  }
+
+  if (interaction.customId === 'select_welcome_channel_setup_menu') {
+    await handleWelcomeSetupChannelSelect(interaction);
   }
 }
 
@@ -499,6 +535,95 @@ async function handleWelcomeSystemChannelSelect(interaction) {
     return interaction.update({
       embeds: [embed],
       components: [],
+    });
+  } catch (error) {
+    console.error('Error setting welcome channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeSetupMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    if (choice === 'select_welcome_channel_setup') {
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('select_welcome_channel_setup_menu')
+        .setPlaceholder('Select the welcome channel')
+        .setChannelTypes(ChannelType.GuildText);
+
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+
+      return interaction.reply({
+        content: 'Select the channel where welcome messages will be sent:',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_welcome_message_setup') {
+      const modal = new ModalBuilder()
+        .setCustomId('setup_welcome_message_modal')
+        .setTitle('Set Welcome Message');
+
+      const input = new TextInputBuilder()
+        .setCustomId('welcome_message')
+        .setLabel('Enter the welcome message for the channel')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Use {user} for mention and {server} for server name')
+        .setRequired(false);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'set_welcome_dm_setup') {
+      const modal = new ModalBuilder()
+        .setCustomId('setup_welcome_dm_modal')
+        .setTitle('Set Welcome DM');
+
+      const input = new TextInputBuilder()
+        .setCustomId('welcome_dm')
+        .setLabel('Enter the welcome DM for new members')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Use {user} for username and {server} for server name')
+        .setRequired(false);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
+    }
+  } catch (error) {
+    console.error('Error handling welcome setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeSetupChannelSelect(interaction) {
+  try {
+    const channel = interaction.channels.first();
+    
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let welcome = await Welcome.findOne({ guildId: interaction.guildId }) || new Welcome({ guildId: interaction.guildId });
+    welcome.channelId = channel.id;
+    await welcome.save();
+
+    const menuOptions = createWelcomeSetupMenu();
+    return interaction.update({
+      content: `✅ Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      embeds: [],
     });
   } catch (error) {
     console.error('Error setting welcome channel:', error);

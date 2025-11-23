@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import Config from '../models/Config.js';
 import Verification from '../models/Verification.js';
+import Welcome from '../models/Welcome.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 export async function handleModalSubmit(interaction) {
@@ -10,6 +11,14 @@ export async function handleModalSubmit(interaction) {
   
   if (interaction.customId === 'verify_modal') {
     await handleVerifyModal(interaction);
+  }
+
+  if (interaction.customId === 'setup_welcome_message_modal') {
+    await handleWelcomeMessageModal(interaction);
+  }
+
+  if (interaction.customId === 'setup_welcome_dm_modal') {
+    await handleWelcomeDMModal(interaction);
   }
 }
 
@@ -138,6 +147,122 @@ async function handleVerifyModal(interaction) {
     console.error('Error verifying member:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred during verification. Please try again or contact an administrator.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeMessageModal(interaction) {
+  const message = interaction.fields.getTextInputValue('welcome_message') || 'Welcome to the server, {user}! We\'re glad to have you here.';
+
+  try {
+    let welcome = await Welcome.findOne({ guildId: interaction.guildId });
+
+    if (!welcome) {
+      welcome = new Welcome({ guildId: interaction.guildId });
+    }
+
+    welcome.welcomeMessage = message;
+    await welcome.save();
+
+    const { ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
+    
+    function createWelcomeSetupMenu() {
+      const steps = [
+        { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
+        { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
+        { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
+      ];
+
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('welcome_setup_menu')
+            .setPlaceholder('Choose a setup option...')
+            .addOptions(
+              steps.map(step => ({
+                label: step.label,
+                value: step.id,
+                description: `Configure ${step.label.toLowerCase()}`,
+              }))
+            )
+        );
+
+      return {
+        content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
+        components: [menu],
+        ephemeral: true
+      };
+    }
+
+    const menuOptions = createWelcomeSetupMenu();
+    return interaction.reply({
+      content: `✅ Welcome message updated!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting welcome message:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while setting the welcome message. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleWelcomeDMModal(interaction) {
+  const message = interaction.fields.getTextInputValue('welcome_dm') || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.';
+
+  try {
+    let welcome = await Welcome.findOne({ guildId: interaction.guildId });
+
+    if (!welcome) {
+      welcome = new Welcome({ guildId: interaction.guildId });
+    }
+
+    welcome.welcomeDM = message;
+    await welcome.save();
+
+    const { ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
+    
+    function createWelcomeSetupMenu() {
+      const steps = [
+        { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
+        { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
+        { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
+      ];
+
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('welcome_setup_menu')
+            .setPlaceholder('Choose a setup option...')
+            .addOptions(
+              steps.map(step => ({
+                label: step.label,
+                value: step.id,
+                description: `Configure ${step.label.toLowerCase()}`,
+              }))
+            )
+        );
+
+      return {
+        content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
+        components: [menu],
+        ephemeral: true
+      };
+    }
+
+    const menuOptions = createWelcomeSetupMenu();
+    return interaction.reply({
+      content: `✅ Welcome DM updated!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting welcome DM:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while setting the welcome DM. Please try again.')],
       ephemeral: true,
     });
   }
