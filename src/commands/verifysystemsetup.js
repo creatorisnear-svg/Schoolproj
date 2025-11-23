@@ -20,6 +20,7 @@ export async function execute(interaction) {
     { id: 'select_welcome_channel', label: 'Select Welcome Channel' },
     { id: 'select_unverified_role', label: 'Select Unverified Role' },
     { id: 'select_verified_role', label: 'Select Verified Role' },
+    { id: 'set_rp_tag', label: 'Set RP Tag (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
     { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
   ];
