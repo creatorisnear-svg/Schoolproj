@@ -1,10 +1,15 @@
 import { EmbedBuilder } from 'discord.js';
 import Config from '../models/Config.js';
+import Verification from '../models/Verification.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 export async function handleModalSubmit(interaction) {
   if (interaction.customId === '911report') {
     await handle911Report(interaction);
+  }
+  
+  if (interaction.customId === 'verify_modal') {
+    await handleVerifyModal(interaction);
   }
 }
 
@@ -66,6 +71,64 @@ async function handle911Report(interaction) {
     console.error('Error submitting 911 report:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while submitting your report. Please try again or contact an administrator.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleVerifyModal(interaction) {
+  const psnxbox = interaction.fields.getTextInputValue('psnxbox');
+  const customAnswer = interaction.fields.getTextInputValue('custom_question') || 'N/A';
+
+  try {
+    const verification = await Verification.findOne({ guildId: interaction.guildId });
+
+    if (!verification || !verification.verifiedRoleId) {
+      return interaction.reply({
+        embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    const verifiedRole = interaction.guild.roles.cache.get(verification.verifiedRoleId);
+    const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
+
+    if (!verifiedRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('The verified role could not be found. Please contact an administrator.')],
+        ephemeral: true,
+      });
+    }
+
+    await interaction.member.roles.add(verifiedRole);
+    if (unverifiedRole) {
+      await interaction.member.roles.remove(unverifiedRole);
+    }
+
+    const dmMessage = verification.verifyDMMessage || 'Welcome to our community! You have been verified and can now access all member channels.';
+    await interaction.user.send({
+      embeds: [new EmbedBuilder()
+        .setColor('#00ff00')
+        .setTitle('✅ Verification Successful')
+        .setDescription(dmMessage)
+        .setFooter({ text: 'EverLink' })
+      ]
+    });
+
+    const successMsg = new EmbedBuilder()
+      .setColor('#00ff00')
+      .setTitle('✅ You\'re Verified!')
+      .setDescription('You may now see all member channels. Welcome to the community!')
+      .setFooter({ text: 'EverLink' });
+
+    return interaction.reply({
+      embeds: [successMsg],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error verifying member:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred during verification. Please try again or contact an administrator.')],
       ephemeral: true,
     });
   }

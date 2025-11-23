@@ -16,6 +16,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.DirectMessages,
   ],
 });
 
@@ -90,7 +91,42 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isModalSubmit()) {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
-    await handleModalSubmit(interaction);
+    const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
+    
+    if (interaction.customId.includes('setup_')) {
+      await handleSetupModals(interaction);
+    } else {
+      await handleModalSubmit(interaction);
+    }
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+    await handleSelectMenu(interaction);
+  }
+
+  if (interaction.isButton()) {
+    if (interaction.customId === 'verify_button') {
+      const { data, execute } = await import('./commands/verify.js');
+      await execute(interaction);
+    }
+  }
+});
+
+client.on('guildMemberAdd', async member => {
+  try {
+    const { default: Verification } = await import('./models/Verification.js');
+    const verification = await Verification.findOne({ guildId: member.guild.id });
+
+    if (verification && verification.unverifiedRoleId) {
+      const unverifiedRole = member.guild.roles.cache.get(verification.unverifiedRoleId);
+      if (unverifiedRole) {
+        await member.roles.add(unverifiedRole);
+        console.log(`✅ Assigned unverified role to ${member.user.tag}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error assigning unverified role on member join:', error);
   }
 });
 
