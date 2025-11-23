@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
+import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
@@ -15,11 +16,20 @@ export async function execute(interaction) {
     });
   }
 
+  const config = await Config.findOne({ guildId: interaction.guildId });
+
+  if (!config || !config.logChannelId) {
+    return interaction.reply({
+      embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the verification system.')],
+      ephemeral: true,
+    });
+  }
+
   const verification = await Verification.findOne({ guildId: interaction.guildId });
   
   if (!verification || !verification.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('The verification system must be enabled before you can set it up. Use `/verifysystem` to enable it first.')],
+      embeds: [errorEmbed('The verification system must be enabled before you can set it up. Use `/verifysystem true` to enable it first.')],
       ephemeral: true,
     });
   }

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import Welcome from '../models/Welcome.js';
+import Config from '../models/Config.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
@@ -24,6 +25,15 @@ export async function execute(interaction) {
   const enabled = interaction.options.getBoolean('enabled');
 
   try {
+    const config = await Config.findOne({ guildId: interaction.guildId });
+
+    if (enabled && (!config || !config.logChannelId)) {
+      return interaction.reply({
+        embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before enabling the welcome system.')],
+        ephemeral: true,
+      });
+    }
+
     let welcome = await Welcome.findOne({ guildId: interaction.guildId }) || new Welcome({ guildId: interaction.guildId });
     
     welcome.enabled = enabled;

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
+import Config from '../models/Config.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
@@ -24,6 +25,15 @@ export async function execute(interaction) {
   const enabled = interaction.options.getBoolean('enabled');
 
   try {
+    const config = await Config.findOne({ guildId: interaction.guildId });
+
+    if (enabled && (!config || !config.logChannelId)) {
+      return interaction.reply({
+        embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before enabling the verification system.')],
+        ephemeral: true,
+      });
+    }
+
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
     
     verification.enabled = enabled;

@@ -78,7 +78,7 @@ async function handle911Report(interaction) {
 
 async function handleVerifyModal(interaction) {
   const psnxbox = interaction.fields.getTextInputValue('psnxbox');
-  const customAnswer = interaction.fields.getTextInputValue('custom_question') || 'N/A';
+  const customAnswer = interaction.fields.getTextInputValue('custom_question') || null;
 
   try {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
@@ -118,6 +118,28 @@ async function handleVerifyModal(interaction) {
         await interaction.member.setNickname(newNickname);
       } catch (error) {
         console.error('Error setting nickname:', error);
+      }
+    }
+
+    // Log verification with custom question if it exists
+    if (customAnswer && verification.customQuestion) {
+      const config = await Config.findOne({ guildId: interaction.guildId });
+      if (config && config.logChannelId) {
+        const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
+        if (logChannel && logChannel.isTextBased()) {
+          const logEmbed = new EmbedBuilder()
+            .setColor('#0099ff')
+            .setTitle('✅ Member Verified with Question')
+            .addFields(
+              { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false },
+              { name: 'Question', value: verification.customQuestion, inline: false },
+              { name: 'Answer', value: customAnswer, inline: false }
+            )
+            .setTimestamp()
+            .setFooter({ text: 'EverLink' });
+
+          await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+        }
       }
     }
 

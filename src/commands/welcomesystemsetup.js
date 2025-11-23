@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import Welcome from '../models/Welcome.js';
+import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystemsetup')
@@ -15,11 +16,20 @@ export async function execute(interaction) {
     });
   }
 
+  const config = await Config.findOne({ guildId: interaction.guildId });
+
+  if (!config || !config.logChannelId) {
+    return interaction.reply({
+      embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the welcome system.')],
+      ephemeral: true,
+    });
+  }
+
   const welcome = await Welcome.findOne({ guildId: interaction.guildId });
   
   if (!welcome || !welcome.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('The welcome system must be enabled before you can set it up. Use `/welcomesystem` to enable it first.')],
+      embeds: [errorEmbed('The welcome system must be enabled before you can set it up. Use `/welcomesystem true` to enable it first.')],
       ephemeral: true,
     });
   }

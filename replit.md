@@ -9,6 +9,8 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
 - **Last Updated**: November 23, 2025
 
 ## Features Implemented
+**REQUIRED FIRST STEP**: `/setlogchannel` - All systems require a log channel to be set before they can be enabled
+
 1. **Staff Management System** (Per-Server)
    - `/addstaff` - Administrators can add users or roles as bot staff
    - `/removestaff` - Administrators can remove users or roles from bot staff
@@ -16,18 +18,19 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Each server has its own independent staff team
 
 2. **Verification System** (Per-Server)
-   - `/verifysystem` - Enable/disable the verification system (admin-only)
-   - `/verifysystemsetup` - Configure verification with dropdown menus (requires system enabled)
+   - `/verifysystem true/false` - Enable/disable the verification system (admin-only, requires log channel first)
+   - `/verifysystemsetup` - Configure verification with dropdown menus (requires log channel and system enabled)
    - `/verify` - Members click button to verify and get access to the server (requires system enabled)
    - RP Tag system: Auto-formats nicknames as "[TAG] | [username]" upon verification
    - Customizable verification questions and DM messages
+   - When member answers a custom verification question, it's logged to the log channel
    - Automatic role assignment (removes unverified, adds verified role)
    - Welcome channel messages sent after verification
    - Each server has independent verification settings and RP tags
 
 3. **Welcome System** (Per-Server)
-   - `/welcomesystem` - Enable/disable the welcome system (staff-only)
-   - `/welcomesystemsetup` - Configure welcome channel using dropdown selector (requires system enabled)
+   - `/welcomesystem true/false` - Enable/disable the welcome system (staff-only, requires log channel first)
+   - `/welcomesystemsetup` - Configure welcome channel using dropdown selector (requires log channel and system enabled)
    - Automatic welcome messages with profile picture embed (non-customizable)
    - DM sent to new members with profile picture embed (non-customizable)
    - Placeholders: {user} for mention/username, {server} for server name
@@ -41,10 +44,12 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - `/remove911role` - Staff remove roles from report pings
    - Reports sent as embeds to configured channel with role mentions
 
-5. **Logging System** (Per-Server)
-   - `/setlogchannel` - Staff set the main log channel for all server events and anti-promoting reports
-   - Must be set before enabling other systems
-   - All systems (anti-promoting, etc.) use this single log channel
+5. **Logging System** (Per-Server, REQUIRED)
+   - `/setlogchannel` - Staff set the main log channel for all server events (verification questions, anti-promoting reports, etc.)
+   - MUST be set before enabling ANY other systems (verification, welcome, anti-promoting)
+   - All systems use this single log channel for event logging
+   - Verification questions with answers logged when members verify
+   - Anti-promoting reports logged with user and link details
 
 6. **Anti-Promoting System** (Per-Server)
    - `/antipromotingenable true/false` - Staff enable or disable anti-promoting (requires log channel set first)
