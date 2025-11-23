@@ -36,7 +36,7 @@ async function handle911Report(interaction) {
 
     const reportEmbed = new EmbedBuilder()
       .setColor('#ff0000')
-      .setTitle('__**911 REPORT**__')
+      .setTitle('__**911**__')
       .addFields(
         { name: '__Issue__', value: issue, inline: false },
         { name: '__Location__', value: location, inline: false },
