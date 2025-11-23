@@ -11,6 +11,8 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
 ## Features Implemented
 **REQUIRED FIRST STEP**: `/setlogchannel` - All systems require a log channel to be set before they can be enabled
 
+**NEW**: Strike System with 4 configurable levels, each with optional roles and actions (kick/timeout/ban)
+
 1. **Staff Management System** (Per-Server)
    - `/addstaff` - Administrators can add users or roles as bot staff
    - `/removestaff` - Administrators can remove users or roles from bot staff
@@ -51,7 +53,19 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Verification questions with answers logged when members verify
    - Anti-promoting reports logged with user and link details
 
-6. **Anti-Promoting System** (Per-Server)
+6. **Strike System** (Per-Server)
+   - `/enablestrikesystem true/false` - Enable/disable the strike system (admin-only, requires log channel first)
+   - `/strikesystemsetup` - Configure strike system with dropdown menus (requires log channel and system enabled)
+   - Strike Levels 1-4 with optional configuration:
+     - Each level can have an optional role assignment
+     - Each level can have an action: Kick, Timeout (mute), or Ban
+     - Timeout and Ban durations are configurable in minutes (0 = permanent for ban)
+   - `/strike @user <strikes> <reason>` - Staff can strike members (1-4 strikes)
+   - **Strike Replacement Logic**: New strike level replaces old (e.g., strike 2 replaces strike 1, not stacking)
+   - All strikes logged to configured log channel with member, striker, reason, and action taken
+   - Each server has independent strike configuration
+
+7. **Anti-Promoting System** (Per-Server)
    - `/antipromotingenable true/false` - Staff enable or disable anti-promoting (requires log channel set first)
    - `/whitelistlink add/remove` - Staff add/remove allowed invite links to whitelist
    - `/whitelistlinkstaff true/false` - Admin toggle whether staff can bypass anti-promoting
@@ -61,25 +75,27 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Logs incident to configured log channel with user and link details
    - Default: Staff members can share links (enabled). Admins can disable via `/whitelistlinkstaff false`
 
-7. **Permission System**
+8. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
    - Per-server permission checking
 
-8. **System Enable/Disable** (Per-Server)
-   - Verification and welcome systems must be enabled before setup
+9. **System Enable/Disable** (Per-Server)
+   - All systems must have log channel set before enabling
+   - Verification, welcome, and strike systems must be enabled before setup
    - Disabled systems are completely non-functional (no automatic features)
-   - Toggle with `/verifysystem enabled:true/false` and `/welcomesystem enabled:true/false`
    - All responses use Discord embeds for clean, professional UI
 
-9. **Database** (Per-Server Storage)
+10. **Database** (Per-Server Storage)
    - MongoDB Atlas integration via Mongoose
    - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
    - Verification model: guildId, enabled, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
    - Welcome model: guildId, enabled, channelId, welcomeMessage, welcomeDM
    - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, whitelistedInviteLinks, whitelistedStaffIds, staffCanBypassLinks, logChannelId
+   - StrikeUser model: guildId, userId, currentStrikeLevel (0-4)
+   - StrikeConfig model: guildId, enabled, strikes (4 levels with roleId, action, duration)
 
 ## Project Structure
 ```
@@ -91,7 +107,8 @@ src/
 │   ├── Staff.js             # Mongoose schema for staff members
 │   ├── Verification.js      # Mongoose schema for verification config (with enabled field)
 │   ├── Welcome.js           # Mongoose schema for welcome config (with enabled field)
-│   └── Config.js            # Mongoose schema for server config
+│   ├── Config.js            # Mongoose schema for server config
+│   └── Strike.js            # Mongoose schema for strike system (StrikeUser and StrikeConfig)
 ├── commands/
 │   ├── addstaff.js          # Add staff command
 │   ├── removestaff.js       # Remove staff command
@@ -102,6 +119,9 @@ src/
 │   ├── verify.js            # Verification button command
 │   ├── welcomesystem.js     # Toggle welcome system enabled/disabled
 │   ├── welcomesystemsetup.js # Welcome system setup command
+│   ├── enablestrikesystem.js # Toggle strike system enabled/disabled
+│   ├── strikesystemsetup.js # Strike system setup command
+│   ├── strike.js            # Strike member command
 │   ├── antipromotingenable.js # Toggle anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
 │   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
@@ -110,8 +130,8 @@ src/
 │   ├── add911role.js        # Add 911 report role command
 │   └── remove911role.js     # Remove 911 report role command
 ├── handlers/
-│   ├── modalHandler.js      # Modal submission handler (checks enabled status)
-│   ├── selectMenuHandler.js # Select menu handler (checks enabled status)
+│   ├── modalHandler.js      # Modal submission handler (checks enabled status, logs verification questions)
+│   ├── selectMenuHandler.js # Select menu handler with strike system setup (checks enabled status)
 │   └── antiPromotingHandler.js # Anti-promoting message handler
 └── utils/
     ├── embedBuilder.js      # Helper functions for creating embeds
@@ -140,8 +160,16 @@ Planned deployment to **Koyeb** after all commands are implemented.
 - EverLink branding on all embeds (footer: "EverLink")
 - MongoDB for persistent data storage
 
+## Usage Flow (Recommended Order)
+1. `/setlogchannel` → Select log channel (REQUIRED for all other systems)
+2. `/verifysystem true` → Enable verification, then `/verifysystemsetup` → Configure
+3. `/welcomesystem true` → Enable welcome, then `/welcomesystemsetup` → Configure  
+4. `/enablestrikesystem true` → Enable strikes, then `/strikesystemsetup` → Configure (roles + actions)
+5. `/antipromotingenable true` → Enable anti-promoting (auto-uses log channel)
+6. `/addstaff` → Add staff members to manage bot commands
+
 ## Next Steps
 - Additional roleplay-specific commands
+- Configuration dashboard for staff
 - Logging system for staff actions
-- Configuration commands for customization
 - Prepare for Koyeb deployment

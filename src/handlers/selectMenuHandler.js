@@ -2,6 +2,7 @@ import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, Chann
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
+import { StrikeConfig } from '../models/Strike.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function createSetupMenu() {
@@ -66,6 +67,34 @@ function createWelcomeSetupMenu() {
   };
 }
 
+function createStrikeSetupMenu() {
+  const steps = [
+    { id: 'strike_set_roles', label: 'Set Strike Level Roles (Optional)' },
+    { id: 'strike_set_actions', label: 'Set Strike Actions (Kick/Timeout/Ban)' },
+    { id: 'strike_setup_done', label: '✅ Done - Close Setup' },
+  ];
+
+  const menu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('strike_setup_menu')
+        .setPlaceholder('Choose a setup option...')
+        .addOptions(
+          steps.map(step => ({
+            label: step.label,
+            value: step.id,
+            description: `Configure ${step.label.toLowerCase()}`,
+          }))
+        )
+    );
+
+  return {
+    content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:',
+    components: [menu],
+    ephemeral: true
+  };
+}
+
 export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'setlogchannel_select') {
     await handleSetLogChannel(interaction);
@@ -101,6 +130,42 @@ export async function handleSelectMenu(interaction) {
 
   if (interaction.customId === 'select_welcome_channel_setup_menu') {
     await handleWelcomeSetupChannelSelect(interaction);
+  }
+
+  if (interaction.customId === 'strike_setup_menu') {
+    await handleStrikeSetupMenu(interaction);
+  }
+
+  if (interaction.customId === 'strike_roles_select_1') {
+    await handleStrikeRoleSelect(interaction, 1);
+  }
+
+  if (interaction.customId === 'strike_roles_select_2') {
+    await handleStrikeRoleSelect(interaction, 2);
+  }
+
+  if (interaction.customId === 'strike_roles_select_3') {
+    await handleStrikeRoleSelect(interaction, 3);
+  }
+
+  if (interaction.customId === 'strike_roles_select_4') {
+    await handleStrikeRoleSelect(interaction, 4);
+  }
+
+  if (interaction.customId === 'strike_action_select_1') {
+    await handleStrikeActionSelect(interaction, 1);
+  }
+
+  if (interaction.customId === 'strike_action_select_2') {
+    await handleStrikeActionSelect(interaction, 2);
+  }
+
+  if (interaction.customId === 'strike_action_select_3') {
+    await handleStrikeActionSelect(interaction, 3);
+  }
+
+  if (interaction.customId === 'strike_action_select_4') {
+    await handleStrikeActionSelect(interaction, 4);
   }
 }
 
@@ -410,6 +475,66 @@ export async function handleSetupModals(interaction) {
       return interaction.reply({
         content: '',
         embeds: [infoEmbed('Welcome DM Updated', 'Welcome DM has been updated. Select your next option below to continue setup.')],
+        components: menuOptions.components,
+        ephemeral: true,
+      });
+    }
+
+    const strikeTimeoutMatch = customId.match(/setup_strike_timeout_(\d+)/);
+    if (strikeTimeoutMatch) {
+      const strikeLevel = parseInt(strikeTimeoutMatch[1]);
+      const duration = parseInt(interaction.fields.getTextInputValue('timeout_duration'));
+
+      if (isNaN(duration) || duration <= 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('Duration must be a valid positive number.')],
+          ephemeral: true,
+        });
+      }
+
+      let strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
+      if (!strikeConfig) {
+        strikeConfig = new StrikeConfig({ guildId: interaction.guildId });
+      }
+
+      const strikeKey = `strike${strikeLevel}`;
+      strikeConfig.strikes[strikeKey].duration = duration;
+      await strikeConfig.save();
+
+      const menuOptions = createStrikeSetupMenu();
+      return interaction.reply({
+        content: '',
+        embeds: [infoEmbed(`Strike ${strikeLevel} Timeout Set`, `Duration: ${duration} minutes\n\nSelect your next option below to continue setup.`)],
+        components: menuOptions.components,
+        ephemeral: true,
+      });
+    }
+
+    const strikeBanMatch = customId.match(/setup_strike_ban_(\d+)/);
+    if (strikeBanMatch) {
+      const strikeLevel = parseInt(strikeBanMatch[1]);
+      const duration = parseInt(interaction.fields.getTextInputValue('ban_duration'));
+
+      if (isNaN(duration) || duration < 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('Duration must be a valid number (0 for permanent).')],
+          ephemeral: true,
+        });
+      }
+
+      let strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
+      if (!strikeConfig) {
+        strikeConfig = new StrikeConfig({ guildId: interaction.guildId });
+      }
+
+      const strikeKey = `strike${strikeLevel}`;
+      strikeConfig.strikes[strikeKey].duration = duration;
+      await strikeConfig.save();
+
+      const menuOptions = createStrikeSetupMenu();
+      return interaction.reply({
+        content: '',
+        embeds: [infoEmbed(`Strike ${strikeLevel} Ban Set`, `Duration: ${duration === 0 ? 'Permanent' : duration + ' minutes'}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
         ephemeral: true,
       });
@@ -750,6 +875,164 @@ async function handleWelcomeSetupChannelSelect(interaction) {
     });
   } catch (error) {
     console.error('Error setting welcome channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleStrikeSetupMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    if (choice === 'strike_set_roles') {
+      let content = 'Select roles for each strike level (leave empty to skip):\n\n';
+      const roleSelects = [];
+
+      for (let i = 1; i <= 4; i++) {
+        const roleSelect = new RoleSelectMenuBuilder()
+          .setCustomId(`strike_roles_select_${i}`)
+          .setPlaceholder(`Select role for Strike ${i} (or skip)`);
+
+        roleSelects.push(new ActionRowBuilder().addComponents(roleSelect));
+      }
+
+      return interaction.reply({
+        content: 'Select roles for strike levels 1-4. You can leave empty if you don\'t want a role for that level.',
+        components: roleSelects,
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'strike_set_actions') {
+      const actionMenus = [];
+
+      for (let i = 1; i <= 4; i++) {
+        const actionSelect = new StringSelectMenuBuilder()
+          .setCustomId(`strike_action_select_${i}`)
+          .setPlaceholder(`Choose action for Strike ${i}`)
+          .addOptions(
+            { label: 'Kick', value: 'kick' },
+            { label: 'Timeout (mute)', value: 'timeout' },
+            { label: 'Ban', value: 'ban' }
+          );
+
+        actionMenus.push(new ActionRowBuilder().addComponents(actionSelect));
+      }
+
+      return interaction.reply({
+        content: 'Select the action for each strike level (1-4):',
+        components: actionMenus,
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'strike_setup_done') {
+      return interaction.update({
+        content: '✅ Strike system setup complete!',
+        embeds: [successEmbed('Strike System Configured', 'Your strike system is ready to use. Staff can now use `/strike` to strike members.')],
+        components: [],
+      });
+    }
+  } catch (error) {
+    console.error('Error handling strike setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleStrikeRoleSelect(interaction, strikeLevel) {
+  try {
+    const roles = interaction.roles;
+
+    const strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId }) || new StrikeConfig({ guildId: interaction.guildId });
+    
+    const strikeKey = `strike${strikeLevel}`;
+    if (roles.size > 0) {
+      const role = roles.first();
+      strikeConfig.strikes[strikeKey].roleId = role.id;
+    }
+
+    await strikeConfig.save();
+
+    const menuOptions = createStrikeSetupMenu();
+    return interaction.update({
+      content: '',
+      embeds: [infoEmbed(`Strike ${strikeLevel} Role Set`, `Role: ${roles.size > 0 ? roles.first() : 'None selected'}\n\nSelect your next option below to continue setup.`)],
+      components: menuOptions.components,
+    });
+  } catch (error) {
+    console.error('Error setting strike role:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleStrikeActionSelect(interaction, strikeLevel) {
+  try {
+    const action = interaction.values[0];
+
+    const strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
+    if (!strikeConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Strike system not configured. Please try again.')],
+        ephemeral: true,
+      });
+    }
+
+    const strikeKey = `strike${strikeLevel}`;
+    strikeConfig.strikes[strikeKey].action = action;
+
+    if (action === 'timeout') {
+      const modal = new ModalBuilder()
+        .setCustomId(`setup_strike_timeout_${strikeLevel}`)
+        .setTitle(`Strike ${strikeLevel} Timeout Duration`)
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('timeout_duration')
+              .setLabel('Timeout Duration (minutes)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., 60')
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    } else if (action === 'ban') {
+      const modal = new ModalBuilder()
+        .setCustomId(`setup_strike_ban_${strikeLevel}`)
+        .setTitle(`Strike ${strikeLevel} Ban Duration`)
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('ban_duration')
+              .setLabel('Ban Duration (minutes, 0 = permanent)')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., 0 for permanent')
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    } else {
+      strikeConfig.strikes[strikeKey].duration = null;
+      await strikeConfig.save();
+
+      const menuOptions = createStrikeSetupMenu();
+      return interaction.update({
+        content: '',
+        embeds: [infoEmbed(`Strike ${strikeLevel} Action Set`, `Action: ${action}\n\nSelect your next option below to continue setup.`)],
+        components: menuOptions.components,
+      });
+    }
+  } catch (error) {
+    console.error('Error setting strike action:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       ephemeral: true,
