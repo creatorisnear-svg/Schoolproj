@@ -1,6 +1,37 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+
+function createSetupMenu() {
+  const steps = [
+    { id: 'select_verify_channel', label: 'Select Verify Channel' },
+    { id: 'select_welcome_channel', label: 'Select Welcome Channel' },
+    { id: 'select_unverified_role', label: 'Select Unverified Role' },
+    { id: 'select_verified_role', label: 'Select Verified Role' },
+    { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
+    { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
+  ];
+
+  const menu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('verify_setup_menu')
+        .setPlaceholder('Choose a setup option...')
+        .addOptions(
+          steps.map(step => ({
+            label: step.label,
+            value: step.id,
+            description: `Configure ${step.label.toLowerCase()}`,
+          }))
+        )
+    );
+
+  return {
+    content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
+    components: [menu],
+    ephemeral: true
+  };
+}
 
 export async function handleSelectMenu(interaction) {
   if (interaction.customId === 'verify_setup_menu') {
@@ -234,8 +265,10 @@ export async function handleSetupModals(interaction) {
       verification.customQuestion = question;
       await verification.save();
 
+      const menuOptions = createSetupMenu();
       return interaction.reply({
-        embeds: [successEmbed(question ? `Custom question set to: "${question}"` : 'Custom question removed!')],
+        content: `✅ ${question ? `Custom question set to: "${question}"` : 'Custom question removed!'}\n\n${menuOptions.content}`,
+        components: menuOptions.components,
         ephemeral: true,
       });
     }
@@ -245,8 +278,10 @@ export async function handleSetupModals(interaction) {
       verification.verifyDMMessage = message;
       await verification.save();
 
+      const menuOptions = createSetupMenu();
       return interaction.reply({
-        embeds: [successEmbed('DM message updated!')],
+        content: `✅ DM message updated!\n\n${menuOptions.content}`,
+        components: menuOptions.components,
         ephemeral: true,
       });
     }
@@ -291,10 +326,11 @@ async function handleVerifyChannelSelect(interaction) {
       components: [new ARB().addComponents(verifyButton)],
     });
 
+    const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `Verify channel set to ${channel} and verification button sent!`,
-      components: [],
-      embeds: [successEmbed(`Verify channel set to ${channel} and verification button sent!`)],
+      content: `✅ Verify channel set to ${channel} and verification button sent!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      embeds: [],
     });
   } catch (error) {
     console.error('Error setting verify channel:', error);
@@ -320,10 +356,11 @@ async function handleWelcomeChannelSelect(interaction) {
     verification.welcomeChannelId = channel.id;
     await verification.save();
 
+    const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `Welcome channel set to ${channel}!`,
-      components: [],
-      embeds: [successEmbed(`Welcome channel set to ${channel}!`)],
+      content: `✅ Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      embeds: [],
     });
   } catch (error) {
     console.error('Error setting welcome channel:', error);
@@ -349,10 +386,11 @@ async function handleUnverifiedRoleSelect(interaction) {
     verification.unverifiedRoleId = role.id;
     await verification.save();
 
+    const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `Unverified role set to ${role}!`,
-      components: [],
-      embeds: [successEmbed(`Unverified role set to ${role}!`)],
+      content: `✅ Unverified role set to ${role}!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      embeds: [],
     });
   } catch (error) {
     console.error('Error setting unverified role:', error);
@@ -378,10 +416,11 @@ async function handleVerifiedRoleSelect(interaction) {
     verification.verifiedRoleId = role.id;
     await verification.save();
 
+    const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `Verified role set to ${role}!`,
-      components: [],
-      embeds: [successEmbed(`Verified role set to ${role}!`)],
+      content: `✅ Verified role set to ${role}!\n\n${menuOptions.content}`,
+      components: menuOptions.components,
+      embeds: [],
     });
   } catch (error) {
     console.error('Error setting verified role:', error);
