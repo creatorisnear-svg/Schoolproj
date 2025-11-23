@@ -1,52 +1,58 @@
 # EverLink Discord Bot
 
 ## Overview
-Discord bot for the EverLink Community. This bot provides staff management functionality with a permission system that allows administrators to add/remove staff members and roles. All bot responses use Discord embeds with EverLink branding.
+Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP servers with LEO/EMS). Provides emergency reporting, member verification with RP tags, staff management, and welcome systems. Each server has independent configuration including staff teams, verification settings, and RP tags. All bot responses use Discord embeds with EverLink branding.
 
 ## Current State
-- **Status**: In Development
+- **Status**: Active Development
 - **Stack**: Node.js (v20) + Discord.js v14 + MongoDB Atlas
-- **Last Updated**: November 21, 2025
+- **Last Updated**: November 23, 2025
 
 ## Features Implemented
-1. **Staff Management System**
+1. **Staff Management System** (Per-Server)
    - `/addstaff` - Administrators can add users or roles as bot staff
    - `/removestaff` - Administrators can remove users or roles from bot staff
    - `/stafflist` - Staff members can view all current bot staff (staff-only command)
+   - Each server has its own independent staff team
 
-2. **911 Report System**
+2. **Verification System** (Per-Server)
+   - `/verifysystemsetup` - Configure verification with dropdown menus (staff-only)
+   - `/verify` - Members click button to verify and get access to the server
+   - RP Tag system: Auto-formats nicknames as "[TAG] | [username]" upon verification
+   - Customizable verification questions and DM messages
+   - Automatic role assignment (removes unverified, adds verified role)
+   - Welcome channel messages sent after verification
+   - Each server has independent verification settings and RP tags
+
+3. **Welcome System** (Per-Server)
+   - `/welcomesystemsetup` - Configure welcome channel using dropdown selector (staff-only)
+   - `/setwelcomemessage` - Customize the welcome message in channel (staff-only)
+   - `/setwelcomedm` - Customize the welcome DM sent to new members (staff-only)
+   - Automatic welcome messages with profile picture embed (non-customizable)
+   - DM sent to new members with profile picture embed (non-customizable)
+   - Placeholders: {user} for mention/username, {server} for server name
+   - Default messages provided if not customized
+
+4. **911 Report System** (Per-Server)
    - `/911` - Submit a 911 report form (modal popup with fields: Issue, Location, Suspects, Description, Contact)
-   - `/setreportchannel` - Admins set the channel where 911 reports are sent
-   - `/addreportrole` - Admins add roles to ping for reports (LEO, EMS, etc.)
-   - `/removereportrole` - Admins remove roles from report pings
+   - `/set911channel` - Staff set the channel where 911 reports are sent
+   - `/add911role` - Staff add roles to ping for reports (LEO, EMS, etc.)
+   - `/remove911role` - Staff remove roles from report pings
    - Reports sent as embeds to configured channel with role mentions
-
-3. **San Andreas Report System**
-   - `/sareport` - Submit a San Andreas Report via two-part modal form
-     - Part 1: Suspect, Vehicle, Date & Time, Location, Summary of Events
-     - Part 2: Violations, Fine Amount, Jail Time, Notes, Officer Callsign & Agency
-   - `/sareportchannel` - Admins set the channel where SA reports are sent
-   - `/addsareportping` - Admins add roles to ping for SA reports (optional)
-   - `/removesareportping` - Admins remove roles from SA report pings
-   - Reports formatted with the official San Andreas Report template
-
-4. **Request System**
-   - `/request` - Submit a user request (Vehicle, Role, Item, RP Change)
-   - `/setrequestchannel` - Admins set the channel where requests are sent
-   - `/addrequestping` - Admins add roles to ping for requests (optional)
-   - `/removerequestping` - Admins remove roles from request pings
-   - Requests handled within 72 hours if approved
 
 5. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
+   - Per-server permission checking
 
-6. **Database**
+6. **Database** (Per-Server Storage)
    - MongoDB Atlas integration via Mongoose
-   - Staff model: type, userId, username, roleId, roleName, addedBy, addedAt
-   - Config model: guildId, reportChannelId, reportRoles, saReportChannelId, saReportRoles, requestChannelId, requestRoles
+   - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
+   - Verification model: guildId, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
+   - Welcome model: guildId, channelId, welcomeMessage, welcomeDM
+   - Config model: guildId, reportChannelId, reportRoles
 
 ## Project Structure
 ```
@@ -56,25 +62,25 @@ src/
 │   └── database.js          # MongoDB connection configuration
 ├── models/
 │   ├── Staff.js             # Mongoose schema for staff members
+│   ├── Verification.js      # Mongoose schema for verification config
+│   ├── Welcome.js           # Mongoose schema for welcome config
 │   └── Config.js            # Mongoose schema for server config
 ├── commands/
 │   ├── addstaff.js          # Add staff command
 │   ├── removestaff.js       # Remove staff command
 │   ├── stafflist.js         # List all staff command
+│   ├── verifysystemsetup.js # Verification system setup command
+│   ├── verify.js            # Verification button command
+│   ├── welcomesystemsetup.js # Welcome system setup command
+│   ├── setwelcomemessage.js # Set welcome message command
+│   ├── setwelcomedm.js      # Set welcome DM command
 │   ├── 911.js               # 911 report form command
-│   ├── setreportchannel.js  # Set report channel command
-│   ├── addreportrole.js     # Add report role command
-│   ├── removereportrole.js  # Remove report role command
-│   ├── sareport.js          # San Andreas report form command (2-part)
-│   ├── sareportchannel.js   # Set SA report channel command
-│   ├── addsareportping.js   # Add SA report ping role command
-│   ├── removesareportping.js # Remove SA report ping role command
-│   ├── request.js           # User request form command
-│   ├── setrequestchannel.js # Set request channel command
-│   ├── addrequestping.js    # Add request ping role command
-│   └── removerequestping.js # Remove request ping role command
+│   ├── set911channel.js     # Set 911 report channel command
+│   ├── add911role.js        # Add 911 report role command
+│   └── remove911role.js     # Remove 911 report role command
 ├── handlers/
-│   └── modalHandler.js      # Modal submission handler
+│   ├── modalHandler.js      # Modal submission handler
+│   └── selectMenuHandler.js # Select menu handler
 └── utils/
     ├── embedBuilder.js      # Helper functions for creating embeds
     └── permissions.js       # Permission checking utilities
