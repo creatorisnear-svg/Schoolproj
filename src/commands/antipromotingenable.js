@@ -1,11 +1,17 @@
-import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 import Config from '../models/Config.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
+import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('antipromotingenable')
-  .setDescription('Enable anti-promoting system and set log channel (Staff only)');
+  .setDescription('Enable or disable anti-promoting system (Staff only)')
+  .addBooleanOption(option =>
+    option
+      .setName('enabled')
+      .setDescription('Enable or disable anti-promoting')
+      .setRequired(true)
+  );
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
@@ -15,16 +21,35 @@ export async function execute(interaction) {
     });
   }
 
-  const menu = new ActionRowBuilder()
-    .addComponents(
-      new ChannelSelectMenuBuilder()
-        .setCustomId('antipromotion_log_channel')
-        .setPlaceholder('Select log channel for anti-promoting reports...')
-    );
+  const enabled = interaction.options.getBoolean('enabled');
 
-  return interaction.reply({
-    content: 'Select a channel to receive anti-promoting logs:',
-    components: [menu],
-    ephemeral: true,
-  });
+  try {
+    let config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+
+    if (enabled && !config.logChannelId) {
+      return interaction.reply({
+        embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before enabling anti-promoting.')],
+        ephemeral: true,
+      });
+    }
+
+    config.antiPromotingEnabled = enabled;
+    await config.save();
+
+    const status = enabled ? 'enabled' : 'disabled';
+    const description = enabled 
+      ? 'Anti-promoting system has been enabled. Invite links will be monitored and logged to the configured log channel.'
+      : 'Anti-promoting system has been disabled.';
+
+    return interaction.reply({
+      embeds: [successEmbed(`Anti-Promoting ${status.toUpperCase()}`, description)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error toggling anti-promoting:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while toggling anti-promoting.')],
+      ephemeral: true,
+    });
+  }
 }

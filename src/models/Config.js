@@ -34,6 +34,10 @@ const configSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  logChannelId: {
+    type: String,
+    default: null,
+  },
 });
 
 const Config = mongoose.model('Config', configSchema);

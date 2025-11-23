@@ -67,8 +67,8 @@ function createWelcomeSetupMenu() {
 }
 
 export async function handleSelectMenu(interaction) {
-  if (interaction.customId === 'antipromotion_log_channel') {
-    await handleAntiPromotingLogChannel(interaction);
+  if (interaction.customId === 'setlogchannel_select') {
+    await handleSetLogChannel(interaction);
   }
 
   if (interaction.customId === 'verify_setup_menu') {
@@ -691,6 +691,35 @@ async function handleAntiPromotingLogChannel(interaction) {
     });
   } catch (error) {
     console.error('Error setting anti-promoting log channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleSetLogChannel(interaction) {
+  try {
+    const channel = interaction.channels.first();
+    
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a valid text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    let config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+    config.logChannelId = channel.id;
+    await config.save();
+
+    return interaction.update({
+      content: '',
+      embeds: [successEmbed('Log Channel Set', `Log channel has been set to ${channel}. You can now enable systems like anti-promoting and other features will log to this channel.`)],
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting log channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       ephemeral: true,

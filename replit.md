@@ -41,35 +41,40 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - `/remove911role` - Staff remove roles from report pings
    - Reports sent as embeds to configured channel with role mentions
 
-5. **Anti-Promoting System** (Per-Server)
-   - `/antipromotingenable` - Staff enable anti-promoting and set log channel
-   - `/whitelistlink` - Staff add/remove allowed invite links to whitelist
+5. **Logging System** (Per-Server)
+   - `/setlogchannel` - Staff set the main log channel for all server events and anti-promoting reports
+   - Must be set before enabling other systems
+   - All systems (anti-promoting, etc.) use this single log channel
+
+6. **Anti-Promoting System** (Per-Server)
+   - `/antipromotingenable true/false` - Staff enable or disable anti-promoting (requires log channel set first)
+   - `/whitelistlink add/remove` - Staff add/remove allowed invite links to whitelist
    - `/whitelistlinkstaff true/false` - Admin toggle whether staff can bypass anti-promoting
    - Auto-detects Discord invite links in messages
    - Deletes messages containing non-whitelisted invite links
    - DMs user with formatted embed explaining deletion
-   - Logs incident to configured channel with user and link details
+   - Logs incident to configured log channel with user and link details
    - Default: Staff members can share links (enabled). Admins can disable via `/whitelistlinkstaff false`
 
-6. **Permission System**
+7. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
    - Per-server permission checking
 
-7. **System Enable/Disable** (Per-Server)
+8. **System Enable/Disable** (Per-Server)
    - Verification and welcome systems must be enabled before setup
    - Disabled systems are completely non-functional (no automatic features)
    - Toggle with `/verifysystem enabled:true/false` and `/welcomesystem enabled:true/false`
    - All responses use Discord embeds for clean, professional UI
 
-8. **Database** (Per-Server Storage)
+9. **Database** (Per-Server Storage)
    - MongoDB Atlas integration via Mongoose
    - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
    - Verification model: guildId, enabled, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
    - Welcome model: guildId, enabled, channelId, welcomeMessage, welcomeDM
-   - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, antiPromotingLogChannelId, whitelistedInviteLinks, whitelistedStaffIds, staffCanBypassLinks
+   - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, whitelistedInviteLinks, whitelistedStaffIds, staffCanBypassLinks, logChannelId
 
 ## Project Structure
 ```
@@ -86,12 +91,13 @@ src/
 │   ├── addstaff.js          # Add staff command
 │   ├── removestaff.js       # Remove staff command
 │   ├── stafflist.js         # List all staff command
+│   ├── setlogchannel.js     # Set log channel command
 │   ├── verifysystem.js      # Toggle verification system enabled/disabled
 │   ├── verifysystemsetup.js # Verification system setup command
 │   ├── verify.js            # Verification button command
 │   ├── welcomesystem.js     # Toggle welcome system enabled/disabled
 │   ├── welcomesystemsetup.js # Welcome system setup command
-│   ├── antipromotingenable.js # Enable anti-promoting command
+│   ├── antipromotingenable.js # Toggle anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
 │   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
 │   ├── 911.js               # 911 report form command
