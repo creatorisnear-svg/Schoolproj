@@ -92,63 +92,6 @@ client.on('interactionCreate', async interaction => {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     await handleModalSubmit(interaction);
   }
-
-  if (interaction.isButton()) {
-    if (interaction.customId.startsWith('continue_sareport_')) {
-      const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
-      
-      const userId = interaction.customId.split('_')[2];
-      
-      const modal = new ModalBuilder()
-        .setCustomId(`sareport_part2_${userId}`)
-        .setTitle('San Andreas Report (2/2)');
-
-      const violationsInput = new TextInputBuilder()
-        .setCustomId('violations')
-        .setLabel('Violations')
-        .setPlaceholder('List all violations/charges')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true);
-
-      const fineAmountInput = new TextInputBuilder()
-        .setCustomId('fineAmount')
-        .setLabel('Fine Amount')
-        .setPlaceholder('e.g., $5,000')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const jailTimeInput = new TextInputBuilder()
-        .setCustomId('jailTime')
-        .setLabel('Jail Time')
-        .setPlaceholder('e.g., 30 months')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
-
-      const notesInput = new TextInputBuilder()
-        .setCustomId('notes')
-        .setLabel('Notes')
-        .setPlaceholder('Any additional notes...')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(false);
-
-      const officerInfoInput = new TextInputBuilder()
-        .setCustomId('officerInfo')
-        .setLabel('Officer Callsign & Agency')
-        .setPlaceholder('Line 1: Officer Callsign\nLine 2: Agency')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true);
-
-      const row1 = new ActionRowBuilder().addComponents(violationsInput);
-      const row2 = new ActionRowBuilder().addComponents(fineAmountInput);
-      const row3 = new ActionRowBuilder().addComponents(jailTimeInput);
-      const row4 = new ActionRowBuilder().addComponents(notesInput);
-      const row5 = new ActionRowBuilder().addComponents(officerInfoInput);
-
-      modal.addComponents(row1, row2, row3, row4, row5);
-
-      await interaction.showModal(modal);
-    }
-  }
 });
 
 app.get('/', (req, res) => {

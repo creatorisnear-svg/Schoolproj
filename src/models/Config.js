@@ -14,22 +14,6 @@ const configSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
-  saReportChannelId: {
-    type: String,
-    default: null,
-  },
-  saReportRoles: {
-    type: [String],
-    default: [],
-  },
-  requestChannelId: {
-    type: String,
-    default: null,
-  },
-  requestRoles: {
-    type: [String],
-    default: [],
-  },
 });
 
 const Config = mongoose.model('Config', configSchema);
