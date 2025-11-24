@@ -408,6 +408,14 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+  if (interaction.isUserSelectMenu()) {
+    const { handleSelectApprover } = await import('./handlers/roleRequestHandler.js');
+    
+    if (interaction.customId.startsWith('select_approver_')) {
+      await handleSelectApprover(interaction);
+    }
+  }
+
   if (interaction.isStringSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
@@ -416,7 +424,7 @@ client.on('interactionCreate', async interaction => {
     const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
-    const { handleRoleRequestSetupMenu, handleSelectRoleToRequest, handleSelectApprover, handleDeleteRoleRequestType, handleManageRoleSelect, handleRemoveRoleFromMember } = await import('./handlers/roleRequestHandler.js');
+    const { handleRoleRequestSetupMenu, handleSelectRoleToRequest, handleDeleteRoleRequestType, handleManageRoleSelect, handleRemoveRoleFromMember } = await import('./handlers/roleRequestHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
@@ -442,8 +450,6 @@ client.on('interactionCreate', async interaction => {
       await handleRoleRequestSetupMenu(interaction);
     } else if (interaction.customId === 'select_role_to_request') {
       await handleSelectRoleToRequest(interaction);
-    } else if (interaction.customId.startsWith('select_approver_')) {
-      await handleSelectApprover(interaction);
     } else if (interaction.customId === 'delete_rolerequest_type_select') {
       await handleDeleteRoleRequestType(interaction);
     } else if (interaction.customId === 'manage_role_select') {
