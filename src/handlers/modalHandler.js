@@ -210,6 +210,9 @@ async function handleReactionRoleSendMessageModal(interaction) {
   }
 }
 
+// Temporary storage for pending emoji-message pairs
+const pendingEmojiRoles = new Map();
+
 async function handleReactionRoleAddEmojiModal(interaction) {
   const { default: ReactionRole } = await import('../models/ReactionRole.js');
   const { RoleSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
@@ -244,9 +247,13 @@ async function handleReactionRoleAddEmojiModal(interaction) {
       });
     }
 
-    // Show role selector
+    // Store the emoji-message pair temporarily
+    const tempKey = `${interaction.guildId}_${messageId}`;
+    pendingEmojiRoles.set(tempKey, { emoji, messageId, guildId: interaction.guildId });
+
+    // Show role selector with simple ID
     const roleSelect = new RoleSelectMenuBuilder()
-      .setCustomId(`reactionrole_role_select_${messageId}_${emoji}`)
+      .setCustomId(`reactionrole_role_select_${tempKey}`)
       .setPlaceholder('Select the role...');
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
@@ -264,3 +271,5 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     });
   }
 }
+
+export { pendingEmojiRoles };

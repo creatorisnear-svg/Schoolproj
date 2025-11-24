@@ -1143,20 +1143,29 @@ async function handleReactionRoleSendChannel(interaction) {
 
 async function handleReactionRoleSelect(interaction) {
   const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  const { pendingEmojiRoles } = await import('./modalHandler.js');
   
-  // Parse the custom ID to get messageId and emoji
-  const parts = interaction.customId.replace('reactionrole_role_select_', '').split('_');
-  const messageId = parts[0];
-  const emoji = decodeURIComponent(parts.slice(1).join('_'));
+  const tempKey = interaction.customId.replace('reactionrole_role_select_', '');
+  const pending = pendingEmojiRoles.get(tempKey);
   const roleId = interaction.values[0];
+
+  if (!pending) {
+    return interaction.reply({
+      embeds: [errorEmbed('Session expired. Please try again.')],
+      ephemeral: true,
+    });
+  }
+
+  const { emoji, messageId, guildId } = pending;
 
   try {
     const reactionRole = await ReactionRole.findOne({
-      guildId: interaction.guildId,
+      guildId: guildId,
       messageId: messageId,
     });
 
     if (!reactionRole) {
+      pendingEmojiRoles.delete(tempKey);
       return interaction.reply({
         embeds: [errorEmbed('Message not found.')],
         ephemeral: true,
@@ -1177,12 +1186,15 @@ async function handleReactionRoleSelect(interaction) {
     }
 
     const role = await interaction.guild.roles.fetch(roleId);
+    pendingEmojiRoles.delete(tempKey);
+    
     return interaction.update({
       content: `✅ ${emoji} → ${role.name}`,
       components: [],
     });
   } catch (error) {
     console.error('Error in role select:', error);
+    pendingEmojiRoles.delete(tempKey);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
