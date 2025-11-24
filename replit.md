@@ -44,10 +44,11 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
 - Register guns to characters with serial numbers
 - View all your characters with comprehensive profiles including personal info, physical description, identification, contact/address, inventory counts, arrest history, wanted status, and medical info
 
-**LEO Features (`/cadlicensesearch`):**
-- Search license plates to view character information
-- Check vehicle details and associated guns
-- See if character is wanted with reason
+**LEO Features (`/leodatabase`):**
+- Search license plates to view full character profiles
+- Search character names to view profiles
+- View wanted list of all suspects
+- Only available if roleplay commands are enabled and user has LEO role
 
 **CAD Configuration (through `/roleplaycommandsetup`):**
 - Staff configures CAD through `/roleplaycommandsetup` → select "CAD"

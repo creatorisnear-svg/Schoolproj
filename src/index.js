@@ -171,6 +171,7 @@ client.on('interactionCreate', async interaction => {
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
     const { handleTwitterPostModal, handleAnonPostModal, handle911ReportModal } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADCharacterCreateModal, handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
+    const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
@@ -194,6 +195,10 @@ client.on('interactionCreate', async interaction => {
       await handlePanelDescriptionModal(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_create_ticket_')) {
       await handleTicketCreationModal(interaction);
+    } else if (interaction.customId === 'leodatabase_search_plate_modal') {
+      await handleLEOSearchPlateModal(interaction);
+    } else if (interaction.customId === 'leodatabase_search_character_modal') {
+      await handleLEOSearchCharacterModal(interaction);
     } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
@@ -207,6 +212,7 @@ client.on('interactionCreate', async interaction => {
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
     const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu, handleCADCharacterMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
+    const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
@@ -232,6 +238,8 @@ client.on('interactionCreate', async interaction => {
       await handleRemoveTicketType(interaction);
     } else if (interaction.customId === 'ticketsupport_panel_types_select') {
       await handlePanelTypesSelect(interaction);
+    } else if (interaction.customId === 'leodatabase_menu') {
+      await handleLEODatabaseMenu(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
