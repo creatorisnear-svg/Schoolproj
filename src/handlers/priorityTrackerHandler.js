@@ -29,11 +29,11 @@ export async function handlePriorityTrackerChannelSelect(interaction) {
 
     const messageInput = new TextInputBuilder()
       .setCustomId('custom_message')
-      .setLabel('Optional custom message (e.g., "You will be striked if you do not follow")')
+      .setLabel('Optional Custom Message')
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(false)
       .setMaxLength(500)
-      .setPlaceholder('Leave empty for no custom message');
+      .setPlaceholder('e.g., "You will be striked if you do not follow"');
 
     const actionRow = new ActionRowBuilder().addComponents(messageInput);
     modal.addComponents(actionRow);
