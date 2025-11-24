@@ -32,6 +32,7 @@ export async function execute(interaction) {
           .setPlaceholder('Choose a setup option...')
           .addOptions(
             { label: 'Add Role Request Type', value: 'add_role' },
+            { label: 'Delete Role Request Type', value: 'delete_role' },
             { label: 'View Role Request Types', value: 'view_roles' },
             { label: '✅ Done - Close Setup', value: 'setup_done' }
           )

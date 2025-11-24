@@ -1,4 +1,4 @@
-import { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, RoleSelectMenuBuilder, UserSelectMenuBuilder } from 'discord.js';
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import RoleRequest from '../models/RoleRequest.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,39 +8,50 @@ export async function handleRoleRequestSetupMenu(interaction) {
   const value = interaction.values[0];
 
   if (value === 'add_role') {
-    // Show modal to add a new role request type
-    const modal = new ModalBuilder()
-      .setCustomId('add_rolerequest_type_modal')
-      .setTitle('Add Role Request Type');
+    // Show role selection menu
+    const roleSelect = new ActionRowBuilder()
+      .addComponents(
+        new RoleSelectMenuBuilder()
+          .setCustomId('select_role_for_request')
+          .setPlaceholder('Select the role members can request...')
+          .setMaxValues(1)
+      );
 
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('input_role_id')
-          .setLabel('Role Mention or ID')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('e.g., @leo or 123456789')
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('input_approver_roles')
-          .setLabel('Approver Roles (comma-separated)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g., @police chief, 987654321')
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('input_approver_members')
-          .setLabel('Approver Members (comma-separated)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('e.g., @admin, 111222333')
-          .setRequired(false)
-      )
-    );
+    await interaction.reply({
+      content: 'Step 1: Select the role members can request',
+      components: [roleSelect],
+      ephemeral: true,
+    });
+  } else if (value === 'delete_role') {
+    // Show delete option
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    
+    if (!config || !config.roles || config.roles.length === 0) {
+      return interaction.reply({
+        embeds: [errorEmbed('No role request types to delete.')],
+        ephemeral: true,
+      });
+    }
 
-    await interaction.showModal(modal);
+    const options = config.roles.map(r => ({
+      label: r.roleName,
+      value: r.id,
+      description: 'Delete this role request type'
+    }));
+
+    const menu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('delete_rolerequest_type_select')
+          .setPlaceholder('Select a role request type to delete...')
+          .addOptions(options)
+      );
+
+    await interaction.reply({
+      content: 'Which role request type would you like to delete?',
+      components: [menu],
+      ephemeral: true,
+    });
   } else if (value === 'view_roles') {
     // Show all role request types
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
@@ -77,57 +88,74 @@ export async function handleRoleRequestSetupMenu(interaction) {
   }
 }
 
-export async function handleAddRoleRequestTypeModal(interaction) {
+export async function handleSelectRoleForRequest(interaction) {
   try {
-    const roleInput = interaction.fields.getTextInputValue('input_role_id').trim();
-    const approverRolesInput = interaction.fields.getTextInputValue('input_approver_roles').trim();
-    const approverMembersInput = interaction.fields.getTextInputValue('input_approver_members').trim();
+    const selectedRoleId = interaction.values[0];
 
-    let roleId = roleInput.replace(/[<@&>]/g, '');
-    let roleName = roleInput;
+    // Show approver role selection
+    const approverRoleSelect = new ActionRowBuilder()
+      .addComponents(
+        new RoleSelectMenuBuilder()
+          .setCustomId(`select_approver_roles_${selectedRoleId}`)
+          .setPlaceholder('Select approver roles...')
+          .setMinValues(1)
+          .setMaxValues(25)
+      );
 
-    // Try to fetch the role from the guild
-    try {
-      const role = await interaction.guild.roles.fetch(roleId);
-      roleName = role.name;
-    } catch (err) {
-      // Role not found, use the input as name
-    }
+    await interaction.reply({
+      content: 'Step 2: Select which roles can approve requests for this role',
+      components: [approverRoleSelect],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error selecting role for request:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
 
-    // Parse approver roles
-    const approverRoleIds = [];
-    for (const item of approverRolesInput.split(',')) {
-      const cleaned = item.trim().replace(/[<@&>]/g, '');
-      if (cleaned) {
-        try {
-          await interaction.guild.roles.fetch(cleaned);
-          approverRoleIds.push(cleaned);
-        } catch (err) {
-          // Role not found, skip
-        }
-      }
-    }
+export async function handleSelectApproverRoles(interaction) {
+  try {
+    const customIdParts = interaction.customId.split('_');
+    const requestedRoleId = customIdParts.slice(3).join('_');
+    const selectedApproverRoleIds = interaction.values;
 
-    // Parse approver members
-    const approverMemberIds = [];
-    for (const item of approverMembersInput.split(',')) {
-      const cleaned = item.trim().replace(/[<@>]/g, '');
-      if (cleaned) {
-        try {
-          await interaction.guild.members.fetch(cleaned);
-          approverMemberIds.push(cleaned);
-        } catch (err) {
-          // Member not found, skip
-        }
-      }
-    }
+    // Show approver member selection
+    const approverMemberSelect = new ActionRowBuilder()
+      .addComponents(
+        new UserSelectMenuBuilder()
+          .setCustomId(`select_approver_members_${requestedRoleId}_${selectedApproverRoleIds.join(',')}`)
+          .setPlaceholder('Select approver members (optional)...')
+          .setMaxValues(25)
+      );
 
-    if (approverRoleIds.length === 0 && approverMemberIds.length === 0) {
-      return interaction.reply({
-        embeds: [errorEmbed('No valid approver roles or members found.')],
-        ephemeral: true,
-      });
-    }
+    await interaction.reply({
+      content: 'Step 3: Select individual members who can also approve (optional)',
+      components: [approverMemberSelect],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error selecting approver roles:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleSelectApproverMembers(interaction) {
+  try {
+    const customIdParts = interaction.customId.split('_');
+    const requestedRoleId = customIdParts.slice(3, 4)[0];
+    const approverRoleIdsStr = customIdParts.slice(4).join('_');
+    const selectedApproverMemberIds = interaction.values;
+
+    const approverRoleIds = approverRoleIdsStr ? approverRoleIdsStr.split(',') : [];
+
+    // Fetch role info
+    const role = await interaction.guild.roles.fetch(requestedRoleId);
 
     // Add to config
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
@@ -135,10 +163,10 @@ export async function handleAddRoleRequestTypeModal(interaction) {
 
     config.roles.push({
       id: roleRequestId,
-      roleId: roleId,
-      roleName: roleName,
+      roleId: requestedRoleId,
+      roleName: role.name,
       approverRoleIds: approverRoleIds,
-      approverMemberIds: approverMemberIds,
+      approverMemberIds: selectedApproverMemberIds,
       createdAt: new Date(),
     });
 
@@ -147,7 +175,7 @@ export async function handleAddRoleRequestTypeModal(interaction) {
     const successMsg = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('Role Request Type Added')
-      .setDescription(`✅ **${roleName}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${approverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
+      .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
       .setFooter({ text: 'EverLink' });
 
     await interaction.reply({
@@ -155,9 +183,45 @@ export async function handleAddRoleRequestTypeModal(interaction) {
       ephemeral: true,
     });
   } catch (error) {
-    console.error('Error adding role request type:', error);
+    console.error('Error selecting approver members:', error);
     await interaction.reply({
-      embeds: [errorEmbed('An error occurred while adding the role request type.')],
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleDeleteRoleRequestType(interaction) {
+  try {
+    const roleRequestTypeId = interaction.values[0];
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+
+    const roleIndex = config.roles.findIndex(r => r.id === roleRequestTypeId);
+    if (roleIndex === -1) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role request type not found.')],
+        ephemeral: true,
+      });
+    }
+
+    const deletedRole = config.roles[roleIndex];
+    config.roles.splice(roleIndex, 1);
+    await config.save();
+
+    const successMsg = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('Role Request Type Deleted')
+      .setDescription(`✅ **${deletedRole.roleName}** has been removed from the role request system.`)
+      .setFooter({ text: 'EverLink' });
+
+    await interaction.reply({
+      embeds: [successMsg],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error deleting role request type:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
     });
   }
@@ -515,6 +579,114 @@ export async function handleApproveRoleRequest(interaction) {
     });
   } catch (error) {
     console.error('Error approving role request:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleManageRoleSelect(interaction) {
+  try {
+    const roleRequestTypeId = interaction.values[0];
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const roleConfig = config.roles.find(r => r.id === roleRequestTypeId);
+
+    if (!roleConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role request type not found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Get all members with this role
+    const members = await interaction.guild.members.fetch();
+    const membersWithRole = members.filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
+
+    if (membersWithRole.size === 0) {
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#2E2E2E')
+            .setTitle(`Members with ${roleConfig.roleName}`)
+            .setDescription('No members currently have this role.')
+            .setFooter({ text: 'EverLink' })
+        ],
+        ephemeral: true,
+      });
+    }
+
+    // Show members and allow removal
+    const memberOptions = membersWithRole.map(m => ({
+      label: m.user.username,
+      value: m.id,
+      description: 'Click to remove this role'
+    })).slice(0, 25);
+
+    const menu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`remove_role_from_member_${roleRequestTypeId}`)
+          .setPlaceholder('Select a member to remove the role from...')
+          .addOptions(memberOptions)
+      );
+
+    let description = `**${roleConfig.roleName}** - ${membersWithRole.size} member(s)\n\n`;
+    membersWithRole.forEach(m => {
+      description += `• ${m.user.username}\n`;
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor('#2E2E2E')
+      .setTitle(`Manage ${roleConfig.roleName}`)
+      .setDescription(description)
+      .setFooter({ text: 'EverLink' });
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [menu],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error managing role:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRemoveRoleFromMember(interaction) {
+  try {
+    const customIdParts = interaction.customId.split('_');
+    const roleRequestTypeId = customIdParts.slice(4).join('_');
+    const memberId = interaction.values[0];
+
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const roleConfig = config.roles.find(r => r.id === roleRequestTypeId);
+
+    if (!roleConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role request type not found.')],
+        ephemeral: true,
+      });
+    }
+
+    const member = await interaction.guild.members.fetch(memberId);
+    await member.roles.remove(roleConfig.roleId);
+
+    const successMsg = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('Role Removed')
+      .setDescription(`✅ Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
+      .setFooter({ text: 'EverLink' });
+
+    await interaction.reply({
+      embeds: [successMsg],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error removing role from member:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

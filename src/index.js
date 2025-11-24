@@ -410,7 +410,7 @@ client.on('interactionCreate', async interaction => {
     const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
-    const { handleRoleRequestSetupMenu, handleSelectRoleToRequest, handleSelectApprover } = await import('./handlers/roleRequestHandler.js');
+    const { handleRoleRequestSetupMenu, handleSelectRoleToRequest, handleSelectApprover, handleDeleteRoleRequestType, handleManageRoleSelect, handleRemoveRoleFromMember } = await import('./handlers/roleRequestHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
@@ -438,6 +438,12 @@ client.on('interactionCreate', async interaction => {
       await handleSelectRoleToRequest(interaction);
     } else if (interaction.customId.startsWith('select_approver_')) {
       await handleSelectApprover(interaction);
+    } else if (interaction.customId === 'delete_rolerequest_type_select') {
+      await handleDeleteRoleRequestType(interaction);
+    } else if (interaction.customId === 'manage_role_select') {
+      await handleManageRoleSelect(interaction);
+    } else if (interaction.customId.startsWith('remove_role_from_member_')) {
+      await handleRemoveRoleFromMember(interaction);
     } else if (interaction.customId === 'civiliandatabase_menu') {
       await handleCivilianDatabaseMenu(interaction);
     } else if (interaction.customId === 'civilian_manage_character_select') {
@@ -464,6 +470,14 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+  if (interaction.isUserSelectMenu()) {
+    const { handleSelectApproverMembers } = await import('./handlers/roleRequestHandler.js');
+    
+    if (interaction.customId.startsWith('select_approver_members_')) {
+      await handleSelectApproverMembers(interaction);
+    }
+  }
+
   if (interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
@@ -471,8 +485,13 @@ client.on('interactionCreate', async interaction => {
     const { handleTicketChannelSelect, handleTicketRoleSelect } = await import('./handlers/ticketHandler.js');
     const { handleRoleplayCommandTwitterChannel, handleRoleplayCommandAnonChannel, handleRoleplayCommandsCADLeoRoles, handleRoleplayCommandsCADFDRoles, handleRoleplayCommandsCADStaffRoles, handleRoleplayCommandsEmergency911Channel, handleRoleplayCommandsEmergencyLEORoles, handleRoleplayCommandsEmergencyFDRoles, handleRoleplayCommandsEmergencyStaffRoles } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADLeoRoles, handleCADFDRoles, handleCADStaffRoles } = await import('./handlers/cadHandler.js');
+    const { handleSelectRoleForRequest, handleSelectApproverRoles } = await import('./handlers/roleRequestHandler.js');
     
-    if (interaction.customId.includes('prioritytrackersetup_channel')) {
+    if (interaction.customId === 'select_role_for_request') {
+      await handleSelectRoleForRequest(interaction);
+    } else if (interaction.customId.startsWith('select_approver_roles_')) {
+      await handleSelectApproverRoles(interaction);
+    } else if (interaction.customId.includes('prioritytrackersetup_channel')) {
       await handlePriorityTrackerChannelSelect(interaction);
     } else if (interaction.customId.includes('roleplaycalendarsetup_channel')) {
       await handleRoleplayCalendarChannelSelect(interaction);
