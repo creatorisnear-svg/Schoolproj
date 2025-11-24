@@ -393,9 +393,10 @@ export async function handleCharacterLicenseValid(interaction, characterId) {
       });
     }
 
-    return interaction.update({
-      content: `✅ **${character.characterName}** set to **Valid License**`,
-      components: [],
+    // Keep buttons visible - just acknowledge the selection
+    return interaction.reply({
+      content: `✅ **${character.characterName}** - License set to **Valid**\n\nYou can now select a special status below or just close this if done.`,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting license valid:', error);
@@ -421,9 +422,10 @@ export async function handleCharacterLicenseInvalid(interaction, characterId) {
       });
     }
 
-    return interaction.update({
-      content: `❌ **${character.characterName}** set to **Invalid License**`,
-      components: [],
+    // Keep buttons visible - just acknowledge the selection
+    return interaction.reply({
+      content: `❌ **${character.characterName}** - License set to **Invalid**\n\nYou can now select a special status below or just close this if done.`,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting license invalid:', error);
@@ -449,9 +451,10 @@ export async function handleCharacterVeteran(interaction, characterId) {
       });
     }
 
-    return interaction.update({
-      content: `🎖️ **${character.characterName}** marked as **Veteran**`,
-      components: [],
+    // Keep buttons visible - just acknowledge the selection
+    return interaction.reply({
+      content: `🎖️ **${character.characterName}** - Special Status set to **Veteran**`,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting veteran status:', error);
@@ -477,9 +480,10 @@ export async function handleCharacterOrganDonor(interaction, characterId) {
       });
     }
 
-    return interaction.update({
-      content: `❤️ **${character.characterName}** marked as **Organ Donor**`,
-      components: [],
+    // Keep buttons visible - just acknowledge the selection
+    return interaction.reply({
+      content: `❤️ **${character.characterName}** - Special Status set to **Organ Donor**`,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting organ donor status:', error);
@@ -544,34 +548,40 @@ export async function handleCADCharacterCreateModal(interaction) {
 
     // Create status selection buttons for license and veteran status
     const { ButtonBuilder, ActionRowBuilder: ARB } = await import('discord.js');
-    const statusButtons = new ARB().addComponents(
+    
+    // License status row
+    const licenseButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_license_valid_${character._id}`)
-        .setLabel('Valid License')
+        .setLabel('✅ Valid License')
         .setStyle('Success'),
       new ButtonBuilder()
         .setCustomId(`char_license_invalid_${character._id}`)
-        .setLabel('Invalid License')
-        .setStyle('Danger'),
+        .setLabel('❌ Invalid License')
+        .setStyle('Danger')
+    );
+
+    // Special status row
+    const specialButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_veteran_${character._id}`)
-        .setLabel('Veteran')
+        .setLabel('🎖️ Veteran')
         .setStyle('Primary'),
       new ButtonBuilder()
         .setCustomId(`char_organ_donor_${character._id}`)
-        .setLabel('Organ Donor')
+        .setLabel('❤️ Organ Donor')
         .setStyle('Secondary')
     );
 
     const statusEmbed = new EmbedBuilder()
       .setColor('#0099ff')
       .setTitle('📋 Set License & Status')
-      .setDescription('Select your license status and special status (if any):')
+      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or skip if none)')
       .setFooter({ text: 'EverLink' });
 
     return interaction.reply({
       embeds: [embed, statusEmbed],
-      components: [statusButtons],
+      components: [licenseButtons, specialButtons],
       ephemeral: true,
     });
   } catch (error) {

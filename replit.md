@@ -158,10 +158,11 @@ The codebase is organized into `src/` containing:
   1. User runs `/cadcharacter` (or equivalent)
   2. Fills form with name, age, gender, hair color, eye color
   3. Character created with SSN auto-generated
-  4. User immediately sees 4 buttons to select:
-     - Valid License (✅) or Invalid License (❌)
-     - Veteran (🎖️) or Organ Donor (❤️)
-  5. Selections saved to character profile
+  4. User sees 2 button rows:
+     - **License Status Row:** Click ✅ Valid License OR ❌ Invalid License
+     - **Special Status Row:** Click 🎖️ Veteran OR ❤️ Organ Donor
+  5. User can click LICENSE button + SPECIAL STATUS button (both selections saved)
+  6. Buttons remain visible to allow multiple selections
 - **Updated Handlers:**
   - `cadHandler.js` - Added 4 new button handlers + updated character creation modal
   - `leoDatabaseHandler.js` - Updated character search to show license and special status
