@@ -503,7 +503,7 @@ export async function handleApproveRoleRequest(interaction) {
       const approvedEmbed = new EmbedBuilder()
         .setColor('#00FF00')
         .setTitle('Request Approved')
-        .setDescription(`✅ <@${request.requesterId}>'s request for <@&${request.roleId}> has been **approved** by ${interaction.user.username}!`)
+        .setDescription(`✅ <@${request.requesterId}>'s request for **${request.roleName}** has been **approved** by ${interaction.user.username}!`)
         .setFooter({ text: 'EverLink' });
 
       await dmMessage.edit({
@@ -517,7 +517,7 @@ export async function handleApproveRoleRequest(interaction) {
     const successEmbed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('Role Approved')
-      .setDescription(`✅ You've approved the role request for <@${request.requesterId}>!\n\nRole given: <@&${request.roleId}>`)
+      .setDescription(`✅ You've approved the role request for <@${request.requesterId}>!\n\nRole given: **${request.roleName}**`)
       .setFooter({ text: 'EverLink' });
 
     await interaction.reply({
@@ -756,7 +756,7 @@ export async function handleDenyRoleRequest(interaction) {
       const deniedEmbed = new EmbedBuilder()
         .setColor('#FF0000')
         .setTitle('Request Denied')
-        .setDescription(`❌ <@${request.requesterId}>'s request for <@&${request.roleId}> has been **denied** by ${interaction.user.username}.`)
+        .setDescription(`❌ <@${request.requesterId}>'s request for **${request.roleName}** has been **denied** by ${interaction.user.username}.`)
         .setFooter({ text: 'EverLink' });
 
       await dmMessage.edit({
@@ -770,7 +770,7 @@ export async function handleDenyRoleRequest(interaction) {
     const successEmbed = new EmbedBuilder()
       .setColor('#FF0000')
       .setTitle('Role Request Denied')
-      .setDescription(`❌ You've denied the role request for <@${request.requesterId}>.\n\nRole: <@&${request.roleId}>`)
+      .setDescription(`❌ You've denied the role request for <@${request.requesterId}>.\n\nRole: **${request.roleName}**`)
       .setFooter({ text: 'EverLink' });
 
     await interaction.reply({
