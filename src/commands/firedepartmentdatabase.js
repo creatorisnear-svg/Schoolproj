@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADConfig from '../models/CADConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('firedepartmentdatabase')
@@ -19,6 +20,9 @@ export async function execute(interaction) {
       });
     }
 
+    // Check if user is staff (staff/admins can bypass role restrictions)
+    const isStaff = await checkStaffPermission(interaction);
+
     // Check if user has Fire Department role
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
 
@@ -31,7 +35,7 @@ export async function execute(interaction) {
 
     const hasFDRole = cadConfig && cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
 
-    if (!hasFDRole) {
+    if (!hasFDRole && !isStaff) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have Fire Department access.')],
         ephemeral: true,
