@@ -66,6 +66,9 @@ client.once('clientReady', async () => {
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
+  
+  // Start auto-deletion for unresponded 911 calls
+  startEmergencyCallAutoDelete();
 });
 
 async function startPriorityTrackerUpdater() {
@@ -135,6 +138,35 @@ function buildPriorityEmbed(priority) {
     color: priority.priorityActive ? 0xFF0000 : 0x808080,
     footer: { text: 'EverLink' },
   };
+}
+
+async function startEmergencyCallAutoDelete() {
+  const { default: EmergencyCall } = await import('./models/EmergencyCall.js');
+
+  setInterval(async () => {
+    try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      // Find unresponded calls older than 5 minutes
+      const expiredCalls = await EmergencyCall.find({
+        status: 'active',
+        respondingLeoId: null,
+        timestamp: { $lt: fiveMinutesAgo }
+      });
+
+      if (expiredCalls.length > 0) {
+        for (const call of expiredCalls) {
+          await EmergencyCall.deleteOne({ _id: call._id });
+          console.log(`🗑️ Auto-deleted unresponded 911 call ${call.callId} (>5 min old)`);
+        }
+        console.log(`📊 Deleted ${expiredCalls.length} expired 911 call(s)`);
+      }
+    } catch (error) {
+      console.error('Error in emergency call auto-delete:', error);
+    }
+  }, 60000); // Check every minute
+
+  console.log('⏱️ Emergency call auto-delete started (5-minute timeout)');
 }
 
 client.on('interactionCreate', async interaction => {

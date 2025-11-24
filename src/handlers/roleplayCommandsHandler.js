@@ -368,18 +368,23 @@ const recent911Submissions = new Map();
 
 export async function handle911ReportModal(interaction) {
   try {
+    console.log(`🚨 911 REPORT STARTED - User: ${interaction.user.id}, Guild: ${interaction.guildId}`);
+    
     // Immediately defer the reply to prevent interaction timeout
     await interaction.deferReply({ ephemeral: true });
+    console.log(`✓ Deferred reply for user ${interaction.user.id}`);
 
     // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
     const submissionKey = `${interaction.guildId}-${interaction.user.id}`;
     if (recent911Submissions.has(submissionKey)) {
+      console.log(`⚠️ DUPLICATE 911 DETECTED - blocking user ${interaction.user.id}`);
       return interaction.editReply({
         content: '⏳ Please wait before submitting another 911 report.',
       });
     }
     recent911Submissions.set(submissionKey, true);
     setTimeout(() => recent911Submissions.delete(submissionKey), 2000);
+    console.log(`✓ Set duplicate cooldown for user ${interaction.user.id}`);
 
     const issue = interaction.fields.getTextInputValue('issue');
     const location = interaction.fields.getTextInputValue('location');
@@ -449,10 +454,12 @@ export async function handle911ReportModal(interaction) {
       .setFooter({ text: `EverLink | Call ID: ${callId}` })
       .setTimestamp();
 
-    await channel.send({ 
+    console.log(`📢 Sending 911 message to channel ${roleplayConfig.use911Channel}`);
+    const sentMessage = await channel.send({ 
       content: mention,
       embeds: [emergencyEmbed] 
     });
+    console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}`);
 
     return interaction.editReply({
       content: '✅ 911 report submitted!',
