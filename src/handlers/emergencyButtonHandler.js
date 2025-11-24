@@ -42,10 +42,10 @@ export async function handle911RespondButton(interaction) {
     const updatedEmbed = originalMessage.embeds[0].toJSON();
     
     // Update description to show responder
-    let description = updatedEmbed.description;
+    let description = updatedEmbed.description || '';
     const respondingLine = `\n\n**🚨 PRIMARY RESPONDER:** ${interaction.user.username}`;
     if (!description.includes('PRIMARY RESPONDER')) {
-      updatedEmbed.description += respondingLine;
+      updatedEmbed.description = (description || '') + respondingLine;
     } else {
       updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY RESPONDER:.*/, `**🚨 PRIMARY RESPONDER:** ${interaction.user.username}`);
     }
@@ -118,7 +118,7 @@ export async function handle911AttachButton(interaction) {
     }
 
     // Update description
-    let description = updatedEmbed.description;
+    let description = updatedEmbed.description || '';
     const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY RESPONDER:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
     if (responderMatch) {
       description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
@@ -173,7 +173,7 @@ export async function handle911DismissButton(interaction) {
     // Update original message to show dismissed
     const originalMessage = await interaction.message;
     const updatedEmbed = originalMessage.embeds[0].toJSON();
-    updatedEmbed.description += '\n\n❌ **CALL DISMISSED** - No longer need assistance';
+    updatedEmbed.description = (updatedEmbed.description || '') + '\n\n❌ **CALL DISMISSED** - No longer need assistance';
     updatedEmbed.color = 0x808080;
 
     await originalMessage.edit({
