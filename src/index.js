@@ -48,10 +48,13 @@ for (const file of orderedFiles) {
   }
 }
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
   console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
+
+  // Clear old cached commands and register new ones
+  await clearAndRegisterCommands();
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
@@ -62,6 +65,46 @@ client.once('clientReady', () => {
   // Start auto-deletion for expired BOLOs
   startBOLOAutoDelete();
 });
+
+async function clearAndRegisterCommands() {
+  try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    console.log('🗑️  Clearing old command cache...');
+    
+    // Set timeout for operations
+    const timeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+    ]);
+    
+    try {
+      // Clear global commands with timeout
+      await timeout(rest.put(Routes.applicationCommands(client.user.id), { body: [] }), 5000);
+      console.log('✅ Global commands cleared');
+    } catch (e) {
+      console.log('⚠️  Could not clear global commands, continuing...');
+    }
+    
+    // Wait before registering
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('📤 Registering clean commands...');
+    
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const response = await timeout(
+          rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands }),
+          5000
+        );
+        console.log(`✅ ${response.length} clean commands registered to ${guild.name}`);
+      } catch (error) {
+        console.log(`⚠️  Could not register to ${guild.name}, commands may sync later`);
+      }
+    }
+    console.log('✅ Command sync process completed');
+  } catch (error) {
+    console.error('❌ Error in command cache clearing:', error.message);
+  }
+}
 
 async function startPriorityTrackerUpdater() {
   const { default: Priority } = await import('./models/Priority.js');
