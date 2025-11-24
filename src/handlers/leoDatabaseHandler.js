@@ -3,6 +3,8 @@ import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADConfig from '../models/CADConfig.js';
 import CADCharacter from '../models/CADCharacter.js';
 import EmergencyCall from '../models/EmergencyCall.js';
+import TrafficTicket from '../models/TrafficTicket.js';
+import BOLO from '../models/BOLO.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { EmbedBuilder } from 'discord.js';
 
@@ -165,6 +167,116 @@ export async function handleLEODatabaseMenu(interaction) {
         embeds,
         ephemeral: true,
       });
+    }
+
+    if (choice === 'revoke_weapon') {
+      const modal = new ModalBuilder()
+        .setCustomId('leodatabase_revoke_weapon_modal')
+        .setTitle('Revoke Weapon')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_name_for_revoke')
+              .setLabel('Character Name')
+              .setPlaceholder('e.g., John Smith')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('weapon_name_to_revoke')
+              .setLabel('Weapon Name')
+              .setPlaceholder('e.g., Pistol, Rifle')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('revoke_reason')
+              .setLabel('Reason for Revocation')
+              .setPlaceholder('e.g., Illegal weapons charge')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'issue_ticket') {
+      const modal = new ModalBuilder()
+        .setCustomId('leodatabase_issue_ticket_modal')
+        .setTitle('Issue Traffic Ticket')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('ticket_character_name')
+              .setLabel('Character Name')
+              .setPlaceholder('e.g., John Smith')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('ticket_violation')
+              .setLabel('Violation')
+              .setPlaceholder('e.g., Speeding, Reckless Driving')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('ticket_description')
+              .setLabel('Details')
+              .setPlaceholder('Additional details about the violation...')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('ticket_fine')
+              .setLabel('Fine Amount ($)')
+              .setPlaceholder('e.g., 250')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'create_bolo') {
+      const modal = new ModalBuilder()
+        .setCustomId('leodatabase_create_bolo_modal')
+        .setTitle('Create BOLO Alert')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('bolo_character_name')
+              .setLabel('Character Name')
+              .setPlaceholder('e.g., John Smith')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('bolo_reason')
+              .setLabel('Reason (Short)')
+              .setPlaceholder('e.g., Armed Robbery, Murder')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('bolo_description')
+              .setLabel('Description & Details')
+              .setPlaceholder('Physical description, vehicle info, last location, etc.')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+          )
+        );
+
+      return interaction.showModal(modal);
     }
   } catch (error) {
     console.error('Error in LEO database menu:', error);
@@ -578,6 +690,222 @@ export async function handleLEOSearchCharacterModal(interaction) {
     });
   } catch (error) {
     console.error('Error searching character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEORevokeWeaponModal(interaction) {
+  const characterName = interaction.fields.getTextInputValue('character_name_for_revoke');
+  const weaponName = interaction.fields.getTextInputValue('weapon_name_to_revoke');
+  const revokeReason = interaction.fields.getTextInputValue('revoke_reason');
+
+  try {
+    // Verify permissions
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    if (!roleplayConfig || !roleplayConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands are not enabled.')],
+        ephemeral: true,
+      });
+    }
+
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+
+    if (!hasLeoRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access denied.')],
+        ephemeral: true,
+      });
+    }
+
+    // Find character
+    const character = await CADCharacter.findOne({
+      guildId: interaction.guildId,
+      characterName: { $regex: characterName, $options: 'i' }
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
+        ephemeral: true,
+      });
+    }
+
+    // Find and remove weapon
+    const weaponIndex = character.guns.findIndex(g => g.name.toLowerCase() === weaponName.toLowerCase());
+
+    if (weaponIndex === -1) {
+      return interaction.reply({
+        embeds: [errorEmbed('Weapon Not Found', `**${characterName}** does not have a **${weaponName}** registered.`)],
+        ephemeral: true,
+      });
+    }
+
+    const removedWeapon = character.guns.splice(weaponIndex, 1)[0];
+    await character.save();
+
+    let responseDesc = `**Character:** ${character.characterName}\n`;
+    responseDesc += `**Revoked Weapon:** ${removedWeapon.name}${removedWeapon.serialNumber ? ` (SN: ${removedWeapon.serialNumber})` : ''}\n`;
+    responseDesc += `**Revoked By:** <@${interaction.user.id}>\n`;
+    if (revokeReason) responseDesc += `**Reason:** ${revokeReason}`;
+
+    return interaction.reply({
+      embeds: [successEmbed('Weapon Revoked', responseDesc)],
+      ephemeral: false,
+    });
+  } catch (error) {
+    console.error('Error revoking weapon:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOIssueTicketModal(interaction) {
+  const characterName = interaction.fields.getTextInputValue('ticket_character_name');
+  const violation = interaction.fields.getTextInputValue('ticket_violation');
+  const description = interaction.fields.getTextInputValue('ticket_description');
+  const fineAmount = parseInt(interaction.fields.getTextInputValue('ticket_fine') || '0');
+
+  try {
+    // Verify permissions
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    if (!roleplayConfig || !roleplayConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands are not enabled.')],
+        ephemeral: true,
+      });
+    }
+
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+
+    if (!hasLeoRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access denied.')],
+        ephemeral: true,
+      });
+    }
+
+    // Find character
+    const character = await CADCharacter.findOne({
+      guildId: interaction.guildId,
+      characterName: { $regex: characterName, $options: 'i' }
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
+        ephemeral: true,
+      });
+    }
+
+    // Create ticket
+    const ticketId = `TKT-${Date.now()}`;
+    const ticket = new TrafficTicket({
+      guildId: interaction.guildId,
+      ticketId,
+      characterId: character._id,
+      characterName: character.characterName,
+      issuedBy: interaction.user.id,
+      violation,
+      description,
+      fine: fineAmount,
+    });
+
+    await ticket.save();
+
+    let responseDesc = `**Ticket ID:** ${ticketId}\n`;
+    responseDesc += `**Character:** ${character.characterName}\n`;
+    responseDesc += `**Violation:** ${violation}\n`;
+    responseDesc += `**Fine:** $${fineAmount}\n`;
+    responseDesc += `**Issued By:** <@${interaction.user.id}>\n`;
+    if (description) responseDesc += `**Details:** ${description}`;
+
+    return interaction.reply({
+      embeds: [successEmbed('Traffic Ticket Issued', responseDesc)],
+      ephemeral: false,
+    });
+  } catch (error) {
+    console.error('Error issuing ticket:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOCreateBOLOModal(interaction) {
+  const characterName = interaction.fields.getTextInputValue('bolo_character_name');
+  const reason = interaction.fields.getTextInputValue('bolo_reason');
+  const description = interaction.fields.getTextInputValue('bolo_description');
+
+  try {
+    // Verify permissions
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    if (!roleplayConfig || !roleplayConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands are not enabled.')],
+        ephemeral: true,
+      });
+    }
+
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+
+    if (!hasLeoRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access denied.')],
+        ephemeral: true,
+      });
+    }
+
+    // Find character
+    const character = await CADCharacter.findOne({
+      guildId: interaction.guildId,
+      characterName: { $regex: characterName, $options: 'i' }
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
+        ephemeral: true,
+      });
+    }
+
+    // Create BOLO
+    const boloId = `BOLO-${Date.now()}`;
+    const bolo = new BOLO({
+      guildId: interaction.guildId,
+      boloId,
+      characterId: character._id,
+      characterName: character.characterName,
+      reason,
+      description,
+      issuedBy: interaction.user.id,
+      active: true,
+    });
+
+    await bolo.save();
+
+    let responseDesc = `**BOLO ID:** ${boloId}\n`;
+    responseDesc += `**Character:** ${character.characterName}\n`;
+    responseDesc += `**Reason:** ${reason}\n`;
+    responseDesc += `**Status:** 🟢 ACTIVE\n`;
+    responseDesc += `**Issued By:** <@${interaction.user.id}>\n`;
+    if (description) responseDesc += `**Details:** ${description}`;
+
+    return interaction.reply({
+      embeds: [successEmbed('🚨 BOLO ALERT CREATED', responseDesc)],
+      ephemeral: false,
+    });
+  } catch (error) {
+    console.error('Error creating BOLO:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

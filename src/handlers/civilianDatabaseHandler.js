@@ -254,7 +254,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         if (char.driversLicense) description += `**License:** ${char.driversLicense}\n`;
         
         description += `\n**Vehicles:** ${char.vehicles?.length || 0}\n`;
-        description += `**Weapons:** ${char.weapons?.length || 0}`;
+        description += `**Weapons:** ${char.guns?.length || 0}`;
 
         return new EmbedBuilder()
           .setColor('#0099ff')

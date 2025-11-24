@@ -47,7 +47,10 @@ export async function execute(interaction) {
             { label: '🚨 View Active 911 Calls', value: 'active_calls' },
             { label: '🔍 Search License Plate', value: 'search_plate' },
             { label: '👤 Search Character Name', value: 'search_character' },
-            { label: '📋 View Wanted List', value: 'wanted_list' }
+            { label: '📋 View Wanted List', value: 'wanted_list' },
+            { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
+            { label: '🎫 Issue Traffic Ticket', value: 'issue_ticket' },
+            { label: '🚨 Create BOLO', value: 'create_bolo' }
           )
       );
 

@@ -43,6 +43,9 @@ All civilian roleplay and CAD interactions are handled through a single menu wit
 - 🔍 Search License Plate - Look up character profiles by vehicle plate
 - 👤 Search Character Name - Search for character profiles by name
 - 📋 View Wanted List - See all wanted suspects
+- 🔫 Revoke Weapon - Remove a registered firearm from a character
+- 🎫 Issue Traffic Ticket - Issue traffic citations with violation details and fines
+- 🚨 Create BOLO - Create "Be On the Lookout" alerts for wanted persons
 - Only available if roleplay commands are enabled and user has LEO role
 
 **Fire Department Access - `/firedepartmentdatabase`:**
@@ -131,17 +134,30 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Code Cleanup)
-- **Removed:** Deprecated `handleRoleplayCommandsSelect` function and its routing
-- **Fixed:** Mongoose duplicate schema index warnings (3 models: CADConfig, TicketConfig, RoleplayCommands)
-  - Removed redundant `.index()` calls where `unique: true` constraint already creates an index
-- **Removed:** Old Twitter and Anon setup options from main `/roleplaycommandsetup` menu
-  - Removed old handler functions: `handleRoleplayCommandTwitterChannel`, `handleRoleplayCommandAnonChannel`
-  - Removed routing for `roleplaycommands_twitter_channel` and `roleplaycommands_anon_channel`
-  - Simplified setup flow to show only `🚨 911 & CAD` option (core feature)
-- **Cleaned:** Removed old setup code blocks that were no longer used
-  - Old setup_twitter and setup_anon menu options completely removed
-- **Result:** Bot now loads cleanly with zero warnings and 34 commands properly registered
+## Recent Changes (Session: November 24, 2025 - LEO Features & Bug Fixes)
+- **Bug Fixed:** Character manage view showed `char.weapons` instead of `char.guns` - corrected to display weapon count properly
+- **LEO Weapon Revocation:** Added `/leodatabase` → "🔫 Revoke Weapon" feature
+  - LEOs can remove registered firearms from character profiles
+  - Includes optional reason field for enforcement documentation
+  - Modal-based interface with character name and weapon name selection
+- **LEO Traffic Tickets:** Added `/leodatabase` → "🎫 Issue Traffic Ticket" feature
+  - LEOs can issue traffic citations with unique ticket IDs (TKT-{timestamp})
+  - Captures violation type, detailed description, and fine amount
+  - Stored in new TrafficTicket model for record keeping
+  - Separate from support ticket system
+- **BOLO System:** Added `/leodatabase` → "🚨 Create BOLO" feature
+  - LEOs can create "Be On the Lookout" alerts for wanted persons
+  - Generates unique BOLO IDs (BOLO-{timestamp})
+  - Tracks reason, detailed description, and activation status
+  - Stored in new BOLO model for multi-server enforcement
+- **New Models Created:**
+  - `TrafficTicket.js` - Stores traffic citations issued by LEOs
+  - `BOLO.js` - Stores wanted person alerts with active/resolved status
+- **Updated Handlers:**
+  - Enhanced `leoDatabaseHandler.js` with three new modal handlers
+  - Updated `modalHandler.js` to route new LEO feature modals
+  - All features include LEO role verification and character lookup
+- **Result:** Bot maintains zero warnings, 34 commands registered, all new LEO features operational
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API

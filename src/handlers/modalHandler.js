@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import Config from '../models/Config.js';
 import Verification from '../models/Verification.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import { handleLEORevokeWeaponModal, handleLEOIssueTicketModal, handleLEOCreateBOLOModal } from './leoDatabaseHandler.js';
 
 export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'verify_modal') {
@@ -14,6 +15,18 @@ export async function handleModalSubmit(interaction) {
 
   if (interaction.customId === 'reactionrole_add_emoji_modal') {
     await handleReactionRoleAddEmojiModal(interaction);
+  }
+
+  if (interaction.customId === 'leodatabase_revoke_weapon_modal') {
+    await handleLEORevokeWeaponModal(interaction);
+  }
+
+  if (interaction.customId === 'leodatabase_issue_ticket_modal') {
+    await handleLEOIssueTicketModal(interaction);
+  }
+
+  if (interaction.customId === 'leodatabase_create_bolo_modal') {
+    await handleLEOCreateBOLOModal(interaction);
   }
 }
 
