@@ -413,6 +413,41 @@ export async function handleApproveRoleRequest(interaction) {
       });
     }
 
+    // Verify the approver has permission to approve this role
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const roleConfig = config.roles.find(r => r.roleId === request.roleId);
+
+    if (!roleConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('This role request type is no longer configured.')],
+        ephemeral: true,
+      });
+    }
+
+    // Check if the user clicking approve is authorized
+    const approverUserId = interaction.user.id;
+    let isAuthorized = false;
+
+    // Check if they have any of the approver roles
+    for (const approverRoleId of roleConfig.approverRoleIds) {
+      if (interaction.member.roles.cache.has(approverRoleId)) {
+        isAuthorized = true;
+        break;
+      }
+    }
+
+    // Check if they're in the approver members list
+    if (!isAuthorized && roleConfig.approverMemberIds.includes(approverUserId)) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return interaction.reply({
+        embeds: [errorEmbed(`You cannot approve the <@&${request.roleId}> role.`)],
+        ephemeral: true,
+      });
+    }
+
     // Verify the approver has permission
     const member = await interaction.guild.members.fetch(request.requesterId);
     const guild = interaction.guild;
@@ -484,6 +519,41 @@ export async function handleDenyRoleRequest(interaction) {
     if (request.status !== 'pending') {
       return interaction.reply({
         embeds: [errorEmbed(`This request has already been ${request.status}.`)],
+        ephemeral: true,
+      });
+    }
+
+    // Verify the approver has permission to deny this role
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const roleConfig = config.roles.find(r => r.roleId === request.roleId);
+
+    if (!roleConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('This role request type is no longer configured.')],
+        ephemeral: true,
+      });
+    }
+
+    // Check if the user clicking deny is authorized
+    const approverUserId = interaction.user.id;
+    let isAuthorized = false;
+
+    // Check if they have any of the approver roles
+    for (const approverRoleId of roleConfig.approverRoleIds) {
+      if (interaction.member.roles.cache.has(approverRoleId)) {
+        isAuthorized = true;
+        break;
+      }
+    }
+
+    // Check if they're in the approver members list
+    if (!isAuthorized && roleConfig.approverMemberIds.includes(approverUserId)) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return interaction.reply({
+        embeds: [errorEmbed(`You cannot deny the <@&${request.roleId}> role.`)],
         ephemeral: true,
       });
     }
