@@ -1057,8 +1057,10 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
 
 async function handleReactionRoleMainMenu(interaction) {
   const choice = interaction.values[0];
+  console.log(`📋 Reaction role menu selected: ${choice} by ${interaction.user.tag}`);
 
   if (choice === 'send_message') {
+    console.log(`✓ Showing send message modal`);
     const modal = new ModalBuilder()
       .setCustomId('reactionrole_send_message_modal')
       .setTitle('Send Reaction Role Message')
@@ -1073,10 +1075,17 @@ async function handleReactionRoleMainMenu(interaction) {
         )
       );
 
-    return interaction.showModal(modal);
+    try {
+      await interaction.showModal(modal);
+      console.log(`✅ Send message modal shown successfully`);
+    } catch (error) {
+      console.error(`❌ Error showing modal:`, error);
+    }
+    return;
   }
 
   if (choice === 'add_emoji') {
+    console.log(`✓ Showing add emoji modal`);
     const modal = new ModalBuilder()
       .setCustomId('reactionrole_add_emoji_modal')
       .setTitle('Add Emoji to Message')
@@ -1099,8 +1108,16 @@ async function handleReactionRoleMainMenu(interaction) {
         )
       );
 
-    return interaction.showModal(modal);
+    try {
+      await interaction.showModal(modal);
+      console.log(`✅ Add emoji modal shown successfully`);
+    } catch (error) {
+      console.error(`❌ Error showing modal:`, error);
+    }
+    return;
   }
+
+  console.log(`❌ Unknown choice: ${choice}`);
 }
 
 async function handleReactionRoleSendChannel(interaction) {
