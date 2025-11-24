@@ -550,10 +550,10 @@ export async function handleLEOPrimaryResponse(interaction) {
         const message = await channel.messages.fetch(call.messageId);
         const updatedEmbed = message.embeds[0].toJSON();
         
-        let description = updatedEmbed.description;
+        let description = updatedEmbed.description || '';
         const respondingLine = `\n\n**🚨 PRIMARY:** ${interaction.user.username}`;
         if (!description.includes('PRIMARY')) {
-          updatedEmbed.description += respondingLine;
+          updatedEmbed.description = (description || '') + respondingLine;
         } else {
           updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY:.*/, `**🚨 PRIMARY:** ${interaction.user.username}`);
         }
@@ -623,7 +623,7 @@ export async function handleLEOAttachResponse(interaction) {
         }
 
         // Update description
-        let description = updatedEmbed.description;
+        let description = updatedEmbed.description || '';
         const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
         if (responderMatch) {
           description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
