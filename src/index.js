@@ -178,15 +178,24 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isStringSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
-    await handleSelectMenu(interaction);
+    const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
+    
+    if (interaction.customId.includes('unsetrp_select')) {
+      await handleUnsetRpSelect(interaction);
+    } else {
+      await handleSelectMenu(interaction);
+    }
   }
 
   if (interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
+    const { handleRoleplayCalendarChannelSelect } = await import('./handlers/roleplayCalendarHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_channel')) {
       await handlePriorityTrackerChannelSelect(interaction);
+    } else if (interaction.customId.includes('roleplaycalendarsetup_channel')) {
+      await handleRoleplayCalendarChannelSelect(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
