@@ -11,17 +11,17 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 ## System Architecture
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
-**Roleplay Commands System (911, Twitter, Anon):**
-Members access roleplay commands through `/civiliandatabase` (civilians) and `/leodatabase` (LEO only).
+**Roleplay Commands System (911, Twitter, Anon, CAD):**
+All roleplay commands and CAD features are accessed exclusively through three menu-based database commands: `/civiliandatabase` (civilians), `/leodatabase` (LEO only), and `/firedepartmentdatabase` (Fire Department only).
 
 **Setup Process:**
-1. Staff runs `/roleplaycommandsenable true` or `/roleplaycommandsenable false` to enable/disable the entire system
-2. Staff runs `/roleplaycommandsetup` to configure which channels and roles to use for emergency reporting and roleplay commands:
-   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and LEO response system:
+1. Staff runs `/roleplaycommandsenable true` to enable the roleplay commands system
+2. Staff runs `/roleplaycommandsetup` to configure channels and roles:
+   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and CAD system:
      - Select 911 Channel for emergency reports
-     - Set LEO Roles (automatically pinged on 911 reports, can respond/attach to calls)
+     - Set LEO Roles (automatically pinged on 911 reports)
      - Set Fire Department Roles (automatically pinged on 911 reports)
-     - Set Staff Roles for CAD access
+     - Set Staff Roles for system management
    - **🐦 Twitter - Public Messages** → Select channel for public OOC posts  
    - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
@@ -36,110 +36,112 @@ All civilian roleplay and CAD interactions are handled through a single menu wit
 - 🔫 Add Firearm - Register a gun/weapon to an existing character
 - 📋 Manage Character - View all characters and their details (vehicles, weapons)
 
-**LEO Access:**
-- `/leodatabase` - Menu with options to:
-  - 🚨 View Active 911 Calls - See all active emergency calls with response options
-    - **Respond as Primary:** Claim the call (only one primary responder per call)
-    - **Attach to Call:** Join the call as supporting unit (multiple can attach)
-  - 🔍 Search License Plate - Look up character profiles by vehicle plate
-  - 👤 Search Character Name - Search for character profiles by name
-  - 📋 View Wanted List - See all wanted suspects
-
-**Fire Department Access:**
-- `/firedepartmentdatabase` - Menu with options to:
-  - 🚨 View Active 911 Calls - See all active emergency calls with response options
-    - **Respond as Primary:** Claim the call (only one primary responder per call)
-    - **Attach to Call:** Join the call as supporting unit (multiple can attach)
-  - 👤 Create FD Character - Create a fire department character profile
-  - 🚗 Add Vehicle - Add a vehicle to an existing FD character
-
-**Emergency System Features:**
-- **911 Call Tracking:** All emergency calls are tracked in the database with unique IDs
-- **Primary Response:** First LEO to claim primary response is marked as main responder
-- **Unit Attachment:** Other LEOs can attach as supporting units without removing primary responder
-- **Role Pinging:** When 911 report is submitted, all configured LEO and Fire Department roles are automatically pinged
-
-**CAD System (Computer Aided Dispatch):**
-GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
-
-**Member Features (`/cadcharacter`):**
-- Create characters with detailed information (name, age, gender, hair color, eye color, auto-generated social security number, license plate and driver's license)
-- Add multiple vehicles per character (make, model, color, condition, license plate from GTA5)
-- Register guns to characters with serial numbers
-- View all your characters with comprehensive profiles including personal info, physical description, identification, contact/address, inventory counts, arrest history, wanted status, and medical info
-
-**LEO Features (`/leodatabase`):**
-- Search license plates to view full character profiles
-- Search character names to view profiles
-- View wanted list of all suspects
+**LEO Access - `/leodatabase`:**
+- 🚨 View Active 911 Calls - See all active emergency calls with response options
+  - **Respond as Primary:** Claim the call (only one primary responder per call)
+  - **Attach to Call:** Join the call as supporting unit (multiple can attach)
+- 🔍 Search License Plate - Look up character profiles by vehicle plate
+- 👤 Search Character Name - Search for character profiles by name
+- 📋 View Wanted List - See all wanted suspects
 - Only available if roleplay commands are enabled and user has LEO role
 
-**CAD & Emergency Configuration (through `/roleplaycommandsetup`):**
-- Staff configures emergency system through `/roleplaycommandsetup` → select "🚨 911 & CAD - Emergency/Dispatch"
-- Members use `/civiliandatabase` to report emergencies and post messages
-- LEO use `/leodatabase` to view active calls, search characters, and manage responses
-- Separate `/cadcharacter` command for members to create characters and add vehicles/guns
-- Each server has independent CAD and emergency call configuration
+**Fire Department Access - `/firedepartmentdatabase`:**
+- 🚨 View Active 911 Calls - See all active emergency calls with response options
+  - **Respond as Primary:** Claim the call
+  - **Attach to Call:** Join the call as supporting unit
+- 👤 Create FD Character - Create a fire department character profile
+- 🚗 Add Vehicle - Add a vehicle to an existing FD character
+
+**Emergency System Features:**
+- **911 Call Tracking:** All emergency calls tracked with unique IDs
+- **Primary Response:** First LEO to claim primary is marked as main responder
+- **Unit Attachment:** Other LEOs can attach as supporting units
+- **Role Pinging:** Configured LEO and Fire Department roles automatically pinged on 911 reports
+- **Setup Flow:** `/roleplaycommandsetup` → Select "🚨 911 & CAD" → Configure 911 channel and roles
+
+**CAD System (Computer Aided Dispatch):**
+Full GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay accessed through database menus.
 
 **UI/UX Decisions:**
-- All bot responses leverage Discord embeds for a clean, professional, and branded user interface.
-- Embeds consistently feature "EverLink" branding in the footer.
-- Interactive elements like dropdowns and modals are used for configuration and reporting (e.g., verification setup, 911 reports).
+- All bot responses leverage Discord embeds for clean, professional, branded interface
+- Embeds consistently feature "EverLink" branding in footer
+- Interactive elements use Discord dropdown selectors, modals, and buttons
+- Configuration fallback messages for unconfigured features
 
 **Configuration Fallback System:**
 - All menu-based features include automatic configuration checks
 - If a feature is not configured, users see: "This feature has not been set up by administrators. Please contact a server admin."
-- Applies to 911 system, Twitter, Anonymous messages, emergency calls, and all roleplay systems
+- Applies to 911 system, Twitter, Anonymous messages, and all roleplay systems
 
 **Technical Implementations & Feature Specifications:**
-- **Modular System Design:** Features like Staff Management, Verification, Welcome, 911 Reporting, Logging, Strike System, Priority Tracker, Roleplay Calendar, Sticky Messages, Anti-Promoting, Reaction Roles, and Ticket Support are implemented as independent, per-server configurable modules.
-- **Permission System:** Commands are gated by Discord Administrator permissions or a custom staff database, ensuring secure access.
-- **Logging System:** A central log channel (`/setlogchannel`) is mandatory and used by all other systems for event reporting (e.g., verification answers, anti-promoting incidents, strike actions).
-- **Verification System:** Supports customizable RP tags, questions, welcome messages, and automatic role assignment.
-- **Strike System:** Features a multi-level strike configuration (1-4) with customizable actions (role assignment, kick, timeout, ban) and durations per level.
-- **Priority Tracker:** Provides real-time status updates for "priority" events with cooldowns and custom messages.
-- **Roleplay Calendar:** Manages and displays weekly RP events with automatic timezone conversion using 12-hour AM/PM format. Displays times as Discord timestamps that auto-convert to each user's local timezone.
-- **Sticky Messages:** Staff/admins can use `/sticky` to create messages that auto-repost every 1 message to keep important information visible. Messages are prefixed with "__**Stickied Message:**__" header.
-- **Anti-Promoting System:** Automatically detects and removes non-whitelisted Discord invite links, with an optional staff bypass.
-- **Reaction Role System:** Staff/admins can use `/reactionrolemessage` to create messages with emoji reactions that automatically assign roles. Up to 5 emoji-role pairs per message. Menu-based workflow: "Send a New Message" creates a reaction role message, "Add Emoji to Existing Message" adds emoji-role pairs via modals. Requires `GatewayIntentBits.GuildMessageReactions` intent to receive reaction events.
-- **Ticket Support System:** Staff/admins can use `/ticketsupportenable` (requires log channel configured) to enable the system, then `/ticketsupportsetup` to configure it. Setup includes:
-  - Customizing panel title and description
-  - Selecting a channel for the ticket panel
-  - Adding custom ticket types with:
-    - Choosing button color (Primary Blue, Secondary Gray, Success Green, or Danger Red)
-    - Role access control
-    - Option to include bot staff (all users/roles on the bot's staff list automatically get access to that ticket type)
-  
-  When users click a button on the panel, they enter a description modal to provide details about their issue. A private ticket channel is created only visible to the user, assigned roles, and any bot staff members (if selected for that type). The ticket description is displayed in a welcome embed with two action buttons:
-  - **✅ Close Ticket** - Changes the status to closed, locks the channel (no one can type), and replaces the close button with a delete button
-  - **🗑️ Delete Ticket** - Permanently deletes the ticket record and the channel
-  
-  Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it.
+- **Modular System Design:** Features are independent, per-server configurable modules
+- **Permission System:** Commands gated by Discord Administrator permissions or custom staff database
+- **Logging System:** Central log channel (`/setlogchannel`) used by all systems for event reporting
+- **Verification System:** Customizable RP tags, questions, welcome messages, automatic role assignment
+- **Strike System:** Multi-level (1-4) with customizable actions (role assignment, kick, timeout, ban) and durations
+- **Priority Tracker:** Real-time status updates for priority events with cooldowns
+- **Roleplay Calendar:** Weekly RP events with automatic timezone conversion (12-hour AM/PM format)
+- **Sticky Messages:** Auto-reposts every 1 message with "__**Stickied Message:**__" prefix
+- **Anti-Promoting System:** Detects/removes non-whitelisted Discord invite links with staff bypass option
+- **Reaction Role System:** Up to 5 emoji-role pairs per message with menu-based workflow
+- **Ticket Support System:** Custom ticket types with role access control, automatic channel creation, ticket tracking
+- **Database Integration:** Mongoose schemas ensure per-server data isolation and persistence
 
-  **Enable/Disable Ticket Support:**
-  - Staff runs `/ticketsupportenable true` or `/ticketsupportenable false` to enable/disable the entire system
-  - When disabled, members can no longer create tickets
-  - When enabled, staff runs `/ticketsupportsetup` to configure the panel
-  
-  **Setup Process:** After each setup step, the menu automatically returns to the main setup menu for seamless navigation. Staff can:
-  - Add multiple ticket types, each with custom names, individual button colors, and role access
-  - Remove ticket types during setup (via the "Remove Ticket Type" option)
-  - Before sending a panel, choose which ticket types to include (not all types need to be on every panel)
-  - Send panels to different channels with different ticket type combinations
-  - Each ticket type button displays with its custom color on the panel
-  - The channel selection automatically resets after sending, allowing immediate setup of another panel
-- **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket, RoleplayCommands), ensuring per-server data isolation and persistence.
+**Setup Command Flow:**
+```
+/roleplaycommandsenable true
+  ↓
+/roleplaycommandsetup (staff only)
+  ↓
+Main Setup Menu:
+  - 🚨 911 & CAD - Emergency/Dispatch
+  - 🐦 Twitter - Public Messages
+  - 🤫 Anon - Anonymous Messages
+  - ✅ Done - Close Setup
+  ↓
+If 911 & CAD selected:
+  Emergency Setup Menu:
+    - 🚑 Select 911 Channel
+    - 🚔 Set LEO Roles
+    - 🚒 Set Fire Department Roles
+    - 👮 Set Staff Roles
+    - ✅ Done - Back to Main Menu
+```
 
 **Project Structure:**
 The codebase is organized into `src/` containing:
-- `index.js`: Main bot entry point.
-- `config/`: Database connection.
-- `models/`: Mongoose schemas for all data.
-- `commands/`: Individual command files grouped by feature.
-- `handlers/`: Logic for modal submissions, select menus, and specific system functionalities (e.g., `modalHandler.js`, `selectMenuHandler.js`, `priorityTrackerHandler.js`, `roleplayCalendarHandler.js`, `antiPromotingHandler.js`).
-- `utils/`: Helper functions for embeds, permissions, and invite detection.
+- `index.js`: Main bot entry point with event routing
+- `config/`: Database connection configuration
+- `models/`: Mongoose schemas for all data (RoleplayCommands, CADConfig, EmergencyCall, etc.)
+- `commands/`: Individual slash command files grouped by feature
+- `handlers/`: Event logic for modal submissions, select menus, and system functionalities
+- `utils/`: Helper functions for embeds, permissions, and utility functions
+
+**Key Handlers for Roleplay/CAD System:**
+- `roleplayCommandsHandler.js`: Main setup menus (Emergency, Twitter, Anon) and channel/role selection
+- `emergencySetupMenu`: Handles 911 & CAD setup submenu with 4 role/channel configuration options
+- `civiliandatabaseHandler.js`: Civilian database menu routing
+- `leoDatabaseHandler.js`: LEO database menu and 911 call viewing
+- `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
+- `cadHandler.js`: Character creation and vehicle/firearm management for all roles
+
+## Recent Changes (Session: November 24, 2025)
+- **Fixed:** Emergency setup flow - separated emergency handlers from regular CAD handlers
+- **Fixed:** 911 channel setup - emergency 911 setup uses unique `roleplaycommands_emergency_911_channel` customId
+- **Fixed:** All emergency role handlers properly route back to emergency menu using `showEmergencySetupMenu()`
+- **Fixed:** Import statements in index.js - added all emergency handlers to channel/role select menu routing
+- **Verified:** Complete 911/CAD setup flow working end-to-end:
+  - Main setup menu shows correct options
+  - Emergency submenu displays with 4 configuration options
+  - 911 channel selection works
+  - LEO roles selection works
+  - Fire Department roles selection works
+  - Staff roles selection works
+  - All options properly return to correct menu
 
 ## External Dependencies
-- **Discord.js v14:** Primary library for interacting with the Discord API.
-- **MongoDB Atlas:** Cloud-hosted NoSQL database for persistent storage of all server configurations and user data.
-- **Mongoose:** Object Data Modeling (ODM) library for MongoDB and Node.js.
+- **Discord.js v14:** Primary library for interacting with Discord API
+- **MongoDB Atlas:** Cloud-hosted NoSQL database
+- **Mongoose:** Object Data Modeling library for MongoDB
+- **Express:** HTTP server for health checks
+- **Dotenv:** Environment variable management
