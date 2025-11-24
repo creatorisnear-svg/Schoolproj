@@ -630,12 +630,35 @@ export async function handleManageRoleSelect(interaction) {
       });
     }
 
-    // Get all members with this role
-    const members = await interaction.guild.members.fetch();
+    // Defer the interaction to avoid timeout on large guild member fetches
+    await interaction.deferReply({ ephemeral: true });
+
+    // Get all members with this role - with retry logic for rate limits
+    let members;
+    let retries = 3;
+    let delay = 1000;
+
+    while (retries > 0) {
+      try {
+        members = await interaction.guild.members.fetch({ limit: 0 });
+        break;
+      } catch (error) {
+        if (error.code === 'RateLimitError' || error.status === 429) {
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
+
     const membersWithRole = members.filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
 
     if (membersWithRole.size === 0) {
-      return interaction.reply({
+      return await interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setColor('#2E2E2E')
@@ -643,7 +666,6 @@ export async function handleManageRoleSelect(interaction) {
             .setDescription('No members currently have this role.')
             .setFooter({ text: 'EverLink' })
         ],
-        ephemeral: true,
       });
     }
 
@@ -673,17 +695,22 @@ export async function handleManageRoleSelect(interaction) {
       .setDescription(description)
       .setFooter({ text: 'EverLink' });
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [embed],
       components: [menu],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error managing role:', error);
-    await interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
+    if (interaction.deferred) {
+      await interaction.editReply({
+        embeds: [errorEmbed('Failed to fetch members. Please try again.')],
+      });
+    } else {
+      await interaction.reply({
+        embeds: [errorEmbed('Failed to fetch members. Please try again.')],
+        ephemeral: true,
+      });
+    }
   }
 }
 
@@ -703,8 +730,50 @@ export async function handleRemoveRoleFromMember(interaction) {
       });
     }
 
-    const member = await interaction.guild.members.fetch(memberId);
-    await member.roles.remove(roleConfig.roleId);
+    await interaction.deferReply({ ephemeral: true });
+
+    // Fetch member with retry logic for rate limits
+    let member;
+    let retries = 3;
+    let delay = 1000;
+
+    while (retries > 0) {
+      try {
+        member = await interaction.guild.members.fetch(memberId);
+        break;
+      } catch (error) {
+        if (error.code === 'RateLimitError' || error.status === 429) {
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
+
+    // Remove role with retry logic for rate limits
+    retries = 3;
+    delay = 1000;
+
+    while (retries > 0) {
+      try {
+        await member.roles.remove(roleConfig.roleId);
+        break;
+      } catch (error) {
+        if (error.code === 'RateLimitError' || error.status === 429) {
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
 
     const successMsg = new EmbedBuilder()
       .setColor('#00FF00')
@@ -712,16 +781,21 @@ export async function handleRemoveRoleFromMember(interaction) {
       .setDescription(`✅ Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
       .setFooter({ text: 'EverLink' });
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [successMsg],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error removing role from member:', error);
-    await interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
+    if (interaction.deferred) {
+      await interaction.editReply({
+        embeds: [errorEmbed('Failed to remove role. Please try again.')],
+      });
+    } else {
+      await interaction.reply({
+        embeds: [errorEmbed('Failed to remove role. Please try again.')],
+        ephemeral: true,
+      });
+    }
   }
 }
 
