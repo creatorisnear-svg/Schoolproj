@@ -15,8 +15,8 @@ export async function handleAntiPromoting(message) {
       return;
     }
 
-    // Check if user is whitelisted staff and staff can bypass links
-    if (config.staffCanBypassLinks && config.whitelistedStaffIds.includes(message.author.id)) {
+    // Check if user is whitelisted staff/admin and staff can bypass links
+    if (config.staffCanBypassLinks && (config.whitelistedStaffIds.includes(message.author.id) || message.member.permissions.has('Administrator'))) {
       return;
     }
 

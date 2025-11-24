@@ -1342,8 +1342,8 @@ async function handleAntiPromotingSetupMenu(interaction) {
 
       const status = config.staffCanBypassLinks ? 'enabled' : 'disabled';
       const description = config.staffCanBypassLinks 
-        ? '✅ Bot staff members can now send invite links without deletion.'
-        : '🔒 Bot staff members can no longer send invite links without deletion. All staff are subject to anti-promoting rules.';
+        ? '✅ Staff and Admins can now send invite links without deletion.'
+        : '🔒 Staff and Admins can no longer send invite links without deletion. All staff are subject to anti-promoting rules.';
 
       const backButton = new ActionRowBuilder()
         .addComponents(
