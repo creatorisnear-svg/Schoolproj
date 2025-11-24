@@ -232,6 +232,16 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       });
     }
 
+    if (choice === 'disable_system') {
+      roleplayConfig.enabled = false;
+      await roleplayConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Roleplay Commands Disabled', 'Members no longer have access to roleplay commands.')],
+        ephemeral: true,
+      });
+    }
+
     if (choice === 'setup_done') {
       return interaction.reply({
         embeds: [successEmbed('Setup Complete', 'Your roleplay commands are ready to use!')],

@@ -12,24 +12,24 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **Roleplay Commands System (911, Twitter, Anon, CAD):**
-All roleplay commands are centralized through `/roleplaycommands` menu interface.
+Members access roleplay commands directly as slash commands.
 
 **Setup Process:**
-1. Staff runs `/toggleroleplaycommands` to enable/disable the system
-2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
+1. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
    - **911 - Emergency Reporting** → Select channel for emergency dispatch
    - **Twitter - Public Messages** → Select channel for public OOC posts  
    - **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **CAD - Computer Aided Dispatch** → Enable CAD system
+   - **❌ Disable Roleplay Commands** → Disable entire system
    - **✅ Done - Close Setup** → Finish configuration
 
-**Member Access (`/roleplaycommands`):**
-- Members use `/roleplaycommands` to access the enabled roleplay features
-- Shows a dropdown menu with ONLY the commands staff has enabled:
-  - 🚨 911 Emergency Report (if configured)
-  - 🐦 Twitter Post (if configured)
-  - 🔇 Anonymous Message (if configured)
-  - 📊 CAD Dispatch (if enabled)
+**Member Access:**
+- `/911` - Report an emergency (if configured)
+- `/twitter` - Post a public OOC message (if configured)
+- `/anon` - Post an anonymous/black market message (if configured)
+- `/cad` - View CAD dispatch information (if enabled)
+
+All commands are only available if staff has enabled them through setup.
 
 **CAD System (Computer Aided Dispatch):**
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
@@ -82,9 +82,9 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
   Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it.
 
   **Enable/Disable Ticket Support:**
-  - Staff can run `/toggleticketsupport` to enable or disable the ticket support system
+  - Staff runs `/ticketsupportsetup` and selects **"❌ Disable Ticket Support"** from the menu
   - When disabled, members can no longer create tickets
-  - Run the command again to re-enable
+  - Run `/ticketsupportsetup` again to re-enable by configuring the panel
   
   **Setup Process:** After each setup step, the menu automatically returns to the main setup menu for seamless navigation. Staff can:
   - Add multiple ticket types, each with custom names, individual button colors, and role access

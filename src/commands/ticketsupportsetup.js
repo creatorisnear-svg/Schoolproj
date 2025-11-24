@@ -35,6 +35,7 @@ export async function execute(interaction) {
             { label: 'Add Ticket Type', value: 'add_type' },
             { label: 'View Ticket Types', value: 'view_types' },
             { label: 'Send Panel', value: 'send_panel' },
+            { label: '❌ Disable Ticket Support', value: 'disable_system' },
             { label: '✅ Done - Close Setup', value: 'setup_done' }
           )
       );

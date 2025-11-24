@@ -23,6 +23,7 @@ async function showSetupMenu(interaction) {
           { label: 'View Ticket Types', value: 'view_types' },
           { label: 'Remove Ticket Type', value: 'remove_type' },
           { label: 'Send Panel', value: 'send_panel' },
+          { label: '❌ Disable Ticket Support', value: 'disable_system' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
     );
@@ -151,6 +152,16 @@ export async function handleTicketSetupMenu(interaction) {
       return interaction.reply({
         ...menuData,
         embeds: [infoEmbed('Configured Ticket Types', typesList)],
+      });
+    }
+
+    if (choice === 'disable_system') {
+      ticketConfig.enabled = false;
+      await ticketConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Ticket Support Disabled', 'Members no longer have access to ticket support.')],
+        ephemeral: true,
       });
     }
 
