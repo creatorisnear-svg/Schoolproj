@@ -3,6 +3,7 @@ import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import RoleRequest from '../models/RoleRequest.js';
 import { v4 as uuidv4 } from 'uuid';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export async function handleRoleRequestSetupMenu(interaction) {
   const value = interaction.values[0];
@@ -742,6 +743,32 @@ export async function handleRemoveRoleFromMember(interaction) {
       });
     }
 
+    // Check if user has permission to manage this role
+    const isStaff = await checkStaffPermission(interaction);
+    let canManage = isStaff;
+
+    if (!canManage) {
+      // Check if they have any approver roles
+      for (const approverRoleId of roleConfig.approverRoleIds) {
+        if (interaction.member.roles.cache.has(approverRoleId)) {
+          canManage = true;
+          break;
+        }
+      }
+
+      // Check if they're in the approver members list
+      if (!canManage && roleConfig.approverMemberIds.includes(interaction.user.id)) {
+        canManage = true;
+      }
+    }
+
+    if (!canManage) {
+      return interaction.reply({
+        embeds: [errorEmbed('You do not have permission to remove this role.')],
+        ephemeral: true,
+      });
+    }
+
     await interaction.deferReply({ ephemeral: true });
 
     // Fetch member with retry logic for rate limits
@@ -792,7 +819,7 @@ export async function handleRemoveRoleFromMember(interaction) {
     const successMsg = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('Role Removed')
-      .setDescription(`✅ Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
+      .setDescription(`Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
       .setFooter({ text: 'EverLink' });
 
     await interaction.editReply({
