@@ -144,6 +144,7 @@ The codebase is organized into `src/` containing:
   - Removed auto-generated Driver's License field
   - Removed auto-generated License Plate field
   - Only SSN is auto-generated (unique identifier)
+  - **Name Auto-Capitalization:** First letter of each word capitalized automatically (e.g., "john doe" → "John Doe")
   - Added **License Status Selector** (Valid / Invalid) - shown as buttons after character creation
   - Added **Special Status Selector** (Veteran / Organ Donor) - shown as buttons after character creation
 - **CADCharacter Model Updated:**
@@ -156,7 +157,7 @@ The codebase is organized into `src/` containing:
   - `handleCharacterOrganDonor()` - Sets character status to Organ Donor
 - **Character Creation Flow:**
   1. User runs `/cadcharacter` (or equivalent)
-  2. Fills form with name, age, gender, hair color, eye color
+  2. Fills form with name, age, gender, hair color, eye color (name auto-capitalized)
   3. Character created with SSN auto-generated
   4. User sees 2 button rows:
      - **License Status Row:** Click ✅ Valid License OR ❌ Invalid License
@@ -164,7 +165,7 @@ The codebase is organized into `src/` containing:
   5. User can click LICENSE button + SPECIAL STATUS button (both selections saved)
   6. Buttons remain visible to allow multiple selections
 - **Updated Handlers:**
-  - `cadHandler.js` - Added 4 new button handlers + updated character creation modal
+  - `cadHandler.js` - Added 4 new button handlers + name auto-capitalization + updated character creation modal
   - `leoDatabaseHandler.js` - Updated character search to show license and special status
   - `index.js` - Added routing for all 4 new character status buttons
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational

@@ -495,11 +495,16 @@ export async function handleCharacterOrganDonor(interaction, characterId) {
 }
 
 export async function handleCADCharacterCreateModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('character_name');
+  let characterName = interaction.fields.getTextInputValue('character_name');
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
   const hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;
   const eyeColor = interaction.fields.getTextInputValue('character_eye_color') || null;
+
+  // Capitalize first letter of each word
+  characterName = characterName.split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
 
   try {
     const existing = await CADCharacter.findOne({ guildId: interaction.guildId, userId: interaction.user.id, characterName });
