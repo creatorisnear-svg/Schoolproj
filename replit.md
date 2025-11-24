@@ -135,8 +135,14 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - LEO Features & BOLO Enhancements)
+## Recent Changes (Session: November 24, 2025 - Civilian Character Management & LEO Features)
 - **Bug Fixed:** Character manage view showed `char.weapons` instead of `char.guns` - corrected to display weapon count properly
+- **Civilian Character Management:** Added `/civiliandatabase` → "📋 Manage Character" → Edit/Delete features
+  - **Character Selection Menu:** Shows all user characters with age and vehicle count
+  - **Character View:** Displays full character details (age, gender, hair, eyes, SSN, license, vehicles, weapons)
+  - **Edit Character:** Modal-based editing for age, gender, hair color, eye color, and SSN
+  - **Delete Character:** Confirmation-based deletion with proper security (user-owned character verification)
+  - **Interactive Buttons:** Edit (✏️) and Delete (🗑️) buttons on character details view
 - **LEO Weapon Revocation:** Added `/leodatabase` → "🔫 Revoke Weapon" feature
   - LEOs can remove registered firearms from character profiles
   - Includes optional reason field for enforcement documentation
@@ -147,26 +153,17 @@ The codebase is organized into `src/` containing:
   - Stored in new TrafficTicket model for record keeping
   - Separate from support ticket system
 - **BOLO System Enhancements:**
-  - Added `/leodatabase` → "🚨 Create BOLO" feature
-  - LEOs can create "Be On the Lookout" alerts for wanted persons
-  - BOLO model updated to include vehicles array for known vehicle tracking
-  - LEOs can specify multiple vehicles (make, model, color, license plate, notes)
-  - Generates unique BOLO IDs (BOLO-{timestamp})
-  - Auto-deletes all BOLOs after 1 hour (`expiresAt` field tracks expiration)
+  - Added `/leodatabase` → "🚨 Create BOLO" feature with vehicle tracking
   - Added `/leodatabase` → "🚨 View Active BOLOs" feature
-  - LEOs can view all active BOLO alerts with character, reason, and vehicle details
-- **Auto-Delete System:**
-  - Implemented BOLO auto-delete in index.js (checks every minute)
-  - BOLOs automatically expire after 1 hour from creation
-  - System logs deleted BOLOs for audit trail
+  - Auto-deletes all BOLOs after 1 hour (`expiresAt` field tracks expiration)
 - **New Models Created:**
   - `TrafficTicket.js` - Stores traffic citations issued by LEOs
   - `BOLO.js` - Stores wanted person alerts with vehicles, 1-hour auto-expiration
 - **Updated Handlers:**
-  - Enhanced `leoDatabaseHandler.js` with 4 new functions (revoke weapon, issue ticket, create BOLO, view active BOLOs)
-  - Updated `modalHandler.js` to route new LEO feature modals
-  - All features include LEO role verification and character lookup
-- **Result:** Bot maintains zero warnings, 34 commands registered, all new LEO features operational
+  - `civilianDatabaseHandler.js` - Added 5 new functions for character management (select, edit, delete, edit modal, delete confirm)
+  - `index.js` - Added routing for character edit/delete buttons and edit modals
+  - All features include proper security (user ownership verification, guild isolation)
+- **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API

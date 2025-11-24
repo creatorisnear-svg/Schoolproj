@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADCharacter from '../models/CADCharacter.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
@@ -244,32 +244,278 @@ export async function handleCivilianDatabaseMenu(interaction) {
         });
       }
 
-      const embeds = characters.map(char => {
-        let description = `**Name:** ${char.characterName}\n`;
-        if (char.age) description += `**Age:** ${char.age}\n`;
-        if (char.gender) description += `**Gender:** ${char.gender}\n`;
-        if (char.hairColor) description += `**Hair:** ${char.hairColor}\n`;
-        if (char.eyeColor) description += `**Eyes:** ${char.eyeColor}\n`;
-        if (char.socialSecurityNumber) description += `**SSN:** ${char.socialSecurityNumber}\n`;
-        if (char.driversLicense) description += `**License:** ${char.driversLicense}\n`;
-        
-        description += `\n**Vehicles:** ${char.vehicles?.length || 0}\n`;
-        description += `**Weapons:** ${char.guns?.length || 0}`;
-
-        return new EmbedBuilder()
-          .setColor('#0099ff')
-          .setTitle(`📋 ${char.characterName}`)
-          .setDescription(description)
-          .setFooter({ text: 'EverLink' });
-      });
+      const charMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('civilian_manage_character_select')
+            .setPlaceholder('Select a character to manage...')
+            .addOptions(characters.map(c => ({
+              label: c.characterName,
+              value: c._id.toString(),
+              description: `Age: ${c.age || 'N/A'} | Vehicles: ${c.vehicles?.length || 0}`
+            })))
+        );
 
       return interaction.reply({
-        embeds,
+        content: '**MANAGE CHARACTER**\n\nSelect a character to view, edit, or delete:',
+        components: [charMenu],
         ephemeral: true,
       });
     }
   } catch (error) {
     console.error('Error in civilian database menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCivilianManageCharacterSelect(interaction) {
+  const characterId = interaction.values[0];
+
+  try {
+    const character = await CADCharacter.findOne({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found', 'This character could not be found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Show character details with action buttons
+    let description = `**Name:** ${character.characterName}\n`;
+    if (character.age) description += `**Age:** ${character.age}\n`;
+    if (character.gender) description += `**Gender:** ${character.gender}\n`;
+    if (character.hairColor) description += `**Hair:** ${character.hairColor}\n`;
+    if (character.eyeColor) description += `**Eyes:** ${character.eyeColor}\n`;
+    if (character.socialSecurityNumber) description += `**SSN:** ${character.socialSecurityNumber}\n`;
+    if (character.driversLicense) description += `**License:** ${character.driversLicense}\n`;
+    
+    description += `\n**Vehicles:** ${character.vehicles?.length || 0}\n`;
+    description += `**Weapons:** ${character.guns?.length || 0}`;
+
+    const embed = new EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle(`📋 ${character.characterName}`)
+      .setDescription(description)
+      .setFooter({ text: 'EverLink' });
+
+    const actionButtons = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`char_edit_${characterId}`)
+          .setLabel('✏️ Edit')
+          .setStyle('Primary'),
+        new ButtonBuilder()
+          .setCustomId(`char_delete_${characterId}`)
+          .setLabel('🗑️ Delete')
+          .setStyle('Danger')
+      );
+
+    return interaction.reply({
+      embeds: [embed],
+      components: [actionButtons],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error managing character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterEdit(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOne({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found')],
+        ephemeral: true,
+      });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(`char_edit_modal_${characterId}`)
+      .setTitle(`Edit ${character.characterName}`)
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_age')
+            .setLabel('Age')
+            .setValue(character.age?.toString() || '')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_gender')
+            .setLabel('Gender')
+            .setValue(character.gender || '')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_hair_color')
+            .setLabel('Hair Color')
+            .setValue(character.hairColor || '')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_eye_color')
+            .setLabel('Eye Color')
+            .setValue(character.eyeColor || '')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('edit_ssn')
+            .setLabel('SSN (optional)')
+            .setValue(character.socialSecurityNumber || '')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+        )
+      );
+
+    return interaction.showModal(modal);
+  } catch (error) {
+    console.error('Error opening edit modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterEditModal(interaction, characterId) {
+  const age = interaction.fields.getTextInputValue('edit_age');
+  const gender = interaction.fields.getTextInputValue('edit_gender');
+  const hairColor = interaction.fields.getTextInputValue('edit_hair_color');
+  const eyeColor = interaction.fields.getTextInputValue('edit_eye_color');
+  const ssn = interaction.fields.getTextInputValue('edit_ssn');
+
+  try {
+    const character = await CADCharacter.findOne({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found')],
+        ephemeral: true,
+      });
+    }
+
+    // Update fields
+    if (age) character.age = parseInt(age);
+    if (gender) character.gender = gender;
+    if (hairColor) character.hairColor = hairColor;
+    if (eyeColor) character.eyeColor = eyeColor;
+    if (ssn) character.socialSecurityNumber = ssn;
+
+    await character.save();
+
+    let updatedDesc = `**Updated Fields:**\n`;
+    if (age) updatedDesc += `• Age: ${age}\n`;
+    if (gender) updatedDesc += `• Gender: ${gender}\n`;
+    if (hairColor) updatedDesc += `• Hair: ${hairColor}\n`;
+    if (eyeColor) updatedDesc += `• Eyes: ${eyeColor}\n`;
+    if (ssn) updatedDesc += `• SSN: ${ssn}\n`;
+
+    return interaction.reply({
+      embeds: [successEmbed('Character Updated', `**${character.characterName}** has been updated!\n\n${updatedDesc}`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error updating character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterDelete(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOne({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found')],
+        ephemeral: true,
+      });
+    }
+
+    // Show confirmation
+    const confirmButtons = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`char_delete_confirm_${characterId}`)
+          .setLabel('Yes, Delete')
+          .setStyle('Danger'),
+        new ButtonBuilder()
+          .setCustomId('char_delete_cancel')
+          .setLabel('Cancel')
+          .setStyle('Secondary')
+      );
+
+    return interaction.reply({
+      embeds: [errorEmbed('Confirm Delete', `Are you sure you want to delete **${character.characterName}**? This cannot be undone.`)],
+      components: [confirmButtons],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error deleting character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterDeleteConfirm(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndDelete({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.reply({
+      embeds: [successEmbed('Character Deleted', `**${character.characterName}** has been permanently deleted.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error deleting character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

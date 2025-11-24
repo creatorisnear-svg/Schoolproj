@@ -288,6 +288,10 @@ client.on('interactionCreate', async interaction => {
       await handleLEOSearchPlateModal(interaction);
     } else if (interaction.customId === 'leodatabase_search_character_modal') {
       await handleLEOSearchCharacterModal(interaction);
+    } else if (interaction.customId.startsWith('char_edit_modal_')) {
+      const { handleCharacterEditModal } = await import('./handlers/civilianDatabaseHandler.js');
+      const charId = interaction.customId.replace('char_edit_modal_', '');
+      await handleCharacterEditModal(interaction, charId);
     } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
@@ -301,6 +305,7 @@ client.on('interactionCreate', async interaction => {
     const { handleFDPrimaryResponse, handleFDAttachResponse } = await import('./handlers/fireDepartmentHandler.js');
     const { data, execute } = await import('./commands/verify.js');
     const { handleTicketButtonClick, handleAddBotStaffButton, handleRolesDoneButton, handleTicketCloseButton, handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
+    const { handleCharacterEdit, handleCharacterDelete, handleCharacterDeleteConfirm } = await import('./handlers/civilianDatabaseHandler.js');
 
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
@@ -318,6 +323,20 @@ client.on('interactionCreate', async interaction => {
       await handleFDAttachResponse(interaction);
     } else if (interaction.customId === 'verify_button') {
       await execute(interaction);
+    } else if (interaction.customId.startsWith('char_edit_')) {
+      const charId = interaction.customId.replace('char_edit_', '');
+      await handleCharacterEdit(interaction, charId);
+    } else if (interaction.customId.startsWith('char_delete_')) {
+      const charId = interaction.customId.replace('char_delete_', '');
+      await handleCharacterDelete(interaction, charId);
+    } else if (interaction.customId.startsWith('char_delete_confirm_')) {
+      const charId = interaction.customId.replace('char_delete_confirm_', '');
+      await handleCharacterDeleteConfirm(interaction, charId);
+    } else if (interaction.customId === 'char_delete_cancel') {
+      await interaction.reply({
+        content: 'Character deletion cancelled.',
+        ephemeral: true,
+      });
     } else if (interaction.customId.startsWith('ticket_create_')) {
       await handleTicketButtonClick(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_add_botstaff_')) {
@@ -362,6 +381,9 @@ client.on('interactionCreate', async interaction => {
       await handleLEODatabaseMenu(interaction);
     } else if (interaction.customId === 'civiliandatabase_menu') {
       await handleCivilianDatabaseMenu(interaction);
+    } else if (interaction.customId === 'civilian_manage_character_select') {
+      const { handleCivilianManageCharacterSelect } = await import('./handlers/civilianDatabaseHandler.js');
+      await handleCivilianManageCharacterSelect(interaction);
     } else if (interaction.customId === 'firedepartmentdatabase_menu') {
       const { handleFireDepartmentMenu } = await import('./handlers/fireDepartmentHandler.js');
       await handleFireDepartmentMenu(interaction);
