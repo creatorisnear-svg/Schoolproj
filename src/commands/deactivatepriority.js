@@ -11,9 +11,9 @@ export const data = new SlashCommandBuilder()
       .setName('type')
       .setDescription('What to deactivate')
       .addChoices(
-        { name: 'deactivatepriority', value: 'priority' },
-        { name: 'deactivatepriority', value: 'cooldown' },
-        { name: 'deactivatepriority', value: 'both' }
+        { name: 'Priority', value: 'priority' },
+        { name: 'Cooldown', value: 'cooldown' },
+        { name: 'Both', value: 'both' }
       )
       .setRequired(true)
   );
