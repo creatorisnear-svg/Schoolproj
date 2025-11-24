@@ -1,17 +1,17 @@
 # EverLink Discord Bot
 
 ## Overview
-Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP servers with LEO/EMS). Provides emergency reporting, member verification with RP tags, staff management, and welcome systems. Each server has independent configuration including staff teams, verification settings, and RP tags. All bot responses use Discord embeds with EverLink branding.
+Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP servers with LEO/EMS). Provides emergency reporting, member verification with RP tags, staff management, welcome systems, strike system, and priority tracking. Each server has independent configuration including staff teams, verification settings, and RP tags. All bot responses use Discord embeds with EverLink branding.
 
 ## Current State
 - **Status**: Active Development
 - **Stack**: Node.js (v20) + Discord.js v14 + MongoDB Atlas
-- **Last Updated**: November 23, 2025
+- **Last Updated**: November 24, 2025
 
 ## Features Implemented
 **REQUIRED FIRST STEP**: `/setlogchannel` - All systems require a log channel to be set before they can be enabled
 
-**NEW**: Strike System with 4 configurable levels, each with optional roles and actions (kick/timeout/ban)
+**NEW**: Priority Tracker system for tracking priority status and cooldowns with live countdown
 
 1. **Staff Management System** (Per-Server)
    - `/addstaff` - Administrators can add users or roles as bot staff
@@ -68,7 +68,18 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - All strikes and removals logged to configured log channel with member, staff, reason, and amounts
    - Each server has independent strike configuration
 
-7. **Anti-Promoting System** (Per-Server)
+7. **Priority Tracker System** (Per-Server)
+   - `/prioritytrackerenable true/false` - Enable/disable priority tracker (admin-only, requires log channel first)
+   - `/prioritytrackersetup` - Configure priority tracker channel and optional custom message (admin-only, requires system enabled)
+   - `/activepriority` - Activate priority status in tracker (staff-only)
+   - `/prioritycooldown <minutes>` - Set priority cooldown duration in minutes with countdown (staff-only)
+   - `/deactivatepriority <priority|cooldown|both>` - Deactivate priority and/or cooldown (staff-only)
+   - Priority message shows: Priority Status (Active/Inactive), Cooldown Time (with countdown), and who issued it
+   - Optional custom message at bottom (e.g., "You will be striked if you do not follow")
+   - Message automatically updates with countdown every minute
+   - Each server has independent priority tracker configuration
+
+8. **Anti-Promoting System** (Per-Server)
    - `/antipromotingenable true/false` - Staff enable or disable anti-promoting (requires log channel set first)
    - `/whitelistlink add/remove` - Staff add/remove allowed invite links to whitelist
    - `/whitelistlinkstaff true/false` - Admin toggle whether staff can bypass anti-promoting
@@ -78,20 +89,20 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Logs incident to configured log channel with user and link details
    - Default: Staff members can share links (enabled). Admins can disable via `/whitelistlinkstaff false`
 
-8. **Permission System**
+9. **Permission System**
    - Admin-only commands (requires Discord Administrator permission)
    - Staff-only commands (requires being in staff database OR admin permission)
    - Role-based staff access (members with staff roles can use staff commands)
    - All responses formatted as Discord embeds
    - Per-server permission checking
 
-9. **System Enable/Disable** (Per-Server)
+10. **System Enable/Disable** (Per-Server)
    - All systems must have log channel set before enabling
    - Verification, welcome, and strike systems must be enabled before setup
    - Disabled systems are completely non-functional (no automatic features)
    - All responses use Discord embeds for clean, professional UI
 
-10. **Database** (Per-Server Storage)
+11. **Database** (Per-Server Storage)
    - MongoDB Atlas integration via Mongoose
    - Staff model: guildId, type, userId, username, roleId, roleName, addedBy, addedAt
    - Verification model: guildId, enabled, verifyChannelId, welcomeChannelId, unverifiedRoleId, verifiedRoleId, rpTag, customQuestion, verifyDMMessage
@@ -99,6 +110,7 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - Config model: guildId, reportChannelId, reportRoles, antiPromotingEnabled, whitelistedInviteLinks, whitelistedStaffIds, staffCanBypassLinks, logChannelId
    - StrikeUser model: guildId, userId, currentStrikeLevel (0-4)
    - StrikeConfig model: guildId, enabled, strikes (4 levels with roleId, action, duration)
+   - Priority model: guildId, enabled, channelId, messageId, customMessage, priorityActive, priorityIssuedBy, cooldownMinutes, cooldownEndsAt, cooldownIssuedBy
 
 ## Project Structure
 ```
@@ -126,6 +138,11 @@ src/
 │   ├── strikesystemsetup.js # Strike system setup command
 │   ├── strike.js            # Strike member command
 │   ├── removestrike.js      # Remove strikes from member command
+│   ├── prioritytrackerenable.js # Toggle priority tracker enabled/disabled
+│   ├── prioritytrackersetup.js  # Priority tracker setup command
+│   ├── activepriority.js    # Activate priority command
+│   ├── prioritycooldown.js  # Set priority cooldown command
+│   ├── deactivatepriority.js # Deactivate priority/cooldown command
 │   ├── antipromotingenable.js # Toggle anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
 │   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
@@ -136,6 +153,7 @@ src/
 ├── handlers/
 │   ├── modalHandler.js      # Modal submission handler (checks enabled status, logs verification questions)
 │   ├── selectMenuHandler.js # Select menu handler with strike system setup (checks enabled status)
+│   ├── priorityTrackerHandler.js # Priority tracker channel select and message modal handler
 │   └── antiPromotingHandler.js # Anti-promoting message handler
 └── utils/
     ├── embedBuilder.js      # Helper functions for creating embeds

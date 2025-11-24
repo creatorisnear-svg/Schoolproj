@@ -61,7 +61,77 @@ client.once('clientReady', async () => {
   } catch (error) {
     console.error('❌ Error registering commands:', error);
   }
+
+  // Start priority tracker countdown updater
+  startPriorityTrackerUpdater();
 });
+
+async function startPriorityTrackerUpdater() {
+  const { default: Priority } = await import('./models/Priority.js');
+
+  setInterval(async () => {
+    try {
+      const priorities = await Priority.find({ enabled: true, cooldownEndsAt: { $ne: null } });
+
+      for (const priority of priorities) {
+        if (priority.cooldownEndsAt && new Date() >= priority.cooldownEndsAt) {
+          // Cooldown has ended, clear it
+          priority.cooldownMinutes = 0;
+          priority.cooldownEndsAt = null;
+          priority.cooldownIssuedBy = null;
+          await priority.save();
+        }
+
+        // Update the message
+        try {
+          const guild = client.guilds.cache.get(priority.guildId);
+          if (!guild) continue;
+
+          const channel = await guild.channels.fetch(priority.channelId).catch(() => null);
+          if (!channel || !priority.messageId) continue;
+
+          const message = await channel.messages.fetch(priority.messageId).catch(() => null);
+          if (!message) continue;
+
+          const embed = buildPriorityEmbed(priority);
+          await message.edit({ embeds: [embed] });
+        } catch (error) {
+          console.error(`Error updating priority tracker for guild ${priority.guildId}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in priority tracker updater:', error);
+    }
+  }, 60000); // Update every minute
+
+  console.log('⏰ Priority tracker countdown updater started');
+}
+
+function buildPriorityEmbed(priority) {
+  let cooldownText = 'None';
+  if (priority.cooldownEndsAt) {
+    const now = new Date();
+    const remaining = Math.max(0, Math.floor((priority.cooldownEndsAt - now) / 1000 / 60));
+    cooldownText = `${remaining}m (counting down)`;
+  }
+
+  const issuedByText = priority.priorityIssuedBy || 'N/A';
+
+  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
+  description += `**Priority cooldown:** ${cooldownText}\n`;
+  description += `**Issued by:** ${issuedByText}`;
+
+  if (priority.customMessage) {
+    description += `\n\n${priority.customMessage}`;
+  }
+
+  return {
+    title: 'Priority Tracker',
+    description,
+    color: priority.priorityActive ? 0xFF0000 : 0x808080,
+    footer: { text: 'EverLink' },
+  };
+}
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
@@ -93,8 +163,11 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isModalSubmit()) {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
+    const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
     
-    if (interaction.customId.includes('setup_')) {
+    if (interaction.customId.includes('prioritytrackersetup_message')) {
+      await handlePriorityTrackerMessageModal(interaction);
+    } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
       await handleModalSubmit(interaction);
@@ -108,7 +181,13 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
-    await handleSelectMenu(interaction);
+    const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
+    
+    if (interaction.customId.includes('prioritytrackersetup_channel')) {
+      await handlePriorityTrackerChannelSelect(interaction);
+    } else {
+      await handleSelectMenu(interaction);
+    }
   }
 
   if (interaction.isButton()) {
