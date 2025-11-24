@@ -116,28 +116,37 @@ async function registerCommandsAsync() {
     console.log('⏳ Waiting for Discord to process cleared commands (3 seconds)...');
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // Step 2: Register new commands
-    console.log(`📤 Registering ${commands.length} commands to ${client.guilds.cache.size} guild(s)...`);
+    // Step 2: Register new commands - Using global registration
+    console.log(`📤 Registering ${commands.length} commands globally...`);
 
-    let successCount = 0;
-    let failureCount = 0;
+    try {
+      await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+      console.log(`✅ Commands registered globally for all servers!`);
+    } catch (error) {
+      console.error(`❌ Global registration failed:`, error.message);
+      console.log('⚠️  Attempting per-guild registration...');
+      
+      let successCount = 0;
+      let failureCount = 0;
 
-    // Register commands per-guild (much faster than global registration)
-    for (const [guildId, guild] of client.guilds.cache) {
-      try {
-        await rest.put(
-          Routes.applicationGuildCommands(client.user.id, guildId),
-          { body: commands },
-        );
-        console.log(`✅ Commands registered for guild: ${guild.name}`);
-        successCount++;
-      } catch (guildError) {
-        console.error(`❌ Failed to register commands for guild ${guild.name}:`, guildError.message);
-        failureCount++;
+      // Fallback: Register commands per-guild
+      for (const [guildId, guild] of client.guilds.cache) {
+        try {
+          await rest.put(
+            Routes.applicationGuildCommands(client.user.id, guildId),
+            { body: commands },
+          );
+          console.log(`✅ Commands registered for guild: ${guild.name}`);
+          successCount++;
+        } catch (guildError) {
+          console.error(`❌ Failed to register commands for guild ${guild.name}:`, guildError.message);
+          failureCount++;
+        }
       }
+      
+      console.log(`✅ Per-guild registration complete: ${successCount} successful, ${failureCount} failed.`);
     }
-
-    console.log(`✅ Command registration complete: ${successCount} successful, ${failureCount} failed.`);
+    
     console.log('💡 Tip: If old commands still appear in Discord, restart your Discord client (close completely and reopen).');
   } catch (error) {
     console.error('❌ Command registration system error:', error.message);
