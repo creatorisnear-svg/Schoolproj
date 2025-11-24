@@ -188,6 +188,10 @@ export async function handleSelectMenu(interaction) {
     await handleAntiPromotingRemoveLink(interaction);
   }
 
+  if (interaction.customId === 'stickylist_delete_menu') {
+    await handleStickyListDelete(interaction);
+  }
+
 }
 
 async function handleVerifySetupMenu(interaction) {
@@ -1426,6 +1430,52 @@ async function handleAntiPromotingRemoveLink(interaction) {
     console.error('Error removing whitelisted link:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while removing the link.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleStickyListDelete(interaction) {
+  const { Sticky } = await import('../models/Sticky.js').then(m => ({ Sticky: m.default }));
+  
+  const selectedIndex = parseInt(interaction.values[0].replace('delete_', ''));
+
+  try {
+    const stickies = await Sticky.find({ guildId: interaction.guildId });
+    
+    if (!stickies[selectedIndex]) {
+      return interaction.reply({
+        embeds: [errorEmbed('Sticky message not found.')],
+        flags: 64,
+      });
+    }
+
+    const sticky = stickies[selectedIndex];
+    
+    // Delete from Discord
+    try {
+      const channel = await interaction.guild.channels.fetch(sticky.channelId);
+      if (channel) {
+        const message = await channel.messages.fetch(sticky.messageId).catch(() => null);
+        if (message) {
+          await message.delete();
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting sticky message from Discord:', err);
+    }
+
+    // Delete from database
+    await Sticky.deleteOne({ _id: sticky._id });
+
+    return interaction.reply({
+      embeds: [successEmbed('Sticky Deleted', `The sticky message has been removed from <#${sticky.channelId}>`)],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error deleting sticky:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while deleting the sticky message.')],
       flags: 64,
     });
   }
