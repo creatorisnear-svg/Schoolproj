@@ -169,15 +169,24 @@ client.on('interactionCreate', async interaction => {
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
-    const { handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
+    const { handleCADVehicleAddModal, handleCADGunAddModal, handleCADCharacterCreateModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleFDCharacterCreateModal, handleFDVehicleAddModal } = await import('./handlers/fireDepartmentHandler.js');
+    const { handle911ReportModal, handleTwitterPostModal, handleAnonPostModal } = await import('./handlers/roleplayCommandsHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
+    } else if (interaction.customId === '911report') {
+      await handle911ReportModal(interaction);
+    } else if (interaction.customId === 'twitter_post_modal') {
+      await handleTwitterPostModal(interaction);
+    } else if (interaction.customId === 'anon_post_modal') {
+      await handleAnonPostModal(interaction);
     } else if (interaction.customId === 'fd_character_create_modal') {
       await handleFDCharacterCreateModal(interaction);
+    } else if (interaction.customId === 'cadcharacter_create_modal') {
+      await handleCADCharacterCreateModal(interaction);
     } else if (interaction.customId.startsWith('cadvehicle_add_modal_')) {
       await handleCADVehicleAddModal(interaction);
     } else if (interaction.customId.startsWith('fd_vehicle_add_modal_')) {

@@ -130,14 +130,17 @@ The codebase is organized into `src/` containing:
 - **Fixed:** 911 channel setup - emergency 911 setup uses unique `roleplaycommands_emergency_911_channel` customId
 - **Fixed:** All emergency role handlers properly route back to emergency menu using `showEmergencySetupMenu()`
 - **Fixed:** Import statements in index.js - added all emergency handlers to channel/role select menu routing
-- **Verified:** Complete 911/CAD setup flow working end-to-end:
-  - Main setup menu shows correct options
-  - Emergency submenu displays with 4 configuration options
-  - 911 channel selection works
-  - LEO roles selection works
-  - Fire Department roles selection works
-  - Staff roles selection works
-  - All options properly return to correct menu
+- **Fixed:** 911 calls not appearing in LEO database - added handle911ReportModal routing in index.js
+- **Fixed:** LEO roles not being pinged - 911 report modal now properly routes and sends role mentions
+- **Fixed:** License plate search not showing personal info - added handleCADCharacterCreateModal routing, characters now created with full personal data
+- **Fixed:** Twitter and Anon post modals not working - added handleTwitterPostModal and handleAnonPostModal routing
+- **Verified:** Complete 911/CAD workflow working:
+  - Civilians can report 911 with modal
+  - Emergency calls saved to database
+  - LEO/Fire Department roles pinged automatically
+  - LEO database shows active 911 calls
+  - License plate search shows full personal information
+  - Twitter and anon messages working
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API
