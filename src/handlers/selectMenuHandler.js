@@ -1241,10 +1241,12 @@ async function handleReactionRoleSelect(interaction) {
 
 async function handleAntiPromotingSetupMenu(interaction) {
   const choice = interaction.values[0];
+  console.log('⚙️ antiPromotingSetupMenu choice:', choice);
   const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
 
   try {
     if (choice === 'add_link') {
+      console.log('📋 Creating add_link modal...');
       const modal = new ModalBuilder()
         .setCustomId('antipromotingsetup_add_link_modal')
         .setTitle('Add Whitelisted Link');
@@ -1259,6 +1261,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
       const row = new ActionRowBuilder().addComponents(linkInput);
       modal.addComponents(row);
 
+      console.log('🎯 Showing modal...');
       return await interaction.showModal(modal);
     }
 

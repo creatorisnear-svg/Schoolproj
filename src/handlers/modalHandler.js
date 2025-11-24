@@ -223,12 +223,27 @@ async function handleReactionRoleAddEmojiModal(interaction) {
 }
 
 async function handleAntiPromotingAddLinkModal(interaction) {
-  const link = interaction.fields.getTextInputValue('link_input').trim();
+  console.log('🔗 handleAntiPromotingAddLinkModal called');
+  
+  let link;
+  try {
+    link = interaction.fields.getTextInputValue('link_input').trim();
+    console.log('📝 Link received:', link);
+  } catch (fieldError) {
+    console.error('❌ Error getting link input:', fieldError);
+    return interaction.reply({
+      embeds: [errorEmbed('Could not read the link input. Please try again.')],
+      flags: 64,
+    });
+  }
 
   try {
+    console.log('🔍 Searching for existing config...');
     let config = await Config.findOne({ guildId: interaction.guildId });
+    console.log('📊 Config found:', !!config);
     
     if (!config) {
+      console.log('📋 Creating new config...');
       config = new Config({ 
         guildId: interaction.guildId,
         whitelistedInviteLinks: []
@@ -237,25 +252,31 @@ async function handleAntiPromotingAddLinkModal(interaction) {
 
     // Ensure array exists
     if (!Array.isArray(config.whitelistedInviteLinks)) {
+      console.log('⚠️ Fixing array...');
       config.whitelistedInviteLinks = [];
     }
+    console.log('✅ Array exists with', config.whitelistedInviteLinks.length, 'items');
 
     if (config.whitelistedInviteLinks.includes(link)) {
+      console.log('⚠️ Link already whitelisted');
       return interaction.reply({
         embeds: [errorEmbed('This link is already whitelisted.')],
         flags: 64,
       });
     }
 
+    console.log('💾 Adding link and saving...');
     config.whitelistedInviteLinks.push(link);
-    await config.save();
+    const saved = await config.save();
+    console.log('✅ Saved successfully:', saved._id);
 
     return interaction.reply({
       embeds: [successEmbed('Link Whitelisted', `The invite link has been added to the whitelist.\n\nLink: ${link}`)],
       flags: 64,
     });
   } catch (error) {
-    console.error('Error adding whitelisted link:', error);
+    console.error('❌ Error adding whitelisted link:', error.message);
+    console.error('Stack:', error.stack);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the link.')],
       flags: 64,
