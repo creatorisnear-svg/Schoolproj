@@ -255,6 +255,24 @@ export async function handleSelectApprover(interaction) {
       });
     }
 
+    // Verify the selected approver actually has permission to approve this role
+    let approverIsAuthorized = false;
+
+    if (approverType === 'role') {
+      // Check if this role is in the approver list
+      approverIsAuthorized = roleConfig.approverRoleIds.includes(approverId);
+    } else {
+      // Check if this member is in the approver list
+      approverIsAuthorized = roleConfig.approverMemberIds.includes(approverId);
+    }
+
+    if (!approverIsAuthorized) {
+      return interaction.reply({
+        embeds: [errorEmbed(`You cannot request the <@&${roleConfig.roleId}> role.`)],
+        ephemeral: true,
+      });
+    }
+
     // Create the request
     const requestId = `ROLEREQ-${Date.now()}`;
     const requesterUsername = interaction.user.username;
