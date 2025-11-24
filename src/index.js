@@ -173,6 +173,7 @@ client.on('interactionCreate', async interaction => {
     const { handleCADCharacterCreateModal, handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
+    const { handleFDCharacterCreateModal, handleFDVehicleAddModal } = await import('./handlers/fireDepartmentHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
@@ -184,8 +185,12 @@ client.on('interactionCreate', async interaction => {
       await handleAnonPostModal(interaction);
     } else if (interaction.customId === 'cadcharacter_create_modal') {
       await handleCADCharacterCreateModal(interaction);
+    } else if (interaction.customId === 'fd_character_create_modal') {
+      await handleFDCharacterCreateModal(interaction);
     } else if (interaction.customId.startsWith('cadvehicle_add_modal_')) {
       await handleCADVehicleAddModal(interaction);
+    } else if (interaction.customId.startsWith('fd_vehicle_add_modal_')) {
+      await handleFDVehicleAddModal(interaction);
     } else if (interaction.customId.startsWith('cadgun_add_modal_')) {
       await handleCADGunAddModal(interaction);
     } else if (interaction.customId === 'ticketsupport_add_type_modal') {
@@ -245,9 +250,15 @@ client.on('interactionCreate', async interaction => {
       await handleLEODatabaseMenu(interaction);
     } else if (interaction.customId === 'civiliandatabase_menu') {
       await handleCivilianDatabaseMenu(interaction);
+    } else if (interaction.customId === 'firedepartmentdatabase_menu') {
+      const { handleFireDepartmentMenu } = await import('./handlers/fireDepartmentHandler.js');
+      await handleFireDepartmentMenu(interaction);
     } else if (interaction.customId === 'leodatabase_respond_call') {
       const { handleLEORespondCall } = await import('./handlers/leoDatabaseHandler.js');
       await handleLEORespondCall(interaction);
+    } else if (interaction.customId === 'fd_vehicle_character_select') {
+      const { handleFDVehicleCharacterSelect } = await import('./handlers/fireDepartmentHandler.js');
+      await handleFDVehicleCharacterSelect(interaction);
     } else {
       await handleSelectMenu(interaction);
     }

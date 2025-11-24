@@ -31,6 +31,8 @@ Members access roleplay commands through `/civiliandatabase` (civilians) and `/l
   - 🚨 Report 911 Emergency - Submit emergency with form modal
   - 🐦 Post to Twitter - Share public OOC message
   - 🤫 Post Anonymously - Post anonymous/black market message
+  - 👤 Create Character - Create a new civilian/character profile
+  - 🚗 Add Vehicle - Add a vehicle to an existing character
 
 **LEO Access:**
 - `/leodatabase` - Menu with options to:
@@ -40,6 +42,11 @@ Members access roleplay commands through `/civiliandatabase` (civilians) and `/l
   - 🔍 Search License Plate - Look up character profiles by vehicle plate
   - 👤 Search Character Name - Search for character profiles by name
   - 📋 View Wanted List - See all wanted suspects
+
+**Fire Department Access:**
+- `/firedepartmentdatabase` - Menu with options to:
+  - 👤 Create FD Character - Create a fire department character profile
+  - 🚗 Add Vehicle - Add a vehicle to an existing FD character
 
 **Emergency System Features:**
 - **911 Call Tracking:** All emergency calls are tracked in the database with unique IDs

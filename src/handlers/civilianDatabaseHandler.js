@@ -1,6 +1,7 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
+import CADCharacter from '../models/CADCharacter.js';
+import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 
 export async function handleCivilianDatabaseMenu(interaction) {
   const choice = interaction.values[0];
@@ -104,6 +105,84 @@ export async function handleCivilianDatabaseMenu(interaction) {
         );
 
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'create_character') {
+      const modal = new ModalBuilder()
+        .setCustomId('cadcharacter_create_modal')
+        .setTitle('Create Character')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_name')
+              .setLabel('Character Name')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., John Smith')
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_age')
+              .setLabel('Age')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., 28')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_gender')
+              .setLabel('Gender')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Male/Female')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_hair_color')
+              .setLabel('Hair Color')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Brown')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_eye_color')
+              .setLabel('Eye Color')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Blue')
+              .setRequired(false)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'add_vehicle') {
+      const characters = await CADCharacter.find({ guildId: interaction.guildId, userId: interaction.user.id });
+
+      if (characters.length === 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('You need to create a character first.')],
+          ephemeral: true,
+        });
+      }
+
+      const charMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('cadcharacter_select_for_vehicle')
+            .setPlaceholder('Select a character...')
+            .addOptions(characters.map(c => ({
+              label: c.characterName,
+              value: c._id.toString(),
+            })))
+        );
+
+      return interaction.reply({
+        content: 'Select a character to add a vehicle to:',
+        components: [charMenu],
+        ephemeral: true,
+      });
     }
   } catch (error) {
     console.error('Error in civilian database menu:', error);
