@@ -397,14 +397,8 @@ export async function handleTicketTypeButtonColor(interaction) {
       });
     }
 
-    // Store color in pending and save to config
+    // Store color in pending (don't save to global config - each type has its own color)
     pending.buttonColor = color;
-
-    const ticketConfig = await TicketConfig.findOne({ guildId: pending.guildId });
-    if (ticketConfig) {
-      ticketConfig.buttonColor = color;
-      await ticketConfig.save();
-    }
 
     // Now ask for roles
     const roleSelect = new RoleSelectMenuBuilder()
@@ -499,10 +493,11 @@ export async function handleRolesDoneButton(interaction) {
       });
     }
 
-    // Add the new ticket type
+    // Add the new ticket type with its own color
     ticketConfig.ticketTypes.push({
       id: Date.now().toString(),
       label: pending.label,
+      buttonColor: pending.buttonColor || 'Primary',
       allowedRoleIds: pending.selectedRoleIds || [],
       includeStaff: pending.includeStaff || false,
       createdAt: new Date(),
@@ -631,13 +626,12 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    // Create buttons for each selected ticket type with custom color
-    const buttonStyle = getButtonStyle(ticketConfig.buttonColor);
+    // Create buttons for each selected ticket type with their custom colors
     const buttons = typesToUse.map(type =>
       new ButtonBuilder()
         .setCustomId(`ticket_create_${type.id}`)
         .setLabel(type.label)
-        .setStyle(buttonStyle)
+        .setStyle(getButtonStyle(type.buttonColor || 'Primary'))
     );
 
     // Split buttons into rows (5 per row max)

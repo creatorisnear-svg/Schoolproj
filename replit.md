@@ -42,10 +42,11 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
   Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it. 
   
   **Setup Process:** After each setup step, the menu automatically returns to the main setup menu for seamless navigation. Staff can:
-  - Add multiple ticket types with custom names, colors, and role access
+  - Add multiple ticket types, each with custom names, individual button colors, and role access
   - Remove ticket types during setup (via the "Remove Ticket Type" option)
   - Before sending a panel, choose which ticket types to include (not all types need to be on every panel)
   - Send panels to different channels with different ticket type combinations
+  - Each ticket type button displays with its custom color on the panel
   - The channel selection automatically resets after sending, allowing immediate setup of another panel
 - **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket), ensuring per-server data isolation and persistence.
 
