@@ -397,7 +397,7 @@ export async function handleSelectApprover(interaction) {
             const dmEmbed = new EmbedBuilder()
               .setColor('#FFA500')
               .setTitle('Role Request Approval')
-              .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>`)
+              .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
               .addFields(
                 { name: 'Requester', value: requesterUsername, inline: true },
                 { name: 'Requested Role', value: roleConfig.roleName, inline: true }
@@ -436,7 +436,7 @@ export async function handleSelectApprover(interaction) {
         const dmEmbed = new EmbedBuilder()
           .setColor('#FFA500')
           .setTitle('Role Request Approval')
-          .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>`)
+          .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
           .addFields(
             { name: 'Requester', value: requesterUsername, inline: true },
             { name: 'Requested Role', value: roleConfig.roleName, inline: true }

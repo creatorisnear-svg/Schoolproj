@@ -41,8 +41,19 @@ export async function execute(interaction) {
           .addOptions(roleOptions)
       );
 
+    let rolesList = '**Available Roles:**\n\n';
+    roleRequestConfig.roles.forEach(r => {
+      rolesList += `• **${r.roleName}**\n`;
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor('#2E2E2E')
+      .setTitle('Request a Role')
+      .setDescription(rolesList)
+      .setFooter({ text: 'EverLink' });
+
     await interaction.reply({
-      content: 'Which role would you like to request?',
+      embeds: [embed],
       components: [menu],
       ephemeral: true,
     });
