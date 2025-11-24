@@ -276,7 +276,9 @@ client.on('guildMemberAdd', async member => {
 client.on('messageCreate', async message => {
   if (!message.guild || message.author.bot) return;
   const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
+  const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
   await handleAntiPromoting(message);
+  await handleStickyMessages(message);
 });
 
 app.get('/', (req, res) => {
