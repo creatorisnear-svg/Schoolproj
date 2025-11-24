@@ -75,9 +75,9 @@ async function registerCommandsAsync() {
 
     for (const [guildId, guild] of client.guilds.cache) {
       try {
-        // Add timeout to prevent hanging
+        // Add timeout to prevent hanging (120 seconds for large guilds)
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Registration timeout')), 20000)
+          setTimeout(() => reject(new Error('Registration timeout')), 120000)
         );
         
         await Promise.race([
@@ -91,9 +91,12 @@ async function registerCommandsAsync() {
         console.log(`✅ Commands registered for guild: ${guild.name}`);
         successCount++;
       } catch (guildError) {
-        console.warn(`⚠️  Failed to register commands for guild ${guild.name}:`, guildError.message);
+        console.warn(`⚠️  Failed to register commands for guild ${guild.name}: ${guildError.message}`);
         failureCount++;
       }
+      
+      // Add delay between guild registrations to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
     
     console.log(`✅ Registration complete: ${successCount} successful, ${failureCount} failed.`);
