@@ -14,7 +14,7 @@ export async function execute(interaction) {
   if (!isAdminUser && !isStaffUser) {
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('❌ Permission Denied')
+      .setTitle('Permission Denied')
       .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
       .setFooter({ text: 'EverLink' });
     
@@ -31,7 +31,7 @@ export async function execute(interaction) {
     if (!config || !config.logChannelId) {
       const embed = new EmbedBuilder()
         .setColor('#FF6600')
-        .setTitle('⚠️ Setup Required')
+        .setTitle('Setup Required')
         .setDescription('Before you can manage bot features, you need to set up the system first.\n\n**Here\'s what to do:**\n1. Have an admin run `/setlogchannel` to designate a channel for bot logs\n2. Have an admin run `/addstaff` to add bot staff members\n3. Return here and you\'ll be able to enable or disable features')
         .setFooter({ text: 'EverLink' });
       
@@ -44,7 +44,7 @@ export async function execute(interaction) {
     // Show initial choice: Enable or Disable?
     const embed = new EmbedBuilder()
       .setColor('#2E2E2E')
-      .setTitle('⚙️ Feature Management')
+      .setTitle('Feature Management')
       .setDescription('What would you like to do?')
       .setFooter({ text: 'EverLink' });
 
@@ -52,12 +52,16 @@ export async function execute(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('choice_enable')
-          .setLabel('✅ Enable Features')
+          .setLabel('Enable Features')
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId('choice_disable')
-          .setLabel('❌ Disable Features')
-          .setStyle(ButtonStyle.Danger)
+          .setLabel('Disable Features')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('choice_done')
+          .setLabel('Done')
+          .setStyle(ButtonStyle.Secondary)
       );
 
     return interaction.reply({
@@ -70,7 +74,7 @@ export async function execute(interaction) {
     console.error('Error in enablecommands:', error);
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('❌ Error')
+      .setTitle('Error')
       .setDescription('An error occurred.')
       .setFooter({ text: 'EverLink' });
     

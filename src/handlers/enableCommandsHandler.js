@@ -8,13 +8,21 @@ import TicketConfig from '../models/TicketConfig.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
-    const isEnable = interaction.customId === 'choice_enable';
+    const customId = interaction.customId;
+
+    if (customId === 'choice_done') {
+      // User clicked Done - close the menu
+      await interaction.deferUpdate();
+      return;
+    }
+
+    const isEnable = customId === 'choice_enable';
 
     if (isEnable) {
       // Show enable options
       const embed = new EmbedBuilder()
         .setColor('#00AA00')
-        .setTitle('✅ Enable Features')
+        .setTitle('Enable Features')
         .setDescription('Select which features you want to enable:')
         .setFooter({ text: 'EverLink' });
 
@@ -22,15 +30,15 @@ export async function handleEnableChoiceButton(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('enable_roleplay')
-            .setLabel('🎮 Roleplay Commands')
+            .setLabel('Roleplay Commands')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('enable_priority')
-            .setLabel('⭐ Priority Tracker')
+            .setLabel('Priority Tracker')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('enable_strike')
-            .setLabel('🚨 Strike System')
+            .setLabel('Strike System')
             .setStyle(ButtonStyle.Success)
         );
 
@@ -38,15 +46,15 @@ export async function handleEnableChoiceButton(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('enable_calendar')
-            .setLabel('📅 Roleplay Calendar')
+            .setLabel('Roleplay Calendar')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('enable_ticket')
-            .setLabel('🎫 Ticket Support')
+            .setLabel('Ticket Support')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('enable_antipromote')
-            .setLabel('⛔ Anti-Promoting')
+            .setLabel('Anti-Promoting')
             .setStyle(ButtonStyle.Success)
         );
 
@@ -59,7 +67,7 @@ export async function handleEnableChoiceButton(interaction) {
       // Show disable options
       const embed = new EmbedBuilder()
         .setColor('#FF0000')
-        .setTitle('❌ Disable Features')
+        .setTitle('Disable Features')
         .setDescription('Select which features you want to disable:')
         .setFooter({ text: 'EverLink' });
 
@@ -67,15 +75,15 @@ export async function handleEnableChoiceButton(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('disable_roleplay')
-            .setLabel('🎮 Roleplay Commands')
+            .setLabel('Roleplay Commands')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
             .setCustomId('disable_priority')
-            .setLabel('⭐ Priority Tracker')
+            .setLabel('Priority Tracker')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
             .setCustomId('disable_strike')
-            .setLabel('🚨 Strike System')
+            .setLabel('Strike System')
             .setStyle(ButtonStyle.Danger)
         );
 
@@ -83,15 +91,15 @@ export async function handleEnableChoiceButton(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('disable_calendar')
-            .setLabel('📅 Roleplay Calendar')
+            .setLabel('Roleplay Calendar')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
             .setCustomId('disable_ticket')
-            .setLabel('🎫 Ticket Support')
+            .setLabel('Ticket Support')
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
             .setCustomId('disable_antipromote')
-            .setLabel('⛔ Anti-Promoting')
+            .setLabel('Anti-Promoting')
             .setStyle(ButtonStyle.Danger)
         );
 
@@ -121,27 +129,27 @@ export async function handleEnableCommandButton(interaction) {
     let setupCommand = '';
 
     if (customId === 'enable_roleplay') {
-      featureName = '🎮 Roleplay Commands';
+      featureName = 'Roleplay Commands';
       model = RoleplayCommands;
       setupCommand = 'Run `/roleplaycommandsetup` to configure.';
     } else if (customId === 'enable_priority') {
-      featureName = '⭐ Priority Tracker';
+      featureName = 'Priority Tracker';
       model = Priority;
       setupCommand = 'Run `/prioritytrackersetup` to configure.';
     } else if (customId === 'enable_strike') {
-      featureName = '🚨 Strike System';
+      featureName = 'Strike System';
       model = StrikeConfig;
       setupCommand = 'Run `/strikesystemsetup` to configure.';
     } else if (customId === 'enable_calendar') {
-      featureName = '📅 Roleplay Calendar';
+      featureName = 'Roleplay Calendar';
       model = RoleplayCalendar;
       setupCommand = 'Run `/roleplaycalendersetup` to configure.';
     } else if (customId === 'enable_ticket') {
-      featureName = '🎫 Ticket Support';
+      featureName = 'Ticket Support';
       model = TicketConfig;
       setupCommand = 'Run `/ticketsupportsetup` to configure.';
     } else if (customId === 'enable_antipromote') {
-      featureName = '⛔ Anti-Promoting';
+      featureName = 'Anti-Promoting';
       let config = await Config.findOne({ guildId }) || new Config({ guildId });
       config.antiPromotingEnabled = true;
       await config.save();
@@ -183,22 +191,22 @@ export async function handleDisableCommandButton(interaction) {
     let field = 'enabled';
 
     if (customId === 'disable_roleplay') {
-      featureName = '🎮 Roleplay Commands';
+      featureName = 'Roleplay Commands';
       model = RoleplayCommands;
     } else if (customId === 'disable_priority') {
-      featureName = '⭐ Priority Tracker';
+      featureName = 'Priority Tracker';
       model = Priority;
     } else if (customId === 'disable_strike') {
-      featureName = '🚨 Strike System';
+      featureName = 'Strike System';
       model = StrikeConfig;
     } else if (customId === 'disable_calendar') {
-      featureName = '📅 Roleplay Calendar';
+      featureName = 'Roleplay Calendar';
       model = RoleplayCalendar;
     } else if (customId === 'disable_ticket') {
-      featureName = '🎫 Ticket Support';
+      featureName = 'Ticket Support';
       model = TicketConfig;
     } else if (customId === 'disable_antipromote') {
-      featureName = '⛔ Anti-Promoting';
+      featureName = 'Anti-Promoting';
       let config = await Config.findOne({ guildId });
       if (config) {
         config.antiPromotingEnabled = false;
@@ -237,7 +245,7 @@ export async function handleDisableCommandButton(interaction) {
 function createSuccessEmbed(title, description) {
   return new EmbedBuilder()
     .setColor('#00AA00')
-    .setTitle(`✅ ${title}`)
+    .setTitle(title)
     .setDescription(description)
     .setFooter({ text: 'EverLink' });
 }
@@ -245,7 +253,7 @@ function createSuccessEmbed(title, description) {
 function createErrorEmbed(description) {
   return new EmbedBuilder()
     .setColor('#FF0000')
-    .setTitle('❌ Error')
+    .setTitle('Error')
     .setDescription(description)
     .setFooter({ text: 'EverLink' });
 }
