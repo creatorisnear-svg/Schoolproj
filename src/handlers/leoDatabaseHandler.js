@@ -378,6 +378,29 @@ export async function handleLEOPrimaryResponse(interaction) {
     call.respondingLeoUsername = interaction.user.username;
     await call.save();
 
+    // Update the original 911 message if it exists
+    if (call.messageId && call.channelId) {
+      try {
+        const channel = await interaction.guild.channels.fetch(call.channelId);
+        const message = await channel.messages.fetch(call.messageId);
+        const updatedEmbed = message.embeds[0].toJSON();
+        
+        let description = updatedEmbed.description;
+        const respondingLine = `\n\n**🚨 PRIMARY:** ${interaction.user.username}`;
+        if (!description.includes('PRIMARY')) {
+          updatedEmbed.description += respondingLine;
+        } else {
+          updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY:.*/, `**🚨 PRIMARY:** ${interaction.user.username}`);
+        }
+
+        await message.edit({
+          embeds: [updatedEmbed],
+        });
+      } catch (error) {
+        console.error('Error updating 911 message:', error);
+      }
+    }
+
     return interaction.reply({
       embeds: [successEmbed('Response Accepted', `You are now the primary responder for **${call.issue}** at **${call.location}**`)],
       ephemeral: true,
@@ -413,6 +436,44 @@ export async function handleLEOAttachResponse(interaction) {
 
     call.attachedLeoIds.push(interaction.user.id);
     await call.save();
+
+    // Update the original 911 message if it exists
+    if (call.messageId && call.channelId) {
+      try {
+        const channel = await interaction.guild.channels.fetch(call.channelId);
+        const message = await channel.messages.fetch(call.messageId);
+        const updatedEmbed = message.embeds[0].toJSON();
+        
+        // Build responder list
+        let responderText = '';
+        if (call.respondingLeoId) {
+          responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername}`;
+        }
+        if (call.attachedLeoIds.length > 0) {
+          if (responderText) responderText += '\n';
+          responderText += `**📎 ATTACHED:** ${call.attachedLeoIds.map(id => {
+            const member = interaction.guild.members.cache.get(id);
+            return member?.user.username || `<@${id}>`;
+          }).join(', ')}`;
+        }
+
+        // Update description
+        let description = updatedEmbed.description;
+        const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+        if (responderMatch) {
+          description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
+        } else {
+          description += '\n\n' + responderText;
+        }
+        updatedEmbed.description = description;
+
+        await message.edit({
+          embeds: [updatedEmbed],
+        });
+      } catch (error) {
+        console.error('Error updating 911 message:', error);
+      }
+    }
 
     return interaction.reply({
       embeds: [successEmbed('Attached to Call', `You have attached to **${call.issue}** at **${call.location}**`)],

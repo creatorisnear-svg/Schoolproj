@@ -245,6 +245,7 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isButton()) {
     const { handle911RespondButton, handle911AttachButton, handle911DismissButton } = await import('./handlers/emergencyButtonHandler.js');
+    const { handleLEOPrimaryResponse, handleLEOAttachResponse } = await import('./handlers/leoDatabaseHandler.js');
 
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
@@ -252,6 +253,10 @@ client.on('interactionCreate', async interaction => {
       await handle911AttachButton(interaction);
     } else if (interaction.customId.startsWith('911_dismiss_')) {
       await handle911DismissButton(interaction);
+    } else if (interaction.customId.startsWith('leo_respond_primary_')) {
+      await handleLEOPrimaryResponse(interaction);
+    } else if (interaction.customId.startsWith('leo_respond_attach_')) {
+      await handleLEOAttachResponse(interaction);
     }
   }
 

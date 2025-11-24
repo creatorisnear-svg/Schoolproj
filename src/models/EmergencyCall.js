@@ -17,6 +17,8 @@ const emergencyCallSchema = new Schema({
   attachedLeoIds: [String],
   closedAt: Date,
   closedBy: String,
+  messageId: String,
+  channelId: String,
 });
 
 export default model('EmergencyCall', emergencyCallSchema);

@@ -57,6 +57,12 @@ All civilian roleplay and CAD interactions are handled through a single menu wit
 - **Primary Response:** First LEO to claim primary is marked as main responder
 - **Unit Attachment:** Other LEOs can attach as supporting units
 - **Role Pinging:** Configured LEO and Fire Department roles automatically pinged on 911 reports
+- **Interactive 911 Messages:** 911 reports include 3 buttons in the 911 channel:
+  - 🚨 **Respond** - LEO claims as primary responder (updates message)
+  - 📎 **Attach** - LEO joins as supporting unit (updates message)
+  - ❌ **Dismiss** - Close call if help no longer needed (removes buttons)
+- **LEO Database Integration:** When LEO responds/attaches via `/leodatabase`, the original 911 message in the 911 channel updates automatically
+- **Auto-Delete:** All 911 calls auto-delete after 10 minutes
 - **Setup Flow:** `/roleplaycommandsetup` → Select "🚨 911 & CAD" → Configure 911 channel and roles
 
 **CAD System (Computer Aided Dispatch):**
@@ -125,26 +131,29 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025)
-- **Fixed:** Emergency setup flow - separated emergency handlers from regular CAD handlers
-- **Fixed:** 911 channel setup - emergency 911 setup uses unique `roleplaycommands_emergency_911_channel` customId
-- **Fixed:** All emergency role handlers properly route back to emergency menu using `showEmergencySetupMenu()`
-- **Fixed:** Import statements in index.js - added all emergency handlers to channel/role select menu routing
-- **Fixed:** 911 calls not appearing in LEO database - added handle911ReportModal routing in index.js
-- **Fixed:** LEO roles not being pinged - 911 report modal now properly routes and sends role mentions
-- **Fixed:** License plate search not showing personal info - added handleCADCharacterCreateModal routing, characters now created with full personal data
-- **Fixed:** Twitter and Anon post modals not working - added handleTwitterPostModal and handleAnonPostModal routing
-- **Fixed:** Duplicate 911 calls being created - removed legacy handle911Report from modalHandler.js that was conflicting with new handler
-- **Fixed:** Duplicate 911 calls being created (second issue) - removed old handleRoleplayCommandsSelect duplicate code
-- **Fixed:** Duplicate 911 messages in channel - added anti-duplicate protection with 2-second cooldown per user per guild
-- **Verified:** Complete 911/CAD workflow working end-to-end:
-  - Civilians report 911 with single call created
-  - Emergency calls saved to database
-  - LEO/Fire Department roles pinged once automatically
-  - LEO database shows active 911 calls with response options
-  - License plate search shows full personal information
-  - Twitter and anon messages working properly
-  - No duplicate 911 messages being sent
+## Recent Changes (Session: November 24, 2025 - Continued)
+- **Implemented:** Interactive button system for 911 messages with 3 response options:
+  - 🚨 **Respond** - LEO claims as primary responder (updates message in real-time)
+  - 📎 **Attach** - LEO joins as supporting unit (shows all attached units)
+  - ❌ **Dismiss** - Close call and remove buttons
+- **Implemented:** Cross-channel message synchronization
+  - When LEO responds via `/leodatabase`, original 911 message in 911 channel updates automatically
+  - When LEO attaches via `/leodatabase`, all responders and attached units display on original message
+  - Message shows: `**🚨 PRIMARY:** Zoktu` and `**📎 ATTACHED:** Mike, John`
+- **Implemented:** Auto-delete system for 911 calls
+  - All 911 calls automatically delete after 10 minutes
+  - System checks every 60 seconds
+  - Applies to all calls regardless of response status
+- **Added:** EmergencyCall model fields for message tracking
+  - `messageId`: Stores Discord message ID of 911 announcement
+  - `channelId`: Stores 911 channel ID for message updates
+- **Created:** emergencyButtonHandler.js for managing 911 channel buttons
+  - Handles Respond, Attach, and Dismiss button interactions
+  - Updates database and original 911 message in real-time
+- **Updated:** LEO database handlers to sync with 911 messages
+  - handleLEOPrimaryResponse: Updates 911 message when responding
+  - handleLEOAttachResponse: Updates 911 message with all attached units
+  - Proper error handling if message/channel not found
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API
