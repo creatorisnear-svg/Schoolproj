@@ -325,6 +325,29 @@ export async function handleFDRespondCall(interaction) {
       });
     }
 
+    // Build full call details embed
+    const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'None';
+    const attached = call.attachedLeoIds.length > 0 
+      ? call.attachedLeoIds.map(id => `<@${id}>`).join(', ')
+      : 'None';
+
+    let description = `**Issue:** ${call.issue}\n`;
+    description += `**Location:** ${call.location}\n`;
+    description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n\n`;
+    description += `**Status:**\n`;
+    description += `• Primary Response: ${responding}\n`;
+    description += `• Attached Units: ${attached}\n`;
+    if (call.suspectsDescription) description += `\n**Suspects & Vehicles:** ${call.suspectsDescription}\n`;
+    if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
+    if (call.contact) description += `**Contact:** ${call.contact}\n`;
+
+    const callEmbed = new EmbedBuilder()
+      .setColor('#ff6600')
+      .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
+      .setDescription(description)
+      .setFooter({ text: `EverLink | ID: ${call.callId}` })
+      .setTimestamp(call.timestamp);
+
     // Show options to respond or attach
     const respondBtn = new ButtonBuilder()
       .setCustomId(`fd_respond_primary_${callId}`)
@@ -336,12 +359,17 @@ export async function handleFDRespondCall(interaction) {
       .setLabel('Attach to Call')
       .setStyle(ButtonStyle.Secondary);
 
-    const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
+    const backBtn = new ButtonBuilder()
+      .setCustomId('back_to_fd_menu')
+      .setLabel('← Back')
+      .setStyle(ButtonStyle.Secondary);
 
-    return interaction.reply({
-      content: `Choose how you want to respond to **${call.issue}** at **${call.location}**:`,
-      components: [row],
-      ephemeral: true,
+    const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
+    const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+    return interaction.update({
+      embeds: [callEmbed],
+      components: [row, backRow],
     });
   } catch (error) {
     console.error('Error responding to call:', error);

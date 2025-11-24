@@ -539,6 +539,29 @@ export async function handleLEORespondCall(interaction) {
       });
     }
 
+    // Build full call details embed
+    const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'None';
+    const attached = call.attachedLeoIds.length > 0 
+      ? call.attachedLeoIds.map(id => `<@${id}>`).join(', ')
+      : 'None';
+
+    let description = `**Issue:** ${call.issue}\n`;
+    description += `**Location:** ${call.location}\n`;
+    description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n\n`;
+    description += `**Status:**\n`;
+    description += `• Primary Response: ${responding}\n`;
+    description += `• Attached Units: ${attached}\n`;
+    if (call.suspectsDescription) description += `\n**Suspects & Vehicles:** ${call.suspectsDescription}\n`;
+    if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
+    if (call.contact) description += `**Contact:** ${call.contact}\n`;
+
+    const callEmbed = new EmbedBuilder()
+      .setColor('#ff6600')
+      .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
+      .setDescription(description)
+      .setFooter({ text: `EverLink | ID: ${call.callId}` })
+      .setTimestamp(call.timestamp);
+
     // Show options to respond or attach
     const respondBtn = new ButtonBuilder()
       .setCustomId(`leo_respond_primary_${callId}`)
@@ -559,7 +582,7 @@ export async function handleLEORespondCall(interaction) {
     const backRow = new ActionRowBuilder().addComponents(backBtn);
 
     return interaction.update({
-      content: `Choose how you want to respond to **${call.issue}** at **${call.location}**:`,
+      embeds: [callEmbed],
       components: [row, backRow],
     });
   } catch (error) {
