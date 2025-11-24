@@ -82,6 +82,7 @@ async function registerCommandsAsync() {
           { body: [] }, // Empty array clears all commands
         );
         clearSuccessCount++;
+        console.log(`  ✓ Cleared all commands from: ${guild.name}`);
       } catch (guildError) {
         console.error(`⚠️  Failed to clear commands for guild ${guild.name}:`, guildError.message);
         clearFailureCount++;
@@ -94,6 +95,10 @@ async function registerCommandsAsync() {
     if (clearFailureCount > 0) {
       console.log(`⚠️  Failed to clear commands from ${clearFailureCount} guild(s)`);
     }
+
+    // Wait 2 seconds to let Discord process the clear before registering new commands
+    console.log('⏳ Waiting for Discord to process cleared commands...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Step 2: Register new commands
     console.log(`📤 Registering ${commands.length} commands to ${client.guilds.cache.size} guild(s)...`);
