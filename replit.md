@@ -11,9 +11,9 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 - General members restricted to roleplay/verification commands only
 
 ## Permission Structure
-**Admins** - Can use ALL 32 commands (includes all staff permissions)
+**Admins** - Can use ALL 30 commands (includes all staff permissions)
 - **Admin-Only (2 commands):** `/addstaff`, `/removestaff`
-**Staff** - Added via `/addstaff`, can use 26 administrative commands (all except addstaff & removestaff)
+**Staff** - Added via `/addstaff`, can use 28 administrative commands (all except addstaff & removestaff)
 **General Members** - Can only use roleplay/verification commands (7 commands)
 
 ## System Architecture
