@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('29verifysystem')
+  .setName('verifysystem')
   .setDescription('Enable or disable the verification system')
   .addBooleanOption(option =>
     option

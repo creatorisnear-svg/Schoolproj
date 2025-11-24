@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('d_prioritytrackersetup')
+  .setName('prioritytrackersetup')
   .setDescription('Set up the priority tracker system (Admin only)');
 
 export async function execute(interaction) {

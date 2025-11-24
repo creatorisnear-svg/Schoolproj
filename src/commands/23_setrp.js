@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('23setrp')
+  .setName('setrp')
   .setDescription('Add an RP event to the calendar (Staff only)')
   .addStringOption(option =>
     option

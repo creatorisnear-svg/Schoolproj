@@ -5,7 +5,7 @@ import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('j_welcomesystemsetup')
+  .setName('welcomesystemsetup')
   .setDescription('Configure the welcome system for new members (Staff only)');
 
 export async function execute(interaction) {

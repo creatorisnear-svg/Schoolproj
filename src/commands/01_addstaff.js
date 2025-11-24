@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('a_addstaff')
+  .setName('addstaff')
   .setDescription('Add staff or staff roles to configure the bot (Admin only) - Required to set up log channel')
   .addUserOption(option =>
     option.setName('user')

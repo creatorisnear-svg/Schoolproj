@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('17prioritycooldown')
+  .setName('prioritycooldown')
   .setDescription('Set priority cooldown duration in minutes (Staff only)')
   .addIntegerOption(option =>
     option

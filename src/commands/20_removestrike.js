@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('20removestrike')
+  .setName('removestrike')
   .setDescription('Remove strikes from a member (Staff only)')
   .addUserOption(option =>
     option

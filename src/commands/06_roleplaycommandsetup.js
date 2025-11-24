@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('f_roleplaycommandsetup')
+  .setName('roleplaycommandsetup')
   .setDescription('Setup the roleplay commands system (Staff only)');
 
 export async function execute(interaction) {

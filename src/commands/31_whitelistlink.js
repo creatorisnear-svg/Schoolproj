@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('31whitelistlink')
+  .setName('whitelistlink')
   .setDescription('Add an invite link to the whitelist (Staff only)')
   .addStringOption(option =>
     option

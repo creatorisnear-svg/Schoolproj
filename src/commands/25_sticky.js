@@ -4,7 +4,7 @@ import Staff from '../models/Staff.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('25sticky')
+  .setName('sticky')
   .setDescription('Create a sticky message that auto-reposts after 3 messages')
   .addStringOption(option =>
     option

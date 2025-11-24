@@ -4,7 +4,7 @@ import CADConfig from '../models/CADConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('15leodatabase')
+  .setName('leodatabase')
   .setDescription('LEO Database - Search characters, vehicles, and more');
 
 export async function execute(interaction) {

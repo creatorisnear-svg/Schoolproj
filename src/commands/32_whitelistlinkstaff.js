@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('32whitelistlinkstaff')
+  .setName('whitelistlinkstaff')
   .setDescription('Toggle whether bot staff can bypass anti-promoting and send invite links (Admin only)')
   .addBooleanOption(option =>
     option

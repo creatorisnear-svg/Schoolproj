@@ -5,7 +5,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const data = new SlashCommandBuilder()
-  .setName('21rolerequest')
+  .setName('rolerequest')
   .setDescription('Request a role from the server');
 
 export async function execute(interaction) {

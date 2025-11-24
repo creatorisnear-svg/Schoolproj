@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('26strike')
+  .setName('strike')
   .setDescription('Strike a member (Staff only)')
   .addUserOption(option =>
     option

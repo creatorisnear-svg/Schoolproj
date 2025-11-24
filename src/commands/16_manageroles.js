@@ -3,7 +3,7 @@ import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('16manageroles')
+  .setName('manageroles')
   .setDescription('Manage and remove roles you approve (Approvers only)');
 
 export async function execute(interaction) {

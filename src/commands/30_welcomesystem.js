@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('30welcomesystem')
+  .setName('welcomesystem')
   .setDescription('Enable or disable the welcome system (Admin only)')
   .addBooleanOption(option =>
     option

@@ -3,7 +3,7 @@ import RoleplayCommands from '../models/RoleplayCommands.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('l_civiliandatabase')
+  .setName('civiliandatabase')
   .setDescription('Civilian Database - Report emergencies, post messages, and more');
 
 export async function execute(interaction) {

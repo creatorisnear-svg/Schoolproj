@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('b_setlogchannel')
+  .setName('setlogchannel')
   .setDescription('Set the log channel - Must add staff first using /addstaff (Staff only)');
 
 export async function execute(interaction) {

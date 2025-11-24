@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('27unsetrp')
+  .setName('unsetrp')
   .setDescription('Remove an RP event from the calendar (Staff only)');
 
 export async function execute(interaction) {

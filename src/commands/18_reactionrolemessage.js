@@ -3,7 +3,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('18reactionrolemessage')
+  .setName('reactionrolemessage')
   .setDescription('Create a reaction role message (Staff only)');
 
 export async function execute(interaction) {

@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('13deactivatepriority')
+  .setName('deactivatepriority')
   .setDescription('Deactivate priority and/or cooldown (Staff only)')
   .addStringOption(option =>
     option

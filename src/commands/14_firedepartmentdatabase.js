@@ -4,7 +4,7 @@ import CADConfig from '../models/CADConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('14firedepartmentdatabase')
+  .setName('firedepartmentdatabase')
   .setDescription('Fire Department Database - Create and manage FD characters');
 
 export async function execute(interaction) {

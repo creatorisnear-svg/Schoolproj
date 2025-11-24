@@ -3,7 +3,7 @@ import Verification from '../models/Verification.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('28verify')
+  .setName('verify')
   .setDescription('Verify yourself to access member channels');
 
 export async function execute(interaction) {

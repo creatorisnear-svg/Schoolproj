@@ -4,7 +4,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('19removestaff')
+  .setName('removestaff')
   .setDescription('Remove a user or role from the bot staff team')
   .addUserOption(option =>
     option.setName('user')

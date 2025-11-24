@@ -4,7 +4,7 @@ import { infoEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('24stafflist')
+  .setName('stafflist')
   .setDescription('View all current bot staff members');
 
 export async function execute(interaction) {
