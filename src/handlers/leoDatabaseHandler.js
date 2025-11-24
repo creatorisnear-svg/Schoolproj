@@ -23,7 +23,7 @@ export async function handleLEODatabaseMenu(interaction) {
 
     // Verify LEO role
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -354,7 +354,7 @@ export async function handleLEOSearchPlateModal(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -451,7 +451,7 @@ export async function handleLEORespondCall(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -667,7 +667,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -801,7 +801,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -871,7 +871,7 @@ export async function handleLEOIssueTicketModal(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({
@@ -945,7 +945,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole) {
       return interaction.reply({

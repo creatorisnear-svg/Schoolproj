@@ -20,7 +20,7 @@ export async function handleFireDepartmentMenu(interaction) {
 
     // Verify FD role
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasFDRole = interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
+    const hasFDRole = cadConfig && cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
 
     if (!hasFDRole) {
       return interaction.reply({
@@ -262,7 +262,7 @@ export async function handleFDRespondCall(interaction) {
     }
 
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    const hasFDRole = interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
+    const hasFDRole = cadConfig && cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
 
     if (!hasFDRole) {
       return interaction.reply({

@@ -29,7 +29,7 @@ export async function execute(interaction) {
       });
     }
 
-    const hasFDRole = interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
+    const hasFDRole = cadConfig && cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.fireDepartmentRoleIds.includes(role.id));
 
     if (!hasFDRole) {
       return interaction.reply({
