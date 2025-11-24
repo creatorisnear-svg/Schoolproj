@@ -26,6 +26,28 @@ async function showSetupMenu(interaction) {
   };
 }
 
+// Helper to show CAD submenu
+async function showCADSetupMenu(interaction) {
+  const cadMenu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_setup_menu')
+        .setPlaceholder('Choose CAD setup option...')
+        .addOptions(
+          { label: 'Set LEO Roles', value: 'set_leo_roles' },
+          { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
+          { label: 'Set Staff Roles', value: 'set_staff_roles' },
+          { label: '✅ Done - Back to Main Menu', value: 'cad_done' }
+        )
+    );
+
+  return {
+    content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
+    components: [cadMenu],
+    ephemeral: true,
+  };
+}
+
 export async function handleRoleplayCommandsSelect(interaction) {
   const choice = interaction.values[0];
 
@@ -636,9 +658,10 @@ export async function handleRoleplayCommandsCADLeoRoles(interaction) {
     cadConfig.leoRoleIds = selectedRoles;
     await cadConfig.save();
 
-    return interaction.reply({
+    const menuData = await showCADSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
       embeds: [successEmbed('LEO Roles Set', `${selectedRoles.length} LEO role(s) configured.`)],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting LEO roles:', error);
@@ -665,9 +688,10 @@ export async function handleRoleplayCommandsCADFDRoles(interaction) {
     cadConfig.fireDepartmentRoleIds = selectedRoles;
     await cadConfig.save();
 
-    return interaction.reply({
+    const menuData = await showCADSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
       embeds: [successEmbed('Fire Department Roles Set', `${selectedRoles.length} FD role(s) configured.`)],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting FD roles:', error);
@@ -694,9 +718,10 @@ export async function handleRoleplayCommandsCADStaffRoles(interaction) {
     cadConfig.staffRoleIds = selectedRoles;
     await cadConfig.save();
 
-    return interaction.reply({
+    const menuData = await showCADSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
       embeds: [successEmbed('Staff Roles Set', `${selectedRoles.length} staff role(s) configured.`)],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error setting staff roles:', error);
