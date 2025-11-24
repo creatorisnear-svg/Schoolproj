@@ -747,7 +747,21 @@ export async function handleTicketCreationModal(interaction) {
       description,
     });
 
-    // Send welcome message in ticket channel
+    // Send welcome message in ticket channel with action buttons
+    const closeButton = new ButtonBuilder()
+      .setCustomId(`ticket_close_${ticketId}`)
+      .setLabel('Close Ticket')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('✅');
+
+    const deleteButton = new ButtonBuilder()
+      .setCustomId(`ticket_delete_${ticketId}`)
+      .setLabel('Delete Ticket')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji('🗑️');
+
+    const buttonRow = new ActionRowBuilder().addComponents(closeButton, deleteButton);
+
     const welcomeEmbed = new EmbedBuilder()
       .setColor('#0099ff')
       .setTitle(`${ticketType.label} Ticket`)
@@ -762,6 +776,7 @@ export async function handleTicketCreationModal(interaction) {
     await channel.send({
       content: `${user}`,
       embeds: [welcomeEmbed],
+      components: [buttonRow],
     });
 
     pendingTicketCreations.delete(tempId);
@@ -776,6 +791,118 @@ export async function handleTicketCreationModal(interaction) {
     await interaction.reply({
       content: '❌ An error occurred while creating the ticket.',
       flags: 64,
+    });
+  }
+}
+
+export async function handleTicketCloseButton(interaction) {
+  const ticketId = interaction.customId.replace('ticket_close_', '');
+
+  try {
+    const ticket = await Ticket.findOne({ ticketId, guildId: interaction.guildId });
+
+    if (!ticket) {
+      return interaction.reply({
+        content: '❌ Ticket not found.',
+        ephemeral: true,
+      });
+    }
+
+    if (ticket.status === 'closed') {
+      return interaction.reply({
+        content: '❌ This ticket is already closed.',
+        ephemeral: true,
+      });
+    }
+
+    // Update ticket status
+    ticket.status = 'closed';
+    ticket.closedAt = new Date();
+    ticket.closedBy = interaction.user.id;
+    await ticket.save();
+
+    // Update embed to show ticket is closed
+    const closedEmbed = new EmbedBuilder()
+      .setColor('#ff6b6b')
+      .setTitle(`${ticket.ticketType} Ticket - CLOSED`)
+      .addFields(
+        { name: 'Ticket ID', value: ticketId, inline: true },
+        { name: 'Type', value: ticket.ticketType, inline: true },
+        { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true },
+        { name: 'Description', value: ticket.description, inline: false }
+      )
+      .setFooter({ text: 'EverLink' })
+      .setTimestamp();
+
+    // Disable buttons after closing
+    const disabledCloseButton = new ButtonBuilder()
+      .setCustomId(`ticket_close_${ticketId}`)
+      .setLabel('Close Ticket')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('✅')
+      .setDisabled(true);
+
+    const disabledDeleteButton = new ButtonBuilder()
+      .setCustomId(`ticket_delete_${ticketId}`)
+      .setLabel('Delete Ticket')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji('🗑️')
+      .setDisabled(true);
+
+    const disabledButtonRow = new ActionRowBuilder().addComponents(disabledCloseButton, disabledDeleteButton);
+
+    // Update the welcome message
+    await interaction.message.edit({
+      embeds: [closedEmbed],
+      components: [disabledButtonRow],
+    });
+
+    await interaction.reply({
+      embeds: [successEmbed('Ticket Closed', `Ticket **${ticketId}** has been closed.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error closing ticket:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred while closing the ticket.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleTicketDeleteButton(interaction) {
+  const ticketId = interaction.customId.replace('ticket_delete_', '');
+
+  try {
+    const ticket = await Ticket.findOne({ ticketId, guildId: interaction.guildId });
+
+    if (!ticket) {
+      return interaction.reply({
+        content: '❌ Ticket not found.',
+        ephemeral: true,
+      });
+    }
+
+    const channelId = ticket.channelId;
+
+    // Delete ticket from database
+    await Ticket.deleteOne({ ticketId, guildId: interaction.guildId });
+
+    // Delete the channel
+    const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+    if (channel) {
+      await channel.delete();
+    }
+
+    await interaction.reply({
+      embeds: [successEmbed('Ticket Deleted', `Ticket **${ticketId}** and its channel have been permanently deleted.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error deleting ticket:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred while deleting the ticket.')],
+      ephemeral: true,
     });
   }
 }

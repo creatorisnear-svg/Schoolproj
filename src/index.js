@@ -242,6 +242,16 @@ client.on('interactionCreate', async interaction => {
       const { handleRolesDoneButton } = await import('./handlers/ticketHandler.js');
       await handleRolesDoneButton(interaction);
     }
+
+    if (interaction.customId.startsWith('ticket_close_')) {
+      const { handleTicketCloseButton } = await import('./handlers/ticketHandler.js');
+      await handleTicketCloseButton(interaction);
+    }
+
+    if (interaction.customId.startsWith('ticket_delete_')) {
+      const { handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
+      await handleTicketDeleteButton(interaction);
+    }
   }
 });
 
