@@ -30,6 +30,11 @@ Staff configures through dropdown menu with options:
   - 🔇 Anonymous Message
   - 📊 CAD Dispatch
 
+**Disable Roleplay Commands:**
+- Staff can run `/disableroleplaycommands` to disable the entire roleplay commands system
+- Once disabled, members can no longer access `/roleplaycommands`
+- Can be re-enabled with `/roleplaycommandsenable`
+
 **CAD System (Computer Aided Dispatch):**
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
 
@@ -78,7 +83,12 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
   - **✅ Close Ticket** - Changes the status to closed, locks the channel (no one can type), and replaces the close button with a delete button
   - **🗑️ Delete Ticket** - Permanently deletes the ticket record and the channel
   
-  Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it. 
+  Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it.
+
+  **Disable Ticket Support:**
+  - Staff can run `/disableticketsuport` to disable the ticket support system
+  - Once disabled, members can no longer create tickets
+  - Can be re-enabled with `/ticketsupportenable`
   
   **Setup Process:** After each setup step, the menu automatically returns to the main setup menu for seamless navigation. Staff can:
   - Add multiple ticket types, each with custom names, individual button colors, and role access
