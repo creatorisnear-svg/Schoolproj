@@ -1,10 +1,22 @@
 import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import RoleplayCommands from '../models/RoleplayCommands.js';
+import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
   .setName('911')
   .setDescription('Submit a 911 report for LEO/EMS');
 
 export async function execute(interaction) {
+  // Check if 911 is enabled
+  const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+
+  if (!roleplayConfig || !roleplayConfig.use911 || !roleplayConfig.use911Channel) {
+    return interaction.reply({
+      embeds: [errorEmbed('911 emergency reporting is not enabled.')],
+      ephemeral: true,
+    });
+  }
+
   const modal = new ModalBuilder()
     .setCustomId('911report')
     .setTitle('911 Report Form');

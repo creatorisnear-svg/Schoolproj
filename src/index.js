@@ -169,9 +169,16 @@ client.on('interactionCreate', async interaction => {
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
+    const { handleTwitterPostModal, handleAnonPostModal, handle911ReportModal } = await import('./handlers/roleplayCommandsHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
+    } else if (interaction.customId === '911report') {
+      await handle911ReportModal(interaction);
+    } else if (interaction.customId === 'twitter_post_modal') {
+      await handleTwitterPostModal(interaction);
+    } else if (interaction.customId === 'anon_post_modal') {
+      await handleAnonPostModal(interaction);
     } else if (interaction.customId === 'ticketsupport_add_type_modal') {
       await handleTicketSetupModal(interaction);
     } else if (interaction.customId === 'ticketsupport_panel_title_modal') {
@@ -191,9 +198,12 @@ client.on('interactionCreate', async interaction => {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
+    const { handleRoleplayCommandsSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
+    } else if (interaction.customId === 'roleplaycommands_setup_menu') {
+      await handleRoleplayCommandsSetupMenu(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {
       await handleTicketSetupMenu(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_button_color_')) {
@@ -212,11 +222,18 @@ client.on('interactionCreate', async interaction => {
     const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
     const { handleRoleplayCalendarChannelSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketChannelSelect, handleTicketRoleSelect } = await import('./handlers/ticketHandler.js');
+    const { handleRoleplayCommand911Channel, handleRoleplayCommandTwitterChannel, handleRoleplayCommandAnonChannel } = await import('./handlers/roleplayCommandsHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_channel')) {
       await handlePriorityTrackerChannelSelect(interaction);
     } else if (interaction.customId.includes('roleplaycalendarsetup_channel')) {
       await handleRoleplayCalendarChannelSelect(interaction);
+    } else if (interaction.customId === 'roleplaycommands_911_channel') {
+      await handleRoleplayCommand911Channel(interaction);
+    } else if (interaction.customId === 'roleplaycommands_twitter_channel') {
+      await handleRoleplayCommandTwitterChannel(interaction);
+    } else if (interaction.customId === 'roleplaycommands_anon_channel') {
+      await handleRoleplayCommandAnonChannel(interaction);
     } else if (interaction.customId === 'ticketsupport_panel_channel') {
       await handleTicketChannelSelect(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_roles_')) {

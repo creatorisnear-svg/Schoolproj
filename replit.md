@@ -11,6 +11,12 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 ## System Architecture
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
+**Roleplay Commands System:**
+- **911 Reporting (Optional):** Configure a 911 channel for emergency dispatch reporting. Members use `/911` to report emergencies in the RP world. Sends embeds to the designated channel.
+- **Twitter (Optional):** Configure a Twitter channel for public OOC posts. Members use `/twitter` to post messages visible to all. Shows username and embeds posts to the designated channel.
+- **Anon/Black Market (Optional):** Configure an anonymous/black market channel for IC anonymous messages. Members use `/anon` to post anonymously without revealing identity. Hides user info and embeds posts to the designated channel.
+- **CAD System:** GTA5 RP Computer Aided Dispatch system. Members can use `/cad` to view dispatch information and active units. Base implementation ready for expansion.
+
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded user interface.
 - Embeds consistently feature "EverLink" branding in the footer.
@@ -48,7 +54,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
   - Send panels to different channels with different ticket type combinations
   - Each ticket type button displays with its custom color on the panel
   - The channel selection automatically resets after sending, allowing immediate setup of another panel
-- **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket), ensuring per-server data isolation and persistence.
+- **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket, RoleplayCommands), ensuring per-server data isolation and persistence.
 
 **Project Structure:**
 The codebase is organized into `src/` containing:
