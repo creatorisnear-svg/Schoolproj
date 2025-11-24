@@ -68,6 +68,34 @@ async function registerCommandsAsync() {
 
   try {
     console.log('🔄 Started refreshing application (/) commands...');
+    
+    // Step 1: Clear all old commands first (ensures no stale commands remain)
+    console.log('🗑️  Clearing old commands from all guilds...');
+    let clearSuccessCount = 0;
+    let clearFailureCount = 0;
+
+    // Clear guild-specific commands
+    for (const [guildId, guild] of client.guilds.cache) {
+      try {
+        await rest.put(
+          Routes.applicationGuildCommands(client.user.id, guildId),
+          { body: [] }, // Empty array clears all commands
+        );
+        clearSuccessCount++;
+      } catch (guildError) {
+        console.error(`⚠️  Failed to clear commands for guild ${guild.name}:`, guildError.message);
+        clearFailureCount++;
+      }
+    }
+
+    if (clearSuccessCount > 0) {
+      console.log(`✅ Cleared old commands from ${clearSuccessCount} guild(s)`);
+    }
+    if (clearFailureCount > 0) {
+      console.log(`⚠️  Failed to clear commands from ${clearFailureCount} guild(s)`);
+    }
+
+    // Step 2: Register new commands
     console.log(`📤 Registering ${commands.length} commands to ${client.guilds.cache.size} guild(s)...`);
 
     let successCount = 0;
