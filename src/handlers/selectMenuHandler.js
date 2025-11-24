@@ -1204,7 +1204,7 @@ async function handleReactionRoleSelect(interaction) {
     if (!reactionRole) {
       pendingEmojiRoles.delete(tempKey);
       return interaction.reply({
-        embeds: [errorEmbed('Message not found.')],
+        embeds: [errorEmbed('The reaction role message could not be found. The message may have been deleted. Please create a new message with /reactionrolemessage.')],
         flags: 64,
       });
     }
