@@ -1,0 +1,241 @@
+import { SlashCommandBuilder } from 'discord.js';
+import RoleplayCalendar from '../models/RoleplayCalendar.js';
+import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import { checkStaffPermission } from '../utils/permissions.js';
+
+export const data = new SlashCommandBuilder()
+  .setName('23setrp')
+  .setDescription('Add an RP event to the calendar (Staff only)')
+  .addStringOption(option =>
+    option
+      .setName('day')
+      .setDescription('Day of the week')
+      .addChoices(
+        { name: 'Monday', value: 'Monday' },
+        { name: 'Tuesday', value: 'Tuesday' },
+        { name: 'Wednesday', value: 'Wednesday' },
+        { name: 'Thursday', value: 'Thursday' },
+        { name: 'Friday', value: 'Friday' },
+        { name: 'Saturday', value: 'Saturday' },
+        { name: 'Sunday', value: 'Sunday' }
+      )
+      .setRequired(true)
+  )
+  .addStringOption(option =>
+    option
+      .setName('person')
+      .setDescription('Name of person hosting/doing RP')
+      .setRequired(true)
+      .setMaxLength(100)
+  )
+  .addStringOption(option =>
+    option
+      .setName('time')
+      .setDescription('Time in 12-hour format with AM/PM (e.g., 7:30 PM, 2:00 AM)')
+      .setRequired(true)
+  )
+  .addStringOption(option =>
+    option
+      .setName('timezone')
+      .setDescription('Timezone (e.g., EST, PST, UTC)')
+      .setRequired(true)
+      .setMaxLength(50)
+  )
+  .addStringOption(option =>
+    option
+      .setName('psn')
+      .setDescription('PSN or username')
+      .setRequired(true)
+      .setMaxLength(100)
+  )
+  .addStringOption(option =>
+    option
+      .setName('description')
+      .setDescription('Description of the RP event')
+      .setRequired(true)
+      .setMaxLength(500)
+  );
+
+export async function execute(interaction) {
+  if (!await checkStaffPermission(interaction)) {
+    return interaction.reply({
+      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      ephemeral: true,
+    });
+  }
+
+  try {
+    const calendar = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
+
+    if (!calendar || !calendar.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay calendar is not enabled or configured on this server.')],
+        ephemeral: true,
+      });
+    }
+
+    if (!calendar.channelId) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay calendar channel is not configured. Use `/roleplaycalendersetup` to configure it.')],
+        ephemeral: true,
+      });
+    }
+
+    const day = interaction.options.getString('day');
+    const person = interaction.options.getString('person');
+    const time = interaction.options.getString('time');
+    const timezone = interaction.options.getString('timezone');
+    const psn = interaction.options.getString('psn');
+    const description = interaction.options.getString('description');
+
+    // Validate time format (12-hour with AM/PM)
+    if (!/^\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/.test(time)) {
+      return interaction.reply({
+        embeds: [errorEmbed('Invalid time format. Please use 12-hour format with AM/PM (e.g., 7:30 PM or 2:00 AM).')],
+        ephemeral: true,
+      });
+    }
+
+    // Convert time + timezone to Discord timestamp
+    const timestamp = convertToTimestamp(day, time, timezone);
+
+    // Add event to calendar
+    calendar.events.push({
+      day,
+      person,
+      time,
+      timezone,
+      psn,
+      description,
+      timestamp,
+    });
+
+    await calendar.save();
+    await updateCalendarMessage(interaction, calendar);
+
+    return interaction.reply({
+      embeds: [successEmbed('RP Event Added', `Added ${person}'s RP event for ${day} at ${time} ${timezone}`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error adding RP event:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while adding the RP event.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function updateCalendarMessage(interaction, calendar) {
+  try {
+    const channel = await interaction.guild.channels.fetch(calendar.channelId);
+    if (!channel) return;
+
+    const embed = buildCalendarEmbed(calendar);
+
+    if (calendar.messageId) {
+      try {
+        const message = await channel.messages.fetch(calendar.messageId);
+        await message.edit({ embeds: [embed] });
+      } catch (err) {
+        const message = await channel.send({ embeds: [embed] });
+        calendar.messageId = message.id;
+        await calendar.save();
+      }
+    } else {
+      const message = await channel.send({ embeds: [embed] });
+      calendar.messageId = message.id;
+      await calendar.save();
+    }
+  } catch (error) {
+    console.error('Error updating calendar message:', error);
+  }
+}
+
+function buildCalendarEmbed(calendar) {
+  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  let description = '**Roleplay Calendar**\n\n';
+
+  daysOrder.forEach(day => {
+    const dayEvents = calendar.events.filter(e => e.day === day);
+    description += `**${day}**\n`;
+    
+    if (dayEvents.length === 0) {
+      description += `No events scheduled\n\n`;
+    } else {
+      dayEvents.forEach(event => {
+        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
+        description += `  PSN: ${event.psn}\n`;
+        description += `  ${event.description}\n\n`;
+      });
+    }
+  });
+
+  description += '*Times are shown in your local timezone*';
+
+  return {
+    title: 'Roleplay Calendar',
+    description,
+    color: 0x00AA00,
+    footer: { text: 'EverLink' },
+  };
+}
+
+function convertToTimestamp(day, time, timezone) {
+  // Timezone offsets from UTC
+  const timezoneMap = {
+    'EST': -5, 'EDT': -4,
+    'CST': -6, 'CDT': -5,
+    'MST': -7, 'MDT': -6,
+    'PST': -8, 'PDT': -7,
+    'UTC': 0, 'GMT': 0,
+    'CET': 1, 'CEST': 2,
+    'EET': 2, 'EEST': 3,
+    'IST': 5.5, 'JST': 9, 'AEST': 10,
+  };
+
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+  };
+
+  // Parse time in 12-hour format with AM/PM
+  const timeRegex = /^(\d{1,2}):(\d{2})\s+(AM|PM|am|pm)$/;
+  const match = time.match(timeRegex);
+  if (!match) return Math.floor(Date.now() / 1000);
+
+  let [, hoursStr, minutesStr, period] = match;
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
+  const isPM = period.toUpperCase() === 'PM';
+
+  // Convert to 24-hour format
+  if (isPM && hours !== 12) {
+    hours += 12;
+  } else if (!isPM && hours === 12) {
+    hours = 0;
+  }
+
+  // Get timezone offset
+  const offset = timezoneMap[timezone.toUpperCase()] || 0;
+
+  // Get next occurrence of the day
+  const now = new Date();
+  const targetDay = dayMap[day];
+  const currentDay = now.getDay();
+
+  let daysUntil = targetDay - currentDay;
+  if (daysUntil <= 0) daysUntil += 7; // If day has passed, get next week
+
+  // Create date for the event
+  const eventDate = new Date(now);
+  eventDate.setDate(eventDate.getDate() + daysUntil);
+  eventDate.setHours(hours, minutes, 0, 0);
+
+  // Convert to UTC by subtracting the offset
+  const utcDate = new Date(eventDate.getTime() - offset * 60 * 60 * 1000);
+
+  // Return Unix timestamp
+  return Math.floor(utcDate.getTime() / 1000);
+}
