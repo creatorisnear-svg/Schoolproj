@@ -88,9 +88,16 @@ export async function execute(interaction) {
     const psn = interaction.options.getString('psn');
     const description = interaction.options.getString('description');
 
-    // Create a timestamp for Discord timestamp conversion
-    // For now, use current time as placeholder (staff will need to adjust manually if needed)
-    const timestamp = Math.floor(Date.now() / 1000);
+    // Validate time format
+    if (!/^\d{1,2}:\d{2}$/.test(time)) {
+      return interaction.reply({
+        embeds: [errorEmbed('Invalid time format. Please use HH:MM format (e.g., 19:30).')],
+        ephemeral: true,
+      });
+    }
+
+    // Convert time + timezone to Discord timestamp
+    const timestamp = convertToTimestamp(day, time, timezone);
 
     // Add event to calendar
     calendar.events.push({
@@ -171,4 +178,48 @@ function buildCalendarEmbed(calendar) {
     color: 0x00AA00,
     footer: { text: 'EverLink' },
   };
+}
+
+function convertToTimestamp(day, time, timezone) {
+  // Timezone offsets from UTC
+  const timezoneMap = {
+    'EST': -5, 'EDT': -4,
+    'CST': -6, 'CDT': -5,
+    'MST': -7, 'MDT': -6,
+    'PST': -8, 'PDT': -7,
+    'UTC': 0, 'GMT': 0,
+    'CET': 1, 'CEST': 2,
+    'EET': 2, 'EEST': 3,
+    'IST': 5.5, 'JST': 9, 'AEST': 10,
+  };
+
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+  };
+
+  // Parse time
+  const [hours, minutes] = time.split(':').map(Number);
+
+  // Get timezone offset
+  const offset = timezoneMap[timezone.toUpperCase()] || 0;
+
+  // Get next occurrence of the day
+  const now = new Date();
+  const targetDay = dayMap[day];
+  const currentDay = now.getDay();
+
+  let daysUntil = targetDay - currentDay;
+  if (daysUntil <= 0) daysUntil += 7; // If day has passed, get next week
+
+  // Create date for the event
+  const eventDate = new Date(now);
+  eventDate.setDate(eventDate.getDate() + daysUntil);
+  eventDate.setHours(hours, minutes, 0, 0);
+
+  // Convert to UTC by subtracting the offset
+  const utcDate = new Date(eventDate.getTime() - offset * 60 * 60 * 1000);
+
+  // Return Unix timestamp
+  return Math.floor(utcDate.getTime() / 1000);
 }

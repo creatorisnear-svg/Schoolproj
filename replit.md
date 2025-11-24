@@ -23,7 +23,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Verification System:** Supports customizable RP tags, questions, welcome messages, and automatic role assignment.
 - **Strike System:** Features a multi-level strike configuration (1-4) with customizable actions (role assignment, kick, timeout, ban) and durations per level.
 - **Priority Tracker:** Provides real-time status updates for "priority" events with cooldowns and custom messages.
-- **Roleplay Calendar:** Manages and displays weekly RP events, automatically rotating events as days pass.
+- **Roleplay Calendar:** Manages and displays weekly RP events with automatic timezone conversion. Staff input time + timezone, bot converts to Discord timestamp (shows in each user's local timezone), automatically rotating events as days pass.
 - **Anti-Promoting System:** Automatically detects and removes non-whitelisted Discord invite links, with an optional staff bypass.
 - **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar), ensuring per-server data isolation and persistence.
 
