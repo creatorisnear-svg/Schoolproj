@@ -30,7 +30,7 @@ async function showSetupMenu(interaction) {
   return {
     content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   };
 }
 
@@ -54,7 +54,7 @@ export async function handleTicketSetupMenu(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -255,7 +255,7 @@ export async function handleTicketSetupMenu(interaction) {
     console.error('Error in ticket setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -269,7 +269,7 @@ export async function handlePanelTitleModal(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -285,7 +285,7 @@ export async function handlePanelTitleModal(interaction) {
     console.error('Error updating panel title:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -299,7 +299,7 @@ export async function handlePanelDescriptionModal(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -315,7 +315,7 @@ export async function handlePanelDescriptionModal(interaction) {
     console.error('Error updating panel description:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -329,7 +329,7 @@ export async function handleButtonColorSelect(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -345,7 +345,7 @@ export async function handleButtonColorSelect(interaction) {
     console.error('Error updating button color:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -359,7 +359,7 @@ export async function handleTicketSetupModal(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -392,13 +392,13 @@ export async function handleTicketSetupModal(interaction) {
     return interaction.reply({
       content: `Choose a color for the **${ticketTypeName}** button:`,
       components: [colorMenu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in ticket add type modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -414,7 +414,7 @@ export async function handleTicketTypeButtonColor(interaction) {
     if (!pending) {
       return interaction.reply({
         embeds: [errorEmbed('Session expired. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -449,7 +449,7 @@ export async function handleTicketTypeButtonColor(interaction) {
     console.error('Error handling ticket type button color:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -464,7 +464,7 @@ export async function handleAddBotStaffButton(interaction) {
     if (!pending) {
       return interaction.reply({
         embeds: [errorEmbed('Session expired. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -472,20 +472,20 @@ export async function handleAddBotStaffButton(interaction) {
       pending.includeStaff = true;
       return interaction.reply({
         content: '✅ Bot staff will be added to this ticket type. Now click "Done" when ready.',
-        ephemeral: true,
+        flags: 64,
       });
     } else {
       pending.includeStaff = false;
       return interaction.reply({
         content: '❌ Bot staff removal cancelled. Now click "Done" when ready.',
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error handling bot staff button:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -500,7 +500,7 @@ export async function handleRolesDoneButton(interaction) {
     if (!pending) {
       return interaction.reply({
         embeds: [errorEmbed('Session expired. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -510,7 +510,7 @@ export async function handleRolesDoneButton(interaction) {
       pendingTicketTypes.delete(tempId);
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -537,7 +537,7 @@ export async function handleRolesDoneButton(interaction) {
     console.error('Error in roles done button:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -553,7 +553,7 @@ export async function handleTicketRoleSelect(interaction) {
     if (!pending) {
       return interaction.reply({
         embeds: [errorEmbed('Session expired. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -561,13 +561,13 @@ export async function handleTicketRoleSelect(interaction) {
 
     return interaction.reply({
       content: `✅ ${selectedRoleIds.length} role(s) selected. Click "Done" to finish.`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error selecting ticket roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -581,7 +581,7 @@ export async function handleTicketChannelSelect(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -609,7 +609,7 @@ export async function handleTicketChannelSelect(interaction) {
     console.error('Error selecting ticket panel channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -883,14 +883,14 @@ export async function handleTicketCloseButton(interaction) {
     if (!ticket) {
       return interaction.reply({
         content: '❌ Ticket not found.',
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (ticket.status === 'closed') {
       return interaction.reply({
         content: '❌ This ticket is already closed.',
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -940,13 +940,13 @@ export async function handleTicketCloseButton(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed('Ticket Closed', `Ticket **${ticketId}** has been closed and locked. Only the delete button is available now.`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error closing ticket:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred while closing the ticket.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -960,7 +960,7 @@ export async function handleTicketDeleteButton(interaction) {
     if (!ticket) {
       return interaction.reply({
         content: '❌ Ticket not found.',
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -977,13 +977,13 @@ export async function handleTicketDeleteButton(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed('Ticket Deleted', `Ticket **${ticketId}** and its channel have been permanently deleted.`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error deleting ticket:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred while deleting the ticket.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -997,7 +997,7 @@ export async function handleRemoveTicketType(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1006,7 +1006,7 @@ export async function handleRemoveTicketType(interaction) {
     if (!typeToRemove) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1022,7 +1022,7 @@ export async function handleRemoveTicketType(interaction) {
     console.error('Error removing ticket type:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1036,7 +1036,7 @@ export async function handlePanelTypesSelect(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1046,7 +1046,7 @@ export async function handlePanelTypesSelect(interaction) {
     console.error('Error handling panel types select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1062,7 +1062,7 @@ export async function handleTicketSupportEnableMenu(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket support not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1072,7 +1072,7 @@ export async function handleTicketSupportEnableMenu(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed('Ticket Support Enabled', 'Members now have access to ticket support. Run `/ticketsupportsetup` to configure.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1082,14 +1082,14 @@ export async function handleTicketSupportEnableMenu(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed('Ticket Support Disabled', 'Members no longer have access to ticket support.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error in ticket support enable menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

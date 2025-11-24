@@ -57,7 +57,7 @@ export async function execute(interaction) {
     if (!isAdmin && !isStaff) {
       return interaction.reply({
         embeds: [errorEmbed('❌ Only admins and staff can use this command.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -66,7 +66,7 @@ export async function execute(interaction) {
       if (!messageContent) {
         return interaction.reply({
           embeds: [errorEmbed('❌ Please provide a message to make sticky.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -106,7 +106,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`✅ Sticky Message Created`, `Sticky message created in ${channel}`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -117,7 +117,7 @@ export async function execute(interaction) {
       if (!existingSticky) {
         return interaction.reply({
           embeds: [errorEmbed(`❌ No sticky message found in ${channel}`)],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -138,14 +138,14 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`✅ Sticky Message Deleted`, `Sticky message removed from ${channel}`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error managing sticky message:', error);
     return interaction.reply({
       embeds: [errorEmbed('❌ An error occurred while managing the sticky message.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

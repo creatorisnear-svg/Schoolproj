@@ -27,7 +27,7 @@ export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators can add staff members.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -38,7 +38,7 @@ export async function execute(interaction) {
   if (action === 'none') {
     return interaction.reply({
       embeds: [errorEmbed('Please select an action (Add or Remove All Staff).')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -47,13 +47,13 @@ export async function execute(interaction) {
       const result = await Staff.deleteMany({ guildId: interaction.guildId });
       return interaction.reply({
         embeds: [successEmbed('All Staff Removed', `Removed ${result.deletedCount} staff member(s) from the bot staff team.`)],
-        ephemeral: true,
+        flags: 64,
       });
     } catch (error) {
       console.error('Error removing all staff:', error);
       return interaction.reply({
         embeds: [errorEmbed('An error occurred while removing staff.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -61,7 +61,7 @@ export async function execute(interaction) {
   if (!user && !role) {
     return interaction.reply({
       embeds: [errorEmbed('Please provide either a user or a role to add as staff.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -71,7 +71,7 @@ export async function execute(interaction) {
       if (existingStaff) {
         return interaction.reply({
           embeds: [errorEmbed(`${user.tag} is already a staff member in this server.`)],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -85,7 +85,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully added ${user.tag} to the bot staff team!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -94,7 +94,7 @@ export async function execute(interaction) {
       if (existingStaff) {
         return interaction.reply({
           embeds: [errorEmbed(`The role ${role.name} is already a staff role in this server.`)],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -108,14 +108,14 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully added the role ${role.name} to the bot staff team!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error adding staff:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the staff member. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

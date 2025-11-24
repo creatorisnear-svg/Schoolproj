@@ -34,7 +34,7 @@ function createSetupMenu() {
   return {
     content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
     components: [menu],
-    ephemeral: true
+    flags: 64
   };
 }
 
@@ -63,7 +63,7 @@ function createWelcomeSetupMenu() {
   return {
     content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
     components: [menu],
-    ephemeral: true
+    flags: 64
   };
 }
 
@@ -91,7 +91,7 @@ function createStrikeSetupMenu() {
   return {
     content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:',
     components: [menu],
-    ephemeral: true
+    flags: 64
   };
 }
 
@@ -332,7 +332,7 @@ async function handleVerifySetupMenu(interaction) {
     console.error('Error handling verify setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -351,7 +351,7 @@ export async function handleSetupModals(interaction) {
       if (!channel || !channel.isTextBased()) {
         return interaction.reply({
           embeds: [errorEmbed('Invalid text channel ID. Please try again.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -377,7 +377,7 @@ export async function handleSetupModals(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Verify channel set to ${channel} and verification button sent!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -388,7 +388,7 @@ export async function handleSetupModals(interaction) {
       if (!channel) {
         return interaction.reply({
           embeds: [errorEmbed('Invalid channel ID. Please try again.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -397,7 +397,7 @@ export async function handleSetupModals(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Welcome channel set to ${channel}!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -408,7 +408,7 @@ export async function handleSetupModals(interaction) {
       if (!role) {
         return interaction.reply({
           embeds: [errorEmbed('Invalid role ID. Please try again.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -417,7 +417,7 @@ export async function handleSetupModals(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Unverified role set to ${role}!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -428,7 +428,7 @@ export async function handleSetupModals(interaction) {
       if (!role) {
         return interaction.reply({
           embeds: [errorEmbed('Invalid role ID. Please try again.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -437,7 +437,7 @@ export async function handleSetupModals(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Verified role set to ${role}!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -451,7 +451,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed('RP Tag Set', `Tag: ${rpTag}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -465,7 +465,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed('Custom Question Updated', question ? `Question: ${question}\n\nSelect your next option below to continue setup.` : 'Custom question removed. Select your next option below.')],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -479,7 +479,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed('DM Message Updated', 'Verification DM has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -498,7 +498,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed('Welcome Message Updated', 'Channel message has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -517,7 +517,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed('Welcome DM Updated', 'Welcome DM has been updated. Select your next option below to continue setup.')],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -529,7 +529,7 @@ export async function handleSetupModals(interaction) {
       if (isNaN(duration) || duration <= 0) {
         return interaction.reply({
           embeds: [errorEmbed('Duration must be a valid positive number.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -547,7 +547,7 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed(`Strike ${strikeLevel} Timeout Set`, `Duration: ${duration} minutes\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -559,7 +559,7 @@ export async function handleSetupModals(interaction) {
       if (isNaN(duration) || duration < 0) {
         return interaction.reply({
           embeds: [errorEmbed('Duration must be a valid number (0 for permanent).')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -577,14 +577,14 @@ export async function handleSetupModals(interaction) {
         content: '',
         embeds: [infoEmbed(`Strike ${strikeLevel} Ban Set`, `Duration: ${duration === 0 ? 'Permanent' : duration + ' minutes'}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error handling setup modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -596,7 +596,7 @@ async function handleVerifyChannelSelect(interaction) {
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -631,7 +631,7 @@ async function handleVerifyChannelSelect(interaction) {
     console.error('Error setting verify channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -643,7 +643,7 @@ async function handleWelcomeChannelSelect(interaction) {
     if (!channel) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -661,7 +661,7 @@ async function handleWelcomeChannelSelect(interaction) {
     console.error('Error setting welcome channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -673,7 +673,7 @@ async function handleUnverifiedRoleSelect(interaction) {
     if (!role) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid role.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -691,7 +691,7 @@ async function handleUnverifiedRoleSelect(interaction) {
     console.error('Error setting unverified role:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -703,7 +703,7 @@ async function handleVerifiedRoleSelect(interaction) {
     if (!role) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid role.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -721,7 +721,7 @@ async function handleVerifiedRoleSelect(interaction) {
     console.error('Error setting verified role:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -734,7 +734,7 @@ async function handleWelcomeSystemChannelSelect(interaction) {
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -763,7 +763,7 @@ async function handleWelcomeSystemChannelSelect(interaction) {
     console.error('Error setting welcome channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -829,7 +829,7 @@ async function handleWelcomeSetupMenu(interaction) {
     console.error('Error handling welcome setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -841,7 +841,7 @@ async function handleAntiPromotingLogChannel(interaction) {
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -852,13 +852,13 @@ async function handleAntiPromotingLogChannel(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Anti-Promoting System Enabled', `Log channel: ${channel}\n\nThe anti-promoting system is now active. Invite links will be deleted and logged.`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting anti-promoting log channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -870,7 +870,7 @@ async function handleSetLogChannel(interaction) {
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -887,7 +887,7 @@ async function handleSetLogChannel(interaction) {
     console.error('Error setting log channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -899,7 +899,7 @@ async function handleWelcomeSetupChannelSelect(interaction) {
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -917,7 +917,7 @@ async function handleWelcomeSetupChannelSelect(interaction) {
     console.error('Error setting welcome channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -978,7 +978,7 @@ async function handleStrikeSetupMenu(interaction) {
     console.error('Error handling strike setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1007,7 +1007,7 @@ async function handleStrikeRoleSelect(interaction, strikeLevel) {
     console.error('Error setting strike role:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1020,7 +1020,7 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
     if (!strikeConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Strike system not configured. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1075,7 +1075,7 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
     console.error('Error setting strike action:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1140,7 +1140,7 @@ async function handleReactionRoleSendChannel(interaction) {
     if (!targetChannel.isTextBased()) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a text channel.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1161,7 +1161,7 @@ async function handleReactionRoleSendChannel(interaction) {
     console.error('Error sending reaction role message:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while sending the message.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1177,7 +1177,7 @@ async function handleReactionRoleSelect(interaction) {
   if (!pending) {
     return interaction.reply({
       embeds: [errorEmbed('Session expired. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -1193,7 +1193,7 @@ async function handleReactionRoleSelect(interaction) {
       pendingEmojiRoles.delete(tempKey);
       return interaction.reply({
         embeds: [errorEmbed('Message not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1222,7 +1222,7 @@ async function handleReactionRoleSelect(interaction) {
     pendingEmojiRoles.delete(tempKey);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

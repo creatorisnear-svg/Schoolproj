@@ -16,7 +16,7 @@ export async function execute(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -29,7 +29,7 @@ export async function execute(interaction) {
     if (!cadConfig || !cadConfig.fireDepartmentRoleIds || cadConfig.fireDepartmentRoleIds.length === 0) {
       return interaction.reply({
         embeds: [errorEmbed('Fire Department database is not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -38,7 +38,7 @@ export async function execute(interaction) {
     if (!hasFDRole && !isStaff) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have Fire Department access.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -57,13 +57,13 @@ export async function execute(interaction) {
     return interaction.reply({
       content: '**FIRE DEPARTMENT DATABASE**\n\nSelect an action:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error executing firedepartmentdatabase:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

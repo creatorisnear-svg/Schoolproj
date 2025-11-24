@@ -14,7 +14,7 @@ export async function execute(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -37,13 +37,13 @@ export async function execute(interaction) {
     return interaction.reply({
       content: '**CIVILIAN DATABASE**\n\nSelect an action:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error executing civiliandatabase:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -19,7 +19,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -30,14 +30,14 @@ export async function execute(interaction) {
     if (!priority || !priority.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Priority tracker is not enabled or configured on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!priority.channelId) {
       return interaction.reply({
         embeds: [errorEmbed('Priority tracker channel is not configured. Use `/prioritytrackersetup` to configure it.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -53,13 +53,13 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Cooldown Set', `Priority cooldown has been set to ${minutes} minute(s)`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting priority cooldown:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while setting priority cooldown.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

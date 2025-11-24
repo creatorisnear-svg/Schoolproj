@@ -20,7 +20,7 @@ export async function execute(interaction) {
     
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -37,7 +37,7 @@ export async function execute(interaction) {
       
       return interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -63,7 +63,7 @@ export async function execute(interaction) {
     return interaction.reply({
       embeds: [embed],
       components: [choiceRow],
-      ephemeral: true,
+      flags: 64,
     });
 
   } catch (error) {
@@ -76,7 +76,7 @@ export async function execute(interaction) {
     
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

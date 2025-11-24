@@ -13,14 +13,14 @@ export async function execute(interaction) {
     if (!verification || !verification.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!verification.verifyChannelId) {
       return interaction.reply({
         embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -53,7 +53,7 @@ export async function execute(interaction) {
     console.error('Error showing verify modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while opening the verification form.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

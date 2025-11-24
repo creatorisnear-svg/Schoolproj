@@ -11,7 +11,7 @@ export async function handle911RespondButton(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -22,14 +22,14 @@ export async function handle911RespondButton(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Only LEOs can respond to 911 calls.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.respondingLeoId) {
       return interaction.reply({
         embeds: [errorEmbed('This call already has a primary responder.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -56,13 +56,13 @@ export async function handle911RespondButton(interaction) {
 
     return interaction.reply({
       content: `✅ You are now the primary responder for call #${callId}`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in 911 respond button:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -75,7 +75,7 @@ export async function handle911AttachButton(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -86,14 +86,14 @@ export async function handle911AttachButton(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Only LEOs can attach to 911 calls.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
         content: `You are already attached to this call.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -133,13 +133,13 @@ export async function handle911AttachButton(interaction) {
 
     return interaction.reply({
       content: `✅ You are now attached to call #${callId}`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in 911 attach button:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -152,7 +152,7 @@ export async function handle911DismissButton(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -163,7 +163,7 @@ export async function handle911DismissButton(interaction) {
     if (!isResponder && !isAdmin) {
       return interaction.reply({
         embeds: [errorEmbed('Only call responders or admins can dismiss a call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -183,13 +183,13 @@ export async function handle911DismissButton(interaction) {
 
     return interaction.reply({
       content: `✅ Call #${callId} has been dismissed.`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in 911 dismiss button:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

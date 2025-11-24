@@ -13,7 +13,7 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
     if (!calendar) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay calendar configuration not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -41,13 +41,13 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
       embeds: [successEmbed('Roleplay Calendar Setup Complete', 
         `Roleplay calendar has been created in <#${calendar.channelId}>. Use /setrp to add events and /unsetrp to remove them.`)],
       components: [backButton],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in roleplay calendar channel select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while setting up the roleplay calendar.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -66,7 +66,7 @@ export async function handleUnsetRpSelect(interaction) {
     if (!calendar || eventIndex >= calendar.events.length) {
       return interaction.reply({
         embeds: [errorEmbed('Event not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -78,13 +78,13 @@ export async function handleUnsetRpSelect(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('RP Event Removed', `Removed ${removedEvent.person}'s event for ${removedEvent.day}`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in unsetrp select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while removing the RP event.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

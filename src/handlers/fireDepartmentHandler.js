@@ -15,7 +15,7 @@ export async function handleFireDepartmentMenu(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -26,7 +26,7 @@ export async function handleFireDepartmentMenu(interaction) {
     if (!hasFDRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -34,7 +34,7 @@ export async function handleFireDepartmentMenu(interaction) {
       if (!roleplayConfig.use911 || !roleplayConfig.use911Channel) {
         return interaction.reply({
           embeds: [errorEmbed('Emergency System Not Configured', 'The 911 system has not been set up by administrators. Please contact a server admin.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -166,7 +166,7 @@ export async function handleFireDepartmentMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You need to create a character first.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -198,7 +198,7 @@ export async function handleFireDepartmentMenu(interaction) {
     console.error('Error in fire department menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -216,7 +216,7 @@ export async function handleFDCharacterCreateModal(interaction) {
     if (existing) {
       return interaction.reply({
         embeds: [errorEmbed(`You already have a character named "${characterName}".`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -260,13 +260,13 @@ export async function handleFDCharacterCreateModal(interaction) {
 
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error creating FD character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while creating the character.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -280,7 +280,7 @@ export async function handleFDRespondCall(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -290,7 +290,7 @@ export async function handleFDRespondCall(interaction) {
     if (!hasFDRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -299,14 +299,14 @@ export async function handleFDRespondCall(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.status !== 'active') {
       return interaction.reply({
         embeds: [errorEmbed('This call is no longer active.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -314,7 +314,7 @@ export async function handleFDRespondCall(interaction) {
     if (call.respondingLeoId === interaction.user.id) {
       return interaction.reply({
         embeds: [errorEmbed('You are already the primary responder for this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -322,7 +322,7 @@ export async function handleFDRespondCall(interaction) {
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
         embeds: [errorEmbed('You are already attached to this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -376,7 +376,7 @@ export async function handleFDRespondCall(interaction) {
     console.error('Error responding to call:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -390,14 +390,14 @@ export async function handleFDPrimaryResponse(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.respondingLeoId && call.respondingLeoId !== interaction.user.id) {
       return interaction.reply({
         embeds: [errorEmbed(`This call already has a primary responder: <@${call.respondingLeoId}>`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -430,13 +430,13 @@ export async function handleFDPrimaryResponse(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Response Accepted', `You are now the primary responder for **${call.issue}** at **${call.location}**`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error accepting primary response:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -450,14 +450,14 @@ export async function handleFDAttachResponse(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
         embeds: [errorEmbed('You are already attached to this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -504,13 +504,13 @@ export async function handleFDAttachResponse(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Attached to Call', `You have attached to **${call.issue}** at **${call.location}**`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error attaching to call:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -570,7 +570,7 @@ export async function handleFDVehicleCharacterSelect(interaction) {
     console.error('Error selecting character for vehicle:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
     if (!roleRequestConfig || !roleRequestConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The role request system is not enabled. Enable it in `/enablecommands` first.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -41,13 +41,13 @@ export async function execute(interaction) {
     await interaction.reply({
       content: '**Role Request System Setup**\n\nSelect an option below to configure role requests:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in role request setup command:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

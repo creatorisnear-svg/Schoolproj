@@ -12,7 +12,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -22,7 +22,7 @@ export async function execute(interaction) {
   if (staffCount === 0) {
     return interaction.reply({
       embeds: [errorEmbed('You must add staff or staff roles first using `/addstaff` before setting up the log channel.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -37,6 +37,6 @@ export async function execute(interaction) {
   return interaction.reply({
     content: 'Select a channel to receive logs and anti-promoting reports:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   });
 }

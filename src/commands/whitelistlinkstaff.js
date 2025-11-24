@@ -17,7 +17,7 @@ export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators can manage this setting.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -36,13 +36,13 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Staff Link Bypass Updated', description)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error updating staff link bypass setting:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while updating the setting.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -247,7 +247,7 @@ client.on('interactionCreate', async interaction => {
       
       const errorMessage = {
         content: '❌ There was an error while executing this command!',
-        ephemeral: true,
+        flags: 64,
       };
 
       if (interaction.replied || interaction.deferred) {
@@ -360,7 +360,7 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'char_delete_cancel') {
       await interaction.reply({
         content: 'Character deletion cancelled.',
-        ephemeral: true,
+        flags: 64,
       });
     } else if (interaction.customId.startsWith('char_license_valid_')) {
       const { handleCharacterLicenseValid } = await import('./handlers/cadHandler.js');

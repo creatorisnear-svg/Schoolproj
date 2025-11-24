@@ -13,7 +13,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -21,7 +21,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (!roleplayConfig.use911 || !roleplayConfig.use911Channel) {
         return interaction.reply({
           embeds: [errorEmbed('911 System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -79,7 +79,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (!roleplayConfig.useTwitter || !roleplayConfig.twitterChannel) {
         return interaction.reply({
           embeds: [errorEmbed('Twitter System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -106,7 +106,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (!roleplayConfig.useAnon || !roleplayConfig.anonChannel) {
         return interaction.reply({
           embeds: [errorEmbed('Anonymous System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -189,7 +189,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You need to create a character first.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -224,7 +224,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You need to create a character first.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -259,7 +259,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('No Characters', 'You haven\'t created any characters yet.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -292,7 +292,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
     console.error('Error in civilian database menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -310,7 +310,7 @@ export async function handleCivilianManageCharacterSelect(interaction) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', 'This character could not be found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -360,7 +360,7 @@ export async function handleCivilianManageCharacterSelect(interaction) {
     console.error('Error managing character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -376,7 +376,7 @@ export async function handleCharacterEdit(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -431,7 +431,7 @@ export async function handleCharacterEdit(interaction, characterId) {
     console.error('Error opening edit modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -453,7 +453,7 @@ export async function handleCharacterEditModal(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -475,13 +475,13 @@ export async function handleCharacterEditModal(interaction, characterId) {
 
     return interaction.reply({
       embeds: [successEmbed('Character Updated', `**${character.characterName}** has been updated!\n\n${updatedDesc}`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error updating character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -497,7 +497,7 @@ export async function handleCharacterDelete(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -518,13 +518,13 @@ export async function handleCharacterDelete(interaction, characterId) {
     return interaction.reply({
       embeds: [infoEmbed('Confirm Delete', `Are you sure you want to delete **${character.characterName}**? This cannot be undone.`)],
       components: [confirmButtons],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error deleting character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -540,7 +540,7 @@ export async function handleCharacterDeleteConfirm(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -564,13 +564,13 @@ export async function handleCharacterDeleteConfirm(interaction, characterId) {
     return interaction.reply({
       embeds: [successEmbed('Character Deleted', `**${character.characterName}** has been permanently deleted.`)],
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error deleting character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

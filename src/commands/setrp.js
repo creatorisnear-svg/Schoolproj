@@ -60,7 +60,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -70,14 +70,14 @@ export async function execute(interaction) {
     if (!calendar || !calendar.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay calendar is not enabled or configured on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!calendar.channelId) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay calendar channel is not configured. Use `/roleplaycalendersetup` to configure it.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -92,7 +92,7 @@ export async function execute(interaction) {
     if (!/^\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/.test(time)) {
       return interaction.reply({
         embeds: [errorEmbed('Invalid time format. Please use 12-hour format with AM/PM (e.g., 7:30 PM or 2:00 AM).')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -115,13 +115,13 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('RP Event Added', `Added ${person}'s RP event for ${day} at ${time} ${timezone}`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error adding RP event:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the RP event.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

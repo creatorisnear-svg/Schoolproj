@@ -15,14 +15,14 @@ export async function execute(interaction) {
     if (!roleRequestConfig || !roleRequestConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The role request system is not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!roleRequestConfig.roles || roleRequestConfig.roles.length === 0) {
       return interaction.reply({
         embeds: [errorEmbed('No role request types are available. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -55,13 +55,13 @@ export async function execute(interaction) {
     await interaction.reply({
       embeds: [embed],
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in role request command:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -32,7 +32,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -46,7 +46,7 @@ export async function execute(interaction) {
     if (!strikeConfig || !strikeConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The strike system is not enabled. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -55,7 +55,7 @@ export async function execute(interaction) {
     if (!strikeUser || strikeUser.currentStrikeLevel === 0) {
       return interaction.reply({
         embeds: [errorEmbed(`${targetUser.username} has no strikes to remove.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -106,13 +106,13 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed(`${targetUser.username} Strikes Removed`, `${targetUser.username} is now at strike level ${newLevel}/4\n\nStrikes removed: ${removeAmount}`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error removing strikes:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while removing strikes.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

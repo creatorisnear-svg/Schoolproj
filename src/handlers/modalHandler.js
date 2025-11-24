@@ -40,14 +40,14 @@ async function handleVerifyModal(interaction) {
     if (!verification || !verification.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!verification.verifiedRoleId) {
       return interaction.reply({
         embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -57,7 +57,7 @@ async function handleVerifyModal(interaction) {
     if (!verifiedRole) {
       return interaction.reply({
         embeds: [errorEmbed('The verified role could not be found. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -115,13 +115,13 @@ async function handleVerifyModal(interaction) {
 
     return interaction.reply({
       embeds: [successMsg],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error verifying member:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred during verification. Please try again or contact an administrator.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -145,13 +145,13 @@ async function handleReactionRoleSendMessageModal(interaction) {
     await interaction.reply({
       content: `**Message to send:**\n\`\`\`\n${messageContent}\n\`\`\`\n\nSelect the channel:`,
       components: [row],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in reaction role modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -175,21 +175,21 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     if (!reactionRole) {
       return interaction.reply({
         embeds: [errorEmbed('Message not found. Check the message ID.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (reactionRole.emojiRoles.length >= 5) {
       return interaction.reply({
         embeds: [errorEmbed('This message already has 5 emoji-role pairs.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (reactionRole.emojiRoles.some(er => er.emoji === emoji)) {
       return interaction.reply({
         embeds: [errorEmbed('This emoji is already added to this message.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -207,13 +207,13 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     return interaction.reply({
       content: `Choose the role for ${emoji}:`,
       components: [row],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in add emoji modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

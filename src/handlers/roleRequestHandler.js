@@ -122,7 +122,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
   } else if (value === 'setup_done') {
     await interaction.update({
       content: '✅ Role request setup closed.',
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -165,7 +165,7 @@ export async function handleSelectRoleForRequest(interaction) {
     console.error('Error selecting role for request:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -210,14 +210,14 @@ export async function handleSelectApproverRoles(interaction) {
     console.error('Error selecting approver roles:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
 
 export async function handleSelectApproverMembers(interaction) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const customIdParts = interaction.customId.split('_');
     const requestedRoleId = customIdParts.slice(3, 4)[0];
@@ -271,7 +271,7 @@ export async function handleSelectApproverMembers(interaction) {
     } else {
       await interaction.reply({
         embeds: [errorEmbed('An error occurred.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -286,7 +286,7 @@ export async function handleDeleteRoleRequestType(interaction) {
     if (roleIndex === -1) {
       return interaction.reply({
         embeds: [errorEmbed('Role request type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -330,7 +330,7 @@ export async function handleSelectRoleToRequest(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Role request type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -352,13 +352,13 @@ export async function handleSelectRoleToRequest(interaction) {
     await interaction.reply({
       embeds: [embed],
       components: [userMenu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error selecting role to request:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -378,7 +378,7 @@ export async function handleSelectApprover(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Role request type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -389,7 +389,7 @@ export async function handleSelectApprover(interaction) {
     } catch (err) {
       return interaction.reply({
         embeds: [errorEmbed('Could not find the selected user in this guild.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -412,7 +412,7 @@ export async function handleSelectApprover(interaction) {
     if (!isAuthorized) {
       return interaction.reply({
         embeds: [errorEmbed(`${approverMember.user.username} is not authorized to approve the **${roleConfig.roleName}** role.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -472,7 +472,7 @@ export async function handleSelectApprover(interaction) {
       console.error(`Could not send DM to ${approverId}:`, err);
       return interaction.reply({
         embeds: [errorEmbed('Could not send DM to the approver. Make sure they have DMs enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -486,13 +486,13 @@ export async function handleSelectApprover(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error selecting approver:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -505,14 +505,14 @@ export async function handleApproveRoleRequest(interaction) {
     if (!request) {
       return interaction.reply({
         embeds: [errorEmbed('Request not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (request.status !== 'pending') {
       return interaction.reply({
         embeds: [errorEmbed(`This request has already been ${request.status}.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -522,7 +522,7 @@ export async function handleApproveRoleRequest(interaction) {
     if (!config) {
       return interaction.reply({
         embeds: [errorEmbed('Role request system is not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -531,7 +531,7 @@ export async function handleApproveRoleRequest(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('This role request type is no longer configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -541,7 +541,7 @@ export async function handleApproveRoleRequest(interaction) {
     if (request.approverId !== approverUserId) {
       return interaction.reply({
         embeds: [errorEmbed(`You cannot approve this request - it wasn't sent to you.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -550,7 +550,7 @@ export async function handleApproveRoleRequest(interaction) {
     if (!guild) {
       return interaction.reply({
         embeds: [errorEmbed('Guild not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -562,7 +562,7 @@ export async function handleApproveRoleRequest(interaction) {
       console.error('Error fetching requester:', err);
       return interaction.reply({
         embeds: [errorEmbed('Could not find the requester in the guild.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -572,7 +572,7 @@ export async function handleApproveRoleRequest(interaction) {
       console.error('Error adding role:', err);
       return interaction.reply({
         embeds: [errorEmbed('Could not add the role. Please check bot permissions.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -607,13 +607,13 @@ export async function handleApproveRoleRequest(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error approving role request:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -627,7 +627,7 @@ export async function handleManageRoleSelect(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Role request type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -655,12 +655,12 @@ export async function handleManageRoleSelect(interaction) {
     if (!canManage) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have permission to manage this role.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     // Defer the interaction to avoid timeout on large guild member fetches
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     // Get all members with this role - use cached members to avoid rate limits
     let membersWithRole = [];
@@ -749,7 +749,7 @@ export async function handleManageRoleSelect(interaction) {
     } else {
       await interaction.reply({
         embeds: [errorEmbed('Failed to fetch members. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -767,7 +767,7 @@ export async function handleRemoveRoleFromMember(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Role request type not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -797,11 +797,11 @@ export async function handleRemoveRoleFromMember(interaction) {
     if (!canManage) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have permission to remove this role.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     // Fetch member with retry logic for rate limits
     let member;
@@ -866,7 +866,7 @@ export async function handleRemoveRoleFromMember(interaction) {
     } else {
       await interaction.reply({
         embeds: [errorEmbed('Failed to remove role. Please try again.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -898,13 +898,13 @@ export async function handleSkipApproverRoles(interaction) {
     await interaction.reply({
       content: 'Step 3: Select individual members who can also approve (or click Skip)',
       components: [approverMemberSelect, skipButtonRow],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error skipping approver roles:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -944,13 +944,13 @@ export async function handleSkipApproverMembers(interaction) {
 
     await interaction.reply({
       embeds: [successMsg],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error skipping approver members:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -963,14 +963,14 @@ export async function handleDenyRoleRequest(interaction) {
     if (!request) {
       return interaction.reply({
         embeds: [errorEmbed('Request not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (request.status !== 'pending') {
       return interaction.reply({
         embeds: [errorEmbed(`This request has already been ${request.status}.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -980,7 +980,7 @@ export async function handleDenyRoleRequest(interaction) {
     if (!config) {
       return interaction.reply({
         embeds: [errorEmbed('Role request system is not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -989,7 +989,7 @@ export async function handleDenyRoleRequest(interaction) {
     if (!roleConfig) {
       return interaction.reply({
         embeds: [errorEmbed('This role request type is no longer configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -999,7 +999,7 @@ export async function handleDenyRoleRequest(interaction) {
     if (request.approverId !== approverUserId) {
       return interaction.reply({
         embeds: [errorEmbed(`You cannot deny this request - it wasn't sent to you.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1008,7 +1008,7 @@ export async function handleDenyRoleRequest(interaction) {
     if (!guild) {
       return interaction.reply({
         embeds: [errorEmbed('Guild not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1043,13 +1043,13 @@ export async function handleDenyRoleRequest(interaction) {
 
     await interaction.reply({
       embeds: [successEmbed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error denying role request:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

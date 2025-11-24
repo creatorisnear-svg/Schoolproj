@@ -20,7 +20,7 @@ async function showSetupMenu(interaction) {
   return {
     content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   };
 }
 
@@ -33,7 +33,7 @@ export async function handleCADSetupMenu(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -114,7 +114,7 @@ export async function handleCADSetupMenu(interaction) {
     console.error('Error in CAD setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -128,7 +128,7 @@ export async function handleCADLeoRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -144,7 +144,7 @@ export async function handleCADLeoRoles(interaction) {
     console.error('Error setting LEO roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -158,7 +158,7 @@ export async function handleCADFDRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -174,7 +174,7 @@ export async function handleCADFDRoles(interaction) {
     console.error('Error setting FD roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -188,7 +188,7 @@ export async function handleCADStaffRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -204,7 +204,7 @@ export async function handleCADStaffRoles(interaction) {
     console.error('Error setting staff roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -273,7 +273,7 @@ export async function handleCADCharacterMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You need to create a character first.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -291,7 +291,7 @@ export async function handleCADCharacterMenu(interaction) {
       return interaction.reply({
         content: 'Select a character to add a vehicle to:',
         components: [charMenu],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -301,7 +301,7 @@ export async function handleCADCharacterMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You need to create a character first.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -319,7 +319,7 @@ export async function handleCADCharacterMenu(interaction) {
       return interaction.reply({
         content: 'Select a character to add a gun to:',
         components: [charMenu],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -329,7 +329,7 @@ export async function handleCADCharacterMenu(interaction) {
       if (characters.length === 0) {
         return interaction.reply({
           embeds: [errorEmbed('You have no characters.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -389,14 +389,14 @@ export async function handleCADCharacterMenu(interaction) {
 
       return interaction.reply({
         embeds,
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error in CAD character menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -412,20 +412,20 @@ export async function handleCharacterLicenseValid(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
       content: `✅ **${character.characterName}** - License set to **Valid**\n\nYou can now select a special status below or just close this if done.`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting license valid:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -441,20 +441,20 @@ export async function handleCharacterLicenseInvalid(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
       content: `❌ **${character.characterName}** - License set to **Invalid**\n\nYou can now select a special status below or just close this if done.`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting license invalid:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -470,20 +470,20 @@ export async function handleCharacterVeteran(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
       content: `🎖️ **${character.characterName}** - Special Status set to **Veteran**`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting veteran status:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -499,20 +499,20 @@ export async function handleCharacterOrganDonor(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
       content: `❤️ **${character.characterName}** - Special Status set to **Organ Donor**`,
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting organ donor status:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -533,7 +533,7 @@ export async function handleCADCharacterCreateModal(interaction) {
     if (existing) {
       return interaction.reply({
         embeds: [errorEmbed(`You already have a character named "${characterName}".`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -579,13 +579,13 @@ export async function handleCADCharacterCreateModal(interaction) {
     return interaction.reply({
       embeds: [embed],
       components: [continueButton],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error creating character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while creating the character.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -601,7 +601,7 @@ export async function handleCharacterContinue(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -663,7 +663,7 @@ export async function handleCharacterContinue(interaction, characterId) {
     console.error('Error continuing character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -682,7 +682,7 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -744,13 +744,13 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
     return interaction.reply({
       embeds: [embed, statusEmbed],
       components: [licenseButtons, specialButtons],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error updating character height/race:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -766,7 +766,7 @@ export async function handleCharacterStatusNone(interaction, characterId) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -791,13 +791,13 @@ export async function handleCharacterStatusNone(interaction, characterId) {
     return interaction.reply({
       embeds: [successEmbed('✅ Character Complete', `**${character.characterName}** has been created successfully! You can now add vehicles or weapons.`)],
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error setting status none:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -857,7 +857,7 @@ export async function handleCADVehicleCharacterSelect(interaction) {
     console.error('Error in vehicle select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -881,13 +881,13 @@ export async function handleCADVehicleAddModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Vehicle Registered', successMsg)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error adding vehicle:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the vehicle.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -923,7 +923,7 @@ export async function handleCADGunCharacterSelect(interaction) {
     console.error('Error in gun select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -944,13 +944,13 @@ export async function handleCADGunAddModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Weapon Registered', successMsg)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error adding gun:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the weapon.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

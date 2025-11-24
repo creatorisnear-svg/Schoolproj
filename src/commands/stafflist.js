@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -34,12 +34,12 @@ export async function execute(interaction) {
     const embed = infoEmbed('__**EverLink Bot Staff List**__', staffList);
     embed.addFields({ name: 'Total Staff', value: `${staffMembers.length}`, inline: true });
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: 64 });
   } catch (error) {
     console.error('Error fetching staff list:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while fetching the staff list. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

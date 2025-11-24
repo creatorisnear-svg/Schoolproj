@@ -27,7 +27,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -41,34 +41,34 @@ export async function execute(interaction) {
       if (config.whitelistedInviteLinks.includes(link)) {
         return interaction.reply({
           embeds: [errorEmbed('This link is already whitelisted.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
       config.whitelistedInviteLinks.push(link);
       await config.save();
       return interaction.reply({
         embeds: [successEmbed('Link Whitelisted', `The invite link has been added to the whitelist.\n\nLink: ${link}`)],
-        ephemeral: true,
+        flags: 64,
       });
     } else {
       if (!config.whitelistedInviteLinks.includes(link)) {
         return interaction.reply({
           embeds: [errorEmbed('This link is not in the whitelist.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
       config.whitelistedInviteLinks = config.whitelistedInviteLinks.filter(l => l !== link);
       await config.save();
       return interaction.reply({
         embeds: [successEmbed('Link Removed', `The invite link has been removed from the whitelist.\n\nLink: ${link}`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error managing whitelist:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while managing the whitelist.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,14 +21,14 @@ export async function execute(interaction) {
     if (!calendar || !calendar.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay calendar is not enabled or configured on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (calendar.events.length === 0) {
       return interaction.reply({
         embeds: [errorEmbed('There are no RP events scheduled to remove.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -50,13 +50,13 @@ export async function execute(interaction) {
     return interaction.reply({
       content: 'Select an RP event to remove:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in unsetrp command:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while removing the RP event.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

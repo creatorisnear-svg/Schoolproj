@@ -16,7 +16,7 @@ export async function execute(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled on this server.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -29,7 +29,7 @@ export async function execute(interaction) {
     if (!cadConfig || !cadConfig.leoRoleIds || cadConfig.leoRoleIds.length === 0) {
       return interaction.reply({
         embeds: [errorEmbed('LEO database is not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -38,7 +38,7 @@ export async function execute(interaction) {
     if (!hasLeoRole && !isStaff) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have LEO access.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -62,13 +62,13 @@ export async function execute(interaction) {
     return interaction.reply({
       content: '**LEO DATABASE**\n\nSelect an action:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error executing leodatabase:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

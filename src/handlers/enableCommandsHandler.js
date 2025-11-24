@@ -80,7 +80,7 @@ export async function handleEnableChoiceButton(interaction) {
       return interaction.reply({
         embeds: [embed],
         components: [enableRow1, enableRow2, enableRow3],
-        ephemeral: true,
+        flags: 64,
       });
     } else {
       // Show disable options
@@ -141,14 +141,14 @@ export async function handleEnableChoiceButton(interaction) {
       return interaction.reply({
         embeds: [embed],
         components: [disableRow1, disableRow2, disableRow3],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error in enable/disable choice handler:', error);
     return interaction.reply({
       embeds: [createErrorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -191,7 +191,7 @@ export async function handleEnableCommandButton(interaction) {
       const embed = createSuccessEmbed(`${featureName} Enabled`, `${featureName} has been enabled.`);
       return interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: 64,
       });
     } else if (customId === 'enable_rolerequest') {
       featureName = 'Role Request';
@@ -217,13 +217,13 @@ export async function handleEnableCommandButton(interaction) {
     const embed = createSuccessEmbed(`${featureName} Enabled`, `${featureName} has been enabled. ${setupCommand}`);
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in enable button handler:', error);
     return interaction.reply({
       embeds: [createErrorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -262,7 +262,7 @@ export async function handleDisableCommandButton(interaction) {
       const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
       return interaction.reply({
         embeds: [embed],
-        ephemeral: true,
+        flags: 64,
       });
     } else if (customId === 'disable_rolerequest') {
       featureName = 'Role Request';
@@ -287,13 +287,13 @@ export async function handleDisableCommandButton(interaction) {
     const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
     return interaction.reply({
       embeds: [embed],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in disable button handler:', error);
     return interaction.reply({
       embeds: [createErrorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

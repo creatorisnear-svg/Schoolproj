@@ -133,7 +133,6 @@ const cadCharacterSchema = new mongoose.Schema({
 });
 
 cadCharacterSchema.index({ guildId: 1, userId: 1 });
-cadCharacterSchema.index({ licensePlate: 1 });
 
 const CADCharacter = mongoose.model('CADCharacter', cadCharacterSchema);
 

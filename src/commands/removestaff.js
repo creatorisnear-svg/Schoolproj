@@ -19,7 +19,7 @@ export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators can remove staff members.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -29,7 +29,7 @@ export async function execute(interaction) {
   if (!user && !role) {
     return interaction.reply({
       embeds: [errorEmbed('Please provide either a user or a role to remove from staff.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -39,13 +39,13 @@ export async function execute(interaction) {
       if (result.deletedCount === 0) {
         return interaction.reply({
           embeds: [errorEmbed(`${user.tag} is not a staff member in this server.`)],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully removed ${user.tag} from the bot staff team!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -54,20 +54,20 @@ export async function execute(interaction) {
       if (result.deletedCount === 0) {
         return interaction.reply({
           embeds: [errorEmbed(`The role ${role.name} is not a staff role in this server.`)],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully removed the role ${role.name} from the bot staff team!`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error removing staff:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while removing the staff member. Please try again.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

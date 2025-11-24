@@ -18,7 +18,7 @@ export async function handleLEODatabaseMenu(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -29,7 +29,7 @@ export async function handleLEODatabaseMenu(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -73,7 +73,7 @@ export async function handleLEODatabaseMenu(interaction) {
       if (!roleplayConfig.use911 || !roleplayConfig.use911Channel) {
         return interaction.reply({
           embeds: [errorEmbed('Emergency System Not Configured', 'The 911 system has not been set up by administrators. Please contact a server admin.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -85,7 +85,7 @@ export async function handleLEODatabaseMenu(interaction) {
       if (activeCalls.length === 0) {
         return interaction.reply({
           embeds: [infoEmbed('Active 911 Calls', 'No active emergency calls.')],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -372,7 +372,7 @@ export async function handleLEODatabaseMenu(interaction) {
     console.error('Error in LEO database menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -386,7 +386,7 @@ export async function handleLEOSearchPlateModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -396,7 +396,7 @@ export async function handleLEOSearchPlateModal(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -482,7 +482,7 @@ export async function handleLEOSearchPlateModal(interaction) {
     console.error('Error searching license plate:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -496,7 +496,7 @@ export async function handleLEORespondCall(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -506,7 +506,7 @@ export async function handleLEORespondCall(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -515,14 +515,14 @@ export async function handleLEORespondCall(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.status !== 'active') {
       return interaction.reply({
         embeds: [errorEmbed('This call is no longer active.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -530,7 +530,7 @@ export async function handleLEORespondCall(interaction) {
     if (call.respondingLeoId === interaction.user.id) {
       return interaction.reply({
         embeds: [errorEmbed('You are already the primary responder for this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -538,7 +538,7 @@ export async function handleLEORespondCall(interaction) {
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
         embeds: [errorEmbed('You are already attached to this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -592,7 +592,7 @@ export async function handleLEORespondCall(interaction) {
     console.error('Error responding to call:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -606,14 +606,14 @@ export async function handleLEOPrimaryResponse(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.respondingLeoId && call.respondingLeoId !== interaction.user.id) {
       return interaction.reply({
         embeds: [errorEmbed(`This call already has a primary responder: <@${call.respondingLeoId}>`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -646,13 +646,13 @@ export async function handleLEOPrimaryResponse(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Response Accepted', `You are now the primary responder for **${call.issue}** at **${call.location}**`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error accepting primary response:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -666,14 +666,14 @@ export async function handleLEOAttachResponse(interaction) {
     if (!call) {
       return interaction.reply({
         embeds: [errorEmbed('Call not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
         embeds: [errorEmbed('You are already attached to this call.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -720,13 +720,13 @@ export async function handleLEOAttachResponse(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Attached to Call', `You have attached to **${call.issue}** at **${call.location}**`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error attaching to call:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -740,7 +740,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -750,7 +750,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -874,7 +874,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     console.error('Error searching character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -890,7 +890,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -900,7 +900,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -913,7 +913,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -923,7 +923,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
     if (weaponIndex === -1) {
       return interaction.reply({
         embeds: [errorEmbed('Weapon Not Found', `**${characterName}** does not have a **${weaponName}** registered.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -937,13 +937,13 @@ export async function handleLEORevokeWeaponModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Weapon Revoked', responseDesc)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error revoking weapon:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -964,7 +964,7 @@ export async function handleLEOIssueTicketModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -974,7 +974,7 @@ export async function handleLEOIssueTicketModal(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -989,7 +989,7 @@ export async function handleLEOIssueTicketModal(interaction) {
       console.log(`❌ Character not found: ${characterName}`);
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1021,13 +1021,13 @@ export async function handleLEOIssueTicketModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Traffic Ticket Issued', responseDesc)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('❌ Error issuing ticket:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.', error.message || 'Unknown error')],
-      ephemeral: true,
+      flags: 64,
     }).catch(e => console.error('Could not send reply:', e));
   }
 }
@@ -1044,7 +1044,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1054,7 +1054,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1067,7 +1067,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     if (!character) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1122,13 +1122,13 @@ export async function handleLEOCreateBOLOModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('🚨 BOLO ALERT CREATED', responseDesc)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error creating BOLO:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1142,7 +1142,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands are not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1152,7 +1152,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     if (!hasLeoRole) {
       return interaction.reply({
         embeds: [errorEmbed('Access denied.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1162,7 +1162,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     if (!character || character.guildId !== interaction.guildId) {
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', 'This character profile could not be found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1261,7 +1261,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     console.error('Error viewing character profile:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1275,7 +1275,7 @@ export async function handleLEOManageBolosSelect(interaction) {
     if (!bolo) {
       return interaction.reply({
         embeds: [errorEmbed('BOLO not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -1323,7 +1323,7 @@ export async function handleLEOManageBolosSelect(interaction) {
     console.error('Error managing BOLO:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -1337,19 +1337,19 @@ export async function handleLEODeleteBOLO(interaction) {
     if (!bolo) {
       return interaction.reply({
         embeds: [errorEmbed('BOLO not found or already deleted.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     return interaction.reply({
       embeds: [successEmbed('BOLO Deleted', `BOLO **${boloId}** for ${bolo.characterName} has been removed.`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error deleting BOLO:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

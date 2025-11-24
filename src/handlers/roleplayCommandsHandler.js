@@ -21,7 +21,7 @@ async function showSetupMenu(interaction) {
   return {
     content: '**Roleplay Commands Setup**\n\nSelect a command to configure:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   };
 }
 
@@ -43,7 +43,7 @@ async function showCADSetupMenu(interaction) {
   return {
     content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
     components: [cadMenu],
-    ephemeral: true,
+    flags: 64,
   };
 }
 
@@ -66,7 +66,7 @@ async function showEmergencySetupMenu(interaction) {
   return {
     content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
     components: [emergencyMenu],
-    ephemeral: true,
+    flags: 64,
   };
 }
 
@@ -79,7 +79,7 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
     if (!roleplayConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -137,7 +137,7 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
     console.error('Error in roleplay commands setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -151,7 +151,7 @@ export async function handleRoleplayCommandTwitterChannel(interaction) {
     if (!roleplayConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -168,7 +168,7 @@ export async function handleRoleplayCommandTwitterChannel(interaction) {
     console.error('Error setting Twitter channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -182,7 +182,7 @@ export async function handleRoleplayCommandAnonChannel(interaction) {
     if (!roleplayConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -199,7 +199,7 @@ export async function handleRoleplayCommandAnonChannel(interaction) {
     console.error('Error setting anon channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -213,7 +213,7 @@ export async function handleTwitterPostModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.twitterChannel) {
       return interaction.reply({
         embeds: [errorEmbed('Twitter channel not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -222,7 +222,7 @@ export async function handleTwitterPostModal(interaction) {
     if (!channel) {
       return interaction.reply({
         embeds: [errorEmbed('Twitter channel not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -238,13 +238,13 @@ export async function handleTwitterPostModal(interaction) {
 
     return interaction.reply({
       content: '✅ Tweet posted!',
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error handling twitter post:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while posting.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -258,7 +258,7 @@ export async function handleAnonPostModal(interaction) {
     if (!roleplayConfig || !roleplayConfig.anonChannel) {
       return interaction.reply({
         embeds: [errorEmbed('Anonymous channel not configured.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -267,7 +267,7 @@ export async function handleAnonPostModal(interaction) {
     if (!channel) {
       return interaction.reply({
         embeds: [errorEmbed('Anonymous channel not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -282,13 +282,13 @@ export async function handleAnonPostModal(interaction) {
 
     return interaction.reply({
       content: '✅ Anonymous message posted!',
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error handling anon post:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while posting.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -301,7 +301,7 @@ export async function handle911ReportModal(interaction) {
     console.log(`🚨 911 REPORT STARTED - User: ${interaction.user.id}, Guild: ${interaction.guildId}`);
     
     // Immediately defer the reply to prevent interaction timeout
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
     console.log(`✓ Deferred reply for user ${interaction.user.id}`);
 
     // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
@@ -439,7 +439,7 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
     if (!roleplayConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -449,7 +449,7 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed('Roleplay Commands Enabled', 'Members now have access to roleplay commands. Run `/roleplaycommandsetup` to configure.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -459,14 +459,14 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed('Roleplay Commands Disabled', 'Members no longer have access to roleplay commands.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error in roleplay commands enable menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -553,7 +553,7 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
     console.error('Error in emergency setup menu:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -567,7 +567,7 @@ export async function handleRoleplayCommandsEmergency911Channel(interaction) {
     if (!roleplayConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -584,7 +584,7 @@ export async function handleRoleplayCommandsEmergency911Channel(interaction) {
     console.error('Error setting emergency 911 channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -598,7 +598,7 @@ export async function handleRoleplayCommandsEmergencyLEORoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -614,7 +614,7 @@ export async function handleRoleplayCommandsEmergencyLEORoles(interaction) {
     console.error('Error setting emergency LEO roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -628,7 +628,7 @@ export async function handleRoleplayCommandsEmergencyFDRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -644,7 +644,7 @@ export async function handleRoleplayCommandsEmergencyFDRoles(interaction) {
     console.error('Error setting emergency FD roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -658,7 +658,7 @@ export async function handleRoleplayCommandsEmergencyStaffRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -674,7 +674,7 @@ export async function handleRoleplayCommandsEmergencyStaffRoles(interaction) {
     console.error('Error setting emergency staff roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -688,7 +688,7 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -748,7 +748,7 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
     console.error('Error in roleplay commands CAD setup:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -762,7 +762,7 @@ export async function handleRoleplayCommandsCADLeoRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -778,7 +778,7 @@ export async function handleRoleplayCommandsCADLeoRoles(interaction) {
     console.error('Error setting LEO roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -792,7 +792,7 @@ export async function handleRoleplayCommandsCADFDRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -808,7 +808,7 @@ export async function handleRoleplayCommandsCADFDRoles(interaction) {
     console.error('Error setting FD roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -822,7 +822,7 @@ export async function handleRoleplayCommandsCADStaffRoles(interaction) {
     if (!cadConfig) {
       return interaction.reply({
         embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -838,7 +838,7 @@ export async function handleRoleplayCommandsCADStaffRoles(interaction) {
     console.error('Error setting staff roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
     if (!ticketConfig || !ticketConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('⚙️ Ticket Support Not Enabled', 'Use `/enablecommands` → Enable Features → Ticket Support')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -42,13 +42,13 @@ export async function execute(interaction) {
     await interaction.reply({
       content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in ticket setup command:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

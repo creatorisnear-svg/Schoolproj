@@ -10,7 +10,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -28,6 +28,6 @@ export async function execute(interaction) {
   await interaction.reply({
     content: '**Reaction Role Setup**\n\nWhat do you want to do?',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   });
 }

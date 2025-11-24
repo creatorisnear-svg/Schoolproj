@@ -12,7 +12,7 @@ export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators can set up the strike system.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
   if (!config || !config.logChannelId) {
     return interaction.reply({
       embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the strike system.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -30,7 +30,7 @@ export async function execute(interaction) {
   if (!strikeConfig || !strikeConfig.enabled) {
     return interaction.reply({
       embeds: [errorEmbed('⚙️ Strike System Not Enabled', 'Use `/enablecommands` → Enable Features → Strike System')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -57,6 +57,6 @@ export async function execute(interaction) {
   return interaction.reply({
     content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   });
 }

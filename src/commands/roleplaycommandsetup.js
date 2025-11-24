@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('⚙️ Roleplay Commands Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Commands')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -41,13 +41,13 @@ export async function execute(interaction) {
     await interaction.reply({
       content: '**Roleplay Commands Setup**\n\nSelect a command to configure:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in roleplay commands setup:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

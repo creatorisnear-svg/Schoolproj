@@ -12,7 +12,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only staff can set up the verification system.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
   if (!config || !config.logChannelId) {
     return interaction.reply({
       embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the verification system.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -30,7 +30,7 @@ export async function execute(interaction) {
   if (!verification || !verification.enabled) {
     return interaction.reply({
       embeds: [errorEmbed('⚙️ Verification System Not Enabled', 'Use `/enablecommands` → Enable Features → Verification System')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -61,6 +61,6 @@ export async function execute(interaction) {
   return interaction.reply({
     content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
     components: [menu],
-    ephemeral: true,
+    flags: 64,
   });
 }

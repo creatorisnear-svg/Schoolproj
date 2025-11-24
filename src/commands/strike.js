@@ -24,7 +24,7 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -37,7 +37,7 @@ export async function execute(interaction) {
     if (!strikeConfig || !strikeConfig.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The strike system is not enabled. Please contact an administrator.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -127,13 +127,13 @@ export async function execute(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed(`${targetUser.username} Striked Successfully`, `${targetUser.username} is now at strike level ${strikeLevel}/4\n\nAction Taken: ${actionTaken}`)],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error striking member:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while striking the member.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

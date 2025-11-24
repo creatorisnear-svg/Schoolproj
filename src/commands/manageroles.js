@@ -14,7 +14,7 @@ export async function execute(interaction) {
     if (!config || !config.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('The role request system is not enabled.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -55,7 +55,7 @@ export async function execute(interaction) {
     if (managedRoles.length === 0) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have permission to manage any roles. Only assigned approvers can use this command.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -70,13 +70,13 @@ export async function execute(interaction) {
     await interaction.reply({
       content: 'Which role would you like to manage?',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in manage roles command:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

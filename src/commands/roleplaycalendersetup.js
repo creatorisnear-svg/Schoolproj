@@ -11,7 +11,7 @@ export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the roleplay calendar.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 
@@ -21,7 +21,7 @@ export async function execute(interaction) {
     if (!calendar || !calendar.enabled) {
       return interaction.reply({
         embeds: [errorEmbed('⚙️ Roleplay Calendar Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Calendar')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -37,13 +37,13 @@ export async function execute(interaction) {
     return interaction.reply({
       content: 'Select a channel where the roleplay calendar will be posted:',
       components: [menu],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in roleplay calendar setup:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while setting up the roleplay calendar.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }

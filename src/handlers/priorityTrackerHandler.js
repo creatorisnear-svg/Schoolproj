@@ -15,7 +15,7 @@ export async function handlePriorityTrackerChannelSelect(interaction) {
     if (!priority) {
       return interaction.reply({
         embeds: [errorEmbed('Priority tracker configuration not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -43,7 +43,7 @@ export async function handlePriorityTrackerChannelSelect(interaction) {
     console.error('Error in priority tracker channel select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while processing your selection.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
@@ -60,7 +60,7 @@ export async function handlePriorityTrackerMessageModal(interaction) {
     if (!priority) {
       return interaction.reply({
         embeds: [errorEmbed('Priority tracker configuration not found.')],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -88,13 +88,13 @@ export async function handlePriorityTrackerMessageModal(interaction) {
       embeds: [successEmbed('Priority Tracker Setup Complete', 
         `Priority tracker message has been created in <#${priority.channelId}>. Use /activepriority and /prioritycooldown to manage it.`)],
       components: [backButton],
-      ephemeral: true,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error in priority tracker message modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while setting up the priority tracker.')],
-      ephemeral: true,
+      flags: 64,
     });
   }
 }
