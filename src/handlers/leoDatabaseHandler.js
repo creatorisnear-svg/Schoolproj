@@ -937,12 +937,16 @@ export async function handleLEORevokeWeaponModal(interaction) {
 }
 
 export async function handleLEOIssueTicketModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('ticket_character_name');
-  const violation = interaction.fields.getTextInputValue('ticket_violation');
-  const description = interaction.fields.getTextInputValue('ticket_description');
-  const fineAmount = parseInt(interaction.fields.getTextInputValue('ticket_fine') || '0');
-
+  console.log('🎫 Ticket modal submitted by:', interaction.user.tag);
+  
   try {
+    const characterName = interaction.fields.getTextInputValue('ticket_character_name') || '';
+    const violation = interaction.fields.getTextInputValue('ticket_violation') || '';
+    const description = interaction.fields.getTextInputValue('ticket_description') || '';
+    const fineAmount = parseInt(interaction.fields.getTextInputValue('ticket_fine') || '0') || 0;
+
+    console.log(`📝 Ticket details - Name: ${characterName}, Violation: ${violation}, Fine: ${fineAmount}`);
+
     // Verify permissions
     const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
     if (!roleplayConfig || !roleplayConfig.enabled) {
@@ -963,24 +967,28 @@ export async function handleLEOIssueTicketModal(interaction) {
     }
 
     // Find character
+    console.log(`🔍 Searching for character: ${characterName}`);
     const character = await CADCharacter.findOne({
       guildId: interaction.guildId,
       characterName: { $regex: characterName, $options: 'i' }
     });
 
     if (!character) {
+      console.log(`❌ Character not found: ${characterName}`);
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
         ephemeral: true,
       });
     }
 
+    console.log(`✅ Found character: ${character.characterName}`);
+
     // Create ticket
     const ticketId = `TKT-${Date.now()}`;
     const ticket = new TrafficTicket({
       guildId: interaction.guildId,
       ticketId,
-      characterId: character._id,
+      characterId: character._id.toString(),
       characterName: character.characterName,
       issuedBy: interaction.user.id,
       violation,
@@ -988,7 +996,9 @@ export async function handleLEOIssueTicketModal(interaction) {
       fine: fineAmount,
     });
 
+    console.log(`💾 Saving ticket: ${ticketId}`);
     await ticket.save();
+    console.log(`✅ Ticket saved successfully`);
 
     let responseDesc = `**Ticket ID:** ${ticketId}\n`;
     responseDesc += `**Character:** ${character.characterName}\n`;
@@ -1002,11 +1012,11 @@ export async function handleLEOIssueTicketModal(interaction) {
       ephemeral: true,
     });
   } catch (error) {
-    console.error('Error issuing ticket:', error);
+    console.error('❌ Error issuing ticket:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
+      embeds: [errorEmbed('An error occurred.', error.message || 'Unknown error')],
       ephemeral: true,
-    });
+    }).catch(e => console.error('Could not send reply:', e));
   }
 }
 
