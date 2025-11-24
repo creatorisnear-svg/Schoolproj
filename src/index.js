@@ -386,7 +386,11 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'choice_enable' || interaction.customId === 'choice_disable' || interaction.customId === 'choice_done') {
       await handleEnableChoiceButton(interaction);
     } else if (interaction.customId === 'enable_done' || interaction.customId === 'disable_done') {
-      await interaction.deferUpdate();
+      try {
+        await interaction.message.delete();
+      } catch (error) {
+        await interaction.deferUpdate();
+      }
     } else if (interaction.customId.startsWith('enable_')) {
       await handleEnableCommandButton(interaction);
     } else if (interaction.customId.startsWith('disable_')) {
