@@ -145,19 +145,18 @@ async function startEmergencyCallAutoDelete() {
 
   setInterval(async () => {
     try {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       
-      // Find unresponded calls older than 5 minutes
+      // Find all active calls older than 10 minutes
       const expiredCalls = await EmergencyCall.find({
         status: 'active',
-        respondingLeoId: null,
-        timestamp: { $lt: fiveMinutesAgo }
+        timestamp: { $lt: tenMinutesAgo }
       });
 
       if (expiredCalls.length > 0) {
         for (const call of expiredCalls) {
           await EmergencyCall.deleteOne({ _id: call._id });
-          console.log(`🗑️ Auto-deleted unresponded 911 call ${call.callId} (>5 min old)`);
+          console.log(`🗑️ Auto-deleted 911 call ${call.callId} (>10 min old)`);
         }
         console.log(`📊 Deleted ${expiredCalls.length} expired 911 call(s)`);
       }
@@ -166,7 +165,7 @@ async function startEmergencyCallAutoDelete() {
     }
   }, 60000); // Check every minute
 
-  console.log('⏱️ Emergency call auto-delete started (5-minute timeout)');
+  console.log('⏱️ Emergency call auto-delete started (10-minute timeout)');
 }
 
 client.on('interactionCreate', async interaction => {
@@ -241,6 +240,18 @@ client.on('interactionCreate', async interaction => {
       await handleSetupModals(interaction);
     } else {
       await handleModalSubmit(interaction);
+    }
+  }
+
+  if (interaction.isButton()) {
+    const { handle911RespondButton, handle911AttachButton, handle911DismissButton } = await import('./handlers/emergencyButtonHandler.js');
+
+    if (interaction.customId.startsWith('911_respond_')) {
+      await handle911RespondButton(interaction);
+    } else if (interaction.customId.startsWith('911_attach_')) {
+      await handle911AttachButton(interaction);
+    } else if (interaction.customId.startsWith('911_dismiss_')) {
+      await handle911DismissButton(interaction);
     }
   }
 

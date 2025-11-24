@@ -454,12 +454,34 @@ export async function handle911ReportModal(interaction) {
       .setFooter({ text: `EverLink | Call ID: ${callId}` })
       .setTimestamp();
 
+    const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+
+    // Create buttons for 911 response
+    const respondButton = new ButtonBuilder()
+      .setCustomId(`911_respond_${callId}`)
+      .setLabel('🚨 Respond')
+      .setStyle(ButtonStyle.Danger);
+
+    const attachButton = new ButtonBuilder()
+      .setCustomId(`911_attach_${callId}`)
+      .setLabel('📎 Attach')
+      .setStyle(ButtonStyle.Primary);
+
+    const dismissButton = new ButtonBuilder()
+      .setCustomId(`911_dismiss_${callId}`)
+      .setLabel('❌ Dismiss')
+      .setStyle(ButtonStyle.Secondary);
+
+    const buttonRow = new ActionRowBuilder()
+      .addComponents(respondButton, attachButton, dismissButton);
+
     console.log(`📢 Sending 911 message to channel ${roleplayConfig.use911Channel}`);
     const sentMessage = await channel.send({ 
       content: mention,
-      embeds: [emergencyEmbed] 
+      embeds: [emergencyEmbed],
+      components: [buttonRow]
     });
-    console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}`);
+    console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}, Call ID: ${callId}`);
 
     return interaction.editReply({
       content: '✅ 911 report submitted!',
