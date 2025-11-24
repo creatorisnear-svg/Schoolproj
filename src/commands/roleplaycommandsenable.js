@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import Config from '../models/Config.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
@@ -6,7 +6,13 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycommandsenable')
-  .setDescription('Enable or disable roleplay commands (Staff only)');
+  .setDescription('Enable or disable roleplay commands (Staff only)')
+  .addBooleanOption(option =>
+    option
+      .setName('enabled')
+      .setDescription('Enable or disable roleplay commands')
+      .setRequired(true)
+  );
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
@@ -16,46 +22,36 @@ export async function execute(interaction) {
     });
   }
 
+  const enabled = interaction.options.getBoolean('enabled');
+
   try {
-    const config = await Config.findOne({ guildId: interaction.guildId });
+    if (enabled) {
+      const config = await Config.findOne({ guildId: interaction.guildId });
 
-    if (!config || !config.logChannelId) {
-      return interaction.reply({
-        embeds: [errorEmbed('A log channel must be configured first. Run `/setlogchannel`.')],
-        ephemeral: true,
-      });
+      if (!config || !config.logChannelId) {
+        return interaction.reply({
+          embeds: [errorEmbed('A log channel must be configured first. Run `/setlogchannel`.')],
+          ephemeral: true,
+        });
+      }
     }
 
-    let roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    let roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId }) || new RoleplayCommands({ guildId: interaction.guildId });
 
-    if (!roleplayConfig) {
-      roleplayConfig = new RoleplayCommands({ guildId: interaction.guildId, enabled: true });
-      await roleplayConfig.save();
+    roleplayConfig.enabled = enabled;
+    await roleplayConfig.save();
 
-      return interaction.reply({
-        embeds: [successEmbed('Roleplay Commands Enabled', 'Roleplay commands system is now enabled. Run `/roleplaycommandsetup` to configure.')],
-        ephemeral: true,
-      });
-    }
+    const status = enabled ? 'enabled' : 'disabled';
+    const message = enabled
+      ? 'Roleplay commands system is now enabled. Run `/roleplaycommandsetup` to configure.'
+      : 'Roleplay commands system has been disabled.';
 
-    const menu = new ActionRowBuilder()
-      .addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roleplaycommandsenable_menu')
-          .setPlaceholder('Choose an option...')
-          .addOptions(
-            { label: '✅ Enable Roleplay Commands', value: 'enable', description: roleplayConfig.enabled ? '(Currently enabled)' : '' },
-            { label: '❌ Disable Roleplay Commands', value: 'disable', description: !roleplayConfig.enabled ? '(Currently disabled)' : '' }
-          )
-      );
-
-    await interaction.reply({
-      content: '**Roleplay Commands**\n\nChoose to enable or disable:',
-      components: [menu],
+    return interaction.reply({
+      embeds: [successEmbed(`Roleplay Commands ${status.charAt(0).toUpperCase() + status.slice(1)}`, message)],
       ephemeral: true,
     });
   } catch (error) {
-    console.error('Error in roleplay commands enable:', error);
+    console.error('Error toggling roleplay commands:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

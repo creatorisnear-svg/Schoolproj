@@ -204,8 +204,8 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
-    const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect, handleTicketSupportEnableMenu } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsEnableMenu } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
+    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu, handleCADCharacterMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
@@ -214,8 +214,6 @@ client.on('interactionCreate', async interaction => {
       await handleRoleplayCommandsSelect(interaction);
     } else if (interaction.customId === 'roleplaycommands_setup_menu') {
       await handleRoleplayCommandsSetupMenu(interaction);
-    } else if (interaction.customId === 'roleplaycommandsenable_menu') {
-      await handleRoleplayCommandsEnableMenu(interaction);
     } else if (interaction.customId === 'cadsystem_setup_menu') {
       await handleCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadcharacter_menu') {
@@ -226,8 +224,6 @@ client.on('interactionCreate', async interaction => {
       await handleCADGunCharacterSelect(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {
       await handleTicketSetupMenu(interaction);
-    } else if (interaction.customId === 'ticketsupportenable_menu') {
-      await handleTicketSupportEnableMenu(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_button_color_')) {
       await handleTicketTypeButtonColor(interaction);
     } else if (interaction.customId === 'ticketsupport_remove_type_select') {

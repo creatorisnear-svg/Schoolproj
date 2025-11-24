@@ -15,10 +15,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 Members access roleplay commands directly as slash commands.
 
 **Setup Process:**
-1. Staff runs `/roleplaycommandsenable` to enable/disable the entire system:
-   - Shows dropdown menu with options:
-     - **✅ Enable Roleplay Commands**
-     - **❌ Disable Roleplay Commands**
+1. Staff runs `/roleplaycommandsenable true` or `/roleplaycommandsenable false` to enable/disable the entire system
 2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
    - **911 - Emergency Reporting** → Select channel for emergency dispatch
    - **Twitter - Public Messages** → Select channel for public OOC posts  
@@ -85,10 +82,7 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
   Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it.
 
   **Enable/Disable Ticket Support:**
-  - Staff runs `/ticketsupportenable` to enable/disable the entire system:
-    - Shows dropdown menu with options:
-      - **✅ Enable Ticket Support**
-      - **❌ Disable Ticket Support**
+  - Staff runs `/ticketsupportenable true` or `/ticketsupportenable false` to enable/disable the entire system
   - When disabled, members can no longer create tickets
   - When enabled, staff runs `/ticketsupportsetup` to configure the panel
   
