@@ -633,31 +633,43 @@ export async function handleManageRoleSelect(interaction) {
     // Defer the interaction to avoid timeout on large guild member fetches
     await interaction.deferReply({ ephemeral: true });
 
-    // Get all members with this role - with retry logic for rate limits
-    let members;
-    let retries = 3;
-    let delay = 1000;
+    // Get all members with this role - use cached members to avoid rate limits
+    let membersWithRole = [];
+    
+    // Try to use cached members first
+    if (interaction.guild.members.cache.size > 0) {
+      const members = interaction.guild.members.cache;
+      membersWithRole = Array.from(members.values())
+        .filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
+    } else {
+      // Only fetch if cache is empty, with retry and exponential backoff
+      let members;
+      let retries = 3;
+      let delay = 2000;
 
-    while (retries > 0) {
-      try {
-        members = await interaction.guild.members.fetch({ limit: 0 });
-        break;
-      } catch (error) {
-        if (error.code === 'RateLimitError' || error.status === 429) {
-          retries--;
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay));
-            delay *= 2;
-            continue;
+      while (retries > 0) {
+        try {
+          members = await interaction.guild.members.fetch({ limit: 0 });
+          membersWithRole = Array.from(members.values())
+            .filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
+          break;
+        } catch (error) {
+          if (error.name === 'GatewayRateLimitError' || error.code === 'RateLimitError' || error.status === 429) {
+            retries--;
+            if (retries > 0) {
+              // Get retry_after from error if available
+              const retryAfter = error.data?.retry_after || delay / 1000;
+              await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+              delay *= 2;
+              continue;
+            }
           }
+          throw error;
         }
-        throw error;
       }
     }
 
-    const membersWithRole = members.filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
-
-    if (membersWithRole.size === 0) {
+    if (membersWithRole.length === 0) {
       return await interaction.editReply({
         embeds: [
           new EmbedBuilder()
@@ -670,11 +682,11 @@ export async function handleManageRoleSelect(interaction) {
     }
 
     // Show members and allow removal
-    const memberOptions = membersWithRole.map(m => ({
+    const memberOptions = membersWithRole.slice(0, 25).map(m => ({
       label: m.user.username,
       value: m.id,
       description: 'Click to remove this role'
-    })).slice(0, 25);
+    }));
 
     const menu = new ActionRowBuilder()
       .addComponents(
@@ -684,7 +696,7 @@ export async function handleManageRoleSelect(interaction) {
           .addOptions(memberOptions)
       );
 
-    let description = `**${roleConfig.roleName}** - ${membersWithRole.size} member(s)\n\n`;
+    let description = `**${roleConfig.roleName}** - ${membersWithRole.length} member(s)\n\n`;
     membersWithRole.forEach(m => {
       description += `• ${m.user.username}\n`;
     });
@@ -735,17 +747,18 @@ export async function handleRemoveRoleFromMember(interaction) {
     // Fetch member with retry logic for rate limits
     let member;
     let retries = 3;
-    let delay = 1000;
+    let delay = 2000;
 
     while (retries > 0) {
       try {
         member = await interaction.guild.members.fetch(memberId);
         break;
       } catch (error) {
-        if (error.code === 'RateLimitError' || error.status === 429) {
+        if (error.name === 'GatewayRateLimitError' || error.code === 'RateLimitError' || error.status === 429) {
           retries--;
           if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay));
+            const retryAfter = error.data?.retry_after || delay / 1000;
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
             delay *= 2;
             continue;
           }
@@ -756,17 +769,18 @@ export async function handleRemoveRoleFromMember(interaction) {
 
     // Remove role with retry logic for rate limits
     retries = 3;
-    delay = 1000;
+    delay = 2000;
 
     while (retries > 0) {
       try {
         await member.roles.remove(roleConfig.roleId);
         break;
       } catch (error) {
-        if (error.code === 'RateLimitError' || error.status === 429) {
+        if (error.name === 'GatewayRateLimitError' || error.code === 'RateLimitError' || error.status === 429) {
           retries--;
           if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay));
+            const retryAfter = error.data?.retry_after || delay / 1000;
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
             delay *= 2;
             continue;
           }
