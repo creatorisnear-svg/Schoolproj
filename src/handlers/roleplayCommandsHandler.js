@@ -3,6 +3,27 @@ import CADConfig from '../models/CADConfig.js';
 import { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder } from 'discord.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
+function showCADSetupMenu(interaction) {
+  const cadMenu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_setup_menu')
+        .setPlaceholder('Choose CAD setup option...')
+        .addOptions(
+          { label: 'Set LEO Roles', value: 'set_leo_roles' },
+          { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
+          { label: 'Set Staff Roles', value: 'set_staff_roles' },
+          { label: '✅ Done - Back to Main Menu', value: 'cad_done' }
+        )
+    );
+
+  return {
+    content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
+    components: [cadMenu],
+    ephemeral: true,
+  };
+}
+
 // Helper to show main menu
 async function showSetupMenu(interaction) {
   const menu = new ActionRowBuilder()
@@ -614,6 +635,21 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
       });
     }
 
+    if (choice === 'setup_911') {
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('roleplaycommands_911_channel')
+        .setPlaceholder('Select the 911 reporting channel...')
+        .addChannelTypes(ChannelType.GuildText);
+
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+
+      return interaction.reply({
+        content: 'Select the channel where 911 reports will be sent:',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
     if (choice === 'set_leo_roles') {
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('roleplaycommands_cad_leo_roles')
@@ -662,11 +698,11 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'cad_done') {
+    if (choice === 'cad_done' || choice === 'emergency_done') {
       const menuData = await showSetupMenu(interaction);
       return interaction.update({
         ...menuData,
-        embeds: [successEmbed('CAD Setup Complete', 'Returning to main roleplay commands setup menu.')],
+        embeds: [successEmbed('Setup Complete', 'Returning to main roleplay commands setup menu.')],
       });
     }
   } catch (error) {
