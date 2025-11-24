@@ -131,7 +131,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
     if (choice === 'create_character') {
       const modal = new ModalBuilder()
         .setCustomId('cadcharacter_create_modal')
-        .setTitle('Create Character')
+        .setTitle('Create Character - Step 1')
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -159,19 +159,23 @@ export async function handleCivilianDatabaseMenu(interaction) {
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_hair_color')
-              .setLabel('Hair Color')
+              .setCustomId('char_placeholder_1')
+              .setLabel('Info')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., Brown')
+              .setPlaceholder('(Step 1 of 3)')
               .setRequired(false)
+              .setMaxLength(1)
+              .setValue(' ')
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_eye_color')
-              .setLabel('Eye Color')
+              .setCustomId('char_placeholder_2')
+              .setLabel('Next Step')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., Blue')
+              .setPlaceholder('→ Click "Continue" below')
               .setRequired(false)
+              .setMaxLength(1)
+              .setValue(' ')
           )
         );
 
