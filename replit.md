@@ -14,26 +14,22 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 **Roleplay Commands System (911, Twitter, Anon, CAD):**
 All roleplay commands are centralized through `/roleplaycommands` menu interface.
 
-**Setup Process (`/roleplaycommandsenable` → `/roleplaycommandsetup`):**
-Staff configures through dropdown menu with options:
-- **911 - Emergency Reporting** → Select channel for emergency dispatch
-- **Twitter - Public Messages** → Select channel for public OOC posts  
-- **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
-- **CAD - Computer Aided Dispatch** → Enable CAD system
-- **✅ Done - Close Setup** → Finish configuration
+**Setup Process:**
+1. Staff runs `/toggleroleplaycommands` to enable/disable the system
+2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
+   - **911 - Emergency Reporting** → Select channel for emergency dispatch
+   - **Twitter - Public Messages** → Select channel for public OOC posts  
+   - **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
+   - **CAD - Computer Aided Dispatch** → Enable CAD system
+   - **✅ Done - Close Setup** → Finish configuration
 
 **Member Access (`/roleplaycommands`):**
-- Members use `/roleplaycommands` to access enabled commands
-- Shows dropdown menu with only the commands staff enabled:
-  - 🚨 911 Emergency Report
-  - 🐦 Twitter Post
-  - 🔇 Anonymous Message
-  - 📊 CAD Dispatch
-
-**Disable Roleplay Commands:**
-- Staff can run `/disableroleplaycommands` to disable the entire roleplay commands system
-- Once disabled, members can no longer access `/roleplaycommands`
-- Can be re-enabled with `/roleplaycommandsenable`
+- Members use `/roleplaycommands` to access the enabled roleplay features
+- Shows a dropdown menu with ONLY the commands staff has enabled:
+  - 🚨 911 Emergency Report (if configured)
+  - 🐦 Twitter Post (if configured)
+  - 🔇 Anonymous Message (if configured)
+  - 📊 CAD Dispatch (if enabled)
 
 **CAD System (Computer Aided Dispatch):**
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
@@ -85,10 +81,10 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
   
   Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it.
 
-  **Disable Ticket Support:**
-  - Staff can run `/disableticketsuport` to disable the ticket support system
-  - Once disabled, members can no longer create tickets
-  - Can be re-enabled with `/ticketsupportenable`
+  **Enable/Disable Ticket Support:**
+  - Staff can run `/toggleticketsupport` to enable or disable the ticket support system
+  - When disabled, members can no longer create tickets
+  - Run the command again to re-enable
   
   **Setup Process:** After each setup step, the menu automatically returns to the main setup menu for seamless navigation. Staff can:
   - Add multiple ticket types, each with custom names, individual button colors, and role access
