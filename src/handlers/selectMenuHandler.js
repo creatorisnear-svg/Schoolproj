@@ -1166,7 +1166,12 @@ async function handleReactionRoleSelect(interaction) {
   const pending = pendingEmojiRoles.get(tempKey);
   const roleId = interaction.values[0];
 
+  console.log(`🎯 Role selection: ${roleId} by ${interaction.user.tag}`);
+  console.log(`   Temp key: ${tempKey}`);
+  console.log(`   Pending exists: ${pending ? 'YES' : 'NO'}`);
+
   if (!pending) {
+    console.log(`❌ Session expired for key ${tempKey}`);
     return interaction.reply({
       embeds: [errorEmbed('Session expired. Please try again.')],
       ephemeral: true,
@@ -1174,6 +1179,7 @@ async function handleReactionRoleSelect(interaction) {
   }
 
   const { emoji, messageId, guildId } = pending;
+  console.log(`✓ Pending data - emoji: ${emoji}, messageId: ${messageId}, guildId: ${guildId}`);
 
   try {
     const reactionRole = await ReactionRole.findOne({
@@ -1182,6 +1188,7 @@ async function handleReactionRoleSelect(interaction) {
     });
 
     if (!reactionRole) {
+      console.log(`❌ Reaction role not found for message ${messageId}`);
       pendingEmojiRoles.delete(tempKey);
       return interaction.reply({
         embeds: [errorEmbed('Message not found.')],
@@ -1189,21 +1196,28 @@ async function handleReactionRoleSelect(interaction) {
       });
     }
 
+    console.log(`✓ Found reaction role config`);
+
     // Add emoji-role pair
     reactionRole.emojiRoles.push({ emoji, roleId });
     await reactionRole.save();
+    console.log(`✅ Saved emoji-role pair to database`);
 
     // Try to add reaction to message
     try {
       const channel = await interaction.guild.channels.fetch(reactionRole.channelId);
       const message = await channel.messages.fetch(messageId);
       await message.react(emoji);
+      console.log(`✅ Added reaction ${emoji} to message`);
     } catch (err) {
-      console.log('Could not add reaction to message');
+      console.log(`⚠️ Could not add reaction to message: ${err.message}`);
     }
 
     const role = await interaction.guild.roles.fetch(roleId);
+    console.log(`✓ Fetched role: ${role.name}`);
+    
     pendingEmojiRoles.delete(tempKey);
+    console.log(`✅ Deleted pending key ${tempKey}`);
     
     return interaction.update({
       content: `✅ ${emoji} → ${role.name}`,
