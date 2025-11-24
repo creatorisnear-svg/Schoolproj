@@ -186,6 +186,8 @@ async function handleReactionRoleSendMessageModal(interaction) {
   const { ChannelSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
   
   const messageContent = interaction.fields.getTextInputValue('message_content');
+  console.log(`📝 Send message modal submitted by ${interaction.user.tag}`);
+  console.log(`   Message content: ${messageContent}`);
 
   try {
     // Show channel selector
@@ -201,6 +203,7 @@ async function handleReactionRoleSendMessageModal(interaction) {
       components: [row],
       ephemeral: true,
     });
+    console.log(`✅ Channel selector sent successfully`);
   } catch (error) {
     console.error('Error in reaction role modal:', error);
     return interaction.reply({
@@ -220,6 +223,10 @@ async function handleReactionRoleAddEmojiModal(interaction) {
   const messageId = interaction.fields.getTextInputValue('message_id');
   const emoji = interaction.fields.getTextInputValue('emoji_input');
 
+  console.log(`📝 Add emoji modal submitted by ${interaction.user.tag}`);
+  console.log(`   Message ID: ${messageId}`);
+  console.log(`   Emoji: ${emoji}`);
+
   try {
     const reactionRole = await ReactionRole.findOne({
       guildId: interaction.guildId,
@@ -227,13 +234,17 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     });
 
     if (!reactionRole) {
+      console.log(`❌ Reaction role config not found for message ${messageId}`);
       return interaction.reply({
         embeds: [errorEmbed('Message not found. Check the message ID.')],
         ephemeral: true,
       });
     }
 
+    console.log(`✓ Found reaction role config`);
+
     if (reactionRole.emojiRoles.length >= 5) {
+      console.log(`❌ Already has 5 emoji-role pairs`);
       return interaction.reply({
         embeds: [errorEmbed('This message already has 5 emoji-role pairs.')],
         ephemeral: true,
@@ -241,6 +252,7 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     }
 
     if (reactionRole.emojiRoles.some(er => er.emoji === emoji)) {
+      console.log(`❌ Emoji ${emoji} already exists for this message`);
       return interaction.reply({
         embeds: [errorEmbed('This emoji is already added to this message.')],
         ephemeral: true,
@@ -250,6 +262,7 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     // Store the emoji-message pair temporarily
     const tempKey = `${interaction.guildId}_${messageId}`;
     pendingEmojiRoles.set(tempKey, { emoji, messageId, guildId: interaction.guildId });
+    console.log(`✓ Stored pending emoji role with key: ${tempKey}`);
 
     // Show role selector with simple ID
     const roleSelect = new RoleSelectMenuBuilder()
@@ -258,6 +271,7 @@ async function handleReactionRoleAddEmojiModal(interaction) {
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
 
+    console.log(`✓ Showing role selector`);
     return interaction.reply({
       content: `Choose the role for ${emoji}:`,
       components: [row],
