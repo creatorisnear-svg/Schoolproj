@@ -16,14 +16,15 @@ All roleplay commands and CAD features are accessed exclusively through three me
 
 **Setup Process:**
 1. Staff runs `/roleplaycommandsenable true` to enable the roleplay commands system
-2. Staff runs `/roleplaycommandsetup` to configure emergency dispatch system:
-   - **🚨 911 & CAD - Emergency/Dispatch** → Configure 911 and CAD system:
+2. Staff runs `/roleplaycommandsetup` to configure channels and roles:
+   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and CAD system:
      - Select 911 Channel for emergency reports
      - Set LEO Roles (automatically pinged on 911 reports)
      - Set Fire Department Roles (automatically pinged on 911 reports)
      - Set Staff Roles for system management
+   - **🐦 Twitter - Public Messages** → Select channel for public OOC posts  
+   - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
-3. Twitter and Anon channels can be configured via `/civiliandatabase` menu (default channels if not configured)
 
 **Member Access (Civilians) - `/civiliandatabase`:**
 All civilian roleplay and CAD interactions are handled through a single menu with options to:
@@ -100,14 +101,17 @@ Full GTA5 RP CAD system with character and vehicle management for LEO/Fire Depar
   ↓
 Main Setup Menu:
   - 🚨 911 & CAD - Emergency/Dispatch
+  - 🐦 Twitter - Public Messages
+  - 🤫 Anon - Anonymous Messages
   - ✅ Done - Close Setup
   ↓
-Emergency Setup Menu:
-  - 🚑 Select 911 Channel
-  - 🚔 Set LEO Roles (Pinged on 911)
-  - 🚒 Set Fire Department Roles (Pinged on 911)
-  - 👮 Set Staff Roles
-  - ✅ Done - Back to Main Menu
+If 911 & CAD selected:
+  Emergency Setup Menu:
+    - 🚑 Select 911 Channel
+    - 🚔 Set LEO Roles
+    - 🚒 Set Fire Department Roles
+    - 👮 Set Staff Roles
+    - ✅ Done - Back to Main Menu
 ```
 
 **Project Structure:**
