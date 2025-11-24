@@ -17,7 +17,31 @@ const cadCharacterSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  gender: {
+    type: String,
+    default: null,
+  },
   hairColor: {
+    type: String,
+    default: null,
+  },
+  eyeColor: {
+    type: String,
+    default: null,
+  },
+  height: {
+    type: String,
+    default: null,
+  },
+  build: {
+    type: String,
+    default: null,
+  },
+  distinguishingFeatures: {
+    type: String,
+    default: null,
+  },
+  scarsAndTattoos: {
     type: String,
     default: null,
   },
@@ -33,6 +57,10 @@ const cadCharacterSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  socialSecurityNumber: {
+    type: String,
+    default: null,
+  },
   licensePlate: {
     type: String,
     unique: true,
@@ -41,6 +69,11 @@ const cadCharacterSchema = new mongoose.Schema({
   driversLicense: {
     type: String,
     default: null,
+  },
+  driverLicenseStatus: {
+    type: String,
+    enum: ['valid', 'suspended', 'revoked'],
+    default: 'valid',
   },
   vehicles: [
     {
@@ -52,13 +85,23 @@ const cadCharacterSchema = new mongoose.Schema({
         unique: true,
         sparse: true,
       },
+      year: String,
+      condition: String,
       addedAt: { type: Date, default: Date.now },
     },
   ],
   guns: [
     {
       name: String,
+      serialNumber: String,
       addedAt: { type: Date, default: Date.now },
+    },
+  ],
+  arrestHistory: [
+    {
+      charge: String,
+      date: Date,
+      outcome: String,
     },
   ],
   status: {
@@ -67,6 +110,14 @@ const cadCharacterSchema = new mongoose.Schema({
     default: 'clean',
   },
   wantedReason: {
+    type: String,
+    default: null,
+  },
+  medicalInfo: {
+    type: String,
+    default: null,
+  },
+  emergencyContact: {
     type: String,
     default: null,
   },
