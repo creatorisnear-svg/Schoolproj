@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('The roleplay commands system is not enabled. Run `/roleplaycommandsenable` first.')],
+        embeds: [errorEmbed('⚙️ Roleplay Commands Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Commands')],
         ephemeral: true,
       });
     }

@@ -29,7 +29,7 @@ export async function execute(interaction) {
   
   if (!strikeConfig || !strikeConfig.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('The strike system must be enabled before you can set it up. Use `/enablestrikesystem true` to enable it first.')],
+      embeds: [errorEmbed('⚙️ Strike System Not Enabled', 'Use `/enablecommands` → Enable Features → Strike System')],
       ephemeral: true,
     });
   }

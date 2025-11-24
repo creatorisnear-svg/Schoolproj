@@ -29,7 +29,7 @@ export async function execute(interaction) {
   
   if (!verification || !verification.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('The verification system must be enabled before you can set it up. Use `/verifysystem true` to enable it first.')],
+      embeds: [errorEmbed('⚙️ Verification System Not Enabled', 'Use `/enablecommands` → Enable Features → Verification System')],
       ephemeral: true,
     });
   }

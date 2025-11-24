@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!calendar || !calendar.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('You must enable the roleplay calendar first using `/roleplaycalendarenable true` before setting it up.')],
+        embeds: [errorEmbed('⚙️ Roleplay Calendar Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Calendar')],
         ephemeral: true,
       });
     }

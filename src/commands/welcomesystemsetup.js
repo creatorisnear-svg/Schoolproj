@@ -29,7 +29,7 @@ export async function execute(interaction) {
   
   if (!welcome || !welcome.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('The welcome system must be enabled before you can set it up. Use `/welcomesystem true` to enable it first.')],
+      embeds: [errorEmbed('⚙️ Welcome System Not Enabled', 'Use `/enablecommands` → Enable Features → Welcome System')],
       ephemeral: true,
     });
   }

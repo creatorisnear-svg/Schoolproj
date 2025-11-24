@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!ticketConfig || !ticketConfig.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('The ticket system is not enabled. Run `/ticketsupportenable` first.')],
+        embeds: [errorEmbed('⚙️ Ticket Support Not Enabled', 'Use `/enablecommands` → Enable Features → Ticket Support')],
         ephemeral: true,
       });
     }

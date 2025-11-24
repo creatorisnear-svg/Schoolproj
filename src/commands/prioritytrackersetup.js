@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!priority || !priority.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('You must enable the priority tracker first using `/prioritytrackerenable true` before setting it up.')],
+        embeds: [errorEmbed('⚙️ Priority Tracker Not Enabled', 'Use `/enablecommands` → Enable Features → Priority Tracker')],
         ephemeral: true,
       });
     }
