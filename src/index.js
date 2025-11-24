@@ -207,7 +207,7 @@ client.on('interactionCreate', async interaction => {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu, handleRoleplayCommandsEmergencySetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
@@ -221,7 +221,7 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'roleplaycommands_cad_setup_menu') {
       await handleRoleplayCommandsCADSetupMenu(interaction);
     } else if (interaction.customId === 'roleplaycommands_emergency_setup_menu') {
-      await handleRoleplayCommandsCADSetupMenu(interaction);
+      await handleRoleplayCommandsEmergencySetupMenu(interaction);
     } else if (interaction.customId === 'cadsystem_setup_menu') {
       await handleCADSetupMenu(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {

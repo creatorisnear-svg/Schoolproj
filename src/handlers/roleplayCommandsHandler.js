@@ -624,17 +624,16 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
   }
 }
 
-export async function handleRoleplayCommandsCADSetupMenu(interaction) {
+export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
   const choice = interaction.values[0];
 
   try {
-    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    let cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
 
+    // Create CADConfig if it doesn't exist
     if (!cadConfig) {
-      return interaction.reply({
-        embeds: [errorEmbed('CAD system not found.')],
-        ephemeral: true,
-      });
+      cadConfig = new CADConfig({ guildId: interaction.guildId, enabled: true });
+      await cadConfig.save();
     }
 
     if (choice === 'setup_911') {
@@ -648,6 +647,83 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
       return interaction.reply({
         content: 'Select the channel where 911 reports will be sent:',
         components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_leo_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_leo_roles')
+        .setPlaceholder('Select LEO roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that will be pinged on 911 reports (LEO):',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_fd_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_fd_roles')
+        .setPlaceholder('Select Fire Department roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that will be pinged on 911 reports (Fire Department):',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_staff_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_staff_roles')
+        .setPlaceholder('Select staff roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that can manage the CAD/911 system:',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'emergency_done') {
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
+        embeds: [successEmbed('Emergency Setup Complete', 'Returning to main roleplay commands setup menu.')],
+      });
+    }
+  } catch (error) {
+    console.error('Error in emergency setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsCADSetupMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
         ephemeral: true,
       });
     }
@@ -700,11 +776,11 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'cad_done' || choice === 'emergency_done') {
+    if (choice === 'cad_done') {
       const menuData = await showSetupMenu(interaction);
       return interaction.update({
         ...menuData,
-        embeds: [successEmbed('Setup Complete', 'Returning to main roleplay commands setup menu.')],
+        embeds: [successEmbed('CAD Setup Complete', 'Returning to main roleplay commands setup menu.')],
       });
     }
   } catch (error) {
