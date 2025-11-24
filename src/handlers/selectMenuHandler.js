@@ -1057,10 +1057,8 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
 
 async function handleReactionRoleMainMenu(interaction) {
   const choice = interaction.values[0];
-  console.log(`📋 Reaction role menu selected: ${choice} by ${interaction.user.tag}`);
 
   if (choice === 'send_message') {
-    console.log(`✓ Showing send message modal`);
     const modal = new ModalBuilder()
       .setCustomId('reactionrole_send_message_modal')
       .setTitle('Send Reaction Role Message')
@@ -1075,17 +1073,10 @@ async function handleReactionRoleMainMenu(interaction) {
         )
       );
 
-    try {
-      await interaction.showModal(modal);
-      console.log(`✅ Send message modal shown successfully`);
-    } catch (error) {
-      console.error(`❌ Error showing modal:`, error);
-    }
-    return;
+    return interaction.showModal(modal);
   }
 
   if (choice === 'add_emoji') {
-    console.log(`✓ Showing add emoji modal`);
     const modal = new ModalBuilder()
       .setCustomId('reactionrole_add_emoji_modal')
       .setTitle('Add Emoji to Message')
@@ -1108,16 +1099,8 @@ async function handleReactionRoleMainMenu(interaction) {
         )
       );
 
-    try {
-      await interaction.showModal(modal);
-      console.log(`✅ Add emoji modal shown successfully`);
-    } catch (error) {
-      console.error(`❌ Error showing modal:`, error);
-    }
-    return;
+    return interaction.showModal(modal);
   }
-
-  console.log(`❌ Unknown choice: ${choice}`);
 }
 
 async function handleReactionRoleSendChannel(interaction) {
@@ -1166,12 +1149,7 @@ async function handleReactionRoleSelect(interaction) {
   const pending = pendingEmojiRoles.get(tempKey);
   const roleId = interaction.values[0];
 
-  console.log(`🎯 Role selection: ${roleId} by ${interaction.user.tag}`);
-  console.log(`   Temp key: ${tempKey}`);
-  console.log(`   Pending exists: ${pending ? 'YES' : 'NO'}`);
-
   if (!pending) {
-    console.log(`❌ Session expired for key ${tempKey}`);
     return interaction.reply({
       embeds: [errorEmbed('Session expired. Please try again.')],
       ephemeral: true,
@@ -1179,7 +1157,6 @@ async function handleReactionRoleSelect(interaction) {
   }
 
   const { emoji, messageId, guildId } = pending;
-  console.log(`✓ Pending data - emoji: ${emoji}, messageId: ${messageId}, guildId: ${guildId}`);
 
   try {
     const reactionRole = await ReactionRole.findOne({
@@ -1188,7 +1165,6 @@ async function handleReactionRoleSelect(interaction) {
     });
 
     if (!reactionRole) {
-      console.log(`❌ Reaction role not found for message ${messageId}`);
       pendingEmojiRoles.delete(tempKey);
       return interaction.reply({
         embeds: [errorEmbed('Message not found.')],
@@ -1196,28 +1172,21 @@ async function handleReactionRoleSelect(interaction) {
       });
     }
 
-    console.log(`✓ Found reaction role config`);
-
     // Add emoji-role pair
     reactionRole.emojiRoles.push({ emoji, roleId });
     await reactionRole.save();
-    console.log(`✅ Saved emoji-role pair to database`);
 
     // Try to add reaction to message
     try {
       const channel = await interaction.guild.channels.fetch(reactionRole.channelId);
       const message = await channel.messages.fetch(messageId);
       await message.react(emoji);
-      console.log(`✅ Added reaction ${emoji} to message`);
     } catch (err) {
-      console.log(`⚠️ Could not add reaction to message: ${err.message}`);
+      // Silently fail if we can't add the reaction
     }
 
     const role = await interaction.guild.roles.fetch(roleId);
-    console.log(`✓ Fetched role: ${role.name}`);
-    
     pendingEmojiRoles.delete(tempKey);
-    console.log(`✅ Deleted pending key ${tempKey}`);
     
     return interaction.update({
       content: `✅ ${emoji} → ${role.name}`,

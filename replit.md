@@ -26,7 +26,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Roleplay Calendar:** Manages and displays weekly RP events with automatic timezone conversion using 12-hour AM/PM format. Displays times as Discord timestamps that auto-convert to each user's local timezone.
 - **Sticky Messages:** Staff/admins can use `/sticky` to create messages that auto-repost every 1 message to keep important information visible. Messages are prefixed with "__**Stickied Message:**__" header.
 - **Anti-Promoting System:** Automatically detects and removes non-whitelisted Discord invite links, with an optional staff bypass.
-- **Reaction Role System:** Staff/admins can use `/reactionrolemessage` to create messages with emoji reactions that automatically assign roles. Up to 5 emoji-role pairs per message. Uses `/reactionroleadd` to add emoji-role pairs to existing messages.
+- **Reaction Role System:** Staff/admins can use `/reactionrolemessage` to create messages with emoji reactions that automatically assign roles. Up to 5 emoji-role pairs per message. Menu-based workflow: "Send a New Message" creates a reaction role message, "Add Emoji to Existing Message" adds emoji-role pairs via modals. Requires `GatewayIntentBits.GuildMessageReactions` intent to receive reaction events.
 - **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole), ensuring per-server data isolation and persistence.
 
 **Project Structure:**

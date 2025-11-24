@@ -5,88 +5,48 @@ export async function handleReactionAdd(reaction, user) {
   if (user.bot) return;
 
   try {
-    console.log(`🔔 Reaction detected: ${reaction.emoji} from ${user.tag}`);
-    
     // Fetch full reaction if partial
     if (reaction.partial) {
       await reaction.fetch();
     }
 
-    if (!reaction.message.guildId) {
-      console.log('❌ Not in a guild');
-      return;
-    }
+    if (!reaction.message.guildId) return;
 
     const reactionRole = await ReactionRole.findOne({
       guildId: reaction.message.guildId,
       messageId: reaction.message.id,
     });
 
-    if (!reactionRole) {
-      console.log(`❌ No reaction role config found for message ${reaction.message.id} in guild ${reaction.message.guildId}`);
-      return;
-    }
-
-    console.log(`📝 Found reaction role config. Emojis: ${reactionRole.emojiRoles.map(er => er.emoji).join(', ')}`);
+    if (!reactionRole) return;
 
     // Find the emoji-role pair
     const emojiString = reaction.emoji.toString();
-    console.log(`🔍 Looking for emoji: "${emojiString}"`);
-    
     const emojiRole = reactionRole.emojiRoles.find(er => er.emoji === emojiString);
 
-    if (!emojiRole) {
-      console.log(`❌ Emoji "${emojiString}" not configured. Available: ${reactionRole.emojiRoles.map(er => `"${er.emoji}"`).join(', ')}`);
-      return;
-    }
-
-    console.log(`✓ Found emoji, roleId: ${emojiRole.roleId}`);
+    if (!emojiRole) return;
 
     // Get the guild and member
     let guild = reaction.message.guild;
     if (!guild) {
-      console.log('🔄 Fetching guild...');
-      guild = await reaction.client.guilds.fetch(reaction.message.guildId).catch(err => {
-        console.log(`❌ Could not fetch guild: ${err.message}`);
-        return null;
-      });
+      guild = await reaction.client.guilds.fetch(reaction.message.guildId).catch(() => null);
       if (!guild) return;
     }
 
-    console.log(`✓ Guild: ${guild.name}`);
-
-    const member = await guild.members.fetch(user.id).catch(err => {
-      console.log(`❌ Could not fetch member ${user.tag}: ${err.message}`);
-      return null;
-    });
-    if (!member) {
-      console.log(`❌ Member not found: ${user.id}`);
-      return;
-    }
-
-    console.log(`✓ Member: ${member.user.tag}`);
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    if (!member) return;
 
     // Get the role
     const role = guild.roles.cache.get(emojiRole.roleId);
-    if (!role) {
-      console.log(`❌ Role ${emojiRole.roleId} not found in cache`);
-      return;
-    }
-
-    console.log(`✓ Role: ${role.name}`);
+    if (!role) return;
 
     // Check if member already has role
-    if (member.roles.cache.has(emojiRole.roleId)) {
-      console.log(`⚠️ Member already has role ${role.name}`);
-      return;
-    }
+    if (member.roles.cache.has(emojiRole.roleId)) return;
 
     // Add the role
     try {
       await member.roles.add(role);
-      console.log(`✅ Successfully added role ${role.name} to ${user.tag}`);
     } catch (err) {
-      console.error(`❌ Failed to add role to member: ${err.message}`);
+      console.error(`Error adding role to member: ${err.message}`);
     }
   } catch (error) {
     console.error('Error in handleReactionAdd:', error);
