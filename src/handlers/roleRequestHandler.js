@@ -249,31 +249,17 @@ export async function handleSelectRoleToRequest(interaction) {
       });
     }
 
-    // Show approver selection menu
+    // Show only approver members (no roles)
     const approverOptions = [];
 
-    // Add approver roles
-    for (const roleId of roleConfig.approverRoleIds) {
-      try {
-        const role = await interaction.guild.roles.fetch(roleId);
-        approverOptions.push({
-          label: `${role.name} (Role)`,
-          value: `role_${roleId}`,
-          description: 'Approve as this role'
-        });
-      } catch (err) {
-        // Skip invalid roles
-      }
-    }
-
-    // Add approver members
+    // Add only approver members
     for (const memberId of roleConfig.approverMemberIds) {
       try {
         const member = await interaction.guild.members.fetch(memberId);
         approverOptions.push({
-          label: `${member.user.username} (Member)`,
+          label: member.user.username,
           value: `member_${memberId}`,
-          description: 'Approve as this member'
+          description: `Send request to ${member.user.username}`
         });
       } catch (err) {
         // Skip invalid members
@@ -295,8 +281,14 @@ export async function handleSelectRoleToRequest(interaction) {
           .addOptions(approverOptions)
       );
 
+    const embed = new EmbedBuilder()
+      .setColor('#FFA500')
+      .setTitle('Who should approve your request?')
+      .setDescription(`**Role:** ${roleConfig.roleName}`)
+      .setFooter({ text: 'EverLink' });
+
     await interaction.reply({
-      content: `Who should approve your request for **${roleConfig.roleName}**?`,
+      embeds: [embed],
       components: [menu],
       ephemeral: true,
     });
@@ -328,18 +320,8 @@ export async function handleSelectApprover(interaction) {
       });
     }
 
-    // Verify the selected approver actually has permission to approve this role
-    let approverIsAuthorized = false;
-
-    if (approverType === 'role') {
-      // Check if this role is in the approver list
-      approverIsAuthorized = roleConfig.approverRoleIds.includes(approverId);
-    } else {
-      // Check if this member is in the approver list
-      approverIsAuthorized = roleConfig.approverMemberIds.includes(approverId);
-    }
-
-    if (!approverIsAuthorized) {
+    // Verify the selected approver is actually in the member list
+    if (approverType !== 'member' || !roleConfig.approverMemberIds.includes(approverId)) {
       return interaction.reply({
         embeds: [errorEmbed('Approver does not have permission to manage this role.')],
         ephemeral: true,
