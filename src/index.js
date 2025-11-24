@@ -30,25 +30,8 @@ const __dirname = dirname(__filename);
 const commandsPath = join(__dirname, 'commands');
 const allCommandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Define command load order
-const commandOrder = [
-  'addstaff.js',
-  'setlogchannel.js',
-  'enablecommands.js',
-  'prioritytrackersetup.js',
-  'roleplaycalendersetup.js',
-  'roleplaycommandsetup.js',
-  'strikesystemsetup.js',
-  'ticketsupportsetup.js',
-  'verifysystemsetup.js',
-  'welcomesystemsetup.js'
-];
-
-// Load priority commands first, then rest alphabetically
-const orderedFiles = [
-  ...commandOrder.filter(f => allCommandFiles.includes(f)),
-  ...allCommandFiles.filter(f => !commandOrder.includes(f)).sort()
-];
+// Load all files in numeric order (they already have numeric prefixes)
+const orderedFiles = allCommandFiles.sort();
 
 const commands = [];
 
