@@ -16,7 +16,7 @@ Members access roleplay commands through `/civiliandatabase` (civilians) and `/l
 
 **Setup Process:**
 1. Staff runs `/roleplaycommandsenable true` or `/roleplaycommandsenable false` to enable/disable the entire system
-2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
+2. Staff runs `/roleplaycommandsetup` to configure which channels and roles to use for emergency reporting and roleplay commands:
    - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and LEO response system:
      - Select 911 Channel for emergency reports
      - Set LEO Roles (automatically pinged on 911 reports, can respond/attach to calls)
@@ -26,13 +26,13 @@ Members access roleplay commands through `/civiliandatabase` (civilians) and `/l
    - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
 
-**Member Access (Civilians):**
-- `/civiliandatabase` - Menu with options to:
-  - 🚨 Report 911 Emergency - Submit emergency with form modal
-  - 🐦 Post to Twitter - Share public OOC message
-  - 🤫 Post Anonymously - Post anonymous/black market message
-  - 👤 Create Character - Create a new civilian/character profile
-  - 🚗 Add Vehicle - Add a vehicle to an existing character
+**Member Access (Civilians) - `/civiliandatabase`:**
+All civilian roleplay and CAD interactions are handled through a single menu with options to:
+- 🚨 Report 911 Emergency - Submit emergency with form modal
+- 🐦 Post to Twitter - Share public OOC message
+- 🤫 Post Anonymously - Post anonymous/black market message
+- 👤 Create Character - Create a new civilian/character profile
+- 🚗 Add Vehicle - Add a vehicle to an existing character
 
 **LEO Access:**
 - `/leodatabase` - Menu with options to:

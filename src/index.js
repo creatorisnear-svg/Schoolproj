@@ -169,22 +169,13 @@ client.on('interactionCreate', async interaction => {
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
-    const { handleTwitterPostModal, handleAnonPostModal, handle911ReportModal } = await import('./handlers/roleplayCommandsHandler.js');
-    const { handleCADCharacterCreateModal, handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
+    const { handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleFDCharacterCreateModal, handleFDVehicleAddModal } = await import('./handlers/fireDepartmentHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
-    } else if (interaction.customId === '911report') {
-      await handle911ReportModal(interaction);
-    } else if (interaction.customId === 'twitter_post_modal') {
-      await handleTwitterPostModal(interaction);
-    } else if (interaction.customId === 'anon_post_modal') {
-      await handleAnonPostModal(interaction);
-    } else if (interaction.customId === 'cadcharacter_create_modal') {
-      await handleCADCharacterCreateModal(interaction);
     } else if (interaction.customId === 'fd_character_create_modal') {
       await handleFDCharacterCreateModal(interaction);
     } else if (interaction.customId.startsWith('cadvehicle_add_modal_')) {
@@ -217,7 +208,7 @@ client.on('interactionCreate', async interaction => {
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
     const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
-    const { handleCADSetupMenu, handleCADCharacterMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
+    const { handleCADSetupMenu } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
@@ -232,12 +223,6 @@ client.on('interactionCreate', async interaction => {
       await handleRoleplayCommandsCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadsystem_setup_menu') {
       await handleCADSetupMenu(interaction);
-    } else if (interaction.customId === 'cadcharacter_menu') {
-      await handleCADCharacterMenu(interaction);
-    } else if (interaction.customId === 'cadcharacter_select_for_vehicle') {
-      await handleCADVehicleCharacterSelect(interaction);
-    } else if (interaction.customId === 'cadcharacter_select_for_gun') {
-      await handleCADGunCharacterSelect(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {
       await handleTicketSetupMenu(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_button_color_')) {
@@ -272,19 +257,13 @@ client.on('interactionCreate', async interaction => {
     const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
     const { handleRoleplayCalendarChannelSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketChannelSelect, handleTicketRoleSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommand911Channel, handleRoleplayCommandTwitterChannel, handleRoleplayCommandAnonChannel, handleRoleplayCommandsCADLeoRoles, handleRoleplayCommandsCADFDRoles, handleRoleplayCommandsCADStaffRoles } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommandsCADLeoRoles, handleRoleplayCommandsCADFDRoles, handleRoleplayCommandsCADStaffRoles } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADLeoRoles, handleCADFDRoles, handleCADStaffRoles } = await import('./handlers/cadHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_channel')) {
       await handlePriorityTrackerChannelSelect(interaction);
     } else if (interaction.customId.includes('roleplaycalendarsetup_channel')) {
       await handleRoleplayCalendarChannelSelect(interaction);
-    } else if (interaction.customId === 'roleplaycommands_911_channel') {
-      await handleRoleplayCommand911Channel(interaction);
-    } else if (interaction.customId === 'roleplaycommands_twitter_channel') {
-      await handleRoleplayCommandTwitterChannel(interaction);
-    } else if (interaction.customId === 'roleplaycommands_anon_channel') {
-      await handleRoleplayCommandAnonChannel(interaction);
     } else if (interaction.customId === 'cadsystem_leo_roles') {
       await handleCADLeoRoles(interaction);
     } else if (interaction.customId === 'cadsystem_fd_roles') {
