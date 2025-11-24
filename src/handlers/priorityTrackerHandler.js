@@ -75,9 +75,19 @@ export async function handlePriorityTrackerMessageModal(interaction) {
     priority.messageId = message.id;
     await priority.save();
 
+    const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_priority_menu')
+          .setLabel('← Back to Menu')
+          .setStyle(ButtonStyle.Primary)
+      );
+
     return interaction.reply({
       embeds: [successEmbed('Priority Tracker Setup Complete', 
         `Priority tracker message has been created in <#${priority.channelId}>. Use /activepriority and /prioritycooldown to manage it.`)],
+      components: [backButton],
       ephemeral: true,
     });
   } catch (error) {

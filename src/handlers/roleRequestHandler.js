@@ -17,19 +17,34 @@ export async function handleRoleRequestSetupMenu(interaction) {
           .setMaxValues(1)
       );
 
-    await interaction.reply({
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    await interaction.update({
       content: 'Step 1: Select the role members can request',
-      components: [roleSelect],
-      ephemeral: true,
+      components: [roleSelect, backButton],
     });
   } else if (value === 'delete_role') {
     // Show delete option
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
     
     if (!config || !config.roles || config.roles.length === 0) {
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_rolerequest_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds: [errorEmbed('No role request types to delete.')],
-        ephemeral: true,
+        components: [backButton],
       });
     }
 
@@ -47,19 +62,34 @@ export async function handleRoleRequestSetupMenu(interaction) {
           .addOptions(options)
       );
 
-    await interaction.reply({
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    await interaction.update({
       content: 'Which role request type would you like to delete?',
-      components: [menu],
-      ephemeral: true,
+      components: [menu, backButton],
     });
   } else if (value === 'view_roles') {
     // Show all role request types
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
     
     if (!config || !config.roles || config.roles.length === 0) {
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_rolerequest_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds: [errorEmbed('No role request types configured yet.')],
-        ephemeral: true,
+        components: [backButton],
       });
     }
 
@@ -76,12 +106,20 @@ export async function handleRoleRequestSetupMenu(interaction) {
       .setDescription(description)
       .setFooter({ text: 'EverLink' });
 
-    await interaction.reply({
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    await interaction.update({
       embeds: [embed],
-      ephemeral: true,
+      components: [backButton],
     });
   } else if (value === 'setup_done') {
-    await interaction.reply({
+    await interaction.update({
       content: '✅ Role request setup closed.',
       ephemeral: true,
     });
@@ -197,8 +235,17 @@ export async function handleSelectApproverMembers(interaction) {
       .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
       .setFooter({ text: 'EverLink' });
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back to Menu')
+          .setStyle(ButtonStyle.Primary)
+      );
+
     await interaction.editReply({
       embeds: [successMsg],
+      components: [backButton],
     });
   } catch (error) {
     console.error('Error selecting approver members:', error);
@@ -238,15 +285,23 @@ export async function handleDeleteRoleRequestType(interaction) {
       .setDescription(`✅ **${deletedRole.roleName}** has been removed from the role request system.`)
       .setFooter({ text: 'EverLink' });
 
-    await interaction.reply({
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back to Menu')
+          .setStyle(ButtonStyle.Primary)
+      );
+
+    await interaction.update({
       embeds: [successMsg],
-      ephemeral: true,
+      components: [backButton],
     });
   } catch (error) {
     console.error('Error deleting role request type:', error);
-    await interaction.reply({
+    await interaction.update({
       embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
+      components: [],
     });
   }
 }

@@ -28,9 +28,19 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
     calendar.messageId = message.id;
     await calendar.save();
 
+    const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_calendar_menu')
+          .setLabel('← Back to Menu')
+          .setStyle(ButtonStyle.Primary)
+      );
+
     return interaction.reply({
       embeds: [successEmbed('Roleplay Calendar Setup Complete', 
         `Roleplay calendar has been created in <#${calendar.channelId}>. Use /setrp to add events and /unsetrp to remove them.`)],
+      components: [backButton],
       ephemeral: true,
     });
   } catch (error) {

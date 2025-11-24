@@ -408,6 +408,9 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId.startsWith('skip_approver_roles_')) {
       const { handleSkipApproverRoles } = await import('./handlers/roleRequestHandler.js');
       await handleSkipApproverRoles(interaction);
+    } else if (interaction.customId === 'back_to_rolerequest_menu' || interaction.customId === 'back_to_ticket_menu' || interaction.customId === 'back_to_roleplay_menu' || interaction.customId === 'back_to_priority_menu' || interaction.customId === 'back_to_calendar_menu') {
+      const { handleBackToMenu } = await import('./handlers/setupMenuHandler.js');
+      await handleBackToMenu(interaction);
     }
   }
 

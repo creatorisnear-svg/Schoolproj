@@ -144,9 +144,10 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
     }
 
     if (choice === 'setup_done') {
-      return interaction.reply({
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
         embeds: [successEmbed('Setup Complete', 'Your roleplay commands are ready to use!')],
-        ephemeral: true,
       });
     }
   } catch (error) {

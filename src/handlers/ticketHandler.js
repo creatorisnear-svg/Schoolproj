@@ -225,9 +225,10 @@ export async function handleTicketSetupMenu(interaction) {
     }
 
     if (choice === 'setup_done') {
-      return interaction.reply({
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
         embeds: [successEmbed('Setup Complete', 'Your ticket system is ready to use!')],
-        ephemeral: true,
       });
     }
   } catch (error) {
