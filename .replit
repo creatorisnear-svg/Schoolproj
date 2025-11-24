@@ -22,9 +22,6 @@ author = "agent"
 task = "shell.exec"
 args = "npm start"
 
-[workflows.workflow.metadata]
-outputType = "console"
-
 [nix]
 channel = "stable-25_05"
 
