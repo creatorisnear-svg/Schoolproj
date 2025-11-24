@@ -2,11 +2,11 @@ import { SlashCommandBuilder } from 'discord.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystem')
-  .setDescription('Enable or disable the welcome system (Admin only)')
+  .setDescription('Enable or disable the welcome system (Staff only)')
   .addBooleanOption(option =>
     option
       .setName('enabled')
@@ -15,9 +15,9 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can manage the welcome system.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only staff can manage the welcome system.')],
       ephemeral: true,
     });
   }

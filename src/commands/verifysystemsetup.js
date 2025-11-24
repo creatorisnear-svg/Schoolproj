@@ -2,16 +2,16 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonB
 import Verification from '../models/Verification.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystemsetup')
-  .setDescription('Configure the verification system for your server');
+  .setDescription('Configure the verification system for your server (Staff only)');
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can set up the verification system.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only staff can set up the verification system.')],
       ephemeral: true,
     });
   }

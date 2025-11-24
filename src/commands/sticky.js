@@ -5,7 +5,7 @@ import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
   .setName('sticky')
-  .setDescription('Create a sticky message that auto-reposts after 3 messages')
+  .setDescription('Create a sticky message that auto-reposts (Staff only)')
   .addStringOption(option =>
     option
       .setName('message')

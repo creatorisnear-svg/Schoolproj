@@ -1,16 +1,16 @@
 import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, ChannelType, TextInputBuilder, ModalBuilder, TextInputStyle } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('prioritytrackersetup')
-  .setDescription('Set up the priority tracker system (Admin only)');
+  .setDescription('Set up the priority tracker system (Staff only)');
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the priority tracker.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only staff can configure the priority tracker.')],
       ephemeral: true,
     });
   }

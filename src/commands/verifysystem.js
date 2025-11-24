@@ -2,11 +2,11 @@ import { SlashCommandBuilder } from 'discord.js';
 import Verification from '../models/Verification.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystem')
-  .setDescription('Enable or disable the verification system')
+  .setDescription('Enable or disable the verification system (Staff only)')
   .addBooleanOption(option =>
     option
       .setName('enabled')
@@ -15,9 +15,9 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can manage the verification system.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only staff can manage the verification system.')],
       ephemeral: true,
     });
   }
