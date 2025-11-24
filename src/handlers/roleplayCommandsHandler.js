@@ -70,14 +70,6 @@ async function showEmergencySetupMenu(interaction) {
   };
 }
 
-export async function handleRoleplayCommandsSelect(interaction) {
-  // This function is deprecated - all roleplay commands use the civilian database menu instead
-  return interaction.reply({
-    embeds: [errorEmbed('This menu is no longer active. Use `/civiliandatabase` instead.')],
-    ephemeral: true,
-  });
-}
-
 export async function handleRoleplayCommandsSetupMenu(interaction) {
   const choice = interaction.values[0];
 
