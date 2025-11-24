@@ -141,58 +141,6 @@ export async function handleLEODatabaseMenu(interaction) {
       });
     }
 
-    if (choice === 'wanted_list') {
-      const wantedCharacters = await CADCharacter.find({ 
-        guildId: interaction.guildId, 
-        status: 'wanted' 
-      });
-
-      if (wantedCharacters.length === 0) {
-        const backButton = new ActionRowBuilder()
-          .addComponents(
-            new ButtonBuilder()
-              .setCustomId('back_to_leo_menu')
-              .setLabel('← Back')
-              .setStyle(ButtonStyle.Secondary)
-          );
-
-        return interaction.update({
-          embeds: [infoEmbed('Wanted List', 'No wanted suspects.')],
-          components: [backButton],
-        });
-      }
-
-      const embeds = wantedCharacters.map(c => {
-        let description = `**Name:** ${c.characterName}\n`;
-        description += `**Age:** ${c.age || 'N/A'}\n`;
-        description += `**Gender:** ${c.gender || 'N/A'}\n`;
-        description += `**Hair:** ${c.hairColor || 'N/A'}\n`;
-        description += `**Reason:** ${c.wantedReason || 'No reason specified'}\n`;
-        description += `\n**Vehicles:** ${c.vehicles.length}\n`;
-        description += `**Known Weapons:** ${c.guns.length}`;
-
-        return new EmbedBuilder()
-          .setColor('#ff0000')
-          .setTitle(`🚨 WANTED: ${c.characterName}`)
-          .setDescription(description)
-          .setFooter({ text: 'EverLink' })
-          .setTimestamp();
-      });
-
-      const backButton = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-      return interaction.update({
-        embeds,
-        components: [backButton],
-      });
-    }
-
     if (choice === 'manage_bolos') {
       const bolos = await BOLO.find({ 
         guildId: interaction.guildId, 
