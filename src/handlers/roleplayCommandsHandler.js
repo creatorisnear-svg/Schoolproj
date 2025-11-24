@@ -430,9 +430,9 @@ export async function handle911ReportModal(interaction) {
     console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}, Call ID: ${callId}`);
 
     // Save message ID and channel ID to the emergency call
-    newCall.messageId = sentMessage.id;
-    newCall.channelId = roleplayConfig.use911Channel;
-    await newCall.save();
+    emergencyCall.messageId = sentMessage.id;
+    emergencyCall.channelId = roleplayConfig.use911Channel;
+    await emergencyCall.save();
 
     return interaction.editReply({
       content: '✅ 911 report submitted!',
