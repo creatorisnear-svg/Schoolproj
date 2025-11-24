@@ -21,7 +21,7 @@ export async function execute(interaction) {
   
   if (staffCount === 0) {
     return interaction.reply({
-      embeds: [errorEmbed('You must add at least one staff member before setting up the log channel. Use `/addstaff` to add staff members first.')],
+      embeds: [errorEmbed('You must add staff or staff roles first using `/addstaff` before setting up the log channel.')],
       ephemeral: true,
     });
   }
