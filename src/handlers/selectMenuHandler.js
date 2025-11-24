@@ -748,10 +748,9 @@ async function handleWelcomeSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel where welcome messages will be sent:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -788,9 +787,9 @@ async function handleWelcomeSetupMenu(interaction) {
     }
 
     if (choice === 'welcome_setup_done') {
+      const menuData = createWelcomeSetupMenu();
       return interaction.update({
-        content: '',
-        components: [],
+        ...menuData,
         embeds: [successEmbed('Welcome system setup is complete. Your welcome system is now active.')],
       });
     }
@@ -907,10 +906,9 @@ async function handleStrikeSetupMenu(interaction) {
         roleSelects.push(new ActionRowBuilder().addComponents(roleSelect));
       }
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select roles for strike levels 1-4. You can leave empty if you don\'t want a role for that level.',
         components: roleSelects,
-        ephemeral: true,
       });
     }
 
@@ -931,18 +929,17 @@ async function handleStrikeSetupMenu(interaction) {
         actionMenus.push(new ActionRowBuilder().addComponents(actionSelect));
       }
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the action for each strike level (1-4):',
         components: actionMenus,
-        ephemeral: true,
       });
     }
 
     if (choice === 'strike_setup_done') {
+      const menuData = createStrikeSetupMenu();
       return interaction.update({
-        content: '✅ Strike system setup complete!',
+        ...menuData,
         embeds: [successEmbed('Strike System Configured', 'Your strike system is ready to use. Staff can now use `/strike` to strike members.')],
-        components: [],
       });
     }
   } catch (error) {

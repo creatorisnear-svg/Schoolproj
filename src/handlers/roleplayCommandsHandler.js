@@ -701,10 +701,9 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can access LEO features (search license plates, etc.):',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -717,10 +716,9 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can access Fire Department features:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -733,10 +731,9 @@ export async function handleRoleplayCommandsCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can manage the CAD system:',
         components: [row],
-        ephemeral: true,
       });
     }
 
