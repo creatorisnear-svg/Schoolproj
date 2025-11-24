@@ -30,22 +30,22 @@ const strikeConfigSchema = new mongoose.Schema({
   strikes: {
     strike1: {
       roleId: { type: String, default: null },
-      action: { type: String, enum: ['kick', 'timeout', 'ban', null], default: null },
+      action: { type: String, enum: ['none', 'kick', 'timeout', 'ban', null], default: null },
       duration: { type: Number, default: null },
     },
     strike2: {
       roleId: { type: String, default: null },
-      action: { type: String, enum: ['kick', 'timeout', 'ban', null], default: null },
+      action: { type: String, enum: ['none', 'kick', 'timeout', 'ban', null], default: null },
       duration: { type: Number, default: null },
     },
     strike3: {
       roleId: { type: String, default: null },
-      action: { type: String, enum: ['kick', 'timeout', 'ban', null], default: null },
+      action: { type: String, enum: ['none', 'kick', 'timeout', 'ban', null], default: null },
       duration: { type: Number, default: null },
     },
     strike4: {
       roleId: { type: String, default: null },
-      action: { type: String, enum: ['kick', 'timeout', 'ban', null], default: null },
+      action: { type: String, enum: ['none', 'kick', 'timeout', 'ban', null], default: null },
       duration: { type: Number, default: null },
     },
   },
