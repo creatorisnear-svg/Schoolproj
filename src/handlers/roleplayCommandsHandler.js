@@ -638,7 +638,7 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
     if (choice === 'setup_911') {
       const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('roleplaycommands_911_channel')
+        .setCustomId('roleplaycommands_emergency_911_channel')
         .setPlaceholder('Select the 911 reporting channel...')
         .addChannelTypes(ChannelType.GuildText);
 
@@ -653,7 +653,7 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
     if (choice === 'set_leo_roles') {
       const roleSelect = new RoleSelectMenuBuilder()
-        .setCustomId('roleplaycommands_cad_leo_roles')
+        .setCustomId('roleplaycommands_emergency_leo_roles')
         .setPlaceholder('Select LEO roles...')
         .setMinValues(0)
         .setMaxValues(5);
@@ -669,7 +669,7 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
     if (choice === 'set_fd_roles') {
       const roleSelect = new RoleSelectMenuBuilder()
-        .setCustomId('roleplaycommands_cad_fd_roles')
+        .setCustomId('roleplaycommands_emergency_fd_roles')
         .setPlaceholder('Select Fire Department roles...')
         .setMinValues(0)
         .setMaxValues(5);
@@ -685,7 +685,7 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
     if (choice === 'set_staff_roles') {
       const roleSelect = new RoleSelectMenuBuilder()
-        .setCustomId('roleplaycommands_cad_staff_roles')
+        .setCustomId('roleplaycommands_emergency_staff_roles')
         .setPlaceholder('Select staff roles...')
         .setMinValues(0)
         .setMaxValues(5);
@@ -708,6 +708,127 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
     }
   } catch (error) {
     console.error('Error in emergency setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsEmergency911Channel(interaction) {
+  const channelId = interaction.values[0];
+
+  try {
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+
+    if (!roleplayConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands not found.')],
+        ephemeral: true,
+      });
+    }
+
+    roleplayConfig.use911 = true;
+    roleplayConfig.use911Channel = channelId;
+    await roleplayConfig.save();
+
+    const menuData = await showEmergencySetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('911 Channel Set', `911 reports will be sent to <#${channelId}>`)],
+    });
+  } catch (error) {
+    console.error('Error setting emergency 911 channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsEmergencyLEORoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.leoRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    const menuData = await showEmergencySetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('LEO Roles Set', `${selectedRoles.length} LEO role(s) configured.`)],
+    });
+  } catch (error) {
+    console.error('Error setting emergency LEO roles:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsEmergencyFDRoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.fireDepartmentRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    const menuData = await showEmergencySetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Fire Department Roles Set', `${selectedRoles.length} FD role(s) configured.`)],
+    });
+  } catch (error) {
+    console.error('Error setting emergency FD roles:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsEmergencyStaffRoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.staffRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    const menuData = await showEmergencySetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Staff Roles Set', `${selectedRoles.length} staff role(s) configured.`)],
+    });
+  } catch (error) {
+    console.error('Error setting emergency staff roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

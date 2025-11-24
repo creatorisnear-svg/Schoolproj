@@ -207,7 +207,7 @@ client.on('interactionCreate', async interaction => {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu, handleRoleplayCommandsEmergencySetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu, handleRoleplayCommandsEmergencySetupMenu, handleRoleplayCommandsEmergency911Channel, handleRoleplayCommandsEmergencyLEORoles, handleRoleplayCommandsEmergencyFDRoles, handleRoleplayCommandsEmergencyStaffRoles } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
@@ -271,6 +271,8 @@ client.on('interactionCreate', async interaction => {
       await handleRoleplayCalendarChannelSelect(interaction);
     } else if (interaction.customId === 'roleplaycommands_911_channel') {
       await handleRoleplayCommand911Channel(interaction);
+    } else if (interaction.customId === 'roleplaycommands_emergency_911_channel') {
+      await handleRoleplayCommandsEmergency911Channel(interaction);
     } else if (interaction.customId === 'roleplaycommands_twitter_channel') {
       await handleRoleplayCommandTwitterChannel(interaction);
     } else if (interaction.customId === 'roleplaycommands_anon_channel') {
@@ -281,6 +283,12 @@ client.on('interactionCreate', async interaction => {
       await handleCADFDRoles(interaction);
     } else if (interaction.customId === 'cadsystem_staff_roles') {
       await handleCADStaffRoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_emergency_leo_roles') {
+      await handleRoleplayCommandsEmergencyLEORoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_emergency_fd_roles') {
+      await handleRoleplayCommandsEmergencyFDRoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_emergency_staff_roles') {
+      await handleRoleplayCommandsEmergencyStaffRoles(interaction);
     } else if (interaction.customId === 'roleplaycommands_cad_leo_roles') {
       await handleRoleplayCommandsCADLeoRoles(interaction);
     } else if (interaction.customId === 'roleplaycommands_cad_fd_roles') {
