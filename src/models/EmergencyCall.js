@@ -14,7 +14,7 @@ const emergencyCallSchema = new Schema({
   status: { type: String, enum: ['active', 'closed'], default: 'active' },
   respondingLeoId: String,
   respondingLeoUsername: String,
-  attachedLeoIds: [String],
+  attachedLeoIds: { type: [String], default: [] },
   closedAt: Date,
   closedBy: String,
   messageId: String,
