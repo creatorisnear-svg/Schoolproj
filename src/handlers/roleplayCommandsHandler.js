@@ -13,6 +13,7 @@ async function showSetupMenu(interaction) {
           { label: '911 - Emergency Reporting', value: 'setup_911' },
           { label: 'Twitter - Public Messages', value: 'setup_twitter' },
           { label: 'Anon - Anonymous Messages', value: 'setup_anon' },
+          { label: 'CAD - Computer Aided Dispatch', value: 'setup_cad' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
     );
@@ -217,6 +218,17 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
         content: 'Select the channel for anonymous messages:',
         components: [row],
         ephemeral: true,
+      });
+    }
+
+    if (choice === 'setup_cad') {
+      roleplayConfig.useCAD = true;
+      await roleplayConfig.save();
+
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
+        embeds: [successEmbed('CAD Enabled', 'GTA5 CAD system has been enabled. Members can now use `/cad` to access dispatch info, `/cadcharacter` to manage characters, and LEO can use `/cadlicensesearch` to search plates.')],
       });
     }
 

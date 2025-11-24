@@ -20,12 +20,12 @@ Members access roleplay commands directly as slash commands.
    - **911 - Emergency Reporting** → Select channel for emergency dispatch
    - **Twitter - Public Messages** → Select channel for public OOC posts  
    - **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
+   - **CAD - Computer Aided Dispatch** → Enable CAD system
    - **✅ Done - Close Setup** → Finish configuration
 
-**CAD System Setup:**
-- CAD is configured separately through `/cadsystem` (not in roleplay commands setup)
-- Staff configures LEO roles, Fire Department roles, and staff roles
-- Members access CAD through `/cad` command directly
+**CAD System Configuration:**
+- Configure LEO roles, Fire Department roles, and staff roles through `/cadsystem`
+- Enable/disable within roleplay commands setup menu
 
 **Member Access:**
 - `/911` - Report an emergency (if configured)
