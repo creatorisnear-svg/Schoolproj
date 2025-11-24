@@ -69,6 +69,13 @@ async function registerCommandsAsync() {
   try {
     console.log('🔄 Started refreshing application (/) commands...');
     
+    // Step 0: Clear client-side cache
+    console.log('🧹 Clearing bot client command cache...');
+    if (client.application) {
+      client.application.commands.cache.clear();
+      console.log('  ✓ Cleared client command cache');
+    }
+
     // Step 1: Clear all old commands first (ensures no stale commands remain)
     console.log('🗑️  Clearing old commands from all guilds...');
     let clearSuccessCount = 0;
@@ -89,6 +96,15 @@ async function registerCommandsAsync() {
       }
     }
 
+    // Also clear global commands as fallback
+    try {
+      console.log('  ↳ Also clearing global commands...');
+      await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+      console.log('  ✓ Cleared global commands');
+    } catch (err) {
+      console.log('  ℹ️  No global commands to clear (this is expected)');
+    }
+
     if (clearSuccessCount > 0) {
       console.log(`✅ Cleared old commands from ${clearSuccessCount} guild(s)`);
     }
@@ -96,9 +112,9 @@ async function registerCommandsAsync() {
       console.log(`⚠️  Failed to clear commands from ${clearFailureCount} guild(s)`);
     }
 
-    // Wait 2 seconds to let Discord process the clear before registering new commands
-    console.log('⏳ Waiting for Discord to process cleared commands...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait 3 seconds to let Discord process the clear before registering new commands
+    console.log('⏳ Waiting for Discord to process cleared commands (3 seconds)...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Step 2: Register new commands
     console.log(`📤 Registering ${commands.length} commands to ${client.guilds.cache.size} guild(s)...`);
@@ -122,6 +138,7 @@ async function registerCommandsAsync() {
     }
 
     console.log(`✅ Command registration complete: ${successCount} successful, ${failureCount} failed.`);
+    console.log('💡 Tip: If old commands still appear in Discord, restart your Discord client (close completely and reopen).');
   } catch (error) {
     console.error('❌ Command registration system error:', error.message);
     console.log('⚠️  Bot will continue running. Commands may not be visible in Discord.');
