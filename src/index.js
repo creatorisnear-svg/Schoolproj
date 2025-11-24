@@ -208,7 +208,7 @@ client.on('interactionCreate', async interaction => {
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
     const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
-    const { handleCADSetupMenu } = await import('./handlers/cadHandler.js');
+    const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     
@@ -248,6 +248,10 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'fd_respond_call') {
       const { handleFDRespondCall } = await import('./handlers/fireDepartmentHandler.js');
       await handleFDRespondCall(interaction);
+    } else if (interaction.customId === 'cadcharacter_select_for_vehicle') {
+      await handleCADVehicleCharacterSelect(interaction);
+    } else if (interaction.customId === 'cadcharacter_select_for_gun') {
+      await handleCADGunCharacterSelect(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
