@@ -25,7 +25,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('input_approver_roles')
-          .setLabel('Approver Roles (mentions or IDs, comma-separated)')
+          .setLabel('Approver Roles (comma-separated)')
           .setStyle(TextInputStyle.Paragraph)
           .setPlaceholder('e.g., @police chief, 987654321')
           .setRequired(true)
@@ -33,7 +33,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('input_approver_members')
-          .setLabel('Approver Members (mentions or IDs, comma-separated)')
+          .setLabel('Approver Members (comma-separated)')
           .setStyle(TextInputStyle.Paragraph)
           .setPlaceholder('e.g., @admin, 111222333')
           .setRequired(false)
@@ -268,7 +268,7 @@ export async function handleSelectApprover(interaction) {
 
     if (!approverIsAuthorized) {
       return interaction.reply({
-        embeds: [errorEmbed(`You cannot request the <@&${roleConfig.roleId}> role.`)],
+        embeds: [errorEmbed('Approver does not have permission to manage this role.')],
         ephemeral: true,
       });
     }
