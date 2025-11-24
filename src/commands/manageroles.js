@@ -18,52 +18,43 @@ export async function execute(interaction) {
       });
     }
 
-    // Check if user is staff (staff/admins can manage all roles)
-    const isStaff = await checkStaffPermission(interaction);
-
+    // Only approvers can manage roles - NOT staff/admins
     // Find which roles this user can manage
     const managedRoles = [];
     
-    if (isStaff) {
-      // Staff can manage all roles
-      for (const roleConfig of config.roles) {
-        managedRoles.push({
-          label: roleConfig.roleName,
-          value: roleConfig.id,
-          description: 'Manage members with this role'
-        });
-      }
-    } else {
-      // Only approvers can manage their assigned roles
-      for (const roleConfig of config.roles) {
-        let canManage = false;
+    // Check all roles to see which ones this user can manage
+    for (const roleConfig of config.roles) {
+      let canManage = false;
 
-        // Check if they have any approver roles
+      // Check if they have any approver roles
+      if (roleConfig.approverRoleIds && roleConfig.approverRoleIds.length > 0) {
         for (const approverRoleId of roleConfig.approverRoleIds) {
           if (interaction.member.roles.cache.has(approverRoleId)) {
             canManage = true;
             break;
           }
         }
+      }
 
-        // Check if they're in the approver members list
-        if (!canManage && roleConfig.approverMemberIds.includes(interaction.user.id)) {
+      // Check if they're in the approver members list
+      if (!canManage && roleConfig.approverMemberIds && roleConfig.approverMemberIds.length > 0) {
+        if (roleConfig.approverMemberIds.includes(interaction.user.id)) {
           canManage = true;
         }
+      }
 
-        if (canManage) {
-          managedRoles.push({
-            label: roleConfig.roleName,
-            value: roleConfig.id,
-            description: 'Manage members with this role'
-          });
-        }
+      if (canManage) {
+        managedRoles.push({
+          label: roleConfig.roleName,
+          value: roleConfig.id,
+          description: 'Manage members with this role'
+        });
       }
     }
 
     if (managedRoles.length === 0) {
       return interaction.reply({
-        embeds: [errorEmbed('You do not have permission to manage any roles.')],
+        embeds: [errorEmbed('You do not have permission to manage any roles. Only assigned approvers can use this command.')],
         ephemeral: true,
       });
     }
