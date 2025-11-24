@@ -11,8 +11,8 @@ export async function handleStickyMessages(message) {
     // Increment message count
     sticky.messageCount += 1;
 
-    // If 3 or more messages have been sent after the sticky, repost it
-    if (sticky.messageCount >= 3) {
+    // If 1 or more messages have been sent after the sticky, repost it
+    if (sticky.messageCount >= 1) {
       try {
         // Delete the old sticky message
         const oldMessage = await message.channel.messages.fetch(sticky.messageId).catch(() => null);
