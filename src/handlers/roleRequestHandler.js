@@ -631,6 +631,34 @@ export async function handleManageRoleSelect(interaction) {
       });
     }
 
+    // Check if user has permission to manage this role
+    const isStaff = await checkStaffPermission(interaction);
+    let canManage = false;
+
+    if (isStaff) {
+      canManage = true;
+    } else if (roleConfig.approverRoleIds && roleConfig.approverRoleIds.length > 0) {
+      for (const approverRoleId of roleConfig.approverRoleIds) {
+        if (interaction.member.roles.cache.has(approverRoleId)) {
+          canManage = true;
+          break;
+        }
+      }
+    }
+
+    if (!canManage && roleConfig.approverMemberIds && roleConfig.approverMemberIds.length > 0) {
+      if (roleConfig.approverMemberIds.includes(interaction.user.id)) {
+        canManage = true;
+      }
+    }
+
+    if (!canManage) {
+      return interaction.reply({
+        embeds: [errorEmbed('You do not have permission to manage this role.')],
+        ephemeral: true,
+      });
+    }
+
     // Defer the interaction to avoid timeout on large guild member fetches
     await interaction.deferReply({ ephemeral: true });
 
@@ -745,9 +773,11 @@ export async function handleRemoveRoleFromMember(interaction) {
 
     // Check if user has permission to manage this role
     const isStaff = await checkStaffPermission(interaction);
-    let canManage = isStaff;
+    let canManage = false;
 
-    if (!canManage) {
+    if (isStaff) {
+      canManage = true;
+    } else if (roleConfig.approverRoleIds && roleConfig.approverRoleIds.length > 0) {
       // Check if they have any approver roles
       for (const approverRoleId of roleConfig.approverRoleIds) {
         if (interaction.member.roles.cache.has(approverRoleId)) {
@@ -755,9 +785,11 @@ export async function handleRemoveRoleFromMember(interaction) {
           break;
         }
       }
+    }
 
-      // Check if they're in the approver members list
-      if (!canManage && roleConfig.approverMemberIds.includes(interaction.user.id)) {
+    // Check if they're in the approver members list
+    if (!canManage && roleConfig.approverMemberIds && roleConfig.approverMemberIds.length > 0) {
+      if (roleConfig.approverMemberIds.includes(interaction.user.id)) {
         canManage = true;
       }
     }
