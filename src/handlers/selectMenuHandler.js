@@ -1174,7 +1174,7 @@ async function handleReactionRoleSendChannel(interaction) {
     });
 
     return interaction.update({
-      content: `✅ Message sent to <#${channel}>\n\n**Message ID:** \`${sentMessage.id}\`\n\nRun \`/reactionrolemessage\` again and pick "Add Emoji" to add emoji-role pairs.`,
+      content: `✅ Message sent to <#${channel}>\n\n**Channel ID:** \`${channel}\`\n**Message ID:** \`${sentMessage.id}\`\n\nRun \`/reactionrolemessage\` again and pick "Add Emoji" to add emoji-role pairs.`,
       components: [],
     });
   } catch (error) {
