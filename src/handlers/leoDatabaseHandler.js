@@ -409,9 +409,17 @@ export async function handleLEOSearchPlateModal(interaction) {
     });
 
     if (!character) {
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds: [infoEmbed('License Plate Search', `No results found for plate **${plate}**.`)],
-        ephemeral: false,
+        components: [backButton],
       });
     }
 
@@ -934,7 +942,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Weapon Revoked', responseDesc)],
-      ephemeral: false,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error revoking weapon:', error);
@@ -1008,7 +1016,7 @@ export async function handleLEOIssueTicketModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('Traffic Ticket Issued', responseDesc)],
-      ephemeral: false,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error issuing ticket:', error);
@@ -1109,7 +1117,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
 
     return interaction.reply({
       embeds: [successEmbed('🚨 BOLO ALERT CREATED', responseDesc)],
-      ephemeral: false,
+      ephemeral: true,
     });
   } catch (error) {
     console.error('Error creating BOLO:', error);
