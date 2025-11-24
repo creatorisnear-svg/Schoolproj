@@ -56,6 +56,9 @@ client.once('clientReady', async () => {
   // Clear old cached commands and register new ones
   await clearAndRegisterCommands();
 
+  // Initialize support server heartbeat
+  await initializeSupportServerHeartbeat();
+
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
   
@@ -68,6 +71,36 @@ client.once('clientReady', async () => {
   // Start status heartbeat sender
   startStatusHeartbeatSender();
 });
+
+async function initializeSupportServerHeartbeat() {
+  const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
+  const supportServerId = process.env.SUPPORT_SERVER_ID;
+
+  if (!supportServerId) {
+    console.log('⚠️ SUPPORT_SERVER_ID not set, skipping heartbeat initialization');
+    return;
+  }
+
+  try {
+    let statusConfig = await StatusHeartbeat.findOne({ guildId: supportServerId });
+    
+    if (!statusConfig) {
+      statusConfig = await StatusHeartbeat.create({
+        guildId: supportServerId,
+        enabled: true,
+        intervalMinutes: 8,
+        deleteAfterSeconds: 60,
+      });
+      console.log('✅ Created support server heartbeat config');
+    } else if (!statusConfig.enabled) {
+      statusConfig.enabled = true;
+      await statusConfig.save();
+      console.log('✅ Enabled support server heartbeat');
+    }
+  } catch (error) {
+    console.error('Error initializing support server heartbeat:', error);
+  }
+}
 
 async function clearAndRegisterCommands() {
   try {
