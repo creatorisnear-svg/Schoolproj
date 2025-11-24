@@ -93,10 +93,10 @@ export async function execute(interaction) {
         .setColor('#ff6b6b')
         .setTitle('⚠️ You Have Been Striked')
         .addFields(
-          { name: 'strike', value: interaction.user.username, inline: false },
-          { name: 'strike', value: reason, inline: false },
-          { name: 'strike', value: `${strikeLevel}/4`, inline: false },
-          { name: 'strike', value: actionTaken, inline: false }
+          { name: 'Issued By', value: interaction.user.username, inline: false },
+          { name: 'Reason', value: reason, inline: false },
+          { name: 'Strike Level', value: `${strikeLevel}/4`, inline: false },
+          { name: 'Action Taken', value: actionTaken, inline: false }
         )
         .setTimestamp()
         .setFooter({ text: 'EverLink' });
@@ -112,11 +112,11 @@ export async function execute(interaction) {
           .setColor('#ff9900')
           .setTitle(`⚠️ Member Striked - Strike Level ${strikeLevel}`)
           .addFields(
-            { name: 'strike', value: `${targetUser.username} (${targetUser})`, inline: false },
-            { name: 'strike', value: `${interaction.user.username}`, inline: false },
-            { name: 'strike', value: reason, inline: false },
-            { name: 'strike', value: `${strikeLevel}/4`, inline: false },
-            { name: 'strike', value: actionTaken, inline: false }
+            { name: 'Struck User', value: `${targetUser.username} (${targetUser})`, inline: false },
+            { name: 'Issued By', value: `${interaction.user.username}`, inline: false },
+            { name: 'Reason', value: reason, inline: false },
+            { name: 'Strike Level', value: `${strikeLevel}/4`, inline: false },
+            { name: 'Action Taken', value: actionTaken, inline: false }
           )
           .setTimestamp()
           .setFooter({ text: 'EverLink' });

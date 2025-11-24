@@ -70,11 +70,11 @@ export async function execute(interaction) {
       .setColor('#00ff00')
       .setTitle('✅ Strikes Removed')
       .addFields(
-        { name: 'removestrike', value: interaction.user.username, inline: false },
-        { name: 'removestrike', value: reason, inline: false },
-        { name: 'removestrike', value: `${removeAmount}`, inline: false },
-        { name: 'removestrike', value: `${previousLevel}/4`, inline: false },
-        { name: 'removestrike', value: `${newLevel}/4`, inline: false }
+        { name: 'Removed By', value: interaction.user.username, inline: false },
+        { name: 'Reason', value: reason, inline: false },
+        { name: 'Strikes Removed', value: `${removeAmount}`, inline: false },
+        { name: 'Previous Level', value: `${previousLevel}/4`, inline: false },
+        { name: 'New Level', value: `${newLevel}/4`, inline: false }
       )
       .setTimestamp()
       .setFooter({ text: 'EverLink' });
@@ -90,12 +90,12 @@ export async function execute(interaction) {
           .setColor('#00ff00')
           .setTitle('✅ Strikes Removed')
           .addFields(
-            { name: 'removestrike', value: `${targetUser.username} (${targetUser})`, inline: false },
-            { name: 'removestrike', value: `${interaction.user.username}`, inline: false },
-            { name: 'removestrike', value: reason, inline: false },
-            { name: 'removestrike', value: `${previousLevel}/4`, inline: false },
-            { name: 'removestrike', value: `${newLevel}/4`, inline: false },
-            { name: 'removestrike', value: `${removeAmount}`, inline: false }
+            { name: 'Member', value: `${targetUser.username} (${targetUser})`, inline: false },
+            { name: 'Removed By', value: `${interaction.user.username}`, inline: false },
+            { name: 'Reason', value: reason, inline: false },
+            { name: 'Previous Level', value: `${previousLevel}/4`, inline: false },
+            { name: 'New Level', value: `${newLevel}/4`, inline: false },
+            { name: 'Strikes Removed', value: `${removeAmount}`, inline: false }
           )
           .setTimestamp()
           .setFooter({ text: 'EverLink' });

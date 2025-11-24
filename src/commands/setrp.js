@@ -11,13 +11,13 @@ export const data = new SlashCommandBuilder()
       .setName('day')
       .setDescription('Day of the week')
       .addChoices(
-        { name: 'setrp', value: 'Monday' },
-        { name: 'setrp', value: 'Tuesday' },
-        { name: 'setrp', value: 'Wednesday' },
-        { name: 'setrp', value: 'Thursday' },
-        { name: 'setrp', value: 'Friday' },
-        { name: 'setrp', value: 'Saturday' },
-        { name: 'setrp', value: 'Sunday' }
+        { name: 'Monday', value: 'Monday' },
+        { name: 'Tuesday', value: 'Tuesday' },
+        { name: 'Wednesday', value: 'Wednesday' },
+        { name: 'Thursday', value: 'Thursday' },
+        { name: 'Friday', value: 'Friday' },
+        { name: 'Saturday', value: 'Saturday' },
+        { name: 'Sunday', value: 'Sunday' }
       )
       .setRequired(true)
   )

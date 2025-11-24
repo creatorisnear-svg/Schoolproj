@@ -45,6 +45,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully removed ${user.tag} from the bot staff team!`)],
+        ephemeral: true,
       });
     }
 
@@ -59,6 +60,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully removed the role ${role.name} from the bot staff team!`)],
+        ephemeral: true,
       });
     }
   } catch (error) {

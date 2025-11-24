@@ -18,9 +18,8 @@ export const data = new SlashCommandBuilder()
     option.setName('action')
       .setDescription('Choose action')
       .addChoices(
-        { name: 'addstaff', value: 'none' },
-        { name: 'addstaff', value: 'add' },
-        { name: 'addstaff', value: 'remove_all' }
+        { name: 'Add Staff', value: 'add' },
+        { name: 'Remove All Staff', value: 'remove_all' }
       )
       .setRequired(false));
 
@@ -86,6 +85,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully added ${user.tag} to the bot staff team!`)],
+        ephemeral: true,
       });
     }
 
@@ -108,6 +108,7 @@ export async function execute(interaction) {
 
       return interaction.reply({
         embeds: [successEmbed(`Successfully added the role ${role.name} to the bot staff team!`)],
+        ephemeral: true,
       });
     }
   } catch (error) {
