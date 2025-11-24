@@ -249,47 +249,24 @@ export async function handleSelectRoleToRequest(interaction) {
       });
     }
 
-    // Show only approver members (no roles)
-    const approverOptions = [];
-
-    // Add only approver members
-    for (const memberId of roleConfig.approverMemberIds) {
-      try {
-        const member = await interaction.guild.members.fetch(memberId);
-        approverOptions.push({
-          label: member.user.username,
-          value: `member_${memberId}`,
-          description: `Send request to ${member.user.username}`
-        });
-      } catch (err) {
-        // Skip invalid members
-      }
-    }
-
-    if (approverOptions.length === 0) {
-      return interaction.reply({
-        embeds: [errorEmbed('No approvers available for this role.')],
-        ephemeral: true,
-      });
-    }
-
-    const menu = new ActionRowBuilder()
+    // Show user select menu so requesters can pick any member
+    const userMenu = new ActionRowBuilder()
       .addComponents(
-        new StringSelectMenuBuilder()
+        new UserSelectMenuBuilder()
           .setCustomId(`select_approver_${roleRequestId}`)
-          .setPlaceholder('Select who to send the request to...')
-          .addOptions(approverOptions)
+          .setPlaceholder('Search and select who to send the request to...')
+          .setMaxValues(1)
       );
 
     const embed = new EmbedBuilder()
       .setColor('#FFA500')
       .setTitle('Who should approve your request?')
-      .setDescription(`**Role:** ${roleConfig.roleName}`)
+      .setDescription(`**Role:** ${roleConfig.roleName}\n\nType the person's name to search for them`)
       .setFooter({ text: 'EverLink' });
 
     await interaction.reply({
       embeds: [embed],
-      components: [menu],
+      components: [userMenu],
       ephemeral: true,
     });
   } catch (error) {
@@ -307,8 +284,8 @@ export async function handleSelectApprover(interaction) {
     const customIdParts = interaction.customId.split('_');
     const roleRequestId = customIdParts.slice(2).join('_');
     
-    const approverValue = interaction.values[0];
-    const [approverType, approverId] = approverValue.split('_');
+    // For user select menus, interaction.users contains the selected users
+    const approverId = interaction.users.first().id;
 
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
     const roleConfig = config.roles.find(r => r.id === roleRequestId);
@@ -320,10 +297,13 @@ export async function handleSelectApprover(interaction) {
       });
     }
 
-    // Verify the selected approver is actually in the member list
-    if (approverType !== 'member' || !roleConfig.approverMemberIds.includes(approverId)) {
+    // Verify the selected user exists in the guild
+    let approverMember = null;
+    try {
+      approverMember = await interaction.guild.members.fetch(approverId);
+    } catch (err) {
       return interaction.reply({
-        embeds: [errorEmbed('Approver does not have permission to manage this role.')],
+        embeds: [errorEmbed('Could not find the selected user in this guild.')],
         ephemeral: true,
       });
     }
@@ -332,23 +312,7 @@ export async function handleSelectApprover(interaction) {
     const requestId = `ROLEREQ-${Date.now()}`;
     const requesterUsername = interaction.user.username;
     const requesterId = interaction.user.id;
-
-    let approverUsername = '';
-    if (approverType === 'role') {
-      try {
-        const role = await interaction.guild.roles.fetch(approverId);
-        approverUsername = role.name;
-      } catch (err) {
-        approverUsername = 'Unknown Role';
-      }
-    } else {
-      try {
-        const member = await interaction.guild.members.fetch(approverId);
-        approverUsername = member.user.username;
-      } catch (err) {
-        approverUsername = 'Unknown Member';
-      }
-    }
+    const approverUsername = approverMember.user.username;
 
     // Save the request to database
     const newRequest = new RoleRequest({
@@ -365,93 +329,43 @@ export async function handleSelectApprover(interaction) {
 
     await newRequest.save();
 
-    // Send DM to the approver(s)
-    let sentCount = 0;
+    // Send DM to the selected approver
+    try {
+      const dmEmbed = new EmbedBuilder()
+        .setColor('#FFA500')
+        .setTitle('Role Request Approval')
+        .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
+        .addFields(
+          { name: 'Requester', value: requesterUsername, inline: true },
+          { name: 'Requested Role', value: roleConfig.roleName, inline: true }
+        )
+        .setFooter({ text: 'EverLink' });
 
-    if (approverType === 'role') {
-      // Send to all members with that role
-      const members = await interaction.guild.members.fetch();
-      const approvers = members.filter(m => m.roles.cache.has(approverId));
+      const buttons = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`approve_rolereq_${requestId}`)
+            .setLabel('Approve')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`deny_rolereq_${requestId}`)
+            .setLabel('Deny')
+            .setStyle(ButtonStyle.Danger)
+        );
 
-      for (const [, member] of approvers) {
-        if (!member.user.bot) {
-          try {
-            const dmEmbed = new EmbedBuilder()
-              .setColor('#FFA500')
-              .setTitle('Role Request Approval')
-              .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
-              .addFields(
-                { name: 'Requester', value: requesterUsername, inline: true },
-                { name: 'Requested Role', value: roleConfig.roleName, inline: true }
-              )
-              .setFooter({ text: 'EverLink' });
+      const dmMsg = await approverMember.send({
+        embeds: [dmEmbed],
+        components: [buttons],
+      });
 
-            const buttons = new ActionRowBuilder()
-              .addComponents(
-                new ButtonBuilder()
-                  .setCustomId(`approve_rolereq_${requestId}`)
-                  .setLabel('Approve')
-                  .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                  .setCustomId(`deny_rolereq_${requestId}`)
-                  .setLabel('Deny')
-                  .setStyle(ButtonStyle.Danger)
-              );
-
-            const dmMsg = await member.send({
-              embeds: [dmEmbed],
-              components: [buttons],
-            });
-
-            newRequest.messageId = dmMsg.id;
-            newRequest.dmChannelId = dmMsg.channelId;
-            sentCount++;
-          } catch (err) {
-            console.error(`Could not send DM to ${member.user.username}:`, err);
-          }
-        }
-      }
-    } else {
-      // Send to specific member
-      try {
-        const approver = await interaction.guild.members.fetch(approverId);
-        const dmEmbed = new EmbedBuilder()
-          .setColor('#FFA500')
-          .setTitle('Role Request Approval')
-          .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
-          .addFields(
-            { name: 'Requester', value: requesterUsername, inline: true },
-            { name: 'Requested Role', value: roleConfig.roleName, inline: true }
-          )
-          .setFooter({ text: 'EverLink' });
-
-        const buttons = new ActionRowBuilder()
-          .addComponents(
-            new ButtonBuilder()
-              .setCustomId(`approve_rolereq_${requestId}`)
-              .setLabel('Approve')
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`deny_rolereq_${requestId}`)
-              .setLabel('Deny')
-              .setStyle(ButtonStyle.Danger)
-          );
-
-        const dmMsg = await approver.send({
-          embeds: [dmEmbed],
-          components: [buttons],
-        });
-
-        newRequest.messageId = dmMsg.id;
-        newRequest.dmChannelId = dmMsg.channelId;
-        sentCount++;
-      } catch (err) {
-        console.error(`Could not send DM to ${approverId}:`, err);
-        return interaction.reply({
-          embeds: [errorEmbed('Could not send DM to the approver. Make sure they have DMs enabled.')],
-          ephemeral: true,
-        });
-      }
+      newRequest.messageId = dmMsg.id;
+      newRequest.dmChannelId = dmMsg.channelId;
+    } catch (err) {
+      console.error(`Could not send DM to ${approverId}:`, err);
+      return interaction.reply({
+        embeds: [errorEmbed('Could not send DM to the approver. Make sure they have DMs enabled.')],
+        ephemeral: true,
+      });
     }
 
     await newRequest.save();
@@ -513,45 +427,21 @@ export async function handleApproveRoleRequest(interaction) {
       });
     }
 
-    // Check if the user clicking approve is authorized
+    // Check if the user clicking approve is the one who was sent the request
     const approverUserId = interaction.user.id;
-    let isAuthorized = false;
+
+    if (request.approverId !== approverUserId) {
+      return interaction.reply({
+        embeds: [errorEmbed(`You cannot approve this request - it wasn't sent to you.`)],
+        ephemeral: true,
+      });
+    }
 
     // Get the guild and member (needed since interaction happens in DM)
     const guild = interaction.client.guilds.cache.get(request.guildId);
     if (!guild) {
       return interaction.reply({
         embeds: [errorEmbed('Guild not found.')],
-        ephemeral: true,
-      });
-    }
-
-    let approverMember = null;
-    try {
-      approverMember = await guild.members.fetch(approverUserId);
-    } catch (err) {
-      return interaction.reply({
-        embeds: [errorEmbed('Could not fetch your member info from the guild.')],
-        ephemeral: true,
-      });
-    }
-
-    // Check if they have any of the approver roles
-    for (const approverRoleId of roleConfig.approverRoleIds) {
-      if (approverMember.roles.cache.has(approverRoleId)) {
-        isAuthorized = true;
-        break;
-      }
-    }
-
-    // Check if they're in the approver members list
-    if (!isAuthorized && roleConfig.approverMemberIds.includes(approverUserId)) {
-      isAuthorized = true;
-    }
-
-    if (!isAuthorized) {
-      return interaction.reply({
-        embeds: [errorEmbed(`You cannot approve the <@&${request.roleId}> role.`)],
         ephemeral: true,
       });
     }
@@ -812,45 +702,21 @@ export async function handleDenyRoleRequest(interaction) {
       });
     }
 
-    // Check if the user clicking deny is authorized
+    // Check if the user clicking deny is the one who was sent the request
     const approverUserId = interaction.user.id;
-    let isAuthorized = false;
 
-    // Get the guild and member (needed since interaction happens in DM)
+    if (request.approverId !== approverUserId) {
+      return interaction.reply({
+        embeds: [errorEmbed(`You cannot deny this request - it wasn't sent to you.`)],
+        ephemeral: true,
+      });
+    }
+
+    // Get the guild (needed since interaction happens in DM)
     const guild = interaction.client.guilds.cache.get(request.guildId);
     if (!guild) {
       return interaction.reply({
         embeds: [errorEmbed('Guild not found.')],
-        ephemeral: true,
-      });
-    }
-
-    let approverMember = null;
-    try {
-      approverMember = await guild.members.fetch(approverUserId);
-    } catch (err) {
-      return interaction.reply({
-        embeds: [errorEmbed('Could not fetch your member info from the guild.')],
-        ephemeral: true,
-      });
-    }
-
-    // Check if they have any of the approver roles
-    for (const approverRoleId of roleConfig.approverRoleIds) {
-      if (approverMember.roles.cache.has(approverRoleId)) {
-        isAuthorized = true;
-        break;
-      }
-    }
-
-    // Check if they're in the approver members list
-    if (!isAuthorized && roleConfig.approverMemberIds.includes(approverUserId)) {
-      isAuthorized = true;
-    }
-
-    if (!isAuthorized) {
-      return interaction.reply({
-        embeds: [errorEmbed(`You cannot deny the <@&${request.roleId}> role.`)],
         ephemeral: true,
       });
     }
