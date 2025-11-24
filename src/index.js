@@ -246,6 +246,9 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton()) {
     const { handle911RespondButton, handle911AttachButton, handle911DismissButton } = await import('./handlers/emergencyButtonHandler.js');
     const { handleLEOPrimaryResponse, handleLEOAttachResponse } = await import('./handlers/leoDatabaseHandler.js');
+    const { handleFDPrimaryResponse, handleFDAttachResponse } = await import('./handlers/fireDepartmentHandler.js');
+    const { data, execute } = await import('./commands/verify.js');
+    const { handleTicketButtonClick, handleAddBotStaffButton, handleRolesDoneButton, handleTicketCloseButton, handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
 
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
@@ -257,6 +260,22 @@ client.on('interactionCreate', async interaction => {
       await handleLEOPrimaryResponse(interaction);
     } else if (interaction.customId.startsWith('leo_respond_attach_')) {
       await handleLEOAttachResponse(interaction);
+    } else if (interaction.customId.startsWith('fd_respond_primary_')) {
+      await handleFDPrimaryResponse(interaction);
+    } else if (interaction.customId.startsWith('fd_respond_attach_')) {
+      await handleFDAttachResponse(interaction);
+    } else if (interaction.customId === 'verify_button') {
+      await execute(interaction);
+    } else if (interaction.customId.startsWith('ticket_create_')) {
+      await handleTicketButtonClick(interaction);
+    } else if (interaction.customId.startsWith('ticketsupport_add_botstaff_')) {
+      await handleAddBotStaffButton(interaction);
+    } else if (interaction.customId.startsWith('ticketsupport_roles_done_')) {
+      await handleRolesDoneButton(interaction);
+    } else if (interaction.customId.startsWith('ticket_close_')) {
+      await handleTicketCloseButton(interaction);
+    } else if (interaction.customId.startsWith('ticket_delete_')) {
+      await handleTicketDeleteButton(interaction);
     }
   }
 
@@ -361,57 +380,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  if (interaction.isButton()) {
-    if (interaction.customId === 'verify_button') {
-      const { data, execute } = await import('./commands/verify.js');
-      await execute(interaction);
-    }
-    
-    if (interaction.customId.startsWith('ticket_create_')) {
-      const { handleTicketButtonClick } = await import('./handlers/ticketHandler.js');
-      await handleTicketButtonClick(interaction);
-    }
-
-    if (interaction.customId.startsWith('ticketsupport_add_botstaff_')) {
-      const { handleAddBotStaffButton } = await import('./handlers/ticketHandler.js');
-      await handleAddBotStaffButton(interaction);
-    }
-
-    if (interaction.customId.startsWith('ticketsupport_roles_done_')) {
-      const { handleRolesDoneButton } = await import('./handlers/ticketHandler.js');
-      await handleRolesDoneButton(interaction);
-    }
-
-    if (interaction.customId.startsWith('ticket_close_')) {
-      const { handleTicketCloseButton } = await import('./handlers/ticketHandler.js');
-      await handleTicketCloseButton(interaction);
-    }
-
-    if (interaction.customId.startsWith('ticket_delete_')) {
-      const { handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
-      await handleTicketDeleteButton(interaction);
-    }
-
-    if (interaction.customId.startsWith('leo_respond_primary_')) {
-      const { handleLEOPrimaryResponse } = await import('./handlers/leoDatabaseHandler.js');
-      await handleLEOPrimaryResponse(interaction);
-    }
-
-    if (interaction.customId.startsWith('leo_respond_attach_')) {
-      const { handleLEOAttachResponse } = await import('./handlers/leoDatabaseHandler.js');
-      await handleLEOAttachResponse(interaction);
-    }
-
-    if (interaction.customId.startsWith('fd_respond_primary_')) {
-      const { handleFDPrimaryResponse } = await import('./handlers/fireDepartmentHandler.js');
-      await handleFDPrimaryResponse(interaction);
-    }
-
-    if (interaction.customId.startsWith('fd_respond_attach_')) {
-      const { handleFDAttachResponse } = await import('./handlers/fireDepartmentHandler.js');
-      await handleFDAttachResponse(interaction);
-    }
-  }
+  // All button handling is consolidated in the first isButton() block above
 });
 
 client.on('guildMemberAdd', async member => {
