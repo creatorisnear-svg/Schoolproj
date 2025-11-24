@@ -155,13 +155,14 @@ export async function handleBackToMenu(interaction) {
             .setCustomId('leodatabase_menu')
             .setPlaceholder('Choose an option...')
             .addOptions(
-              { label: '🚔 Search License Plate', value: 'search_plate' },
-              { label: '🔍 Search Character', value: 'search_character' },
-              { label: '🚨 Active 911 Calls', value: 'active_calls' },
-              { label: '🚨 WANTED List', value: 'wanted_list' },
+              { label: '🚨 View Active 911 Calls', value: 'active_calls' },
+              { label: '🔍 Search License Plate', value: 'search_plate' },
+              { label: '👤 Search Character Name', value: 'search_character' },
+              { label: '🚨 View Active BOLOs', value: 'active_bolos' },
+              { label: '🚨 Manage BOLOs', value: 'manage_bolos' },
               { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
-              { label: '📋 Create Traffic Ticket', value: 'create_ticket' },
-              { label: '🎯 Create BOLO', value: 'create_bolo' }
+              { label: '🎫 Issue Traffic Ticket', value: 'issue_ticket' },
+              { label: '🚨 Create BOLO', value: 'create_bolo' }
             )
         );
 
