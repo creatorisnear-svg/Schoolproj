@@ -203,9 +203,17 @@ export async function handleCivilianDatabaseMenu(interaction) {
             })))
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_civilian_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         content: 'Select a character to add a vehicle to:',
-        components: [charMenu],
+        components: [charMenu, backButton],
         ephemeral: true,
       });
     }
@@ -231,9 +239,17 @@ export async function handleCivilianDatabaseMenu(interaction) {
             })))
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_civilian_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         content: 'Select a character to add a firearm to:',
-        components: [charMenu],
+        components: [charMenu, backButton],
         ephemeral: true,
       });
     }
@@ -260,9 +276,17 @@ export async function handleCivilianDatabaseMenu(interaction) {
             })))
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_civilian_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         content: '**MANAGE CHARACTER**\n\nSelect a character to view, edit, or delete:',
-        components: [charMenu],
+        components: [charMenu, backButton],
         ephemeral: true,
       });
     }

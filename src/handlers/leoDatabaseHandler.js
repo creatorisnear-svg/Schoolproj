@@ -126,9 +126,17 @@ export async function handleLEODatabaseMenu(interaction) {
             .addOptions(callOptions)
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         embeds,
-        components: [callMenu],
+        components: [callMenu, backButton],
         ephemeral: true,
       });
     }

@@ -147,6 +147,50 @@ export async function handleBackToMenu(interaction) {
         content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
         components: [menu],
       });
+    } else if (customId === 'back_to_leo_menu') {
+      // Return to main LEO database menu
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('leodatabase_menu')
+            .setPlaceholder('Choose an option...')
+            .addOptions(
+              { label: '🚔 Search License Plate', value: 'search_plate' },
+              { label: '🔍 Search Character', value: 'search_character' },
+              { label: '🚨 Active 911 Calls', value: 'active_calls' },
+              { label: '🚨 WANTED List', value: 'wanted_list' },
+              { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
+              { label: '📋 Create Traffic Ticket', value: 'create_ticket' },
+              { label: '🎯 Create BOLO', value: 'create_bolo' }
+            )
+        );
+
+      await interaction.update({
+        content: '**LEO DATABASE**\n\nSelect an option:',
+        components: [menu],
+      });
+    } else if (customId === 'back_to_civilian_menu') {
+      // Return to main civilian database menu
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('civiliandatabase_menu')
+            .setPlaceholder('Choose an option...')
+            .addOptions(
+              { label: '🚨 Report 911', value: 'report_911' },
+              { label: '🐦 Post on Twitter', value: 'post_twitter' },
+              { label: '🤫 Post Anonymously', value: 'post_anon' },
+              { label: '👤 Create Character', value: 'create_character' },
+              { label: '🚗 Add Vehicle', value: 'add_vehicle' },
+              { label: '🔫 Add Firearm', value: 'add_firearm' },
+              { label: '⚙️ Manage Character', value: 'manage_character' }
+            )
+        );
+
+      await interaction.update({
+        content: '**CIVILIAN DATABASE**\n\nSelect an option:',
+        components: [menu],
+      });
     } else if (customId === 'back_to_calendar_menu') {
       const menu = new ActionRowBuilder()
         .addComponents(
