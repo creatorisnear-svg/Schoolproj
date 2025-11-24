@@ -764,7 +764,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     }
 
     const embed = new EmbedBuilder()
-      .setColor(character.status === 'wanted' ? '#ff0000' : '#00ff00')
+      .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
       .setFooter({ text: 'EverLink' })
