@@ -88,12 +88,14 @@ async function initializeSupportServerHeartbeat() {
       statusConfig = await StatusHeartbeat.create({
         guildId: supportServerId,
         enabled: true,
+        heartbeatChannelId: '1442653565427646495',
         intervalMinutes: 8,
         deleteAfterSeconds: 60,
       });
       console.log('✅ Created support server heartbeat config');
-    } else if (!statusConfig.enabled) {
+    } else if (!statusConfig.enabled || !statusConfig.heartbeatChannelId) {
       statusConfig.enabled = true;
+      statusConfig.heartbeatChannelId = '1442653565427646495';
       await statusConfig.save();
       console.log('✅ Enabled support server heartbeat');
     }
