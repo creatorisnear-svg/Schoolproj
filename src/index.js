@@ -222,6 +222,8 @@ client.on('interactionCreate', async interaction => {
       await handleRoleplayCommandsSetupMenu(interaction);
     } else if (interaction.customId === 'roleplaycommands_cad_setup_menu') {
       await handleRoleplayCommandsCADSetupMenu(interaction);
+    } else if (interaction.customId === 'roleplaycommands_emergency_setup_menu') {
+      await handleRoleplayCommandsCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadsystem_setup_menu') {
       await handleCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadcharacter_menu') {

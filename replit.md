@@ -17,21 +17,24 @@ Members access roleplay commands directly as slash commands.
 **Setup Process:**
 1. Staff runs `/roleplaycommandsenable true` or `/roleplaycommandsenable false` to enable/disable the entire system
 2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
-   - **911 - Emergency Reporting** → Select channel for emergency dispatch
-   - **Twitter - Public Messages** → Select channel for public OOC posts  
-   - **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
-   - **CAD - Computer Aided Dispatch** → Enable CAD system
+   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and CAD dispatch:
+     - Select 911 Channel for emergency reports
+     - Set LEO Roles (automatically pinged on 911 reports)
+     - Set Fire Department Roles (automatically pinged on CAD dispatch)
+     - Set Staff Roles for CAD access
+   - **🐦 Twitter - Public Messages** → Select channel for public OOC posts  
+   - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
 
-**CAD System Configuration:**
-- Configure LEO roles, Fire Department roles, and staff roles through `/cadsystem`
-- Enable/disable within roleplay commands setup menu
+**Emergency & Dispatch Role Pinging:**
+- **911 Reports:** When a member submits a 911 report via `/911`, the message automatically pings all configured LEO roles in the dispatch channel
+- **CAD Dispatch:** When a user views `/cad`, the message automatically pings all configured LEO and Fire Department roles
 
 **Member Access:**
-- `/911` - Report an emergency (if configured)
+- `/911` - Report an emergency (if configured; pings LEO roles)
 - `/twitter` - Post a public OOC message (if configured)
 - `/anon` - Post an anonymous/black market message (if configured)
-- `/cad` - View CAD dispatch information (if enabled)
+- `/cad` - View CAD dispatch information (if enabled; pings LEO and FD roles)
 
 All commands are only available if staff has enabled them through setup.
 
@@ -51,9 +54,9 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
 - Only available if roleplay commands are enabled and user has LEO role
 
 **CAD Configuration (through `/roleplaycommandsetup`):**
-- Staff configures CAD through `/roleplaycommandsetup` → select "CAD"
+- Staff configures CAD through `/roleplaycommandsetup` → select "🚨 911 & CAD - Emergency/Dispatch"
 - Separate `/cadcharacter` command for members to create characters and add vehicles/guns
-- Separate `/cadlicensesearch [plate]` command for LEO to search license plates
+- Separate `/leodatabase` command for LEO to search license plates, character names, and view wanted list
 - Each server has independent CAD configuration
 
 **UI/UX Decisions:**

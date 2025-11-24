@@ -11,10 +11,9 @@ async function showSetupMenu(interaction) {
         .setCustomId('roleplaycommands_setup_menu')
         .setPlaceholder('Choose a command to configure...')
         .addOptions(
-          { label: '911 - Emergency Reporting', value: 'setup_911' },
-          { label: 'Twitter - Public Messages', value: 'setup_twitter' },
-          { label: 'Anon - Anonymous Messages', value: 'setup_anon' },
-          { label: 'CAD - Computer Aided Dispatch', value: 'setup_cad' },
+          { label: '🚨 911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
+          { label: '🐦 Twitter - Public Messages', value: 'setup_twitter' },
+          { label: '🤫 Anon - Anonymous Messages', value: 'setup_anon' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
     );
@@ -244,7 +243,8 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'setup_cad') {
+    if (choice === 'setup_emergency') {
+      roleplayConfig.use911 = true;
       roleplayConfig.useCAD = true;
       await roleplayConfig.save();
 
@@ -252,22 +252,23 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       cadConfig.enabled = true;
       await cadConfig.save();
 
-      const cadMenu = new ActionRowBuilder()
+      const emergencyMenu = new ActionRowBuilder()
         .addComponents(
           new StringSelectMenuBuilder()
-            .setCustomId('roleplaycommands_cad_setup_menu')
-            .setPlaceholder('Choose CAD setup option...')
+            .setCustomId('roleplaycommands_emergency_setup_menu')
+            .setPlaceholder('Choose emergency/dispatch option...')
             .addOptions(
-              { label: 'Set LEO Roles', value: 'set_leo_roles' },
-              { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
-              { label: 'Set Staff Roles', value: 'set_staff_roles' },
-              { label: '✅ Done - Back to Main Menu', value: 'cad_done' }
+              { label: '🚑 Select 911 Channel', value: 'setup_911' },
+              { label: '🚔 Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
+              { label: '🚒 Set Fire Department Roles (Pinged on Dispatch)', value: 'set_fd_roles' },
+              { label: '👮 Set Staff Roles', value: 'set_staff_roles' },
+              { label: '✅ Done - Back to Main Menu', value: 'emergency_done' }
             )
         );
 
       return interaction.reply({
-        content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
-        components: [cadMenu],
+        content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports and CAD dispatch:',
+        components: [emergencyMenu],
         ephemeral: true,
       });
     }
@@ -495,6 +496,15 @@ export async function handle911ReportModal(interaction) {
       });
     }
 
+    // Get LEO roles to ping
+    const CADConfig = await import('../models/CADConfig.js').then(m => m.default);
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    
+    let mention = '';
+    if (cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0) {
+      mention = cadConfig.leoRoleIds.map(id => `<@&${id}>`).join(' ');
+    }
+
     const emergencyEmbed = new EmbedBuilder()
       .setColor('#ff0000')
       .setTitle('🚨 911 Emergency Report')
@@ -509,7 +519,10 @@ export async function handle911ReportModal(interaction) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    await channel.send({ embeds: [emergencyEmbed] });
+    await channel.send({ 
+      content: mention || '@here Emergency report incoming!',
+      embeds: [emergencyEmbed] 
+    });
 
     return interaction.reply({
       content: '✅ 911 report submitted!',
