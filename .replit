@@ -28,3 +28,8 @@ channel = "stable-25_05"
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+SUPPORT_SERVER_ID = "1441548471906734173"

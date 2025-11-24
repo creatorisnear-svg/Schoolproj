@@ -74,10 +74,10 @@ client.once('clientReady', async () => {
 
 async function initializeSupportServerHeartbeat() {
   const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
-  const supportServerId = process.env.SUPPORT_SERVER_ID;
+  const supportServerId = '1441548471906734173';
 
   if (!supportServerId) {
-    console.log('⚠️ SUPPORT_SERVER_ID not set, skipping heartbeat initialization');
+    console.log('⚠️ Support server ID not set, skipping heartbeat initialization');
     return;
   }
 
