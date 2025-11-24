@@ -331,6 +331,14 @@ export async function handleCivilianManageCharacterSelect(interaction) {
       .setDescription(description)
       .setFooter({ text: 'EverLink' });
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_civilian_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     const actionButtons = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
@@ -343,10 +351,9 @@ export async function handleCivilianManageCharacterSelect(interaction) {
           .setStyle('Danger')
       );
 
-    return interaction.reply({
+    return interaction.update({
       embeds: [embed],
-      components: [actionButtons],
-      ephemeral: true,
+      components: [actionButtons, backButton],
     });
   } catch (error) {
     console.error('Error managing character:', error);

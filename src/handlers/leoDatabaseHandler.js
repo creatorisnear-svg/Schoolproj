@@ -147,9 +147,17 @@ export async function handleLEODatabaseMenu(interaction) {
       });
 
       if (wantedCharacters.length === 0) {
-        return interaction.reply({
+        const backButton = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('back_to_leo_menu')
+              .setLabel('← Back')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+        return interaction.update({
           embeds: [infoEmbed('Wanted List', 'No wanted suspects.')],
-          ephemeral: true,
+          components: [backButton],
         });
       }
 
@@ -170,9 +178,17 @@ export async function handleLEODatabaseMenu(interaction) {
           .setTimestamp();
       });
 
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds,
-        ephemeral: true,
+        components: [backButton],
       });
     }
 
@@ -301,9 +317,17 @@ export async function handleLEODatabaseMenu(interaction) {
       }).sort({ createdAt: -1 });
 
       if (activeBOLOs.length === 0) {
-        return interaction.reply({
+        const backButton = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('back_to_leo_menu')
+              .setLabel('← Back')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+        return interaction.update({
           embeds: [infoEmbed('Active BOLOs', 'No active BOLO alerts.')],
-          ephemeral: true,
+          components: [backButton],
         });
       }
 
@@ -333,9 +357,17 @@ export async function handleLEODatabaseMenu(interaction) {
           .setFooter({ text: 'EverLink' });
       });
 
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds,
-        ephemeral: true,
+        components: [backButton],
       });
     }
   } catch (error) {
@@ -424,6 +456,14 @@ export async function handleLEOSearchPlateModal(interaction) {
       description += `✅ **CLEAN**`;
     }
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_leo_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     const embed = new EmbedBuilder()
       .setColor(character.status === 'wanted' ? '#ff0000' : '#00ff00')
       .setTitle(`License Plate Search: ${plate}`)
@@ -431,9 +471,9 @@ export async function handleLEOSearchPlateModal(interaction) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    return interaction.reply({
+    return interaction.update({
       embeds: [embed],
-      ephemeral: false,
+      components: [backButton],
     });
   } catch (error) {
     console.error('Error searching license plate:', error);
@@ -510,12 +550,17 @@ export async function handleLEORespondCall(interaction) {
       .setLabel('Attach to Call')
       .setStyle(ButtonStyle.Secondary);
 
-    const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
+    const backBtn = new ButtonBuilder()
+      .setCustomId('back_to_leo_menu')
+      .setLabel('← Back')
+      .setStyle(ButtonStyle.Secondary);
 
-    return interaction.reply({
+    const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
+    const backRow = new ActionRowBuilder().addComponents(backBtn);
+
+    return interaction.update({
       content: `Choose how you want to respond to **${call.issue}** at **${call.location}**:`,
-      components: [row],
-      ephemeral: true,
+      components: [row, backRow],
     });
   } catch (error) {
     console.error('Error responding to call:', error);
@@ -690,9 +735,17 @@ export async function handleLEOSearchCharacterModal(interaction) {
     });
 
     if (!character) {
-      return interaction.reply({
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
         embeds: [infoEmbed('Character Search', `No results found for **${characterName}**.`)],
-        ephemeral: false,
+        components: [backButton],
       });
     }
 
@@ -772,6 +825,14 @@ export async function handleLEOSearchCharacterModal(interaction) {
       description += `✅ **CLEAN**`;
     }
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_leo_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     const embed = new EmbedBuilder()
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
@@ -779,9 +840,9 @@ export async function handleLEOSearchCharacterModal(interaction) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    return interaction.reply({
+    return interaction.update({
       embeds: [embed],
-      ephemeral: false,
+      components: [backButton],
     });
   } catch (error) {
     console.error('Error searching character:', error);

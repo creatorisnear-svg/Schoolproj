@@ -43,9 +43,17 @@ export async function handleFireDepartmentMenu(interaction) {
       }).sort({ timestamp: -1 });
 
       if (activeCalls.length === 0) {
-        return interaction.reply({
+        const backButton = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('back_to_fd_menu')
+              .setLabel('← Back')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+        return interaction.update({
           embeds: [infoEmbed('Active 911 Calls', 'No active emergency calls.')],
-          ephemeral: true,
+          components: [backButton],
         });
       }
 
