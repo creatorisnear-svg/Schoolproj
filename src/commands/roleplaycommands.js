@@ -30,7 +30,7 @@ export async function execute(interaction) {
       options.push({ label: '🔇 Anonymous Message', value: 'cmd_anon' });
     }
     if (roleplayConfig.useCAD) {
-      options.push({ label: '📍 CAD Dispatch', value: 'cmd_cad' });
+      options.push({ label: '📊 CAD Dispatch', value: 'cmd_cad' });
     }
 
     if (options.length === 0) {

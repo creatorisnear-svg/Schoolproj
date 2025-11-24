@@ -11,18 +11,24 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 ## System Architecture
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
-**Roleplay Commands System (911, Twitter, Anon):**
-- **911 Reporting (Optional):** Configure a 911 channel for emergency dispatch reporting. Members use `/roleplaycommands` → select "911 Emergency Report" to submit reports. Sends embeds to the designated channel.
-- **Twitter (Optional):** Configure a Twitter channel for public OOC posts. Members use `/roleplaycommands` → select "Twitter Post" to post messages visible to all. Shows username and embeds posts to the designated channel.
-- **Anon/Black Market (Optional):** Configure an anonymous/black market channel for IC anonymous messages. Members use `/roleplaycommands` → select "Anonymous Message" to post anonymously without revealing identity. Hides user info and embeds posts to the designated channel.
+**Roleplay Commands System (911, Twitter, Anon, CAD):**
+All roleplay commands are centralized through `/roleplaycommands` menu interface.
 
-**Roleplay Commands Setup:**
-- Staff runs `/roleplaycommandsenable` (requires log channel set)
-- Staff runs `/roleplaycommandsetup` to configure optional commands:
-  - Select 911 → Choose the 911 reporting channel
-  - Select Twitter → Choose the Twitter posting channel
-  - Select Anon → Choose the anonymous/black market channel
-- Members then access all enabled commands through the single `/roleplaycommands` menu
+**Setup Process (`/roleplaycommandsenable` → `/roleplaycommandsetup`):**
+Staff configures through dropdown menu with options:
+- **911 - Emergency Reporting** → Select channel for emergency dispatch
+- **Twitter - Public Messages** → Select channel for public OOC posts  
+- **Anon - Anonymous Messages** → Select channel for anonymous/black market messages
+- **CAD - Computer Aided Dispatch** → Enable CAD system
+- **✅ Done - Close Setup** → Finish configuration
+
+**Member Access (`/roleplaycommands`):**
+- Members use `/roleplaycommands` to access enabled commands
+- Shows dropdown menu with only the commands staff enabled:
+  - 🚨 911 Emergency Report
+  - 🐦 Twitter Post
+  - 🔇 Anonymous Message
+  - 📊 CAD Dispatch
 
 **CAD System (Computer Aided Dispatch):**
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
@@ -38,11 +44,11 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
 - Check vehicle details and associated guns
 - See if character is wanted with reason
 
-**Staff Setup (`/cadsystem`):**
-- Configure LEO roles (who can search license plates)
-- Configure Fire Department roles (for future FD-specific features)
-- Configure staff roles (who can manage CAD settings)
-- Each server has independent role assignments
+**CAD Configuration (through `/roleplaycommandsetup`):**
+- Staff configures CAD through `/roleplaycommandsetup` → select "CAD"
+- Separate `/cadcharacter` command for members to create characters and add vehicles/guns
+- Separate `/cadlicensesearch [plate]` command for LEO to search license plates
+- Each server has independent CAD configuration
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded user interface.

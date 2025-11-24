@@ -228,7 +228,7 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       const menuData = await showSetupMenu(interaction);
       return interaction.update({
         ...menuData,
-        embeds: [successEmbed('CAD Enabled', 'GTA5 CAD system has been enabled. Members can now use `/cad` to check dispatch info.')],
+        embeds: [successEmbed('CAD Enabled', 'GTA5 CAD system has been enabled. Members can now access CAD through `/roleplaycommands` menu and manage characters with `/cadcharacter` and search plates with `/cadlicensesearch` (LEO only).')],
       });
     }
 
