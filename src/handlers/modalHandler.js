@@ -178,7 +178,7 @@ async function handleReactionRoleAddEmojiModal(interaction) {
 
     if (!reactionRole) {
       return interaction.reply({
-        embeds: [errorEmbed('Message not found. Check the message ID.')],
+        embeds: [errorEmbed('Reaction role message not found. The message must have been created with /reactionrolemessage. Check that you copied the correct message ID.')],
         flags: 64,
       });
     }
