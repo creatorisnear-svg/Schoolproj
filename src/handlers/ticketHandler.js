@@ -1,5 +1,6 @@
 import TicketConfig from '../models/TicketConfig.js';
 import Ticket from '../models/Ticket.js';
+import Staff from '../models/Staff.js';
 import { EmbedBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { infoEmbed, successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
@@ -15,6 +16,9 @@ async function showSetupMenu(interaction) {
         .setCustomId('ticketsupport_setup_menu')
         .setPlaceholder('Choose a setup option...')
         .addOptions(
+          { label: 'Customize Panel Title', value: 'panel_title' },
+          { label: 'Customize Panel Description', value: 'panel_description' },
+          { label: 'Choose Button Color', value: 'button_color' },
           { label: 'Select Panel Channel', value: 'select_channel' },
           { label: 'Add Ticket Type', value: 'add_type' },
           { label: 'View Ticket Types', value: 'view_types' },
@@ -30,6 +34,17 @@ async function showSetupMenu(interaction) {
   };
 }
 
+// Convert button color to ButtonStyle
+function getButtonStyle(color) {
+  const styles = {
+    'Primary': ButtonStyle.Primary,
+    'Secondary': ButtonStyle.Secondary,
+    'Success': ButtonStyle.Success,
+    'Danger': ButtonStyle.Danger,
+  };
+  return styles[color] || ButtonStyle.Primary;
+}
+
 export async function handleTicketSetupMenu(interaction) {
   const choice = interaction.values[0];
 
@@ -39,6 +54,67 @@ export async function handleTicketSetupMenu(interaction) {
     if (!ticketConfig) {
       return interaction.reply({
         embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'panel_title') {
+      const modal = new ModalBuilder()
+        .setCustomId('ticketsupport_panel_title_modal')
+        .setTitle('Customize Panel Title')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('panel_title_input')
+              .setLabel('Panel Title')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Support Tickets')
+              .setValue(ticketConfig.panelTitle || 'Support Tickets')
+              .setMaxLength(100)
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'panel_description') {
+      const modal = new ModalBuilder()
+        .setCustomId('ticketsupport_panel_description_modal')
+        .setTitle('Customize Panel Description')
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('panel_description_input')
+              .setLabel('Panel Description')
+              .setStyle(TextInputStyle.Paragraph)
+              .setPlaceholder('e.g., Select a button below to create a support ticket.')
+              .setValue(ticketConfig.panelDescription || 'Select a button below to create a support ticket.')
+              .setMaxLength(1000)
+              .setRequired(true)
+          )
+        );
+
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'button_color') {
+      const colorMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('ticketsupport_button_color')
+            .setPlaceholder('Choose a button color...')
+            .addOptions(
+              { label: '🔵 Primary (Blue)', value: 'Primary' },
+              { label: '⚪ Secondary (Gray)', value: 'Secondary' },
+              { label: '🟢 Success (Green)', value: 'Success' },
+              { label: '🔴 Danger (Red)', value: 'Danger' }
+            )
+        );
+
+      return interaction.reply({
+        content: 'Select the color for ticket buttons:',
+        components: [colorMenu],
         ephemeral: true,
       });
     }
@@ -86,7 +162,10 @@ export async function handleTicketSetupMenu(interaction) {
       }
 
       const typesList = ticketConfig.ticketTypes
-        .map((t, i) => `${i + 1}. **${t.label}** - ${t.allowedRoleIds.length} role(s) allowed`)
+        .map((t, i) => {
+          const staffNote = t.includeStaff ? ' (+ Bot Staff)' : '';
+          return `${i + 1}. **${t.label}** - ${t.allowedRoleIds.length} role(s) allowed${staffNote}`;
+        })
         .join('\n');
 
       const menuData = await showSetupMenu(interaction);
@@ -131,6 +210,96 @@ export async function handleTicketSetupMenu(interaction) {
   }
 }
 
+export async function handlePanelTitleModal(interaction) {
+  const panelTitle = interaction.fields.getTextInputValue('panel_title_input');
+
+  try {
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    ticketConfig.panelTitle = panelTitle;
+    await ticketConfig.save();
+
+    const menuData = await showSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Panel Title Updated', `Title set to: **${panelTitle}**`)],
+    });
+  } catch (error) {
+    console.error('Error updating panel title:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handlePanelDescriptionModal(interaction) {
+  const panelDescription = interaction.fields.getTextInputValue('panel_description_input');
+
+  try {
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    ticketConfig.panelDescription = panelDescription;
+    await ticketConfig.save();
+
+    const menuData = await showSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Panel Description Updated', `Description set to: **${panelDescription}**`)],
+    });
+  } catch (error) {
+    console.error('Error updating panel description:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleButtonColorSelect(interaction) {
+  const color = interaction.values[0];
+
+  try {
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    ticketConfig.buttonColor = color;
+    await ticketConfig.save();
+
+    const menuData = await showSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Button Color Updated', `Buttons will now be: **${color}**`)],
+    });
+  } catch (error) {
+    console.error('Error updating button color:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
 export async function handleTicketSetupModal(interaction) {
   const ticketTypeName = interaction.fields.getTextInputValue('ticket_type_name');
 
@@ -160,18 +329,146 @@ export async function handleTicketSetupModal(interaction) {
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId(`ticketsupport_type_roles_${tempId}`)
       .setPlaceholder('Select roles that can view this ticket type...')
-      .setMinValues(1)
+      .setMinValues(0)
       .setMaxValues(25);
 
-    const row = new ActionRowBuilder().addComponents(roleSelect);
+    const botStaffButton = new ButtonBuilder()
+      .setCustomId(`ticketsupport_add_botstaff_${tempId}`)
+      .setLabel('✓ Include Bot Staff')
+      .setStyle(ButtonStyle.Success);
+
+    const doneButton = new ButtonBuilder()
+      .setCustomId(`ticketsupport_roles_done_${tempId}`)
+      .setLabel('Done')
+      .setStyle(ButtonStyle.Primary);
+
+    const rolesRow = new ActionRowBuilder().addComponents(roleSelect);
+    const buttonsRow = new ActionRowBuilder().addComponents(botStaffButton, doneButton);
 
     return interaction.reply({
-      content: `Select which roles can view **${ticketTypeName}** tickets:`,
-      components: [row],
+      content: `Select which roles can view **${ticketTypeName}** tickets (optional):\n\nClick "✓ Include Bot Staff" to add all bot staff members to this ticket type.`,
+      components: [rolesRow, buttonsRow],
       ephemeral: true,
     });
   } catch (error) {
     console.error('Error in ticket add type modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleAddBotStaffButton(interaction) {
+  const customIdParts = interaction.customId.split('_');
+  const tempId = customIdParts[customIdParts.length - 1];
+
+  try {
+    const pending = pendingTicketTypes.get(tempId);
+
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('Session expired. Please try again.')],
+        ephemeral: true,
+      });
+    }
+
+    if (!pending.includeStaff) {
+      pending.includeStaff = true;
+      return interaction.reply({
+        content: '✅ Bot staff will be added to this ticket type. Now click "Done" when ready.',
+        ephemeral: true,
+      });
+    } else {
+      pending.includeStaff = false;
+      return interaction.reply({
+        content: '❌ Bot staff removal cancelled. Now click "Done" when ready.',
+        ephemeral: true,
+      });
+    }
+  } catch (error) {
+    console.error('Error handling bot staff button:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRolesDoneButton(interaction) {
+  const customIdParts = interaction.customId.split('_');
+  const tempId = customIdParts[customIdParts.length - 1];
+
+  try {
+    const pending = pendingTicketTypes.get(tempId);
+
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('Session expired. Please try again.')],
+        ephemeral: true,
+      });
+    }
+
+    const ticketConfig = await TicketConfig.findOne({ guildId: pending.guildId });
+
+    if (!ticketConfig) {
+      pendingTicketTypes.delete(tempId);
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Add the new ticket type
+    ticketConfig.ticketTypes.push({
+      id: Date.now().toString(),
+      label: pending.label,
+      allowedRoleIds: pending.selectedRoleIds || [],
+      includeStaff: pending.includeStaff || false,
+      createdAt: new Date(),
+    });
+
+    await ticketConfig.save();
+    pendingTicketTypes.delete(tempId);
+
+    const menuData = await showSetupMenu(interaction);
+    const staffNote = pending.includeStaff ? ' + Bot Staff' : '';
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Ticket Type Added', `"${pending.label}" has been added with ${pending.selectedRoleIds?.length || 0} role(s)${staffNote}.`)],
+    });
+  } catch (error) {
+    console.error('Error in roles done button:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleTicketRoleSelect(interaction) {
+  const customIdParts = interaction.customId.split('_');
+  const tempId = customIdParts[customIdParts.length - 1];
+  const selectedRoleIds = interaction.values;
+
+  try {
+    const pending = pendingTicketTypes.get(tempId);
+
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('Session expired. Please try again.')],
+        ephemeral: true,
+      });
+    }
+
+    pending.selectedRoleIds = selectedRoleIds;
+
+    return interaction.reply({
+      content: `✅ ${selectedRoleIds.length} role(s) selected. Click "Done" to finish.`,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error selecting ticket roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
@@ -221,56 +518,6 @@ export async function handleTicketChannelSelect(interaction) {
   }
 }
 
-export async function handleTicketRoleSelect(interaction) {
-  const customIdParts = interaction.customId.split('_');
-  const tempId = customIdParts[customIdParts.length - 1];
-  const selectedRoleIds = interaction.values;
-
-  try {
-    const pending = pendingTicketTypes.get(tempId);
-
-    if (!pending) {
-      return interaction.reply({
-        embeds: [errorEmbed('Session expired. Please try again.')],
-        ephemeral: true,
-      });
-    }
-
-    const ticketConfig = await TicketConfig.findOne({ guildId: pending.guildId });
-
-    if (!ticketConfig) {
-      pendingTicketTypes.delete(tempId);
-      return interaction.reply({
-        embeds: [errorEmbed('Ticket system not found.')],
-        ephemeral: true,
-      });
-    }
-
-    // Add the new ticket type
-    ticketConfig.ticketTypes.push({
-      id: Date.now().toString(),
-      label: pending.label,
-      allowedRoleIds: selectedRoleIds,
-      createdAt: new Date(),
-    });
-
-    await ticketConfig.save();
-    pendingTicketTypes.delete(tempId);
-
-    const menuData = await showSetupMenu(interaction);
-    return interaction.update({
-      ...menuData,
-      embeds: [successEmbed('Ticket Type Added', `"${pending.label}" has been added with ${selectedRoleIds.length} role(s).`)],
-    });
-  } catch (error) {
-    console.error('Error selecting ticket roles:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
-  }
-}
-
 async function sendTicketPanel(interaction, ticketConfig) {
   try {
     const channel = await interaction.guild.channels.fetch(ticketConfig.panelChannelId).catch(() => null);
@@ -283,20 +530,21 @@ async function sendTicketPanel(interaction, ticketConfig) {
       });
     }
 
-    // Create the panel embed
+    // Create the panel embed with custom title and description
     const panelEmbed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle('Support Tickets')
-      .setDescription('Select a button below to create a support ticket.')
+      .setTitle(ticketConfig.panelTitle || 'Support Tickets')
+      .setDescription(ticketConfig.panelDescription || 'Select a button below to create a support ticket.')
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    // Create buttons for each ticket type
+    // Create buttons for each ticket type with custom color
+    const buttonStyle = getButtonStyle(ticketConfig.buttonColor);
     const buttons = ticketConfig.ticketTypes.map(type =>
       new ButtonBuilder()
         .setCustomId(`ticket_create_${type.id}`)
         .setLabel(type.label)
-        .setStyle(ButtonStyle.Primary)
+        .setStyle(buttonStyle)
     );
 
     // Split buttons into rows (5 per row max)
@@ -408,24 +656,52 @@ export async function handleTicketCreationModal(interaction) {
     const ticketCount = await Ticket.countDocuments({ guildId: interaction.guildId });
     const ticketId = `${ticketType.label.toLowerCase().replace(/\s+/g, '-')}-${ticketCount + 1}`;
 
+    // Prepare permission overwrites
+    const permissionOverwrites = [
+      {
+        id: guild.id,
+        deny: [PermissionFlagsBits.ViewChannel],
+      },
+      {
+        id: user.id,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      },
+      ...ticketType.allowedRoleIds.map(roleId => ({
+        id: roleId,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      })),
+    ];
+
+    // If includeStaff is true, get all bot staff and add them
+    if (ticketType.includeStaff) {
+      const staffMembers = await Staff.find({ guildId: interaction.guildId });
+
+      for (const staffMember of staffMembers) {
+        if (staffMember.type === 'user' && staffMember.userId) {
+          // Check if user permission already exists
+          if (!permissionOverwrites.some(p => p.id === staffMember.userId)) {
+            permissionOverwrites.push({
+              id: staffMember.userId,
+              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+            });
+          }
+        } else if (staffMember.type === 'role' && staffMember.roleId) {
+          // Check if role permission already exists
+          if (!permissionOverwrites.some(p => p.id === staffMember.roleId)) {
+            permissionOverwrites.push({
+              id: staffMember.roleId,
+              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+            });
+          }
+        }
+      }
+    }
+
     // Create ticket channel
     const channel = await guild.channels.create({
       name: ticketId,
       type: ChannelType.GuildText,
-      permissionOverwrites: [
-        {
-          id: guild.id,
-          deny: [PermissionFlagsBits.ViewChannel],
-        },
-        {
-          id: user.id,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-        },
-        ...ticketType.allowedRoleIds.map(roleId => ({
-          id: roleId,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-        })),
-      ],
+      permissionOverwrites,
     });
 
     // Save ticket to database

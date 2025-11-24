@@ -168,12 +168,16 @@ client.on('interactionCreate', async interaction => {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
-    const { handleTicketSetupModal, handleTicketCreationModal } = await import('./handlers/ticketHandler.js');
+    const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
     } else if (interaction.customId === 'ticketsupport_add_type_modal') {
       await handleTicketSetupModal(interaction);
+    } else if (interaction.customId === 'ticketsupport_panel_title_modal') {
+      await handlePanelTitleModal(interaction);
+    } else if (interaction.customId === 'ticketsupport_panel_description_modal') {
+      await handlePanelDescriptionModal(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_create_ticket_')) {
       await handleTicketCreationModal(interaction);
     } else if (interaction.customId.includes('setup_')) {
@@ -186,12 +190,14 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
-    const { handleTicketSetupMenu } = await import('./handlers/ticketHandler.js');
+    const { handleTicketSetupMenu, handleButtonColorSelect } = await import('./handlers/ticketHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {
       await handleTicketSetupMenu(interaction);
+    } else if (interaction.customId === 'ticketsupport_button_color') {
+      await handleButtonColorSelect(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
@@ -225,6 +231,16 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId.startsWith('ticket_create_')) {
       const { handleTicketButtonClick } = await import('./handlers/ticketHandler.js');
       await handleTicketButtonClick(interaction);
+    }
+
+    if (interaction.customId.startsWith('ticketsupport_add_botstaff_')) {
+      const { handleAddBotStaffButton } = await import('./handlers/ticketHandler.js');
+      await handleAddBotStaffButton(interaction);
+    }
+
+    if (interaction.customId.startsWith('ticketsupport_roles_done_')) {
+      const { handleRolesDoneButton } = await import('./handlers/ticketHandler.js');
+      await handleRolesDoneButton(interaction);
     }
   }
 });

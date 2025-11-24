@@ -18,11 +18,25 @@ const ticketConfigSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  panelTitle: {
+    type: String,
+    default: 'Support Tickets',
+  },
+  panelDescription: {
+    type: String,
+    default: 'Select a button below to create a support ticket.',
+  },
+  buttonColor: {
+    type: String,
+    default: 'Primary',
+    enum: ['Primary', 'Secondary', 'Success', 'Danger'],
+  },
   ticketTypes: [
     {
       id: String,
       label: String,
       allowedRoleIds: [String],
+      includeStaff: Boolean,
       createdAt: Date,
     },
   ],
