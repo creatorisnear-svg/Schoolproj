@@ -728,6 +728,19 @@ export async function handleLEOSearchCharacterModal(interaction) {
       description += `None registered\n`;
     }
 
+    // Fetch BOLOs for this character
+    const BOLO = await import('../models/BOLO.js').then(m => m.default);
+    const bolos = await BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true });
+    
+    if (bolos.length > 0) {
+      description += `\n**🚨 BOLO ALERTS**\n`;
+      bolos.forEach(bolo => {
+        description += `• **${bolo.boloId}** - ${bolo.reason}\n`;
+        description += `  Issued: ${bolo.createdAt.toLocaleDateString()} by <@${bolo.issuedBy}>\n`;
+        if (bolo.description) description += `  Details: ${bolo.description}\n`;
+      });
+    }
+
     // Fetch traffic tickets for this character
     const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
     const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
@@ -735,7 +748,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     description += `\n**🎫 TRAFFIC TICKETS**\n`;
     if (tickets.length > 0) {
       const ticketSummary = tickets.slice(0, 5).map(t => {
-        return `• **${t.ticketId}** - ${t.violationType}${t.fineAmount ? ` ($${t.fineAmount})` : ''}`;
+        return `• **${t.ticketId}** - ${t.violation}${t.fine ? ` ($${t.fine})` : ''}`;
       }).join('\n');
       description += ticketSummary;
       if (tickets.length > 5) description += `\n... and ${tickets.length - 5} more`;

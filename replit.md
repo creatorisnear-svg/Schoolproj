@@ -135,7 +135,7 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation & Status Selection)
+## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets & BOLO Display)
 - **Character Creation Redesigned as 3-Step Process:**
   - **Step 1/3 - Basic Info:** Modal with Name, Age, Gender fields
     - Name auto-capitalized (first and last names)
@@ -153,11 +153,15 @@ The codebase is organized into `src/` containing:
   - All fields properly saved with height in `height` field, race in `distinguishingFeatures`
   - SSN auto-generated only (no license plate or driver's license auto-generation)
   - License status defaults to 'valid', veteran status defaults to 'none'
-- **LEO Character Search Display:**
-  - Shows complete profile: Personal info, Physical description (Height/Race), Identification
-  - Displays up to 5 most recent traffic tickets with ID, violation type, and fine amount
+- **LEO Character Search Display - FIXED:**
+  - ✅ Traffic Tickets now display correctly with violation type and fine amount
+  - **New BOLO Section:** Shows active BOLOs on character profile when searching
+    - **Displays:** BOLO ID, Reason, Date issued, Who issued it, and details
+    - **Example:** "🚨 BOLO ALERTS - TKT-123456 - Armed & Dangerous - Issued: 11/24/2024 by Officer Name - Details: Last seen at..."
+    - BOLOs appear between Weapons and Traffic Tickets sections
 - **Updated Handlers:**
   - `cadHandler.js` - Redesigned character creation with 3-step process (handleCADCharacterCreateModal, handleCharacterContinue, handleCharacterHeightRaceModal, handleCharacterStatusNone)
+  - `leoDatabaseHandler.js` - Fixed traffic ticket display (violation/fine fields) and added BOLO display
   - `index.js` - Added routing for new handlers and modal submissions
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
