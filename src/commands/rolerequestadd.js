@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('rolerequestsetup')
+  .setName('rolerequestadd')
   .setDescription('Configure the role request system (Staff only)');
 
 export async function execute(interaction) {
