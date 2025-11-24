@@ -1,10 +1,114 @@
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Config from '../models/Config.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import Priority from '../models/Priority.js';
 import { StrikeConfig } from '../models/Strike.js';
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import TicketConfig from '../models/TicketConfig.js';
+
+export async function handleEnableChoiceButton(interaction) {
+  try {
+    const isEnable = interaction.customId === 'choice_enable';
+
+    if (isEnable) {
+      // Show enable options
+      const embed = new EmbedBuilder()
+        .setColor('#00AA00')
+        .setTitle('✅ Enable Features')
+        .setDescription('Select which features you want to enable:')
+        .setFooter({ text: 'EverLink' });
+
+      const enableRow1 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('enable_roleplay')
+            .setLabel('🎮 Roleplay Commands')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_priority')
+            .setLabel('⭐ Priority Tracker')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_strike')
+            .setLabel('🚨 Strike System')
+            .setStyle(ButtonStyle.Success)
+        );
+
+      const enableRow2 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('enable_calendar')
+            .setLabel('📅 Roleplay Calendar')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_ticket')
+            .setLabel('🎫 Ticket Support')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_antipromote')
+            .setLabel('⛔ Anti-Promoting')
+            .setStyle(ButtonStyle.Success)
+        );
+
+      return interaction.reply({
+        embeds: [embed],
+        components: [enableRow1, enableRow2],
+        ephemeral: true,
+      });
+    } else {
+      // Show disable options
+      const embed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Disable Features')
+        .setDescription('Select which features you want to disable:')
+        .setFooter({ text: 'EverLink' });
+
+      const disableRow1 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('disable_roleplay')
+            .setLabel('🎮 Roleplay Commands')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_priority')
+            .setLabel('⭐ Priority Tracker')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_strike')
+            .setLabel('🚨 Strike System')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+      const disableRow2 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('disable_calendar')
+            .setLabel('📅 Roleplay Calendar')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_ticket')
+            .setLabel('🎫 Ticket Support')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_antipromote')
+            .setLabel('⛔ Anti-Promoting')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+      return interaction.reply({
+        embeds: [embed],
+        components: [disableRow1, disableRow2],
+        ephemeral: true,
+      });
+    }
+  } catch (error) {
+    console.error('Error in enable/disable choice handler:', error);
+    return interaction.reply({
+      embeds: [createErrorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
 
 export async function handleEnableCommandButton(interaction) {
   try {
@@ -36,6 +140,16 @@ export async function handleEnableCommandButton(interaction) {
       featureName = '🎫 Ticket Support';
       model = TicketConfig;
       setupCommand = 'Run `/ticketsupportsetup` to configure.';
+    } else if (customId === 'enable_antipromote') {
+      featureName = '⛔ Anti-Promoting';
+      let config = await Config.findOne({ guildId }) || new Config({ guildId });
+      config.antiPromotingEnabled = true;
+      await config.save();
+      const embed = createSuccessEmbed(`${featureName} Enabled`, `${featureName} has been enabled.`);
+      return interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
     }
 
     // Save to database
@@ -83,6 +197,18 @@ export async function handleDisableCommandButton(interaction) {
     } else if (customId === 'disable_ticket') {
       featureName = '🎫 Ticket Support';
       model = TicketConfig;
+    } else if (customId === 'disable_antipromote') {
+      featureName = '⛔ Anti-Promoting';
+      let config = await Config.findOne({ guildId });
+      if (config) {
+        config.antiPromotingEnabled = false;
+        await config.save();
+      }
+      const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
+      return interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
     }
 
     // Save to database
@@ -101,35 +227,6 @@ export async function handleDisableCommandButton(interaction) {
     });
   } catch (error) {
     console.error('Error in disable button handler:', error);
-    return interaction.reply({
-      embeds: [createErrorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
-  }
-}
-
-export async function handleAntiPromoteButton(interaction) {
-  try {
-    const customId = interaction.customId;
-    const guildId = interaction.guildId;
-    const isEnable = customId === 'enable_antipromote';
-
-    let config = await Config.findOne({ guildId }) || new Config({ guildId });
-    config.antiPromotingEnabled = isEnable;
-    await config.save();
-
-    const status = isEnable ? 'Enabled' : 'Disabled';
-    const message = isEnable 
-      ? 'Anti-promoting system has been enabled. Invite links will be monitored and logged to the configured log channel.'
-      : 'Anti-promoting system has been disabled.';
-
-    const embed = createSuccessEmbed(`⛔ Anti-Promoting ${status}`, message);
-    return interaction.reply({
-      embeds: [embed],
-      ephemeral: true,
-    });
-  } catch (error) {
-    console.error('Error in anti-promote button handler:', error);
     return interaction.reply({
       embeds: [createErrorEmbed('An error occurred.')],
       ephemeral: true,

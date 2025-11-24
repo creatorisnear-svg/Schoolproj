@@ -135,16 +135,21 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Consolidated Enable Commands, Fixed Discord Cache, Multi-Step Character Creation, Traffic Tickets, BOLO Display, Status Alerts, Navigation & UX Improvements)
-- **Consolidated Enable Commands - NEW `/enablecommands` Command:**
-  - Single unified command replacing 6 individual enable commands (roleplaycommandsenable, antipromotingenable, prioritytrackerenable, roleplaycalendarenable, enablestrikesystem, ticketsupportenable)
-  - Admin/Staff runs `/enablecommands` to see all features and current status
-  - **Enable Section:** Green buttons to enable: 🎮 Roleplay, ⭐ Priority, 🚨 Strike, 📅 Calendar, 🎫 Ticket
-  - **Disable Section:** Red buttons to disable the same features
-  - **Anti-Promoting Section:** Separate controls for Anti-Promoting system
-  - Each feature requires log channel setup before enabling (automatic validation)
-  - Success feedback shows next setup command needed
-  - Command count reduced from 35 to 29 commands
+## Recent Changes (Session: November 24, 2025 - Consolidated Enable Commands, Fixed Discord Cache, Multi-Step Character Creation, Traffic Tickets, BOLO Display, Status Alerts, Navigation & UX Improvements, Step-by-Step Feature Management)
+- **Step-by-Step Feature Management - REDESIGNED `/enablecommands` Command:**
+  - Single unified command with **step-by-step UX flow** (like the screenshot you provided)
+  - Admin/Staff runs `/enablecommands`
+  - **Step 1:** Bot asks "What would you like to do?" with two buttons:
+    - ✅ **Enable Features** (green button)
+    - ❌ **Disable Features** (red button)
+  - **Step 2:** Based on choice, shows all features as buttons in two rows:
+    - **Enable row 1:** 🎮 Roleplay Commands | ⭐ Priority Tracker | 🚨 Strike System
+    - **Enable row 2:** 📅 Roleplay Calendar | 🎫 Ticket Support | ⛔ Anti-Promoting
+    - (Same layout for disable, but red buttons)
+  - User clicks the specific feature they want to enable/disable
+  - Success message with next setup command needed
+  - Cleaner, more guided experience than showing all options at once
+  - Command count remains at 29 commands
 - **Fixed Discord Command Cache Issue:**
   - Added client-side command cache clearing
   - Added global command clearing as fallback
