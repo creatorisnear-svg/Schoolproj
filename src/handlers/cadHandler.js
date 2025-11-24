@@ -204,7 +204,7 @@ export async function handleCADCharacterMenu(interaction) {
               .setCustomId('character_name')
               .setLabel('Character Name')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., John Smith')
+              .setPlaceholder('e.g., John Smith (Capitalize First & Last Name)')
               .setRequired(true)
           ),
           new ActionRowBuilder().addComponents(
@@ -238,7 +238,7 @@ export async function handleCADCharacterMenu(interaction) {
               .setCustomId('char_placeholder_2')
               .setLabel('Next Step')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('→ Click "Continue" below')
+              .setPlaceholder('→ Click "Submit" below')
               .setRequired(false)
               .setMaxLength(1)
               .setValue(' ')
