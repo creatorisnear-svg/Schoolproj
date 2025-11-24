@@ -168,12 +168,14 @@ client.on('interactionCreate', async interaction => {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
-    const { handleTicketSetupModal } = await import('./handlers/ticketHandler.js');
+    const { handleTicketSetupModal, handleTicketCreationModal } = await import('./handlers/ticketHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
     } else if (interaction.customId === 'ticketsupport_add_type_modal') {
       await handleTicketSetupModal(interaction);
+    } else if (interaction.customId.startsWith('ticketsupport_create_ticket_')) {
+      await handleTicketCreationModal(interaction);
     } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
