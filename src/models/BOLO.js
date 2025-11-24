@@ -26,6 +26,16 @@ const boloSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  vehicles: [
+    {
+      make: String,
+      model: String,
+      color: String,
+      licensePlate: String,
+      year: String,
+      notes: String,
+    },
+  ],
   issuedBy: {
     type: String,
     required: true,
@@ -37,6 +47,10 @@ const boloSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 60 * 60 * 1000),
   },
   resolvedAt: {
     type: Date,

@@ -43,9 +43,10 @@ All civilian roleplay and CAD interactions are handled through a single menu wit
 - 🔍 Search License Plate - Look up character profiles by vehicle plate
 - 👤 Search Character Name - Search for character profiles by name
 - 📋 View Wanted List - See all wanted suspects
+- 🚨 View Active BOLOs - See all current "Be On the Lookout" alerts
 - 🔫 Revoke Weapon - Remove a registered firearm from a character
 - 🎫 Issue Traffic Ticket - Issue traffic citations with violation details and fines
-- 🚨 Create BOLO - Create "Be On the Lookout" alerts for wanted persons
+- 🚨 Create BOLO - Create "Be On the Lookout" alerts for wanted persons (with vehicle info)
 - Only available if roleplay commands are enabled and user has LEO role
 
 **Fire Department Access - `/firedepartmentdatabase`:**
@@ -134,7 +135,7 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - LEO Features & Bug Fixes)
+## Recent Changes (Session: November 24, 2025 - LEO Features & BOLO Enhancements)
 - **Bug Fixed:** Character manage view showed `char.weapons` instead of `char.guns` - corrected to display weapon count properly
 - **LEO Weapon Revocation:** Added `/leodatabase` → "🔫 Revoke Weapon" feature
   - LEOs can remove registered firearms from character profiles
@@ -145,16 +146,24 @@ The codebase is organized into `src/` containing:
   - Captures violation type, detailed description, and fine amount
   - Stored in new TrafficTicket model for record keeping
   - Separate from support ticket system
-- **BOLO System:** Added `/leodatabase` → "🚨 Create BOLO" feature
+- **BOLO System Enhancements:**
+  - Added `/leodatabase` → "🚨 Create BOLO" feature
   - LEOs can create "Be On the Lookout" alerts for wanted persons
+  - BOLO model updated to include vehicles array for known vehicle tracking
+  - LEOs can specify multiple vehicles (make, model, color, license plate, notes)
   - Generates unique BOLO IDs (BOLO-{timestamp})
-  - Tracks reason, detailed description, and activation status
-  - Stored in new BOLO model for multi-server enforcement
+  - Auto-deletes all BOLOs after 1 hour (`expiresAt` field tracks expiration)
+  - Added `/leodatabase` → "🚨 View Active BOLOs" feature
+  - LEOs can view all active BOLO alerts with character, reason, and vehicle details
+- **Auto-Delete System:**
+  - Implemented BOLO auto-delete in index.js (checks every minute)
+  - BOLOs automatically expire after 1 hour from creation
+  - System logs deleted BOLOs for audit trail
 - **New Models Created:**
   - `TrafficTicket.js` - Stores traffic citations issued by LEOs
-  - `BOLO.js` - Stores wanted person alerts with active/resolved status
+  - `BOLO.js` - Stores wanted person alerts with vehicles, 1-hour auto-expiration
 - **Updated Handlers:**
-  - Enhanced `leoDatabaseHandler.js` with three new modal handlers
+  - Enhanced `leoDatabaseHandler.js` with 4 new functions (revoke weapon, issue ticket, create BOLO, view active BOLOs)
   - Updated `modalHandler.js` to route new LEO feature modals
   - All features include LEO role verification and character lookup
 - **Result:** Bot maintains zero warnings, 34 commands registered, all new LEO features operational

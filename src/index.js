@@ -58,6 +58,9 @@ client.once('clientReady', async () => {
   
   // Start auto-deletion for unresponded 911 calls
   startEmergencyCallAutoDelete();
+
+  // Start auto-deletion for expired BOLOs
+  startBOLOAutoDelete();
 });
 
 async function registerCommandsAsync() {
@@ -187,6 +190,34 @@ async function startEmergencyCallAutoDelete() {
   }, 60000); // Check every minute
 
   console.log('⏱️ Emergency call auto-delete started (10-minute timeout for all calls)');
+}
+
+async function startBOLOAutoDelete() {
+  const { default: BOLO } = await import('./models/BOLO.js');
+
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      
+      // Find all expired BOLOs
+      const expiredBOLOs = await BOLO.find({
+        active: true,
+        expiresAt: { $lt: now }
+      });
+
+      if (expiredBOLOs.length > 0) {
+        for (const bolo of expiredBOLOs) {
+          await BOLO.deleteOne({ _id: bolo._id });
+          console.log(`🗑️ Auto-deleted BOLO ${bolo.boloId} (expired)`);
+        }
+        console.log(`📊 Deleted ${expiredBOLOs.length} expired BOLO alert(s)`);
+      }
+    } catch (error) {
+      console.error('Error in BOLO auto-delete:', error);
+    }
+  }, 60000); // Check every minute
+
+  console.log('⏱️ BOLO auto-delete started (1-hour expiration for all BOLOs)');
 }
 
 client.on('interactionCreate', async interaction => {

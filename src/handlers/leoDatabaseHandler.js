@@ -270,13 +270,66 @@ export async function handleLEODatabaseMenu(interaction) {
             new TextInputBuilder()
               .setCustomId('bolo_description')
               .setLabel('Description & Details')
-              .setPlaceholder('Physical description, vehicle info, last location, etc.')
+              .setPlaceholder('Physical description, last location, etc.')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('bolo_vehicles')
+              .setLabel('Known Vehicles (Optional)')
+              .setPlaceholder('e.g., Red Honda Civic (ABC1234), Blue Ford Truck')
               .setStyle(TextInputStyle.Paragraph)
               .setRequired(false)
           )
         );
 
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'active_bolos') {
+      const activeBOLOs = await BOLO.find({
+        guildId: interaction.guildId,
+        active: true
+      }).sort({ createdAt: -1 });
+
+      if (activeBOLOs.length === 0) {
+        return interaction.reply({
+          embeds: [infoEmbed('Active BOLOs', 'No active BOLO alerts.')],
+          ephemeral: true,
+        });
+      }
+
+      const embeds = activeBOLOs.map(bolo => {
+        let description = `**Character:** ${bolo.characterName}\n`;
+        description += `**BOLO ID:** ${bolo.boloId}\n`;
+        description += `**Reason:** ${bolo.reason}\n`;
+        if (bolo.description) description += `**Details:** ${bolo.description}\n`;
+        
+        if (bolo.vehicles.length > 0) {
+          description += `\n**Known Vehicles:**\n`;
+          bolo.vehicles.forEach(v => {
+            description += `• ${v.make} ${v.model} (${v.color})`;
+            if (v.licensePlate) description += ` - Plate: **${v.licensePlate}**`;
+            if (v.notes) description += ` [${v.notes}]`;
+            description += '\n';
+          });
+        }
+
+        description += `\n**Issued By:** <@${bolo.issuedBy}>\n`;
+        description += `**Created:** <t:${Math.floor(bolo.createdAt.getTime() / 1000)}:R>`;
+
+        return new EmbedBuilder()
+          .setColor('#ff0000')
+          .setTitle(`🚨 BOLO: ${bolo.characterName}`)
+          .setDescription(description)
+          .setFooter({ text: 'EverLink' });
+      });
+
+      return interaction.reply({
+        embeds,
+        ephemeral: true,
+      });
     }
   } catch (error) {
     console.error('Error in LEO database menu:', error);
@@ -844,6 +897,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
   const characterName = interaction.fields.getTextInputValue('bolo_character_name');
   const reason = interaction.fields.getTextInputValue('bolo_reason');
   const description = interaction.fields.getTextInputValue('bolo_description');
+  const vehiclesInput = interaction.fields.getTextInputValue('bolo_vehicles');
 
   try {
     // Verify permissions
@@ -878,8 +932,30 @@ export async function handleLEOCreateBOLOModal(interaction) {
       });
     }
 
-    // Create BOLO
+    // Parse vehicles (basic parsing: "Make Model (Color) - Plate: ABC123")
+    const vehicles = [];
+    if (vehiclesInput) {
+      const vehicleLines = vehiclesInput.split('\n').filter(line => line.trim());
+      vehicleLines.forEach(line => {
+        // Simple parsing - just store as-is with basic extraction
+        const plateMatch = line.match(/(?:plate|plt):\s*(\w+)/i);
+        const colorMatch = line.match(/\(([^)]+)\)/);
+        
+        vehicles.push({
+          make: '',
+          model: '',
+          color: colorMatch ? colorMatch[1] : '',
+          licensePlate: plateMatch ? plateMatch[1] : '',
+          year: '',
+          notes: line.trim(),
+        });
+      });
+    }
+
+    // Create BOLO with 1-hour expiration
     const boloId = `BOLO-${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    
     const bolo = new BOLO({
       guildId: interaction.guildId,
       boloId,
@@ -887,8 +963,10 @@ export async function handleLEOCreateBOLOModal(interaction) {
       characterName: character.characterName,
       reason,
       description,
+      vehicles,
       issuedBy: interaction.user.id,
       active: true,
+      expiresAt,
     });
 
     await bolo.save();
@@ -896,9 +974,12 @@ export async function handleLEOCreateBOLOModal(interaction) {
     let responseDesc = `**BOLO ID:** ${boloId}\n`;
     responseDesc += `**Character:** ${character.characterName}\n`;
     responseDesc += `**Reason:** ${reason}\n`;
-    responseDesc += `**Status:** 🟢 ACTIVE\n`;
+    responseDesc += `**Status:** 🟢 ACTIVE (Expires in 1 hour)\n`;
     responseDesc += `**Issued By:** <@${interaction.user.id}>\n`;
-    if (description) responseDesc += `**Details:** ${description}`;
+    if (description) responseDesc += `**Details:** ${description}\n`;
+    if (vehicles.length > 0) {
+      responseDesc += `\n**Known Vehicles:** ${vehicles.length} vehicle(s) added`;
+    }
 
     return interaction.reply({
       embeds: [successEmbed('🚨 BOLO ALERT CREATED', responseDesc)],

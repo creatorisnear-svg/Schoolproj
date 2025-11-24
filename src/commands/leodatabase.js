@@ -48,6 +48,7 @@ export async function execute(interaction) {
             { label: '🔍 Search License Plate', value: 'search_plate' },
             { label: '👤 Search Character Name', value: 'search_character' },
             { label: '📋 View Wanted List', value: 'wanted_list' },
+            { label: '🚨 View Active BOLOs', value: 'active_bolos' },
             { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
             { label: '🎫 Issue Traffic Ticket', value: 'issue_ticket' },
             { label: '🚨 Create BOLO', value: 'create_bolo' }
