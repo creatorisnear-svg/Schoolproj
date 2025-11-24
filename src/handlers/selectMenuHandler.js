@@ -1120,6 +1120,14 @@ async function handleReactionRoleMainMenu(interaction) {
       .addComponents(
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
+            .setCustomId('channel_id')
+            .setLabel('Channel ID')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., 1234567890')
+            .setRequired(true)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
             .setCustomId('message_id')
             .setLabel('Message ID')
             .setStyle(TextInputStyle.Short)

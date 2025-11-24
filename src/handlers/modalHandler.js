@@ -167,19 +167,42 @@ async function handleReactionRoleAddEmojiModal(interaction) {
   const { default: ReactionRole } = await import('../models/ReactionRole.js');
   const { RoleSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
   
+  const channelId = interaction.fields.getTextInputValue('channel_id');
   const messageId = interaction.fields.getTextInputValue('message_id');
   const emoji = interaction.fields.getTextInputValue('emoji_input');
 
   try {
-    const reactionRole = await ReactionRole.findOne({
+    // Try to fetch the message from Discord to verify it exists
+    let channel, message;
+    try {
+      channel = await interaction.guild.channels.fetch(channelId);
+      if (!channel.isTextBased()) {
+        return interaction.reply({
+          embeds: [errorEmbed('The channel must be a text channel.')],
+          flags: 64,
+        });
+      }
+      message = await channel.messages.fetch(messageId);
+    } catch (err) {
+      return interaction.reply({
+        embeds: [errorEmbed('Could not find the message in that channel. Please check the channel ID and message ID.')],
+        flags: 64,
+      });
+    }
+
+    // Check if reaction role entry exists, if not create one
+    let reactionRole = await ReactionRole.findOne({
       guildId: interaction.guildId,
       messageId: messageId,
     });
 
     if (!reactionRole) {
-      return interaction.reply({
-        embeds: [errorEmbed('Reaction role message not found. The message must have been created with /reactionrolemessage. Check that you copied the correct message ID.')],
-        flags: 64,
+      // Create new entry for this message
+      reactionRole = await ReactionRole.create({
+        guildId: interaction.guildId,
+        messageId: messageId,
+        channelId: channelId,
+        emojiRoles: [],
       });
     }
 
