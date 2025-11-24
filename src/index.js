@@ -282,6 +282,18 @@ client.on('messageCreate', async message => {
   await handleStickyMessages(message);
 });
 
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
+  const { handleReactionAdd } = await import('./handlers/reactionRoleHandler.js');
+  await handleReactionAdd(reaction, user);
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (user.bot) return;
+  const { handleReactionRemove } = await import('./handlers/reactionRoleHandler.js');
+  await handleReactionRemove(reaction, user);
+});
+
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
