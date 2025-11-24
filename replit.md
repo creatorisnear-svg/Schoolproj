@@ -61,9 +61,11 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
      - Each level can have an action: No Action, Kick, Timeout (mute), or Ban
      - Timeout and Ban durations are configurable in minutes (0 = permanent for ban)
    - `/strike @user <reason>` - Staff strike members (auto-increments strikes)
+   - `/removestrike @user <amount> <reason>` - Staff remove strikes from members (decrements by amount specified)
    - **Auto-Increment Logic**: Each strike increments by 1 (0→1, 1→2, 2→3, 3→4, caps at 4)
-   - Member receives DM with who striked them, reason, current level, and action taken
-   - All strikes logged to configured log channel with member, striker, reason, and action taken
+   - **Auto-Decrement Logic**: Removing strikes decreases level by specified amount (can't go below 0)
+   - Member receives DM with strike/removal details
+   - All strikes and removals logged to configured log channel with member, staff, reason, and amounts
    - Each server has independent strike configuration
 
 7. **Anti-Promoting System** (Per-Server)
@@ -123,6 +125,7 @@ src/
 │   ├── enablestrikesystem.js # Toggle strike system enabled/disabled
 │   ├── strikesystemsetup.js # Strike system setup command
 │   ├── strike.js            # Strike member command
+│   ├── removestrike.js      # Remove strikes from member command
 │   ├── antipromotingenable.js # Toggle anti-promoting command
 │   ├── whitelistlink.js     # Whitelist/remove invite links command
 │   ├── whitelistlinkstaff.js # Toggle staff bypass for anti-promoting command
