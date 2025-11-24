@@ -30,10 +30,25 @@ export async function execute(interaction) {
   }
 
   try {
+    // Check if log channel is configured first
+    const config = await Config.findOne({ guildId: interaction.guildId });
+    
+    if (!config || !config.logChannelId) {
+      const embed = new EmbedBuilder()
+        .setColor('#FF6600')
+        .setTitle('⚠️ Setup Required')
+        .setDescription('Before you can manage bot features, you need to set up the system first.\n\n**Here\'s what to do:**\n1. Have an admin run `/setlogchannel` to designate a channel for bot logs\n2. Have an admin run `/addstaff` to add bot staff members\n3. Return here and you\'ll be able to enable or disable features')
+        .setFooter({ text: 'EverLink' });
+      
+      return interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
+    }
+
     // Get current status of all features
     const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
     const priorityConfig = await Priority.findOne({ guildId: interaction.guildId });
-    const config = await Config.findOne({ guildId: interaction.guildId });
     const strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
     const calendarConfig = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
     const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });

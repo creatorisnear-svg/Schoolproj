@@ -11,61 +11,28 @@ export async function handleEnableCommandButton(interaction) {
     const customId = interaction.customId;
     const guildId = interaction.guildId;
     
-    // Check if log channel is configured (required for enabling features)
-    const config = await Config.findOne({ guildId });
-    
     let featureName = '';
     let model = null;
     let field = 'enabled';
     let setupCommand = '';
 
     if (customId === 'enable_roleplay') {
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling roleplay commands.')],
-          ephemeral: true,
-        });
-      }
       featureName = '🎮 Roleplay Commands';
       model = RoleplayCommands;
       setupCommand = 'Run `/roleplaycommandsetup` to configure.';
     } else if (customId === 'enable_priority') {
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling the priority tracker.')],
-          ephemeral: true,
-        });
-      }
       featureName = '⭐ Priority Tracker';
       model = Priority;
       setupCommand = 'Run `/prioritytrackersetup` to configure.';
     } else if (customId === 'enable_strike') {
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling the strike system.')],
-          ephemeral: true,
-        });
-      }
       featureName = '🚨 Strike System';
       model = StrikeConfig;
       setupCommand = 'Run `/strikesystemsetup` to configure.';
     } else if (customId === 'enable_calendar') {
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling the roleplay calendar.')],
-          ephemeral: true,
-        });
-      }
       featureName = '📅 Roleplay Calendar';
       model = RoleplayCalendar;
       setupCommand = 'Run `/roleplaycalendersetup` to configure.';
     } else if (customId === 'enable_ticket') {
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling ticket support.')],
-          ephemeral: true,
-        });
-      }
       featureName = '🎫 Ticket Support';
       model = TicketConfig;
       setupCommand = 'Run `/ticketsupportsetup` to configure.';
@@ -146,17 +113,6 @@ export async function handleAntiPromoteButton(interaction) {
     const customId = interaction.customId;
     const guildId = interaction.guildId;
     const isEnable = customId === 'enable_antipromote';
-
-    // Check if log channel is configured when enabling
-    if (isEnable) {
-      const config = await Config.findOne({ guildId });
-      if (!config || !config.logChannelId) {
-        return interaction.reply({
-          embeds: [createErrorEmbed('You must set a log channel first using `/setlogchannel` before enabling anti-promoting.')],
-          ephemeral: true,
-        });
-      }
-    }
 
     let config = await Config.findOne({ guildId }) || new Config({ guildId });
     config.antiPromotingEnabled = isEnable;
