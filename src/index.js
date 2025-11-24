@@ -648,7 +648,7 @@ client.on('guildCreate', async (guild) => {
   try {
     const owner = await guild.fetchOwner();
     
-    const welcomeMessage = `__**Welcome to EverLink**__
+    const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
 
 Hi ${owner.user.username}, thanks for adding __**EverLink**__ to your server! 
 
@@ -656,35 +656,35 @@ __**What is EverLink?**__
 EverLink is a __**comprehensive Discord bot**__ designed for __**GTA5 RP**__ and roleplay communities. It helps streamline community management with powerful features for admins, staff, and members.
 
 __**Core Features**__
-__Emergency System__ - 911 calls with unit responses and auto-deletion
-__CAD System__ - Full GTA5 RP CAD with character and vehicle management for LEO/Fire
-__Member Verification__ - Custom RP tags, security questions, automatic role assignment
-__Staff Management__ - Add/remove staff with permission-based command access
-__Strike System__ - 4-level punishment system with customizable actions
-__Ticket Support__ - Custom ticket types with automatic channel creation
-__Roleplay Features__ - Twitter, Anonymous posts, priority tracking, BOLO alerts
-__Roleplay Calendar__ - Weekly RP events with timezone conversion
-__Community Tools__ - Reaction roles, sticky messages, role requests, anti-promoting
+🚨 __Emergency System__ - 911 calls with unit responses and auto-deletion
+🚔 __CAD System__ - Full GTA5 RP CAD with character and vehicle management for LEO/Fire
+📋 __Member Verification__ - Custom RP tags, security questions, automatic role assignment
+👮 __Staff Management__ - Add/remove staff with permission-based command access
+⚡ __Strike System__ - 4-level punishment system with customizable actions
+🎟️ __Ticket Support__ - Custom ticket types with automatic channel creation
+🎭 __Roleplay Features__ - Twitter, Anonymous posts, priority tracking, BOLO alerts
+📅 __Roleplay Calendar__ - Weekly RP events with timezone conversion
+🎙️ __Community Tools__ - Reaction roles, sticky messages, role requests, anti-promoting
 
 __**Getting Started**__
-1. Use __/enablecommands__ to enable/disable features
-2. Use __/setlogchannel__ to set your logging channel
-3. Configure each feature with its setup command (__/verifysystemsetup__, __/strikesystemsetup__, etc.)
-4. Add staff with __/addstaff__
+1️⃣ Use __/enablecommands__ to enable/disable features
+2️⃣ Use __/setlogchannel__ to set your logging channel
+3️⃣ Configure each feature with its setup command (__/verifysystemsetup__, __/strikesystemsetup__, etc.)
+4️⃣ Add staff with __/addstaff__
 
 __**Permission Levels**__
-**Admins** - Full access to all commands
-**Staff** - Added via /addstaff, access to admin commands
-**Members** - Access to roleplay commands
+✅ **Admins** - Full access to all commands
+✅ **Staff** - Added via /addstaff, access to admin commands
+✅ **Members** - Access to roleplay commands
 
 __**Support & Updates**__
-For assistance, updates, and feature discussions, join our __**support server**__: https://discord.gg/f4QrjTQQr
+For assistance, updates, and feature discussions, join our __**support server**__: https://discord.gg/cSdhfGPeV2
 
 All commands are slash commands. Use \`/\` to see available options and descriptions.
 
 Ready? Start with __/enablecommands__ to configure your server.
 
-__**EverLink**__ - Made for RP Communities`;
+__**EverLink**__ - Made for RP Communities 🎮`;
 
     await owner.send(welcomeMessage);
     console.log(`📧 Welcome message sent to ${owner.user.username} for guild: ${guild.name}`);
