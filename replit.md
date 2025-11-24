@@ -17,7 +17,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - Interactive elements like dropdowns and modals are used for configuration and reporting (e.g., verification setup, 911 reports).
 
 **Technical Implementations & Feature Specifications:**
-- **Modular System Design:** Features like Staff Management, Verification, Welcome, 911 Reporting, Logging, Strike System, Priority Tracker, Roleplay Calendar, Sticky Messages, Anti-Promoting, and Reaction Roles are implemented as independent, per-server configurable modules.
+- **Modular System Design:** Features like Staff Management, Verification, Welcome, 911 Reporting, Logging, Strike System, Priority Tracker, Roleplay Calendar, Sticky Messages, Anti-Promoting, Reaction Roles, and Ticket Support are implemented as independent, per-server configurable modules.
 - **Permission System:** Commands are gated by Discord Administrator permissions or a custom staff database, ensuring secure access.
 - **Logging System:** A central log channel (`/setlogchannel`) is mandatory and used by all other systems for event reporting (e.g., verification answers, anti-promoting incidents, strike actions).
 - **Verification System:** Supports customizable RP tags, questions, welcome messages, and automatic role assignment.
@@ -27,7 +27,8 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Sticky Messages:** Staff/admins can use `/sticky` to create messages that auto-repost every 1 message to keep important information visible. Messages are prefixed with "__**Stickied Message:**__" header.
 - **Anti-Promoting System:** Automatically detects and removes non-whitelisted Discord invite links, with an optional staff bypass.
 - **Reaction Role System:** Staff/admins can use `/reactionrolemessage` to create messages with emoji reactions that automatically assign roles. Up to 5 emoji-role pairs per message. Menu-based workflow: "Send a New Message" creates a reaction role message, "Add Emoji to Existing Message" adds emoji-role pairs via modals. Requires `GatewayIntentBits.GuildMessageReactions` intent to receive reaction events.
-- **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole), ensuring per-server data isolation and persistence.
+- **Ticket Support System:** Staff/admins can use `/ticketsupportenable` (requires log channel configured) to enable the system, then `/ticketsupportsetup` to configure it. Setup includes: selecting a channel for the ticket panel, adding custom ticket types, assigning roles that can view each ticket type. When users click a button on the panel, a private ticket channel is created only visible to the user and assigned staff roles. Tickets are logged and tracked in the database.
+- **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket), ensuring per-server data isolation and persistence.
 
 **Project Structure:**
 The codebase is organized into `src/` containing:
