@@ -211,10 +211,9 @@ export async function handleCivilianDatabaseMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select a character to add a vehicle to:',
         components: [charMenu, backButton],
-        ephemeral: true,
       });
     }
 
@@ -247,10 +246,9 @@ export async function handleCivilianDatabaseMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select a character to add a firearm to:',
         components: [charMenu, backButton],
-        ephemeral: true,
       });
     }
 
@@ -284,10 +282,9 @@ export async function handleCivilianDatabaseMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: '**MANAGE CHARACTER**\n\nSelect a character to view, edit, or delete:',
         components: [charMenu, backButton],
-        ephemeral: true,
       });
     }
   } catch (error) {

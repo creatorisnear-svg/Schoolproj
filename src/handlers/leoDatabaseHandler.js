@@ -134,10 +134,9 @@ export async function handleLEODatabaseMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         embeds,
         components: [callMenu, backButton],
-        ephemeral: true,
       });
     }
 

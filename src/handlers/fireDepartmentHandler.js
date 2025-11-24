@@ -95,10 +95,9 @@ export async function handleFireDepartmentMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         embeds,
         components: [callMenu, backButton],
-        ephemeral: true,
       });
     }
 
@@ -181,10 +180,9 @@ export async function handleFireDepartmentMenu(interaction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select a character to add a vehicle to:',
         components: [charMenu, backButton],
-        ephemeral: true,
       });
     }
   } catch (error) {
