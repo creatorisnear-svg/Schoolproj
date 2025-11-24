@@ -234,20 +234,7 @@ async function startBOLOAutoDelete() {
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
-    // Map old numeric-prefixed command names to clean names
-    let commandName = interaction.commandName;
-    
-    // Strip numeric prefix if present (e.g., "01addstaff" -> "addstaff")
-    const cleanName = commandName.replace(/^\d+/, '');
-    
-    // Try to get command with original name, then with clean name
-    let command = client.commands.get(commandName);
-    if (!command && cleanName !== commandName) {
-      command = client.commands.get(cleanName);
-      if (command) {
-        console.log(`📌 Mapped old command name "${commandName}" to "${cleanName}"`);
-      }
-    }
+    const command = client.commands.get(interaction.commandName);
 
     if (!command) {
       console.error(`❌ No command matching ${interaction.commandName} was found.`);
