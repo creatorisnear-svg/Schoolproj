@@ -226,7 +226,19 @@ async function handleAntiPromotingAddLinkModal(interaction) {
   const link = interaction.fields.getTextInputValue('link_input').trim();
 
   try {
-    let config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+    let config = await Config.findOne({ guildId: interaction.guildId });
+    
+    if (!config) {
+      config = new Config({ 
+        guildId: interaction.guildId,
+        whitelistedInviteLinks: []
+      });
+    }
+
+    // Ensure array exists
+    if (!Array.isArray(config.whitelistedInviteLinks)) {
+      config.whitelistedInviteLinks = [];
+    }
 
     if (config.whitelistedInviteLinks.includes(link)) {
       return interaction.reply({
