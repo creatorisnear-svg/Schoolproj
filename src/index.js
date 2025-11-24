@@ -309,6 +309,9 @@ client.on('interactionCreate', async interaction => {
       await handleCharacterEditModal(interaction, charId);
     } else if (interaction.customId === 'add_rolerequest_type_modal') {
       await handleAddRoleRequestTypeModal(interaction);
+    } else if (interaction.customId === 'antipromotingsetup_add_link_modal') {
+      const { handleModalSubmit } = await import('./handlers/modalHandler.js');
+      await handleModalSubmit(interaction);
     } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
