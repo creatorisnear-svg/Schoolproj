@@ -481,8 +481,9 @@ export async function handleCharacterDelete(interaction, characterId) {
           .setStyle('Secondary')
       );
 
+    const { infoEmbed } = await import('../utils/embedBuilder.js');
     return interaction.reply({
-      embeds: [errorEmbed('Confirm Delete', `Are you sure you want to delete **${character.characterName}**? This cannot be undone.`)],
+      embeds: [infoEmbed('Confirm Delete', `Are you sure you want to delete **${character.characterName}**? This cannot be undone.`)],
       components: [confirmButtons],
       ephemeral: true,
     });
@@ -510,8 +511,26 @@ export async function handleCharacterDeleteConfirm(interaction, characterId) {
       });
     }
 
+    // Show success and return to main menu
+    const menu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('civilian_database_menu')
+          .setPlaceholder('Select an action...')
+          .addOptions(
+            { label: '🚨 Report 911 Emergency', value: 'report_911', emoji: '🚨' },
+            { label: '🐦 Post to Twitter', value: 'post_twitter', emoji: '🐦' },
+            { label: '🤫 Post Anonymously', value: 'post_anon', emoji: '🤫' },
+            { label: '👤 Create Character', value: 'create_character', emoji: '👤' },
+            { label: '🚗 Add Vehicle', value: 'add_vehicle', emoji: '🚗' },
+            { label: '🔫 Add Firearm', value: 'add_firearm', emoji: '🔫' },
+            { label: '📋 Manage Character', value: 'manage_character', emoji: '📋' }
+          )
+      );
+
     return interaction.reply({
       embeds: [successEmbed('Character Deleted', `**${character.characterName}** has been permanently deleted.`)],
+      components: [menu],
       ephemeral: true,
     });
   } catch (error) {

@@ -712,14 +712,14 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
         .setStyle('Secondary'),
       new ButtonBuilder()
         .setCustomId(`char_status_none_${character._id}`)
-        .setLabel('None')
-        .setStyle('Secondary')
+        .setLabel('✅ Done')
+        .setStyle('Success')
     );
 
     const statusEmbed = new EmbedBuilder()
       .setColor('#0099ff')
       .setTitle('📋 Final Setup - Step 3/3')
-      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or choose "None")')
+      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or click "✅ Done" to skip)')
       .setFooter({ text: 'EverLink' });
 
     return interaction.reply({
@@ -751,8 +751,27 @@ export async function handleCharacterStatusNone(interaction, characterId) {
       });
     }
 
+    // Return to civilian database main menu
+    const { StringSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
+    const menu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('civilian_database_menu')
+          .setPlaceholder('Select an action...')
+          .addOptions(
+            { label: '🚨 Report 911 Emergency', value: 'report_911', emoji: '🚨' },
+            { label: '🐦 Post to Twitter', value: 'post_twitter', emoji: '🐦' },
+            { label: '🤫 Post Anonymously', value: 'post_anon', emoji: '🤫' },
+            { label: '👤 Create Character', value: 'create_character', emoji: '👤' },
+            { label: '🚗 Add Vehicle', value: 'add_vehicle', emoji: '🚗' },
+            { label: '🔫 Add Firearm', value: 'add_firearm', emoji: '🔫' },
+            { label: '📋 Manage Character', value: 'manage_character', emoji: '📋' }
+          )
+      );
+
     return interaction.reply({
-      content: `✅ **${character.characterName}** - Character Setup Complete!`,
+      embeds: [successEmbed('✅ Character Complete', `**${character.characterName}** has been created successfully! You can now add vehicles or weapons.`)],
+      components: [menu],
       ephemeral: true,
     });
   } catch (error) {
