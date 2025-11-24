@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystem')
-  .setDescription('Enable or disable the verification system (Staff only)')
+  .setDescription('Enable or disable the verification system (Admin/Staff)')
   .addBooleanOption(option =>
     option
       .setName('enabled')

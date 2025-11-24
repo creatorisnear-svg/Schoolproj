@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('deactivatepriority')
-  .setDescription('Deactivate priority and/or cooldown (Staff only)')
+  .setDescription('Deactivate priority and/or cooldown (Admin/Staff)')
   .addStringOption(option =>
     option
       .setName('type')

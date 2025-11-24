@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystem')
-  .setDescription('Enable or disable the welcome system (Staff only)')
+  .setDescription('Enable or disable the welcome system (Admin/Staff)')
   .addBooleanOption(option =>
     option
       .setName('enabled')

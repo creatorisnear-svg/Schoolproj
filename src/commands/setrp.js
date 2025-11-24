@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setrp')
-  .setDescription('Add an RP event to the calendar (Staff only)')
+  .setDescription('Add an RP event to the calendar (Admin/Staff)')
   .addStringOption(option =>
     option
       .setName('day')

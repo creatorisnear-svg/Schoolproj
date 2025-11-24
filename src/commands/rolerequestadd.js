@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rolerequestadd')
-  .setDescription('Configure the role request system (Staff only)');
+  .setDescription('Configure the role request system (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

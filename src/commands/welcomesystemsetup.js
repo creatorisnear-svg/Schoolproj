@@ -6,7 +6,7 @@ import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystemsetup')
-  .setDescription('Configure the welcome system for new members (Staff only)');
+  .setDescription('Configure the welcome system for new members (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

@@ -5,7 +5,7 @@ import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycalendersetup')
-  .setDescription('Set up the roleplay calendar system (Admin only)');
+  .setDescription('Set up the roleplay calendar system (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {

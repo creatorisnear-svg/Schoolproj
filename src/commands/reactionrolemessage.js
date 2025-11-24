@@ -4,7 +4,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('reactionrolemessage')
-  .setDescription('Create a reaction role message (Staff only)');
+  .setDescription('Create a reaction role message (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('strike')
-  .setDescription('Strike a member (Staff only)')
+  .setDescription('Strike a member (Admin/Staff)')
   .addUserOption(option =>
     option
       .setName('user')

@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('unsetrp')
-  .setDescription('Remove an RP event from the calendar (Staff only)');
+  .setDescription('Remove an RP event from the calendar (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

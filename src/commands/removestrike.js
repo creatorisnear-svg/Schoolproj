@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('removestrike')
-  .setDescription('Remove strikes from a member (Staff only)')
+  .setDescription('Remove strikes from a member (Admin/Staff)')
   .addUserOption(option =>
     option
       .setName('user')

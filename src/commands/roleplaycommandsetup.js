@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycommandsetup')
-  .setDescription('Setup the roleplay commands system (Staff only)');
+  .setDescription('Setup the roleplay commands system (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

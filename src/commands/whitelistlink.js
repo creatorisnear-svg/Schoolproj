@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('whitelistlink')
-  .setDescription('Add an invite link to the whitelist (Staff only)')
+  .setDescription('Add an invite link to the whitelist (Admin/Staff)')
   .addStringOption(option =>
     option
       .setName('link')

@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('prioritycooldown')
-  .setDescription('Set priority cooldown duration in minutes (Staff only)')
+  .setDescription('Set priority cooldown duration in minutes (Admin/Staff)')
   .addIntegerOption(option =>
     option
       .setName('minutes')

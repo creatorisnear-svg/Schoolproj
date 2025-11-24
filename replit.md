@@ -7,6 +7,13 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 - All bot responses must use Discord embeds
 - EverLink branding on all embeds (footer: "EverLink")
 - MongoDB for persistent data storage
+- Staff and Admins have full access to all commands
+- General members restricted to roleplay/verification commands only
+
+## Permission Structure
+**Admins** - Can use ALL 32 commands (includes all staff permissions)
+**Staff** - Added via `/addstaff`, can use 26 administrative commands
+**General Members** - Can only use roleplay/verification commands (7 commands)
 
 ## System Architecture
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
@@ -19,7 +26,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 
 **Technical Implementations & Feature Specifications:**
 - **Modular System Design:** Features are independent and per-server configurable.
-- **Permission System:** Commands are gated by Discord Administrator permissions or a custom staff database.
+- **Permission System:** Commands are gated by Discord Administrator permissions (Admins/Staff) or a custom staff database. Admins inherit all staff permissions.
 - **Logging System:** A central log channel (`/setlogchannel`) is used for event reporting.
 - **Roleplay Commands System:** All roleplay commands (911, Twitter, Anon, CAD) are accessed through menu-based database commands (`/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`).
     - **Emergency System:** Tracks 911 calls with unique IDs, supports primary response and unit attachment, pings configured roles, and updates interactive messages. Calls auto-delete after 10 minutes.

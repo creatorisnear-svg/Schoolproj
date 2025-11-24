@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ticketsupportsetup')
-  .setDescription('Setup the ticket support system (Staff only)');
+  .setDescription('Setup the ticket support system (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

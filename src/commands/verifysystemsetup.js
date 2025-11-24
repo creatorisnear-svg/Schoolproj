@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystemsetup')
-  .setDescription('Configure the verification system for your server (Staff only)');
+  .setDescription('Configure the verification system for your server (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

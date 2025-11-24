@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('prioritytrackersetup')
-  .setDescription('Set up the priority tracker system (Staff only)');
+  .setDescription('Set up the priority tracker system (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

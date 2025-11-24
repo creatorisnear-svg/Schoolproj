@@ -5,7 +5,7 @@ import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('whitelistlinkstaff')
-  .setDescription('Toggle whether bot staff can bypass anti-promoting and send invite links (Admin only)')
+  .setDescription('Toggle whether bot staff can bypass anti-promoting and send invite links (Admin/Staff)')
   .addBooleanOption(option =>
     option
       .setName('enabled')
