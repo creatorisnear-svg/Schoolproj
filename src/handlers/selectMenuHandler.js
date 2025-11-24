@@ -1241,7 +1241,7 @@ async function handleReactionRoleSelect(interaction) {
 
 async function handleAntiPromotingSetupMenu(interaction) {
   const choice = interaction.values[0];
-  const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder } = await import('discord.js');
+  const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
 
   try {
     if (choice === 'add_link') {
