@@ -30,6 +30,13 @@ export async function handleFireDepartmentMenu(interaction) {
     }
 
     if (choice === 'active_calls') {
+      if (!roleplayConfig.use911 || !roleplayConfig.use911Channel) {
+        return interaction.reply({
+          embeds: [errorEmbed('Emergency System Not Configured', 'The 911 system has not been set up by administrators. Please contact a server admin.')],
+          ephemeral: true,
+        });
+      }
+
       const activeCalls = await EmergencyCall.find({
         guildId: interaction.guildId,
         status: 'active'

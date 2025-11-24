@@ -17,6 +17,13 @@ export async function handleCivilianDatabaseMenu(interaction) {
     }
 
     if (choice === 'report_911') {
+      if (!roleplayConfig.use911 || !roleplayConfig.use911Channel) {
+        return interaction.reply({
+          embeds: [errorEmbed('911 System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
+          ephemeral: true,
+        });
+      }
+
       const modal = new ModalBuilder()
         .setCustomId('911report')
         .setTitle('911 Report Form');
@@ -68,6 +75,13 @@ export async function handleCivilianDatabaseMenu(interaction) {
     }
 
     if (choice === 'post_twitter') {
+      if (!roleplayConfig.useTwitter || !roleplayConfig.twitterChannel) {
+        return interaction.reply({
+          embeds: [errorEmbed('Twitter System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
+          ephemeral: true,
+        });
+      }
+
       const modal = new ModalBuilder()
         .setCustomId('twitter_post_modal')
         .setTitle('Post to Twitter')
@@ -88,6 +102,13 @@ export async function handleCivilianDatabaseMenu(interaction) {
     }
 
     if (choice === 'post_anon') {
+      if (!roleplayConfig.useAnon || !roleplayConfig.anonChannel) {
+        return interaction.reply({
+          embeds: [errorEmbed('Anonymous System Not Configured', 'This feature has not been set up by administrators. Please contact a server admin.')],
+          ephemeral: true,
+        });
+      }
+
       const modal = new ModalBuilder()
         .setCustomId('anon_post_modal')
         .setTitle('Post Anonymously')
@@ -181,6 +202,69 @@ export async function handleCivilianDatabaseMenu(interaction) {
       return interaction.reply({
         content: 'Select a character to add a vehicle to:',
         components: [charMenu],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'add_firearm') {
+      const characters = await CADCharacter.find({ guildId: interaction.guildId, userId: interaction.user.id });
+
+      if (characters.length === 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('You need to create a character first.')],
+          ephemeral: true,
+        });
+      }
+
+      const charMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('cadcharacter_select_for_gun')
+            .setPlaceholder('Select a character...')
+            .addOptions(characters.map(c => ({
+              label: c.characterName,
+              value: c._id.toString(),
+            })))
+        );
+
+      return interaction.reply({
+        content: 'Select a character to add a firearm to:',
+        components: [charMenu],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'manage_character') {
+      const characters = await CADCharacter.find({ guildId: interaction.guildId, userId: interaction.user.id });
+
+      if (characters.length === 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('No Characters', 'You haven\'t created any characters yet.')],
+          ephemeral: true,
+        });
+      }
+
+      const embeds = characters.map(char => {
+        let description = `**Name:** ${char.characterName}\n`;
+        if (char.age) description += `**Age:** ${char.age}\n`;
+        if (char.gender) description += `**Gender:** ${char.gender}\n`;
+        if (char.hairColor) description += `**Hair:** ${char.hairColor}\n`;
+        if (char.eyeColor) description += `**Eyes:** ${char.eyeColor}\n`;
+        if (char.socialSecurityNumber) description += `**SSN:** ${char.socialSecurityNumber}\n`;
+        if (char.driversLicense) description += `**License:** ${char.driversLicense}\n`;
+        
+        description += `\n**Vehicles:** ${char.vehicles?.length || 0}\n`;
+        description += `**Weapons:** ${char.weapons?.length || 0}`;
+
+        return new EmbedBuilder()
+          .setColor('#0099ff')
+          .setTitle(`📋 ${char.characterName}`)
+          .setDescription(description)
+          .setFooter({ text: 'EverLink' });
+      });
+
+      return interaction.reply({
+        embeds,
         ephemeral: true,
       });
     }

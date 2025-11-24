@@ -28,7 +28,9 @@ export async function execute(interaction) {
             { label: '🐦 Post to Twitter', value: 'post_twitter' },
             { label: '🤫 Post Anonymously', value: 'post_anon' },
             { label: '👤 Create Character', value: 'create_character' },
-            { label: '🚗 Add Vehicle', value: 'add_vehicle' }
+            { label: '🚗 Add Vehicle', value: 'add_vehicle' },
+            { label: '🔫 Add Firearm', value: 'add_firearm' },
+            { label: '📋 Manage Character', value: 'manage_character' }
           )
       );
 

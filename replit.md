@@ -33,6 +33,8 @@ All civilian roleplay and CAD interactions are handled through a single menu wit
 - 🤫 Post Anonymously - Post anonymous/black market message
 - 👤 Create Character - Create a new civilian/character profile
 - 🚗 Add Vehicle - Add a vehicle to an existing character
+- 🔫 Add Firearm - Register a gun/weapon to an existing character
+- 📋 Manage Character - View all characters and their details (vehicles, weapons)
 
 **LEO Access:**
 - `/leodatabase` - Menu with options to:
@@ -83,6 +85,11 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
 - All bot responses leverage Discord embeds for a clean, professional, and branded user interface.
 - Embeds consistently feature "EverLink" branding in the footer.
 - Interactive elements like dropdowns and modals are used for configuration and reporting (e.g., verification setup, 911 reports).
+
+**Configuration Fallback System:**
+- All menu-based features include automatic configuration checks
+- If a feature is not configured, users see: "This feature has not been set up by administrators. Please contact a server admin."
+- Applies to 911 system, Twitter, Anonymous messages, emergency calls, and all roleplay systems
 
 **Technical Implementations & Feature Specifications:**
 - **Modular System Design:** Features like Staff Management, Verification, Welcome, 911 Reporting, Logging, Strike System, Priority Tracker, Roleplay Calendar, Sticky Messages, Anti-Promoting, Reaction Roles, and Ticket Support are implemented as independent, per-server configurable modules.
