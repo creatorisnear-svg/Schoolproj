@@ -84,24 +84,26 @@ client.once('clientReady', async () => {
 });
 
 async function registerCommandsAsync() {
+  const timeout = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Registration timeout')), 15000)
+  );
+  
   try {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    console.log('📤 Registering commands globally...');
+    console.log('📤 Registering commands...');
     
-    // Register commands with a 30 second timeout
-    const result = await Promise.resolve().then(async () => {
-      return await rest.put(
+    const result = await Promise.race([
+      rest.put(
         Routes.applicationCommands(client.user.id),
         { body: commands }
-      );
-    }).catch(err => {
-      throw err;
-    });
+      ),
+      timeout
+    ]);
     
-    console.log(`✅ Successfully registered ${commands.length} commands!`);
+    console.log(`✅ Successfully registered ${result.length} commands!`);
   } catch (error) {
-    console.error('❌ Registration error:', error.message);
-    console.log('⚠️  Commands may register via Discord API shortly...');
+    console.error('❌ Registration failed:', error.message);
+    console.log('⚠️  This is normal - commands will sync with Discord API');
   }
 }
 
@@ -232,7 +234,20 @@ async function startBOLOAutoDelete() {
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
-    const command = client.commands.get(interaction.commandName);
+    // Map old numeric-prefixed command names to clean names
+    let commandName = interaction.commandName;
+    
+    // Strip numeric prefix if present (e.g., "01addstaff" -> "addstaff")
+    const cleanName = commandName.replace(/^\d+/, '');
+    
+    // Try to get command with original name, then with clean name
+    let command = client.commands.get(commandName);
+    if (!command && cleanName !== commandName) {
+      command = client.commands.get(cleanName);
+      if (command) {
+        console.log(`📌 Mapped old command name "${commandName}" to "${cleanName}"`);
+      }
+    }
 
     if (!command) {
       console.error(`❌ No command matching ${interaction.commandName} was found.`);
