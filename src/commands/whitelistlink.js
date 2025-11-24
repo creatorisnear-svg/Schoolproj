@@ -18,8 +18,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Add or remove the link')
       .setRequired(true)
       .addChoices(
-        { name: 'whitelistlink', value: 'add' },
-        { name: 'whitelistlink', value: 'remove' }
+        { name: 'Add', value: 'add' },
+        { name: 'Remove', value: 'remove' }
       )
   );
 
