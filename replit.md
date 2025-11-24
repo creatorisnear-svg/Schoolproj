@@ -135,7 +135,21 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets, BOLO Display, Status Alerts, Navigation & UX Improvements)
+## Recent Changes (Session: November 24, 2025 - Consolidated Enable Commands, Fixed Discord Cache, Multi-Step Character Creation, Traffic Tickets, BOLO Display, Status Alerts, Navigation & UX Improvements)
+- **Consolidated Enable Commands - NEW `/enablecommands` Command:**
+  - Single unified command replacing 6 individual enable commands (roleplaycommandsenable, antipromotingenable, prioritytrackerenable, roleplaycalendarenable, enablestrikesystem, ticketsupportenable)
+  - Admin/Staff runs `/enablecommands` to see all features and current status
+  - **Enable Section:** Green buttons to enable: 🎮 Roleplay, ⭐ Priority, 🚨 Strike, 📅 Calendar, 🎫 Ticket
+  - **Disable Section:** Red buttons to disable the same features
+  - **Anti-Promoting Section:** Separate controls for Anti-Promoting system
+  - Each feature requires log channel setup before enabling (automatic validation)
+  - Success feedback shows next setup command needed
+  - Command count reduced from 35 to 29 commands
+- **Fixed Discord Command Cache Issue:**
+  - Added client-side command cache clearing
+  - Added global command clearing as fallback
+  - Increased processing delay from 2s to 3s
+  - Users must restart Discord client to see updated command list
 - **Character Creation Redesigned as 3-Step Process:**
   - **Step 1/3 - Basic Info:** Modal with Name, Age, Gender fields
     - Name auto-capitalized (first and last names)

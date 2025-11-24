@@ -360,6 +360,7 @@ client.on('interactionCreate', async interaction => {
     const { handleTicketButtonClick, handleAddBotStaffButton, handleRolesDoneButton, handleTicketCloseButton, handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
     const { handleCharacterEdit, handleCharacterDelete, handleCharacterDeleteConfirm } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleCharacterContinue, handleCharacterStatusNone } = await import('./handlers/cadHandler.js');
+    const { handleEnableCommandButton, handleDisableCommandButton, handleAntiPromoteButton } = await import('./handlers/enableCommandsHandler.js');
 
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
@@ -423,6 +424,12 @@ client.on('interactionCreate', async interaction => {
       await handleTicketCloseButton(interaction);
     } else if (interaction.customId.startsWith('ticket_delete_')) {
       await handleTicketDeleteButton(interaction);
+    } else if (interaction.customId.startsWith('enable_')) {
+      await handleEnableCommandButton(interaction);
+    } else if (interaction.customId.startsWith('disable_')) {
+      await handleDisableCommandButton(interaction);
+    } else if (interaction.customId === 'enable_antipromote' || interaction.customId === 'disable_antipromote') {
+      await handleAntiPromoteButton(interaction);
     }
   }
 
