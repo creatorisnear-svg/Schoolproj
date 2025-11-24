@@ -703,7 +703,10 @@ export async function handleLEOSearchCharacterModal(interaction) {
 
     description += `\n**🪪 IDENTIFICATION**\n`;
     description += `SSN: ${character.socialSecurityNumber}\n`;
-    description += `Driver's License: ${character.driversLicense}\n`;
+    description += `License Status: ${character.driverLicenseStatus === 'valid' ? '✅ Valid' : '❌ Invalid'}\n`;
+    if (character.veteranStatus && character.veteranStatus !== 'none') {
+      description += `Status: ${character.veteranStatus === 'veteran' ? '🎖️ Veteran' : '❤️ Organ Donor'}\n`;
+    }
 
     description += `\n**🚗 VEHICLES**\n`;
     if (character.vehicles.length > 0) {

@@ -337,6 +337,22 @@ client.on('interactionCreate', async interaction => {
         content: 'Character deletion cancelled.',
         ephemeral: true,
       });
+    } else if (interaction.customId.startsWith('char_license_valid_')) {
+      const { handleCharacterLicenseValid } = await import('./handlers/cadHandler.js');
+      const charId = interaction.customId.replace('char_license_valid_', '');
+      await handleCharacterLicenseValid(interaction, charId);
+    } else if (interaction.customId.startsWith('char_license_invalid_')) {
+      const { handleCharacterLicenseInvalid } = await import('./handlers/cadHandler.js');
+      const charId = interaction.customId.replace('char_license_invalid_', '');
+      await handleCharacterLicenseInvalid(interaction, charId);
+    } else if (interaction.customId.startsWith('char_veteran_')) {
+      const { handleCharacterVeteran } = await import('./handlers/cadHandler.js');
+      const charId = interaction.customId.replace('char_veteran_', '');
+      await handleCharacterVeteran(interaction, charId);
+    } else if (interaction.customId.startsWith('char_organ_donor_')) {
+      const { handleCharacterOrganDonor } = await import('./handlers/cadHandler.js');
+      const charId = interaction.customId.replace('char_organ_donor_', '');
+      await handleCharacterOrganDonor(interaction, charId);
     } else if (interaction.customId.startsWith('ticket_create_')) {
       await handleTicketButtonClick(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_add_botstaff_')) {

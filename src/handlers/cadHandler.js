@@ -197,7 +197,7 @@ export async function handleCADCharacterMenu(interaction) {
     if (choice === 'create_character') {
       const modal = new ModalBuilder()
         .setCustomId('cadcharacter_create_modal')
-        .setTitle('Create Character - Page 1')
+        .setTitle('Create Character')
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -378,6 +378,118 @@ export async function handleCADCharacterMenu(interaction) {
   }
 }
 
+export async function handleCharacterLicenseValid(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { driverLicenseStatus: 'valid' },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.update({
+      content: `✅ **${character.characterName}** set to **Valid License**`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting license valid:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterLicenseInvalid(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { driverLicenseStatus: 'invalid' },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.update({
+      content: `❌ **${character.characterName}** set to **Invalid License**`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting license invalid:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterVeteran(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { veteranStatus: 'veteran' },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.update({
+      content: `🎖️ **${character.characterName}** marked as **Veteran**`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting veteran status:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterOrganDonor(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { veteranStatus: 'organ_donor' },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.update({
+      content: `❤️ **${character.characterName}** marked as **Organ Donor**`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error setting organ donor status:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
 export async function handleCADCharacterCreateModal(interaction) {
   const characterName = interaction.fields.getTextInputValue('character_name');
   const age = interaction.fields.getTextInputValue('character_age') || null;
@@ -395,8 +507,7 @@ export async function handleCADCharacterCreateModal(interaction) {
       });
     }
 
-    const licensePlate = `${interaction.user.id.slice(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
-    const driversLicense = `DL${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    // Auto-generate SSN only, no license plate or driver's license
     const ssn = `${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 90) + 10}-${Math.floor(Math.random() * 9000) + 1000}`;
 
     const character = new CADCharacter({
@@ -407,9 +518,9 @@ export async function handleCADCharacterCreateModal(interaction) {
       gender,
       hairColor,
       eyeColor,
-      licensePlate,
-      driversLicense,
       socialSecurityNumber: ssn,
+      driverLicenseStatus: 'valid', // Default to valid
+      veteranStatus: 'none', // Will be updated after user selection
     });
 
     await character.save();
@@ -420,8 +531,6 @@ export async function handleCADCharacterCreateModal(interaction) {
     if (gender) description += `**Gender:** ${gender}\n`;
     description += `\n**🪪 Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
-    description += `**Driver's License:** ${driversLicense}\n`;
-    description += `**License Status:** Valid\n`;
     if (hairColor || eyeColor) description += `\n**👤 Physical Description**\n`;
     if (hairColor) description += `**Hair:** ${hairColor}\n`;
     if (eyeColor) description += `**Eyes:** ${eyeColor}\n`;
@@ -433,8 +542,36 @@ export async function handleCADCharacterCreateModal(interaction) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
+    // Create status selection buttons for license and veteran status
+    const { ButtonBuilder, ActionRowBuilder: ARB } = await import('discord.js');
+    const statusButtons = new ARB().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`char_license_valid_${character._id}`)
+        .setLabel('Valid License')
+        .setStyle('Success'),
+      new ButtonBuilder()
+        .setCustomId(`char_license_invalid_${character._id}`)
+        .setLabel('Invalid License')
+        .setStyle('Danger'),
+      new ButtonBuilder()
+        .setCustomId(`char_veteran_${character._id}`)
+        .setLabel('Veteran')
+        .setStyle('Primary'),
+      new ButtonBuilder()
+        .setCustomId(`char_organ_donor_${character._id}`)
+        .setLabel('Organ Donor')
+        .setStyle('Secondary')
+    );
+
+    const statusEmbed = new EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle('📋 Set License & Status')
+      .setDescription('Select your license status and special status (if any):')
+      .setFooter({ text: 'EverLink' });
+
     return interaction.reply({
-      embeds: [embed],
+      embeds: [embed, statusEmbed],
+      components: [statusButtons],
       ephemeral: true,
     });
   } catch (error) {

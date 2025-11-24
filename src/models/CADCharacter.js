@@ -72,8 +72,13 @@ const cadCharacterSchema = new mongoose.Schema({
   },
   driverLicenseStatus: {
     type: String,
-    enum: ['valid', 'suspended', 'revoked'],
+    enum: ['valid', 'invalid'],
     default: 'valid',
+  },
+  veteranStatus: {
+    type: String,
+    enum: ['veteran', 'organ_donor', 'none'],
+    default: 'none',
   },
   vehicles: [
     {

@@ -135,34 +135,37 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Civilian Character Management & LEO Features)
-- **Bug Fixed:** Character manage view showed `char.weapons` instead of `char.guns` - corrected to display weapon count properly
-- **Civilian Character Management:** Added `/civiliandatabase` → "📋 Manage Character" → Edit/Delete features
-  - **Character Selection Menu:** Shows all user characters with age and vehicle count
-  - **Character View:** Displays full character details (age, gender, hair, eyes, SSN, license, vehicles, weapons)
-  - **Edit Character:** Modal-based editing for age, gender, hair color, eye color, and SSN
-  - **Delete Character:** Confirmation-based deletion with proper security (user-owned character verification)
-  - **Interactive Buttons:** Edit (✏️) and Delete (🗑️) buttons on character details view
-- **LEO Weapon Revocation:** Added `/leodatabase` → "🔫 Revoke Weapon" feature
-  - LEOs can remove registered firearms from character profiles
-  - Includes optional reason field for enforcement documentation
-  - Modal-based interface with character name and weapon name selection
-- **LEO Traffic Tickets:** Added `/leodatabase` → "🎫 Issue Traffic Ticket" feature
-  - LEOs can issue traffic citations with unique ticket IDs (TKT-{timestamp})
-  - Captures violation type, detailed description, and fine amount
-  - Stored in new TrafficTicket model for record keeping
-  - Separate from support ticket system
-- **BOLO System Enhancements:**
-  - Added `/leodatabase` → "🚨 Create BOLO" feature with vehicle tracking
-  - Added `/leodatabase` → "🚨 View Active BOLOs" feature
-  - Auto-deletes all BOLOs after 1 hour (`expiresAt` field tracks expiration)
-- **New Models Created:**
-  - `TrafficTicket.js` - Stores traffic citations issued by LEOs
-  - `BOLO.js` - Stores wanted person alerts with vehicles, 1-hour auto-expiration
+## Recent Changes (Session: November 24, 2025 - Character Search Fixes & License/Status Selection)
+- **LEO Character Search Fixed:** Search now displays complete personal and physical information
+  - Shows: Age, Gender, Hair Color, Eye Color, Height, Build
+  - Shows License Status (✅ Valid / ❌ Invalid)
+  - Shows Special Status (🎖️ Veteran / ❤️ Organ Donor)
+- **Character Creation Enhanced:** Removed auto-generated license information & added user selection
+  - Removed auto-generated Driver's License field
+  - Removed auto-generated License Plate field
+  - Only SSN is auto-generated (unique identifier)
+  - Added **License Status Selector** (Valid / Invalid) - shown as buttons after character creation
+  - Added **Special Status Selector** (Veteran / Organ Donor) - shown as buttons after character creation
+- **CADCharacter Model Updated:**
+  - Changed `driverLicenseStatus` enum from 'valid/suspended/revoked' to 'valid/invalid'
+  - Added `veteranStatus` field with enum: 'veteran', 'organ_donor', 'none' (default)
+- **New Button Handlers Added:**
+  - `handleCharacterLicenseValid()` - Sets character license to Valid
+  - `handleCharacterLicenseInvalid()` - Sets character license to Invalid
+  - `handleCharacterVeteran()` - Sets character status to Veteran
+  - `handleCharacterOrganDonor()` - Sets character status to Organ Donor
+- **Character Creation Flow:**
+  1. User runs `/cadcharacter` (or equivalent)
+  2. Fills form with name, age, gender, hair color, eye color
+  3. Character created with SSN auto-generated
+  4. User immediately sees 4 buttons to select:
+     - Valid License (✅) or Invalid License (❌)
+     - Veteran (🎖️) or Organ Donor (❤️)
+  5. Selections saved to character profile
 - **Updated Handlers:**
-  - `civilianDatabaseHandler.js` - Added 5 new functions for character management (select, edit, delete, edit modal, delete confirm)
-  - `index.js` - Added routing for character edit/delete buttons and edit modals
-  - All features include proper security (user ownership verification, guild isolation)
+  - `cadHandler.js` - Added 4 new button handlers + updated character creation modal
+  - `leoDatabaseHandler.js` - Updated character search to show license and special status
+  - `index.js` - Added routing for all 4 new character status buttons
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
 ## External Dependencies
