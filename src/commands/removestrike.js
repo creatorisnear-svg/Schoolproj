@@ -70,11 +70,11 @@ export async function execute(interaction) {
       .setColor('#00ff00')
       .setTitle('✅ Strikes Removed')
       .addFields(
-        { name: '13removestrike.jsremovestrike', value: interaction.user.username, inline: false },
-        { name: '13removestrike.jsremovestrike', value: reason, inline: false },
-        { name: '13removestrike.jsremovestrike', value: `${removeAmount}`, inline: false },
-        { name: '13removestrike.jsremovestrike', value: `${previousLevel}/4`, inline: false },
-        { name: '13removestrike.jsremovestrike', value: `${newLevel}/4`, inline: false }
+        { name: 'removestrike', value: interaction.user.username, inline: false },
+        { name: 'removestrike', value: reason, inline: false },
+        { name: 'removestrike', value: `${removeAmount}`, inline: false },
+        { name: 'removestrike', value: `${previousLevel}/4`, inline: false },
+        { name: 'removestrike', value: `${newLevel}/4`, inline: false }
       )
       .setTimestamp()
       .setFooter({ text: 'EverLink' });
@@ -90,12 +90,12 @@ export async function execute(interaction) {
           .setColor('#00ff00')
           .setTitle('✅ Strikes Removed')
           .addFields(
-            { name: '13removestrike.jsremovestrike', value: `${targetUser.username} (${targetUser})`, inline: false },
-            { name: '13removestrike.jsremovestrike', value: `${interaction.user.username}`, inline: false },
-            { name: '13removestrike.jsremovestrike', value: reason, inline: false },
-            { name: '13removestrike.jsremovestrike', value: `${previousLevel}/4`, inline: false },
-            { name: '13removestrike.jsremovestrike', value: `${newLevel}/4`, inline: false },
-            { name: '13removestrike.jsremovestrike', value: `${removeAmount}`, inline: false }
+            { name: 'removestrike', value: `${targetUser.username} (${targetUser})`, inline: false },
+            { name: 'removestrike', value: `${interaction.user.username}`, inline: false },
+            { name: 'removestrike', value: reason, inline: false },
+            { name: 'removestrike', value: `${previousLevel}/4`, inline: false },
+            { name: 'removestrike', value: `${newLevel}/4`, inline: false },
+            { name: 'removestrike', value: `${removeAmount}`, inline: false }
           )
           .setTimestamp()
           .setFooter({ text: 'EverLink' });

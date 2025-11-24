@@ -18,9 +18,9 @@ export const data = new SlashCommandBuilder()
     option.setName('action')
       .setDescription('Choose action')
       .addChoices(
-        { name: '02addstaff', value: 'none' },
-        { name: '02addstaff', value: 'add' },
-        { name: '02addstaff', value: 'remove_all' }
+        { name: 'addstaff', value: 'none' },
+        { name: 'addstaff', value: 'add' },
+        { name: 'addstaff', value: 'remove_all' }
       )
       .setRequired(false));
 
