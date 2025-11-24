@@ -29,7 +29,8 @@ export async function handleAntiPromoting(message) {
     console.log(`🚫 Detected ${inviteLinks.length} invite link(s) in message from ${message.author.username}`);
 
     // Check if any of the detected links are whitelisted
-    const nonWhitelistedLinks = inviteLinks.filter(link => !config.whitelistedInviteLinks.includes(link));
+    const whitelistedLinks = Array.isArray(config.whitelistedInviteLinks) ? config.whitelistedInviteLinks : [];
+    const nonWhitelistedLinks = inviteLinks.filter(link => !whitelistedLinks.includes(link));
     if (nonWhitelistedLinks.length === 0) {
       console.log(`✅ All links are whitelisted, allowing message`);
       return;

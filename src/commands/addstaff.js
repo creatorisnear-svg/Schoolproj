@@ -35,9 +35,10 @@ export async function execute(interaction) {
   const role = interaction.options.getRole('role');
   const action = interaction.options.getString('action') || 'add';
 
-  if (action === 'none') {
+  // Validate action is one of the valid choices
+  if (!['add', 'remove_all'].includes(action)) {
     return interaction.reply({
-      embeds: [errorEmbed('Please select an action (Add or Remove All Staff).')],
+      embeds: [errorEmbed('Invalid action. Please select Add or Remove All Staff.')],
       flags: 64,
     });
   }

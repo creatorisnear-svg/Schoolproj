@@ -932,11 +932,17 @@ export async function handleTicketCloseButton(interaction) {
 
     const buttonRow = new ActionRowBuilder().addComponents(deleteButton);
 
-    // Update the welcome message
-    await interaction.message.edit({
-      embeds: [closedEmbed],
-      components: [buttonRow],
-    });
+    // Update the welcome message if it exists
+    if (interaction.message) {
+      try {
+        await interaction.message.edit({
+          embeds: [closedEmbed],
+          components: [buttonRow],
+        });
+      } catch (err) {
+        console.log('Could not edit ticket message:', err.message);
+      }
+    }
 
     await interaction.reply({
       embeds: [successEmbed('Ticket Closed', `Ticket **${ticketId}** has been closed and locked. Only the delete button is available now.`)],

@@ -95,6 +95,14 @@ export async function execute(interaction) {
       embed.setTitle(title);
     }
 
+    // Verify channel is text-based
+    if (!channel || !channel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Invalid channel. Please select a text channel.')],
+        flags: 64,
+      });
+    }
+
     // Check if bot has permission to send messages in the target channel
     if (!channel.permissionsFor(interaction.client.user).has(PermissionFlagsBits.SendMessages)) {
       return interaction.reply({

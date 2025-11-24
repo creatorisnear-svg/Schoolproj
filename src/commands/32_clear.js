@@ -54,11 +54,31 @@ export async function execute(interaction) {
       });
     }
 
-    // Delete messages
-    await interaction.channel.bulkDelete(messages);
+    // Delete messages (handles messages >14 days old gracefully)
+    let deletedCount = 0;
+    try {
+      const result = await interaction.channel.bulkDelete(messages, true).catch(async () => {
+        // If bulkDelete fails (messages too old), delete individually
+        for (const msg of messages.values()) {
+          try {
+            await msg.delete();
+            deletedCount++;
+          } catch (err) {
+            // Message may be too old or already deleted
+          }
+        }
+        return { size: deletedCount };
+      });
+      deletedCount = result.size || deletedCount;
+    } catch (err) {
+      console.error('Error during message deletion:', err);
+      return interaction.editReply({
+        embeds: [errorEmbed('An error occurred while deleting messages.')],
+      });
+    }
 
     return interaction.editReply({
-      embeds: [successEmbed('Messages Cleared', `Successfully deleted ${messages.size} message(s).`)],
+      embeds: [successEmbed('Messages Cleared', `Successfully deleted ${deletedCount} message(s).`)],
     });
   } catch (error) {
     console.error('Error in clear command:', error);
