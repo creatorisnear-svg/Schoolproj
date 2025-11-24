@@ -330,12 +330,12 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId.startsWith('char_edit_')) {
       const charId = interaction.customId.replace('char_edit_', '');
       await handleCharacterEdit(interaction, charId);
-    } else if (interaction.customId.startsWith('char_delete_')) {
-      const charId = interaction.customId.replace('char_delete_', '');
-      await handleCharacterDelete(interaction, charId);
     } else if (interaction.customId.startsWith('char_delete_confirm_')) {
       const charId = interaction.customId.replace('char_delete_confirm_', '');
       await handleCharacterDeleteConfirm(interaction, charId);
+    } else if (interaction.customId.startsWith('char_delete_')) {
+      const charId = interaction.customId.replace('char_delete_', '');
+      await handleCharacterDelete(interaction, charId);
     } else if (interaction.customId.startsWith('char_continue_')) {
       const charId = interaction.customId.replace('char_continue_', '');
       await handleCharacterContinue(interaction, charId);

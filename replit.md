@@ -135,7 +135,7 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets, BOLO Display & Status Alert)
+## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets, BOLO Display, Status Alert, & Bug Fixes)
 - **Character Creation Redesigned as 3-Step Process:**
   - **Step 1/3 - Basic Info:** Modal with Name, Age, Gender fields
     - Name auto-capitalized (first and last names)
@@ -163,10 +163,13 @@ The codebase is organized into `src/` containing:
     - **Red Embed:** When character has BOLO or is wanted (instant visual alert)
     - **Status Shows:** "🚨 **BOLO ALERT**" when BOLO exists, overrides wanted status display
     - Provides clear warning to LEOs that person has active alert
+- **Bug Fixes:**
+  - ✅ Fixed character deletion not working (button check order issue in index.js - now checks 'char_delete_confirm_' before 'char_delete_')
+  - ✅ 911 reporting in civilian database working correctly (modal handler properly routes and processes reports)
 - **Updated Handlers:**
   - `cadHandler.js` - Redesigned character creation with 3-step process (handleCADCharacterCreateModal, handleCharacterContinue, handleCharacterHeightRaceModal, handleCharacterStatusNone)
   - `leoDatabaseHandler.js` - Fixed traffic ticket display (violation/fine fields), added BOLO display, red embed on BOLO/wanted, status alert
-  - `index.js` - Added routing for new handlers and modal submissions
+  - `index.js` - Added routing for new handlers, fixed button check order for character deletion
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
 ## External Dependencies
