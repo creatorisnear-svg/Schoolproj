@@ -47,6 +47,29 @@ async function showCADSetupMenu(interaction) {
   };
 }
 
+// Helper to show emergency menu
+async function showEmergencySetupMenu(interaction) {
+  const emergencyMenu = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('roleplaycommands_emergency_setup_menu')
+        .setPlaceholder('Choose emergency/dispatch option...')
+        .addOptions(
+          { label: '🚑 Select 911 Channel', value: 'setup_911' },
+          { label: '🚔 Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
+          { label: '🚒 Set Fire Department Roles (Pinged on 911)', value: 'set_fd_roles' },
+          { label: '👮 Set Staff Roles', value: 'set_staff_roles' },
+          { label: '✅ Done - Back to Main Menu', value: 'emergency_done' }
+        )
+    );
+
+  return {
+    content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
+    components: [emergencyMenu],
+    ephemeral: true,
+  };
+}
+
 export async function handleRoleplayCommandsSelect(interaction) {
   const choice = interaction.values[0];
 
@@ -709,7 +732,7 @@ export async function handleRoleplayCommandsCADLeoRoles(interaction) {
     cadConfig.leoRoleIds = selectedRoles;
     await cadConfig.save();
 
-    const menuData = await showCADSetupMenu(interaction);
+    const menuData = await showEmergencySetupMenu(interaction);
     return interaction.update({
       ...menuData,
       embeds: [successEmbed('LEO Roles Set', `${selectedRoles.length} LEO role(s) configured.`)],
@@ -739,7 +762,7 @@ export async function handleRoleplayCommandsCADFDRoles(interaction) {
     cadConfig.fireDepartmentRoleIds = selectedRoles;
     await cadConfig.save();
 
-    const menuData = await showCADSetupMenu(interaction);
+    const menuData = await showEmergencySetupMenu(interaction);
     return interaction.update({
       ...menuData,
       embeds: [successEmbed('Fire Department Roles Set', `${selectedRoles.length} FD role(s) configured.`)],
@@ -769,7 +792,7 @@ export async function handleRoleplayCommandsCADStaffRoles(interaction) {
     cadConfig.staffRoleIds = selectedRoles;
     await cadConfig.save();
 
-    const menuData = await showCADSetupMenu(interaction);
+    const menuData = await showEmergencySetupMenu(interaction);
     return interaction.update({
       ...menuData,
       embeds: [successEmbed('Staff Roles Set', `${selectedRoles.length} staff role(s) configured.`)],
