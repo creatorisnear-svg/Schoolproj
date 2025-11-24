@@ -36,7 +36,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
     - Option to include bot staff (all users/roles on the bot's staff list automatically get access to that ticket type)
   
   When users click a button on the panel, they enter a description modal to provide details about their issue. A private ticket channel is created only visible to the user, assigned roles, and any bot staff members (if selected for that type). The ticket description is displayed in a welcome embed with two action buttons:
-  - **✅ Close Ticket** - Changes the status to closed, disables buttons, and updates the embed color to red
+  - **✅ Close Ticket** - Changes the status to closed, locks the channel (no one can type), and replaces the close button with a delete button
   - **🗑️ Delete Ticket** - Permanently deletes the ticket record and the channel
   
   Tickets are logged and tracked in the database with status tracking (open/closed), closure date, and who closed it. 

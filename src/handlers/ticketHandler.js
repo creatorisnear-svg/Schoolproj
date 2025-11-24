@@ -879,6 +879,16 @@ export async function handleTicketCloseButton(interaction) {
     ticket.closedBy = interaction.user.id;
     await ticket.save();
 
+    // Lock the channel - remove send message permission for everyone
+    const channel = await interaction.guild.channels.fetch(ticket.channelId).catch(() => null);
+    
+    if (channel) {
+      // Deny SendMessages for @everyone
+      await channel.permissionOverwrites.edit(interaction.guild.id, {
+        SendMessages: false,
+      });
+    }
+
     // Update embed to show ticket is closed
     const closedEmbed = new EmbedBuilder()
       .setColor('#ff6b6b')
@@ -892,31 +902,23 @@ export async function handleTicketCloseButton(interaction) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    // Disable buttons after closing
-    const disabledCloseButton = new ButtonBuilder()
-      .setCustomId(`ticket_close_${ticketId}`)
-      .setLabel('Close Ticket')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('✅')
-      .setDisabled(true);
-
-    const disabledDeleteButton = new ButtonBuilder()
+    // Show only delete button after closing
+    const deleteButton = new ButtonBuilder()
       .setCustomId(`ticket_delete_${ticketId}`)
       .setLabel('Delete Ticket')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('🗑️')
-      .setDisabled(true);
+      .setEmoji('🗑️');
 
-    const disabledButtonRow = new ActionRowBuilder().addComponents(disabledCloseButton, disabledDeleteButton);
+    const buttonRow = new ActionRowBuilder().addComponents(deleteButton);
 
     // Update the welcome message
     await interaction.message.edit({
       embeds: [closedEmbed],
-      components: [disabledButtonRow],
+      components: [buttonRow],
     });
 
     await interaction.reply({
-      embeds: [successEmbed('Ticket Closed', `Ticket **${ticketId}** has been closed.`)],
+      embeds: [successEmbed('Ticket Closed', `Ticket **${ticketId}** has been closed and locked. Only the delete button is available now.`)],
       ephemeral: true,
     });
   } catch (error) {
