@@ -803,6 +803,52 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.post('/send-heartbeat-now', async (req, res) => {
+  try {
+    const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
+    const supportServerId = '1441548471906734173';
+    
+    const config = await StatusHeartbeat.findOne({ guildId: supportServerId });
+    if (!config || !config.heartbeatChannelId) {
+      return res.status(400).json({ error: 'Heartbeat not configured' });
+    }
+
+    const guild = client.guilds.cache.get(supportServerId);
+    if (!guild) {
+      return res.status(400).json({ error: 'Guild not found' });
+    }
+
+    const channel = await guild.channels.fetch(config.heartbeatChannelId).catch(() => null);
+    if (!channel || !channel.isTextBased()) {
+      return res.status(400).json({ error: 'Channel not found or not text-based' });
+    }
+
+    const heartbeatMsg = await channel.send({
+      content: '🟢 **EverLink Heartbeat** - Status: UP',
+      embeds: [{
+        color: 0x00FF00,
+        title: 'EverLink Status',
+        description: 'System is operational',
+        footer: { text: 'EverLink' },
+        timestamp: new Date()
+      }]
+    });
+
+    setTimeout(async () => {
+      try {
+        await heartbeatMsg.delete();
+      } catch (err) {
+        console.log('Could not delete test heartbeat message');
+      }
+    }, 60000);
+
+    res.status(200).json({ success: true, message: 'Heartbeat sent!' });
+  } catch (error) {
+    console.error('Error sending heartbeat:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 async function startBot() {
   try {
     app.listen(PORT, '0.0.0.0', () => {
