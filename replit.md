@@ -16,15 +16,14 @@ All roleplay commands and CAD features are accessed exclusively through three me
 
 **Setup Process:**
 1. Staff runs `/roleplaycommandsenable true` to enable the roleplay commands system
-2. Staff runs `/roleplaycommandsetup` to configure channels and roles:
-   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and CAD system:
+2. Staff runs `/roleplaycommandsetup` to configure emergency dispatch system:
+   - **🚨 911 & CAD - Emergency/Dispatch** → Configure 911 and CAD system:
      - Select 911 Channel for emergency reports
      - Set LEO Roles (automatically pinged on 911 reports)
      - Set Fire Department Roles (automatically pinged on 911 reports)
      - Set Staff Roles for system management
-   - **🐦 Twitter - Public Messages** → Select channel for public OOC posts  
-   - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
+3. Twitter and Anon channels can be configured via `/civiliandatabase` menu (default channels if not configured)
 
 **Member Access (Civilians) - `/civiliandatabase`:**
 All civilian roleplay and CAD interactions are handled through a single menu with options to:
@@ -101,17 +100,14 @@ Full GTA5 RP CAD system with character and vehicle management for LEO/Fire Depar
   ↓
 Main Setup Menu:
   - 🚨 911 & CAD - Emergency/Dispatch
-  - 🐦 Twitter - Public Messages
-  - 🤫 Anon - Anonymous Messages
   - ✅ Done - Close Setup
   ↓
-If 911 & CAD selected:
-  Emergency Setup Menu:
-    - 🚑 Select 911 Channel
-    - 🚔 Set LEO Roles
-    - 🚒 Set Fire Department Roles
-    - 👮 Set Staff Roles
-    - ✅ Done - Back to Main Menu
+Emergency Setup Menu:
+  - 🚑 Select 911 Channel
+  - 🚔 Set LEO Roles (Pinged on 911)
+  - 🚒 Set Fire Department Roles (Pinged on 911)
+  - 👮 Set Staff Roles
+  - ✅ Done - Back to Main Menu
 ```
 
 **Project Structure:**
@@ -131,30 +127,17 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Final Build)
-- **Completed:** Full 911 system with interactive buttons and real-time message updates
-- **Implemented:** Interactive button system for 911 messages with 3 response options:
-  - 🚨 **Respond** - LEO claims as primary responder (updates message in real-time)
-  - 📎 **Attach** - LEO joins as supporting unit (shows all attached units)
-  - ❌ **Dismiss** - Close call and remove buttons
-- **Implemented:** Cross-channel message synchronization
-  - When LEO responds via `/leodatabase`, original 911 message in 911 channel updates automatically
-  - When LEO attaches via `/leodatabase`, all responders and attached units display on original message
-  - Message shows: `**🚨 PRIMARY:** Zoktu` and `**📎 ATTACHED:** Mike, John`
-- **Implemented:** Auto-delete system for 911 calls
-  - All 911 calls automatically delete after 10 minutes
-  - System checks every 60 seconds
-  - Applies to all calls regardless of response status
-- **Added:** EmergencyCall model fields for message tracking
-  - `messageId`: Stores Discord message ID of 911 announcement
-  - `channelId`: Stores 911 channel ID for message updates
-- **Created:** emergencyButtonHandler.js for managing 911 channel buttons
-  - Handles Respond, Attach, and Dismiss button interactions
-  - Updates database and original 911 message in real-time
-- **Updated:** LEO database handlers to sync with 911 messages
-  - handleLEOPrimaryResponse: Updates 911 message when responding
-  - handleLEOAttachResponse: Updates 911 message with all attached units
-  - Proper error handling if message/channel not found
+## Recent Changes (Session: November 24, 2025 - Code Cleanup)
+- **Removed:** Deprecated `handleRoleplayCommandsSelect` function and its routing
+- **Fixed:** Mongoose duplicate schema index warnings (3 models: CADConfig, TicketConfig, RoleplayCommands)
+  - Removed redundant `.index()` calls where `unique: true` constraint already creates an index
+- **Removed:** Old Twitter and Anon setup options from main `/roleplaycommandsetup` menu
+  - Removed old handler functions: `handleRoleplayCommandTwitterChannel`, `handleRoleplayCommandAnonChannel`
+  - Removed routing for `roleplaycommands_twitter_channel` and `roleplaycommands_anon_channel`
+  - Simplified setup flow to show only `🚨 911 & CAD` option (core feature)
+- **Cleaned:** Removed old setup code blocks that were no longer used
+  - Old setup_twitter and setup_anon menu options completely removed
+- **Result:** Bot now loads cleanly with zero warnings and 34 commands properly registered
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API

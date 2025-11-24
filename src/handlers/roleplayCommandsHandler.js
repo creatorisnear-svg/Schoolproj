@@ -83,51 +83,6 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'setup_911') {
-      const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('roleplaycommands_911_channel')
-        .setPlaceholder('Select the 911 reporting channel...')
-        .addChannelTypes(ChannelType.GuildText);
-
-      const row = new ActionRowBuilder().addComponents(channelSelect);
-
-      return interaction.reply({
-        content: 'Select the channel where 911 reports will be sent:',
-        components: [row],
-        ephemeral: true,
-      });
-    }
-
-    if (choice === 'setup_twitter') {
-      const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('roleplaycommands_twitter_channel')
-        .setPlaceholder('Select the Twitter channel...')
-        .addChannelTypes(ChannelType.GuildText);
-
-      const row = new ActionRowBuilder().addComponents(channelSelect);
-
-      return interaction.reply({
-        content: 'Select the channel for Twitter posts:',
-        components: [row],
-        ephemeral: true,
-      });
-    }
-
-    if (choice === 'setup_anon') {
-      const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('roleplaycommands_anon_channel')
-        .setPlaceholder('Select the anonymous/black market channel...')
-        .addChannelTypes(ChannelType.GuildText);
-
-      const row = new ActionRowBuilder().addComponents(channelSelect);
-
-      return interaction.reply({
-        content: 'Select the channel for anonymous messages:',
-        components: [row],
-        ephemeral: true,
-      });
-    }
-
     if (choice === 'setup_emergency') {
       roleplayConfig.use911 = true;
       roleplayConfig.useCAD = true;
@@ -197,68 +152,6 @@ export async function handleRoleplayCommand911Channel(interaction) {
     });
   } catch (error) {
     console.error('Error setting 911 channel:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
-  }
-}
-
-export async function handleRoleplayCommandTwitterChannel(interaction) {
-  const channelId = interaction.values[0];
-
-  try {
-    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
-
-    if (!roleplayConfig) {
-      return interaction.reply({
-        embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
-      });
-    }
-
-    roleplayConfig.useTwitter = true;
-    roleplayConfig.twitterChannel = channelId;
-    await roleplayConfig.save();
-
-    const menuData = await showSetupMenu(interaction);
-    return interaction.update({
-      ...menuData,
-      embeds: [successEmbed('Twitter Channel Set', `Twitter posts will be sent to <#${channelId}>`)],
-    });
-  } catch (error) {
-    console.error('Error setting Twitter channel:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
-  }
-}
-
-export async function handleRoleplayCommandAnonChannel(interaction) {
-  const channelId = interaction.values[0];
-
-  try {
-    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
-
-    if (!roleplayConfig) {
-      return interaction.reply({
-        embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
-      });
-    }
-
-    roleplayConfig.useAnon = true;
-    roleplayConfig.anonChannel = channelId;
-    await roleplayConfig.save();
-
-    const menuData = await showSetupMenu(interaction);
-    return interaction.update({
-      ...menuData,
-      embeds: [successEmbed('Anon Channel Set', `Anonymous messages will be sent to <#${channelId}>`)],
-    });
-  } catch (error) {
-    console.error('Error setting anon channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
