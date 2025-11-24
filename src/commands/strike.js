@@ -13,14 +13,6 @@ export const data = new SlashCommandBuilder()
       .setDescription('The user to strike')
       .setRequired(true)
   )
-  .addNumberOption(option =>
-    option
-      .setName('strikes')
-      .setDescription('Number of strikes (1-4)')
-      .setMinValue(1)
-      .setMaxValue(4)
-      .setRequired(true)
-  )
   .addStringOption(option =>
     option
       .setName('reason')
@@ -37,7 +29,6 @@ export async function execute(interaction) {
   }
 
   const targetUser = interaction.options.getUser('user');
-  const strikeLevel = interaction.options.getNumber('strikes');
   const reason = interaction.options.getString('reason');
 
   try {
@@ -52,13 +43,16 @@ export async function execute(interaction) {
 
     let strikeUser = await StrikeUser.findOne({ guildId: interaction.guildId, userId: targetUser.id });
     
+    let strikeLevel = 1;
+    
     if (!strikeUser) {
       strikeUser = new StrikeUser({
         guildId: interaction.guildId,
         userId: targetUser.id,
-        currentStrikeLevel: strikeLevel,
+        currentStrikeLevel: 1,
       });
     } else {
+      strikeLevel = Math.min(strikeUser.currentStrikeLevel + 1, 4);
       strikeUser.currentStrikeLevel = strikeLevel;
     }
 

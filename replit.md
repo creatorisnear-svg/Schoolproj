@@ -58,10 +58,11 @@ Discord bot for multi-server roleplay/gaming communities (specifically GTA5 RP s
    - `/strikesystemsetup` - Configure strike system with dropdown menus (requires log channel and system enabled)
    - Strike Levels 1-4 with optional configuration:
      - Each level can have an optional role assignment
-     - Each level can have an action: Kick, Timeout (mute), or Ban
+     - Each level can have an action: No Action, Kick, Timeout (mute), or Ban
      - Timeout and Ban durations are configurable in minutes (0 = permanent for ban)
-   - `/strike @user <strikes> <reason>` - Staff can strike members (1-4 strikes)
-   - **Strike Replacement Logic**: New strike level replaces old (e.g., strike 2 replaces strike 1, not stacking)
+   - `/strike @user <reason>` - Staff strike members (auto-increments strikes)
+   - **Auto-Increment Logic**: Each strike increments by 1 (0→1, 1→2, 2→3, 3→4, caps at 4)
+   - Member receives DM with who striked them, reason, current level, and action taken
    - All strikes logged to configured log channel with member, striker, reason, and action taken
    - Each server has independent strike configuration
 
