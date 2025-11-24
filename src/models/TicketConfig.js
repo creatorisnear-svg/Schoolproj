@@ -35,6 +35,11 @@ const ticketConfigSchema = new mongoose.Schema({
     {
       id: String,
       label: String,
+      buttonColor: {
+        type: String,
+        default: 'Primary',
+        enum: ['Primary', 'Secondary', 'Success', 'Danger'],
+      },
       allowedRoleIds: [String],
       includeStaff: Boolean,
       createdAt: Date,
