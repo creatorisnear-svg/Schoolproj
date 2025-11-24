@@ -96,6 +96,14 @@ function createStrikeSetupMenu() {
 }
 
 export async function handleSelectMenu(interaction) {
+  if (interaction.customId === 'reactionrole_main_menu') {
+    await handleReactionRoleMainMenu(interaction);
+  }
+
+  if (interaction.customId === 'reactionrole_send_channel_select') {
+    await handleReactionRoleSendChannel(interaction);
+  }
+
   if (interaction.customId === 'setlogchannel_select') {
     await handleSetLogChannel(interaction);
   }
@@ -1038,6 +1046,100 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
     console.error('Error setting strike action:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleReactionRoleMainMenu(interaction) {
+  const choice = interaction.values[0];
+
+  if (choice === 'send_message') {
+    const modal = new ModalBuilder()
+      .setCustomId('reactionrole_send_message_modal')
+      .setTitle('Send Reaction Role Message')
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('message_content')
+            .setLabel('Message Content')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('e.g., React to get a role!')
+            .setRequired(true)
+        )
+      );
+
+    return interaction.showModal(modal);
+  }
+
+  if (choice === 'add_emoji') {
+    const modal = new ModalBuilder()
+      .setCustomId('reactionrole_add_emoji_modal')
+      .setTitle('Add Emoji to Message')
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('message_id')
+            .setLabel('Message ID')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., 1234567890')
+            .setRequired(true)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('emoji_input')
+            .setLabel('Emoji')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., 🎮')
+            .setRequired(true)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('role_id')
+            .setLabel('Role ID')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., 1234567890')
+            .setRequired(true)
+        )
+      );
+
+    return interaction.showModal(modal);
+  }
+}
+
+async function handleReactionRoleSendChannel(interaction) {
+  const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  
+  const channel = interaction.values[0];
+  const messageContent = interaction.message.content.split('```')[1]?.trim() || 'React to get a role!';
+
+  try {
+    const targetChannel = await interaction.guild.channels.fetch(channel);
+
+    if (!targetChannel.isTextBased()) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select a text channel.')],
+        ephemeral: true,
+      });
+    }
+
+    const sentMessage = await targetChannel.send(messageContent);
+
+    await ReactionRole.create({
+      guildId: interaction.guildId,
+      messageId: sentMessage.id,
+      channelId: channel,
+      emojiRoles: [],
+    });
+
+    return interaction.update({
+      content: `✅ Message sent to <#${channel}>\n\n**Message ID:** \`${sentMessage.id}\`\n\nRun \`/reactionrolemessage\` again and pick "Add Emoji" to add emoji-role pairs.`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error sending reaction role message:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while sending the message.')],
       ephemeral: true,
     });
   }

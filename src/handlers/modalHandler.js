@@ -11,6 +11,14 @@ export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'verify_modal') {
     await handleVerifyModal(interaction);
   }
+
+  if (interaction.customId === 'reactionrole_send_message_modal') {
+    await handleReactionRoleSendMessageModal(interaction);
+  }
+
+  if (interaction.customId === 'reactionrole_add_emoji_modal') {
+    await handleReactionRoleAddEmojiModal(interaction);
+  }
 }
 
 async function handle911Report(interaction) {
@@ -172,3 +180,102 @@ async function handleVerifyModal(interaction) {
   }
 }
 
+
+async function handleReactionRoleSendMessageModal(interaction) {
+  const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  const { ChannelSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
+  
+  const messageContent = interaction.fields.getTextInputValue('message_content');
+
+  try {
+    // Show channel selector
+    const channelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId('reactionrole_send_channel_select')
+      .setPlaceholder('Select the channel...');
+
+    const row = new ActionRowBuilder().addComponents(channelSelect);
+
+    // Store message content in a way we can retrieve it
+    await interaction.reply({
+      content: `**Message to send:**\n\`\`\`\n${messageContent}\n\`\`\`\n\nSelect the channel:`,
+      components: [row],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error in reaction role modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleReactionRoleAddEmojiModal(interaction) {
+  const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  
+  const messageId = interaction.fields.getTextInputValue('message_id');
+  const emoji = interaction.fields.getTextInputValue('emoji_input');
+  const roleId = interaction.fields.getTextInputValue('role_id');
+
+  try {
+    const reactionRole = await ReactionRole.findOne({
+      guildId: interaction.guildId,
+      messageId: messageId,
+    });
+
+    if (!reactionRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Message not found. Check the message ID.')],
+        ephemeral: true,
+      });
+    }
+
+    if (reactionRole.emojiRoles.length >= 5) {
+      return interaction.reply({
+        embeds: [errorEmbed('This message already has 5 emoji-role pairs.')],
+        ephemeral: true,
+      });
+    }
+
+    if (reactionRole.emojiRoles.some(er => er.emoji === emoji)) {
+      return interaction.reply({
+        embeds: [errorEmbed('This emoji is already added to this message.')],
+        ephemeral: true,
+      });
+    }
+
+    // Verify role exists
+    const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
+    if (!role) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role not found. Check the role ID.')],
+        ephemeral: true,
+      });
+    }
+
+    // Add emoji-role pair
+    reactionRole.emojiRoles.push({ emoji, roleId });
+    await reactionRole.save();
+
+    // Try to add reaction to message
+    try {
+      const channel = await interaction.guild.channels.fetch(reactionRole.channelId);
+      const message = await channel.messages.fetch(messageId);
+      await message.react(emoji);
+    } catch (err) {
+      console.log('Could not add reaction to message');
+    }
+
+    const { successEmbed } = await import('../utils/embedBuilder.js');
+    return interaction.reply({
+      embeds: [successEmbed('Emoji Added!', `${emoji} → ${role.name}`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error adding emoji:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
