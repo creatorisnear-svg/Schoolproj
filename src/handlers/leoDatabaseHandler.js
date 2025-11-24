@@ -423,38 +423,17 @@ export async function handleLEOSearchPlateModal(interaction) {
       });
     }
 
-    let description = `**📋 PERSONAL INFORMATION**\n`;
-    if (character.age) description += `Age: ${character.age} | `;
-    if (character.gender) description += `Gender: ${character.gender}`;
-    if (character.age || character.gender) description += `\n`;
+    // Find matching vehicle to show details
+    const vehicle = character.vehicles.find(v => v.licensePlate === plate) || 
+                   (character.licensePlate === plate ? { licensePlate: character.licensePlate } : null);
 
-    description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
-    if (character.hairColor) description += `Hair: ${character.hairColor} | `;
-    if (character.eyeColor) description += `Eyes: ${character.eyeColor}`;
-    if (character.hairColor || character.eyeColor) description += `\n`;
-    if (character.height) description += `Height: ${character.height} | `;
-    if (character.build) description += `Build: ${character.build}\n`;
+    let description = `**Owner:** ${character.characterName}\n`;
     
-    description += `\n**🪪 IDENTIFICATION**\n`;
-    description += `SSN: ${character.socialSecurityNumber}\n`;
-    description += `Driver's License: ${character.driversLicense}\n`;
-    
-    description += `\n**🚗 VEHICLES**\n`;
-    if (character.vehicles.length > 0) {
-      character.vehicles.forEach(v => {
-        description += `• ${v.make} ${v.model} (${v.color}) - Plate: **${v.licensePlate}**${v.condition ? ` [${v.condition}]` : ''}\n`;
-      });
-    } else {
-      description += `None registered\n`;
-    }
-
-    description += `\n**💥 WEAPONS**\n`;
-    if (character.guns.length > 0) {
-      character.guns.forEach(g => {
-        description += `• ${g.name}${g.serialNumber ? ` (SN: ${g.serialNumber})` : ''}\n`;
-      });
-    } else {
-      description += `None registered\n`;
+    if (vehicle) {
+      description += `\n**🚗 VEHICLE INFORMATION**\n`;
+      description += `Make/Model: ${vehicle.make} ${vehicle.model}\n`;
+      description += `Color: ${vehicle.color}\n`;
+      if (vehicle.condition) description += `Condition: ${vehicle.condition}\n`;
     }
 
     description += `\n**⚖️ STATUS**\n`;
@@ -464,8 +443,12 @@ export async function handleLEOSearchPlateModal(interaction) {
       description += `✅ **CLEAN**`;
     }
 
-    const backButton = new ActionRowBuilder()
+    const buttons = new ActionRowBuilder()
       .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`view_char_profile_${character._id.toString()}`)
+          .setLabel('👤 View Character Profile')
+          .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
           .setLabel('← Back')
@@ -481,7 +464,7 @@ export async function handleLEOSearchPlateModal(interaction) {
 
     return interaction.update({
       embeds: [embed],
-      components: [backButton],
+      components: [buttons],
     });
   } catch (error) {
     console.error('Error searching license plate:', error);
@@ -1121,6 +1104,139 @@ export async function handleLEOCreateBOLOModal(interaction) {
     });
   } catch (error) {
     console.error('Error creating BOLO:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOViewCharacterProfile(interaction) {
+  const characterId = interaction.customId.replace('view_char_profile_', '');
+
+  try {
+    // Verify permissions
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    if (!roleplayConfig || !roleplayConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands are not enabled.')],
+        ephemeral: true,
+      });
+    }
+
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+
+    if (!hasLeoRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access denied.')],
+        ephemeral: true,
+      });
+    }
+
+    // Find character
+    const character = await CADCharacter.findById(characterId);
+
+    if (!character || character.guildId !== interaction.guildId) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Not Found', 'This character profile could not be found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Build full character profile description (same as character search)
+    let description = `**📋 PERSONAL INFORMATION**\n`;
+    if (character.age) description += `Age: ${character.age} | `;
+    if (character.gender) description += `Gender: ${character.gender}`;
+    if (character.age || character.gender) description += `\n`;
+
+    description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
+    if (character.hairColor) description += `Hair: ${character.hairColor} | `;
+    if (character.eyeColor) description += `Eyes: ${character.eyeColor}`;
+    if (character.hairColor || character.eyeColor) description += `\n`;
+    if (character.height) description += `Height: ${character.height} | `;
+    if (character.build) description += `Build: ${character.build}\n`;
+    
+    description += `\n**🪪 IDENTIFICATION**\n`;
+    description += `SSN: ${character.socialSecurityNumber}\n`;
+    description += `Driver's License: ${character.driversLicense}\n`;
+    
+    description += `\n**🚗 VEHICLES**\n`;
+    if (character.vehicles.length > 0) {
+      character.vehicles.forEach(v => {
+        description += `• ${v.make} ${v.model} (${v.color}) - Plate: **${v.licensePlate}**${v.condition ? ` [${v.condition}]` : ''}\n`;
+      });
+    } else {
+      description += `None registered\n`;
+    }
+
+    description += `\n**💥 WEAPONS**\n`;
+    if (character.guns.length > 0) {
+      character.guns.forEach(g => {
+        description += `• ${g.name}${g.serialNumber ? ` (SN: ${g.serialNumber})` : ''}\n`;
+      });
+    } else {
+      description += `None registered\n`;
+    }
+
+    // Fetch BOLOs for this character
+    const BOLO = await import('../models/BOLO.js').then(m => m.default);
+    const bolos = await BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true });
+    
+    if (bolos.length > 0) {
+      description += `\n**🚨 BOLO ALERTS**\n`;
+      bolos.forEach(bolo => {
+        description += `• **${bolo.boloId}** - ${bolo.reason}\n`;
+        description += `  Issued: ${bolo.createdAt.toLocaleDateString()} by <@${bolo.issuedBy}>\n`;
+        if (bolo.description) description += `  Details: ${bolo.description}\n`;
+      });
+    }
+
+    // Fetch traffic tickets for this character
+    const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
+    const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
+    
+    description += `\n**🎫 TRAFFIC TICKETS**\n`;
+    if (tickets.length > 0) {
+      const ticketSummary = tickets.slice(0, 5).map(t => {
+        return `• **${t.ticketId}** - ${t.violation}${t.fine ? ` ($${t.fine})` : ''}`;
+      }).join('\n');
+      description += ticketSummary;
+      if (tickets.length > 5) description += `\n... and ${tickets.length - 5} more`;
+    } else {
+      description += `None on record\n`;
+    }
+
+    description += `\n**⚖️ STATUS**\n`;
+    if (bolos.length > 0) {
+      description += `🚨 **BOLO ALERT**`;
+    } else if (character.status === 'wanted') {
+      description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+    } else {
+      description += `✅ **CLEAN**`;
+    }
+
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_leo_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    const embed = new EmbedBuilder()
+      .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
+      .setTitle(`Character Profile: ${character.characterName}`)
+      .setDescription(description)
+      .setFooter({ text: 'EverLink' })
+      .setTimestamp();
+
+    return interaction.update({
+      embeds: [embed],
+      components: [backButton],
+    });
+  } catch (error) {
+    console.error('Error viewing character profile:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
