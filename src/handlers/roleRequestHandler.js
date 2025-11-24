@@ -495,7 +495,15 @@ export async function handleApproveRoleRequest(interaction) {
     }
 
     // Verify the approver has permission to approve this role
-    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const config = await RoleRequestConfig.findOne({ guildId: request.guildId });
+    
+    if (!config) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role request system is not configured.')],
+        ephemeral: true,
+      });
+    }
+
     const roleConfig = config.roles.find(r => r.roleId === request.roleId);
 
     if (!roleConfig) {
@@ -509,9 +517,28 @@ export async function handleApproveRoleRequest(interaction) {
     const approverUserId = interaction.user.id;
     let isAuthorized = false;
 
+    // Get the guild and member (needed since interaction happens in DM)
+    const guild = interaction.client.guilds.cache.get(request.guildId);
+    if (!guild) {
+      return interaction.reply({
+        embeds: [errorEmbed('Guild not found.')],
+        ephemeral: true,
+      });
+    }
+
+    let approverMember = null;
+    try {
+      approverMember = await guild.members.fetch(approverUserId);
+    } catch (err) {
+      return interaction.reply({
+        embeds: [errorEmbed('Could not fetch your member info from the guild.')],
+        ephemeral: true,
+      });
+    }
+
     // Check if they have any of the approver roles
     for (const approverRoleId of roleConfig.approverRoleIds) {
-      if (interaction.member.roles.cache.has(approverRoleId)) {
+      if (approverMember.roles.cache.has(approverRoleId)) {
         isAuthorized = true;
         break;
       }
@@ -529,12 +556,20 @@ export async function handleApproveRoleRequest(interaction) {
       });
     }
 
-    // Verify the approver has permission
-    const member = await interaction.guild.members.fetch(request.requesterId);
-    const guild = interaction.guild;
+    // Add role to requester
+    let requester = null;
+    try {
+      requester = await guild.members.fetch(request.requesterId);
+    } catch (err) {
+      console.error('Error fetching requester:', err);
+      return interaction.reply({
+        embeds: [errorEmbed('Could not find the requester in the guild.')],
+        ephemeral: true,
+      });
+    }
 
     try {
-      await member.roles.add(request.roleId);
+      await requester.roles.add(request.roleId);
     } catch (err) {
       console.error('Error adding role:', err);
       return interaction.reply({
@@ -759,7 +794,15 @@ export async function handleDenyRoleRequest(interaction) {
     }
 
     // Verify the approver has permission to deny this role
-    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const config = await RoleRequestConfig.findOne({ guildId: request.guildId });
+    
+    if (!config) {
+      return interaction.reply({
+        embeds: [errorEmbed('Role request system is not configured.')],
+        ephemeral: true,
+      });
+    }
+
     const roleConfig = config.roles.find(r => r.roleId === request.roleId);
 
     if (!roleConfig) {
@@ -773,9 +816,28 @@ export async function handleDenyRoleRequest(interaction) {
     const approverUserId = interaction.user.id;
     let isAuthorized = false;
 
+    // Get the guild and member (needed since interaction happens in DM)
+    const guild = interaction.client.guilds.cache.get(request.guildId);
+    if (!guild) {
+      return interaction.reply({
+        embeds: [errorEmbed('Guild not found.')],
+        ephemeral: true,
+      });
+    }
+
+    let approverMember = null;
+    try {
+      approverMember = await guild.members.fetch(approverUserId);
+    } catch (err) {
+      return interaction.reply({
+        embeds: [errorEmbed('Could not fetch your member info from the guild.')],
+        ephemeral: true,
+      });
+    }
+
     // Check if they have any of the approver roles
     for (const approverRoleId of roleConfig.approverRoleIds) {
-      if (interaction.member.roles.cache.has(approverRoleId)) {
+      if (approverMember.roles.cache.has(approverRoleId)) {
         isAuthorized = true;
         break;
       }
