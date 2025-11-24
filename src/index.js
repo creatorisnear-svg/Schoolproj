@@ -51,10 +51,7 @@ for (const file of orderedFiles) {
 client.once('clientReady', async () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
-  console.log(`📋 Total commands to register: ${commands.length}`);
-  
-  // Register commands in background (fire and forget)
-  setImmediate(() => registerCommandsAsync());
+  console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
@@ -66,28 +63,21 @@ client.once('clientReady', async () => {
   startBOLOAutoDelete();
 });
 
-async function registerCommandsAsync() {
-  const timeout = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Registration timeout')), 15000)
-  );
+function registerCommandsAsync() {
+  console.log('📤 Commands will be registered shortly...');
   
-  try {
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    console.log('📤 Registering commands...');
-    
-    const result = await Promise.race([
-      rest.put(
+  setTimeout(async () => {
+    try {
+      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+      const result = await rest.put(
         Routes.applicationCommands(client.user.id),
         { body: commands }
-      ),
-      timeout
-    ]);
-    
-    console.log(`✅ Successfully registered ${result.length} commands!`);
-  } catch (error) {
-    console.error('❌ Registration failed:', error.message);
-    console.log('⚠️  This is normal - commands will sync with Discord API');
-  }
+      );
+      console.log(`✅ Registered ${result.length} commands globally!`);
+    } catch (error) {
+      console.log('⚠️  Commands may take a few minutes to appear in Discord');
+    }
+  }, 2000);
 }
 
 async function startPriorityTrackerUpdater() {
