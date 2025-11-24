@@ -498,8 +498,34 @@ export async function handleCADCharacterCreateModal(interaction) {
   let characterName = interaction.fields.getTextInputValue('character_name');
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
-  const height = interaction.fields.getTextInputValue('character_height') || null;
-  const race = interaction.fields.getTextInputValue('character_race') || null;
+  
+  // Support both old (hair_color/eye_color) and new (height/race) field names
+  let height = null;
+  let race = null;
+  try {
+    height = interaction.fields.getTextInputValue('character_height') || null;
+  } catch {
+    height = null;
+  }
+  try {
+    race = interaction.fields.getTextInputValue('character_race') || null;
+  } catch {
+    race = null;
+  }
+  
+  // Fallback to old field names if new ones don't exist
+  let hairColor = null;
+  let eyeColor = null;
+  try {
+    hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;
+  } catch {
+    hairColor = null;
+  }
+  try {
+    eyeColor = interaction.fields.getTextInputValue('character_eye_color') || null;
+  } catch {
+    eyeColor = null;
+  }
 
   // Capitalize first letter of each word
   characterName = characterName.split(' ').map(word => 
@@ -525,8 +551,10 @@ export async function handleCADCharacterCreateModal(interaction) {
       characterName,
       age: age ? parseInt(age) : null,
       gender,
-      height,
-      distinguishingFeatures: race, // Store race in distinguishingFeatures for now
+      height: height || null,
+      hairColor: hairColor || null,
+      eyeColor: eyeColor || null,
+      distinguishingFeatures: race || null, // Store race in distinguishingFeatures
       socialSecurityNumber: ssn,
       driverLicenseStatus: 'valid', // Default to valid
       veteranStatus: 'none', // Will be updated after user selection
@@ -540,9 +568,13 @@ export async function handleCADCharacterCreateModal(interaction) {
     if (gender) description += `**Gender:** ${gender}\n`;
     description += `\n**🪪 Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
-    if (height || race) description += `\n**👤 Physical Description**\n`;
-    if (height) description += `**Height:** ${height}\n`;
-    if (race) description += `**Race:** ${race}\n`;
+    
+    let physicalInfo = '';
+    if (height) physicalInfo += `**Height:** ${height}\n`;
+    if (race) physicalInfo += `**Race:** ${race}\n`;
+    if (hairColor) physicalInfo += `**Hair:** ${hairColor}\n`;
+    if (eyeColor) physicalInfo += `**Eyes:** ${eyeColor}\n`;
+    if (physicalInfo) description += `\n**👤 Physical Description**\n${physicalInfo}`;
 
     const embed = new EmbedBuilder()
       .setColor('#0099ff')
