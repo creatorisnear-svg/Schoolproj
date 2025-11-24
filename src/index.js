@@ -147,16 +147,18 @@ async function startEmergencyCallAutoDelete() {
     try {
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
       
-      // Find all active calls older than 10 minutes
+      // Find UNRESPONDED AND UNATTACHED calls older than 10 minutes
       const expiredCalls = await EmergencyCall.find({
         status: 'active',
+        respondingLeoId: null,
+        attachedLeoIds: { $size: 0 },
         timestamp: { $lt: tenMinutesAgo }
       });
 
       if (expiredCalls.length > 0) {
         for (const call of expiredCalls) {
           await EmergencyCall.deleteOne({ _id: call._id });
-          console.log(`🗑️ Auto-deleted 911 call ${call.callId} (>10 min old)`);
+          console.log(`🗑️ Auto-deleted unresponded 911 call ${call.callId} (>10 min old, no responders)`);
         }
         console.log(`📊 Deleted ${expiredCalls.length} expired 911 call(s)`);
       }
@@ -165,7 +167,7 @@ async function startEmergencyCallAutoDelete() {
     }
   }, 60000); // Check every minute
 
-  console.log('⏱️ Emergency call auto-delete started (10-minute timeout)');
+  console.log('⏱️ Emergency call auto-delete started (10-minute timeout for unresponded calls only)');
 }
 
 client.on('interactionCreate', async interaction => {
