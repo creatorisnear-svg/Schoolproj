@@ -232,16 +232,6 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'disable_system') {
-      roleplayConfig.enabled = false;
-      await roleplayConfig.save();
-
-      return interaction.reply({
-        embeds: [successEmbed('Roleplay Commands Disabled', 'Members no longer have access to roleplay commands.')],
-        ephemeral: true,
-      });
-    }
-
     if (choice === 'setup_done') {
       return interaction.reply({
         embeds: [successEmbed('Setup Complete', 'Your roleplay commands are ready to use!')],
@@ -489,6 +479,47 @@ export async function handle911ReportModal(interaction) {
     console.error('Error handling 911 report:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while submitting the report.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsEnableMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    let roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+
+    if (!roleplayConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'enable') {
+      roleplayConfig.enabled = true;
+      await roleplayConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Roleplay Commands Enabled', 'Members now have access to roleplay commands. Run `/roleplaycommandsetup` to configure.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'disable') {
+      roleplayConfig.enabled = false;
+      await roleplayConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Roleplay Commands Disabled', 'Members no longer have access to roleplay commands.')],
+        ephemeral: true,
+      });
+    }
+  } catch (error) {
+    console.error('Error in roleplay commands enable menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
     });
   }

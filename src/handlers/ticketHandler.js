@@ -23,7 +23,6 @@ async function showSetupMenu(interaction) {
           { label: 'View Ticket Types', value: 'view_types' },
           { label: 'Remove Ticket Type', value: 'remove_type' },
           { label: 'Send Panel', value: 'send_panel' },
-          { label: '❌ Disable Ticket Support', value: 'disable_system' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
     );
@@ -152,16 +151,6 @@ export async function handleTicketSetupMenu(interaction) {
       return interaction.reply({
         ...menuData,
         embeds: [infoEmbed('Configured Ticket Types', typesList)],
-      });
-    }
-
-    if (choice === 'disable_system') {
-      ticketConfig.enabled = false;
-      await ticketConfig.save();
-
-      return interaction.reply({
-        embeds: [successEmbed('Ticket Support Disabled', 'Members no longer have access to ticket support.')],
-        ephemeral: true,
       });
     }
 
@@ -1042,3 +1031,44 @@ export async function handlePanelTypesSelect(interaction) {
 }
 
 export { pendingTicketTypes, pendingTicketCreations };
+
+export async function handleTicketSupportEnableMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    let ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket support not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'enable') {
+      ticketConfig.enabled = true;
+      await ticketConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Ticket Support Enabled', 'Members now have access to ticket support. Run `/ticketsupportsetup` to configure.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'disable') {
+      ticketConfig.enabled = false;
+      await ticketConfig.save();
+
+      return interaction.reply({
+        embeds: [successEmbed('Ticket Support Disabled', 'Members no longer have access to ticket support.')],
+        ephemeral: true,
+      });
+    }
+  } catch (error) {
+    console.error('Error in ticket support enable menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}

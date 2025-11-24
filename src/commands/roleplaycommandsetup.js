@@ -35,7 +35,6 @@ export async function execute(interaction) {
             { label: 'Twitter - Public Messages', value: 'setup_twitter' },
             { label: 'Anon - Anonymous Messages', value: 'setup_anon' },
             { label: 'CAD - Computer Aided Dispatch', value: 'setup_cad' },
-            { label: '❌ Disable Roleplay Commands', value: 'disable_system' },
             { label: '✅ Done - Close Setup', value: 'setup_done' }
           )
       );
