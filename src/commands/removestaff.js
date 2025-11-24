@@ -5,7 +5,7 @@ import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('removestaff')
-  .setDescription('Remove a user or role from the bot staff team')
+  .setDescription('Remove a user or role from the bot staff team (Admin only)')
   .addUserOption(option =>
     option.setName('user')
       .setDescription('The user to remove from staff')
