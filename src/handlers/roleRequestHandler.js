@@ -140,6 +140,14 @@ export async function handleSelectRoleForRequest(interaction) {
           .setMaxValues(25)
       );
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     const skipButtonRow = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
@@ -150,7 +158,7 @@ export async function handleSelectRoleForRequest(interaction) {
 
     await interaction.update({
       content: 'Step 2: Select which roles can approve requests for this role (or click Skip)',
-      components: [approverRoleSelect, skipButtonRow],
+      components: [approverRoleSelect, skipButtonRow, backButton],
     });
   } catch (error) {
     console.error('Error selecting role for request:', error);
@@ -177,6 +185,14 @@ export async function handleSelectApproverRoles(interaction) {
           .setMinValues(0)
       );
 
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_rolerequest_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     const skipButtonRow = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
@@ -187,7 +203,7 @@ export async function handleSelectApproverRoles(interaction) {
 
     await interaction.update({
       content: 'Step 3: Select individual members who can also approve (or click Skip)',
-      components: [approverMemberSelect, skipButtonRow],
+      components: [approverMemberSelect, skipButtonRow, backButton],
     });
   } catch (error) {
     console.error('Error selecting approver roles:', error);

@@ -85,6 +85,68 @@ export async function handleBackToMenu(interaction) {
         content: '**Priority Tracker Setup**\n\nSelect an option below to configure:',
         components: [menu],
       });
+    } else if (customId === 'back_to_verify_menu') {
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('verify_setup_menu')
+            .setPlaceholder('Choose a setup option...')
+            .addOptions(
+              { label: 'Select Verify Channel', value: 'select_verify_channel' },
+              { label: 'Select Welcome Channel', value: 'select_welcome_channel' },
+              { label: 'Select Unverified Role', value: 'select_unverified_role' },
+              { label: 'Select Verified Role', value: 'select_verified_role' },
+              { label: 'Set RP Tag (Required)', value: 'set_rp_tag' },
+              { label: 'Set Custom Question (Optional)', value: 'set_custom_question' },
+              { label: 'Set DM Message (Optional)', value: 'set_dm_message' },
+              { label: '✅ Done - Close Setup', value: 'verify_setup_done' }
+            )
+        );
+
+      await interaction.update({
+        content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
+        components: [menu],
+      });
+    } else if (customId === 'back_to_ticket_menu') {
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('ticketsupport_setup_menu')
+            .setPlaceholder('Choose a setup option...')
+            .addOptions(
+              { label: 'Customize Panel Title', value: 'panel_title' },
+              { label: 'Customize Panel Description', value: 'panel_description' },
+              { label: 'Select Panel Channel', value: 'select_channel' },
+              { label: 'Add Ticket Type', value: 'add_type' },
+              { label: 'View Ticket Types', value: 'view_types' },
+              { label: 'Remove Ticket Type', value: 'remove_type' },
+              { label: 'Send Panel', value: 'send_panel' },
+              { label: '✅ Done - Close Setup', value: 'setup_done' }
+            )
+        );
+
+      await interaction.update({
+        content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:',
+        components: [menu],
+      });
+    } else if (customId === 'back_to_cad_menu') {
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('cadsystem_setup_menu')
+            .setPlaceholder('Choose a setup option...')
+            .addOptions(
+              { label: 'Set LEO Roles', value: 'set_leo_roles' },
+              { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
+              { label: 'Set Staff Roles', value: 'set_staff_roles' },
+              { label: '✅ Done - Close Setup', value: 'setup_done' }
+            )
+        );
+
+      await interaction.update({
+        content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
+        components: [menu],
+      });
     } else if (customId === 'back_to_calendar_menu') {
       const menu = new ActionRowBuilder()
         .addComponents(

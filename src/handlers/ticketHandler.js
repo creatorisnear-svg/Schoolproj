@@ -105,10 +105,17 @@ export async function handleTicketSetupMenu(interaction) {
         .addChannelTypes(ChannelType.GuildText);
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_ticket_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the channel where the ticket panel should be sent:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
@@ -176,9 +183,17 @@ export async function handleTicketSetupMenu(interaction) {
             )
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_ticket_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.update({
         content: 'Select a ticket type to remove:',
-        components: [removeMenu],
+        components: [removeMenu, backButton],
       });
     }
 
@@ -215,9 +230,17 @@ export async function handleTicketSetupMenu(interaction) {
             )
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_ticket_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.update({
         content: `Select which ticket types to include in this panel (sending to <#${ticketConfig.panelChannelId}>):`,
-        components: [typeSelectMenu],
+        components: [typeSelectMenu, backButton],
       });
     }
 

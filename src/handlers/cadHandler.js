@@ -1,6 +1,6 @@
 import CADConfig from '../models/CADConfig.js';
 import CADCharacter from '../models/CADCharacter.js';
-import { ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 async function showSetupMenu(interaction) {
@@ -45,10 +45,17 @@ export async function handleCADSetupMenu(interaction) {
         .setMaxValues(5);
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_cad_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the roles that can access LEO features (search license plates, etc.):',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
@@ -60,10 +67,17 @@ export async function handleCADSetupMenu(interaction) {
         .setMaxValues(5);
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_cad_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the roles that can access Fire Department features:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
@@ -75,10 +89,17 @@ export async function handleCADSetupMenu(interaction) {
         .setMaxValues(5);
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_cad_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the roles that can manage the CAD system:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 

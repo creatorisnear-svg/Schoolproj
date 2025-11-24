@@ -187,56 +187,88 @@ async function handleVerifySetupMenu(interaction) {
 
   try {
     if (choice === 'select_verify_channel') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const channelSelect = new ChannelSelectMenuBuilder()
         .setCustomId('select_verify_channel_menu')
         .setPlaceholder('Select the verify channel')
         .setChannelTypes(ChannelType.GuildText);
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the channel where users can verify:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
     if (choice === 'select_welcome_channel') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const channelSelect = new ChannelSelectMenuBuilder()
         .setCustomId('select_welcome_channel_menu')
         .setPlaceholder('Select the welcome channel')
         .setChannelTypes(ChannelType.GuildText);
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the channel where welcome messages will be sent:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
     if (choice === 'select_unverified_role') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('select_unverified_role_menu')
         .setPlaceholder('Select the unverified role');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the role that unverified members will have:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
     if (choice === 'select_verified_role') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('select_verified_role_menu')
         .setPlaceholder('Select the verified role');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
 
       return interaction.update({
         content: 'Select the role that verified members will receive:',
-        components: [row],
+        components: [row, backButton],
       });
     }
 
