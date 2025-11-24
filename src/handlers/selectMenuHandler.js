@@ -104,6 +104,10 @@ export async function handleSelectMenu(interaction) {
     await handleReactionRoleSendChannel(interaction);
   }
 
+  if (interaction.customId.startsWith('reactionrole_role_select_')) {
+    await handleReactionRoleSelect(interaction);
+  }
+
   if (interaction.customId === 'setlogchannel_select') {
     await handleSetLogChannel(interaction);
   }
@@ -1092,14 +1096,6 @@ async function handleReactionRoleMainMenu(interaction) {
             .setStyle(TextInputStyle.Short)
             .setPlaceholder('e.g., 🎮')
             .setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('role_id')
-            .setLabel('Role ID')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('e.g., 1234567890')
-            .setRequired(true)
         )
       );
 
@@ -1140,6 +1136,55 @@ async function handleReactionRoleSendChannel(interaction) {
     console.error('Error sending reaction role message:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while sending the message.')],
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleReactionRoleSelect(interaction) {
+  const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  
+  // Parse the custom ID to get messageId and emoji
+  const parts = interaction.customId.replace('reactionrole_role_select_', '').split('_');
+  const messageId = parts[0];
+  const emoji = decodeURIComponent(parts.slice(1).join('_'));
+  const roleId = interaction.values[0];
+
+  try {
+    const reactionRole = await ReactionRole.findOne({
+      guildId: interaction.guildId,
+      messageId: messageId,
+    });
+
+    if (!reactionRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Message not found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Add emoji-role pair
+    reactionRole.emojiRoles.push({ emoji, roleId });
+    await reactionRole.save();
+
+    // Try to add reaction to message
+    try {
+      const channel = await interaction.guild.channels.fetch(reactionRole.channelId);
+      const message = await channel.messages.fetch(messageId);
+      await message.react(emoji);
+    } catch (err) {
+      console.log('Could not add reaction to message');
+    }
+
+    const role = await interaction.guild.roles.fetch(roleId);
+    return interaction.update({
+      content: `✅ ${emoji} → ${role.name}`,
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error in role select:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
     });
   }

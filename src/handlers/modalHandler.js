@@ -212,10 +212,10 @@ async function handleReactionRoleSendMessageModal(interaction) {
 
 async function handleReactionRoleAddEmojiModal(interaction) {
   const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  const { RoleSelectMenuBuilder, ActionRowBuilder } = await import('discord.js');
   
   const messageId = interaction.fields.getTextInputValue('message_id');
   const emoji = interaction.fields.getTextInputValue('emoji_input');
-  const roleId = interaction.fields.getTextInputValue('role_id');
 
   try {
     const reactionRole = await ReactionRole.findOne({
@@ -244,35 +244,20 @@ async function handleReactionRoleAddEmojiModal(interaction) {
       });
     }
 
-    // Verify role exists
-    const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
-    if (!role) {
-      return interaction.reply({
-        embeds: [errorEmbed('Role not found. Check the role ID.')],
-        ephemeral: true,
-      });
-    }
+    // Show role selector
+    const roleSelect = new RoleSelectMenuBuilder()
+      .setCustomId(`reactionrole_role_select_${messageId}_${emoji}`)
+      .setPlaceholder('Select the role...');
 
-    // Add emoji-role pair
-    reactionRole.emojiRoles.push({ emoji, roleId });
-    await reactionRole.save();
+    const row = new ActionRowBuilder().addComponents(roleSelect);
 
-    // Try to add reaction to message
-    try {
-      const channel = await interaction.guild.channels.fetch(reactionRole.channelId);
-      const message = await channel.messages.fetch(messageId);
-      await message.react(emoji);
-    } catch (err) {
-      console.log('Could not add reaction to message');
-    }
-
-    const { successEmbed } = await import('../utils/embedBuilder.js');
     return interaction.reply({
-      embeds: [successEmbed('Emoji Added!', `${emoji} → ${role.name}`)],
+      content: `Choose the role for ${emoji}:`,
+      components: [row],
       ephemeral: true,
     });
   } catch (error) {
-    console.error('Error adding emoji:', error);
+    console.error('Error in add emoji modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
