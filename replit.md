@@ -135,7 +135,7 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets & BOLO Display)
+## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation, Traffic Tickets, BOLO Display & Status Alert)
 - **Character Creation Redesigned as 3-Step Process:**
   - **Step 1/3 - Basic Info:** Modal with Name, Age, Gender fields
     - Name auto-capitalized (first and last names)
@@ -153,15 +153,19 @@ The codebase is organized into `src/` containing:
   - All fields properly saved with height in `height` field, race in `distinguishingFeatures`
   - SSN auto-generated only (no license plate or driver's license auto-generation)
   - License status defaults to 'valid', veteran status defaults to 'none'
-- **LEO Character Search Display - FIXED:**
+- **LEO Character Search Display - FULLY ENHANCED:**
   - ✅ Traffic Tickets now display correctly with violation type and fine amount
   - **New BOLO Section:** Shows active BOLOs on character profile when searching
     - **Displays:** BOLO ID, Reason, Date issued, Who issued it, and details
     - **Example:** "🚨 BOLO ALERTS - TKT-123456 - Armed & Dangerous - Issued: 11/24/2024 by Officer Name - Details: Last seen at..."
     - BOLOs appear between Weapons and Traffic Tickets sections
+  - **Status Alert System:**
+    - **Red Embed:** When character has BOLO or is wanted (instant visual alert)
+    - **Status Shows:** "🚨 **BOLO ALERT**" when BOLO exists, overrides wanted status display
+    - Provides clear warning to LEOs that person has active alert
 - **Updated Handlers:**
   - `cadHandler.js` - Redesigned character creation with 3-step process (handleCADCharacterCreateModal, handleCharacterContinue, handleCharacterHeightRaceModal, handleCharacterStatusNone)
-  - `leoDatabaseHandler.js` - Fixed traffic ticket display (violation/fine fields) and added BOLO display
+  - `leoDatabaseHandler.js` - Fixed traffic ticket display (violation/fine fields), added BOLO display, red embed on BOLO/wanted, status alert
   - `index.js` - Added routing for new handlers and modal submissions
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 

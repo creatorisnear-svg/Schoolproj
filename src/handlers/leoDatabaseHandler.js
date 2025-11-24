@@ -757,7 +757,9 @@ export async function handleLEOSearchCharacterModal(interaction) {
     }
 
     description += `\n**⚖️ STATUS**\n`;
-    if (character.status === 'wanted') {
+    if (bolos.length > 0) {
+      description += `🚨 **BOLO ALERT**`;
+    } else if (character.status === 'wanted') {
       description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
     } else {
       description += `✅ **CLEAN**`;
