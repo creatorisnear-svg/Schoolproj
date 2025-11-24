@@ -107,11 +107,13 @@ function buildPriorityEmbed(priority) {
     ? `${priority.cooldownMinutes}m (counting down)`
     : 'None';
 
-  const issuedByText = priority.priorityIssuedBy || 'N/A';
+  const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
+  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
 
   let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
+  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
   description += `**Priority cooldown:** ${cooldownText}\n`;
-  description += `**Issued by:** ${issuedByText}`;
+  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
 
   if (priority.customMessage) {
     description += `\n\n${priority.customMessage}`;
