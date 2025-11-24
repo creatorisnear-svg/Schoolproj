@@ -225,18 +225,18 @@ export async function handleCADCharacterMenu(interaction) {
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_hair_color')
-              .setLabel('Hair Color')
+              .setCustomId('character_height')
+              .setLabel('Height')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., Brown')
+              .setPlaceholder('e.g., 5\'10"')
               .setRequired(false)
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_eye_color')
-              .setLabel('Eye Color')
+              .setCustomId('character_race')
+              .setLabel('Race')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., Blue')
+              .setPlaceholder('e.g., African American')
               .setRequired(false)
           )
         );
@@ -498,8 +498,8 @@ export async function handleCADCharacterCreateModal(interaction) {
   let characterName = interaction.fields.getTextInputValue('character_name');
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
-  const hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;
-  const eyeColor = interaction.fields.getTextInputValue('character_eye_color') || null;
+  const height = interaction.fields.getTextInputValue('character_height') || null;
+  const race = interaction.fields.getTextInputValue('character_race') || null;
 
   // Capitalize first letter of each word
   characterName = characterName.split(' ').map(word => 
@@ -525,8 +525,8 @@ export async function handleCADCharacterCreateModal(interaction) {
       characterName,
       age: age ? parseInt(age) : null,
       gender,
-      hairColor,
-      eyeColor,
+      height,
+      distinguishingFeatures: race, // Store race in distinguishingFeatures for now
       socialSecurityNumber: ssn,
       driverLicenseStatus: 'valid', // Default to valid
       veteranStatus: 'none', // Will be updated after user selection
@@ -540,9 +540,9 @@ export async function handleCADCharacterCreateModal(interaction) {
     if (gender) description += `**Gender:** ${gender}\n`;
     description += `\n**🪪 Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
-    if (hairColor || eyeColor) description += `\n**👤 Physical Description**\n`;
-    if (hairColor) description += `**Hair:** ${hairColor}\n`;
-    if (eyeColor) description += `**Eyes:** ${eyeColor}\n`;
+    if (height || race) description += `\n**👤 Physical Description**\n`;
+    if (height) description += `**Height:** ${height}\n`;
+    if (race) description += `**Race:** ${race}\n`;
 
     const embed = new EmbedBuilder()
       .setColor('#0099ff')

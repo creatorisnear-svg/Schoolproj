@@ -695,10 +695,12 @@ export async function handleLEOSearchCharacterModal(interaction) {
     if (character.age || character.gender) description += `\n`;
 
     description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
+    if (character.height) description += `Height: ${character.height} | `;
+    if (character.distinguishingFeatures) description += `Race: ${character.distinguishingFeatures}`;
+    if (character.height || character.distinguishingFeatures) description += `\n`;
     if (character.hairColor) description += `Hair: ${character.hairColor} | `;
     if (character.eyeColor) description += `Eyes: ${character.eyeColor}`;
     if (character.hairColor || character.eyeColor) description += `\n`;
-    if (character.height) description += `Height: ${character.height} | `;
     if (character.build) description += `Build: ${character.build}\n`;
 
     description += `\n**🪪 IDENTIFICATION**\n`;
@@ -724,6 +726,21 @@ export async function handleLEOSearchCharacterModal(interaction) {
       });
     } else {
       description += `None registered\n`;
+    }
+
+    // Fetch traffic tickets for this character
+    const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
+    const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
+    
+    description += `\n**🎫 TRAFFIC TICKETS**\n`;
+    if (tickets.length > 0) {
+      const ticketSummary = tickets.slice(0, 5).map(t => {
+        return `• **${t.ticketId}** - ${t.violationType}${t.fineAmount ? ` ($${t.fineAmount})` : ''}`;
+      }).join('\n');
+      description += ticketSummary;
+      if (tickets.length > 5) description += `\n... and ${tickets.length - 5} more`;
+    } else {
+      description += `None on record\n`;
     }
 
     description += `\n**⚖️ STATUS**\n`;

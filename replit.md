@@ -135,39 +135,41 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Character Search Fixes & License/Status Selection)
-- **LEO Character Search Fixed:** Search now displays complete personal and physical information
-  - Shows: Age, Gender, Hair Color, Eye Color, Height, Build
-  - Shows License Status (✅ Valid / ❌ Invalid)
-  - Shows Special Status (🎖️ Veteran / ❤️ Organ Donor)
-- **Character Creation Enhanced:** Removed auto-generated license information & added user selection
-  - Removed auto-generated Driver's License field
-  - Removed auto-generated License Plate field
-  - Only SSN is auto-generated (unique identifier)
-  - **Name Auto-Capitalization:** First letter of each word capitalized automatically (e.g., "john doe" → "John Doe")
-  - Added **License Status Selector** (Valid / Invalid) - shown as buttons after character creation
-  - Added **Special Status Selector** (Veteran / Organ Donor) - shown as buttons after character creation
-- **CADCharacter Model Updated:**
-  - Changed `driverLicenseStatus` enum from 'valid/suspended/revoked' to 'valid/invalid'
-  - Added `veteranStatus` field with enum: 'veteran', 'organ_donor', 'none' (default)
-- **New Button Handlers Added:**
-  - `handleCharacterLicenseValid()` - Sets character license to Valid
-  - `handleCharacterLicenseInvalid()` - Sets character license to Invalid
-  - `handleCharacterVeteran()` - Sets character status to Veteran
-  - `handleCharacterOrganDonor()` - Sets character status to Organ Donor
+## Recent Changes (Session: November 24, 2025 - Height/Race Fields & Ticket Display)
+- **Character Creation Modal Updated:** Added Height and Race fields during character creation
+  - **Form Fields:** Name, Age, Gender, Height, Race
+  - Height field supports entries like "5'10"", "6 feet", etc.
+  - Race field supports entries like "African American", "Asian", etc.
+  - Both fields optional but recorded for LEO searches
+- **LEO Character Search Enhanced:** Traffic tickets now displayed when searching characters
+  - **New Section:** "🎫 TRAFFIC TICKETS" shows:
+    - Ticket ID (e.g., TKT-1732446283)
+    - Violation Type
+    - Fine Amount (if issued)
+    - Shows up to 5 most recent tickets
+    - Shows count of additional tickets if more than 5
+  - **Complete Character Profile** shows:
+    - Age, Gender
+    - Height, Race (newly added)
+    - Hair Color, Eye Color, Build
+    - SSN, License Status, Veteran/Organ Donor status
+    - Vehicles with makes, models, colors, plates
+    - Weapons registered
+    - Traffic tickets issued
+    - Wanted status
+- **Character Creation Modal Changed:**
+  - Replaced hair color and eye color fields with height and race
+  - Modal now displays 5 fields: Name, Age, Gender, Height, Race
+  - Hair/Eye color can be added later via manage character edit feature
 - **Character Creation Flow:**
   1. User runs `/cadcharacter` (or equivalent)
-  2. Fills form with name, age, gender, hair color, eye color (name auto-capitalized)
+  2. Fills form with name, age, gender, height, race (name auto-capitalized)
   3. Character created with SSN auto-generated
-  4. User sees 2 button rows:
-     - **License Status Row:** Click ✅ Valid License OR ❌ Invalid License
-     - **Special Status Row:** Click 🎖️ Veteran OR ❤️ Organ Donor
-  5. User can click LICENSE button + SPECIAL STATUS button (both selections saved)
-  6. Buttons remain visible to allow multiple selections
+  4. User sees 2 button rows for license status and special status selection
+  5. Both selections saved to character profile
 - **Updated Handlers:**
-  - `cadHandler.js` - Added 4 new button handlers + name auto-capitalization + updated character creation modal
-  - `leoDatabaseHandler.js` - Updated character search to show license and special status
-  - `index.js` - Added routing for all 4 new character status buttons
+  - `cadHandler.js` - Updated character creation modal with height/race fields
+  - `leoDatabaseHandler.js` - Added traffic ticket display in character search results
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
 ## External Dependencies
