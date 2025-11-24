@@ -6,6 +6,8 @@ import { StrikeConfig } from '../models/Strike.js';
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import TicketConfig from '../models/TicketConfig.js';
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
+import Verification from '../models/Verification.js';
+import Welcome from '../models/Welcome.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
@@ -64,6 +66,14 @@ export async function handleEnableChoiceButton(interaction) {
           new ButtonBuilder()
             .setCustomId('enable_rolerequest')
             .setLabel('Role Request')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_verification')
+            .setLabel('Verification System')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('enable_welcome')
+            .setLabel('Welcome System')
             .setStyle(ButtonStyle.Success)
         );
 
@@ -117,6 +127,14 @@ export async function handleEnableChoiceButton(interaction) {
           new ButtonBuilder()
             .setCustomId('disable_rolerequest')
             .setLabel('Role Request')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_verification')
+            .setLabel('Verification System')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('disable_welcome')
+            .setLabel('Welcome System')
             .setStyle(ButtonStyle.Danger)
         );
 
@@ -179,6 +197,14 @@ export async function handleEnableCommandButton(interaction) {
       featureName = 'Role Request';
       model = RoleRequestConfig;
       setupCommand = 'Run `/rolerequestadd` to add role request types.';
+    } else if (customId === 'enable_verification') {
+      featureName = 'Verification System';
+      model = Verification;
+      setupCommand = 'Run `/verifysystemsetup` to configure.';
+    } else if (customId === 'enable_welcome') {
+      featureName = 'Welcome System';
+      model = Welcome;
+      setupCommand = 'Run `/welcomesystemsetup` to configure.';
     }
 
     // Save to database
@@ -241,6 +267,12 @@ export async function handleDisableCommandButton(interaction) {
     } else if (customId === 'disable_rolerequest') {
       featureName = 'Role Request';
       model = RoleRequestConfig;
+    } else if (customId === 'disable_verification') {
+      featureName = 'Verification System';
+      model = Verification;
+    } else if (customId === 'disable_welcome') {
+      featureName = 'Welcome System';
+      model = Welcome;
     }
 
     // Save to database
