@@ -19,8 +19,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('Channel to post sticky message (optional, defaults to current channel)')
       .setRequired(false)
       .addChannelTypes(ChannelType.GuildText)
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  );
 
 export async function execute(interaction) {
   const guildId = interaction.guildId;
@@ -46,8 +45,8 @@ export async function execute(interaction) {
 
     if (!isAdmin && !isStaff) {
       return interaction.reply({
-        embeds: [errorEmbed('Only admins and staff can use this command.')],
-        ephemeral: true,
+        content: '❌ Only admins and staff can use this command.',
+        flags: 64,
       });
     }
 
@@ -82,14 +81,14 @@ export async function execute(interaction) {
     });
 
     return interaction.reply({
-      embeds: [successEmbed(`Sticky message created in ${channel}`)],
-      ephemeral: true,
+      content: `✅ Sticky message created in ${channel}`,
+      flags: 64,
     });
   } catch (error) {
     console.error('Error creating sticky message:', error);
     return interaction.reply({
-      embeds: [errorEmbed('Failed to create sticky message.')],
-      ephemeral: true,
+      content: '❌ Failed to create sticky message.',
+      flags: 64,
     });
   }
 }
