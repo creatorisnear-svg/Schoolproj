@@ -18,7 +18,6 @@ async function showSetupMenu(interaction) {
         .addOptions(
           { label: 'Customize Panel Title', value: 'panel_title' },
           { label: 'Customize Panel Description', value: 'panel_description' },
-          { label: 'Choose Button Color', value: 'button_color' },
           { label: 'Select Panel Channel', value: 'select_channel' },
           { label: 'Add Ticket Type', value: 'add_type' },
           { label: 'View Ticket Types', value: 'view_types' },
@@ -96,27 +95,6 @@ export async function handleTicketSetupMenu(interaction) {
         );
 
       return interaction.showModal(modal);
-    }
-
-    if (choice === 'button_color') {
-      const colorMenu = new ActionRowBuilder()
-        .addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('ticketsupport_button_color')
-            .setPlaceholder('Choose a button color...')
-            .addOptions(
-              { label: '🔵 Primary (Blue)', value: 'Primary' },
-              { label: '⚪ Secondary (Gray)', value: 'Secondary' },
-              { label: '🟢 Success (Green)', value: 'Success' },
-              { label: '🔴 Danger (Red)', value: 'Danger' }
-            )
-        );
-
-      return interaction.reply({
-        content: 'Select the color for ticket buttons:',
-        components: [colorMenu],
-        ephemeral: true,
-      });
     }
 
     if (choice === 'select_channel') {
@@ -322,10 +300,62 @@ export async function handleTicketSetupModal(interaction) {
       });
     }
 
-    // Store pending type and ask for roles
+    // Store pending type and ask for button color first
     const tempId = Date.now().toString();
     pendingTicketTypes.set(tempId, { label: ticketTypeName, guildId: interaction.guildId });
 
+    const colorMenu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`ticketsupport_type_button_color_${tempId}`)
+          .setPlaceholder('Choose a button color...')
+          .addOptions(
+            { label: '🔵 Primary (Blue)', value: 'Primary' },
+            { label: '⚪ Secondary (Gray)', value: 'Secondary' },
+            { label: '🟢 Success (Green)', value: 'Success' },
+            { label: '🔴 Danger (Red)', value: 'Danger' }
+          )
+      );
+
+    return interaction.reply({
+      content: `Choose a color for the **${ticketTypeName}** button:`,
+      components: [colorMenu],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error in ticket add type modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleTicketTypeButtonColor(interaction) {
+  const customIdParts = interaction.customId.split('_');
+  const tempId = customIdParts[customIdParts.length - 1];
+  const color = interaction.values[0];
+
+  try {
+    const pending = pendingTicketTypes.get(tempId);
+
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('Session expired. Please try again.')],
+        ephemeral: true,
+      });
+    }
+
+    // Store color in pending and save to config
+    pending.buttonColor = color;
+
+    const ticketConfig = await TicketConfig.findOne({ guildId: pending.guildId });
+    if (ticketConfig) {
+      ticketConfig.buttonColor = color;
+      await ticketConfig.save();
+    }
+
+    // Now ask for roles
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId(`ticketsupport_type_roles_${tempId}`)
       .setPlaceholder('Select roles that can view this ticket type...')
@@ -345,13 +375,12 @@ export async function handleTicketSetupModal(interaction) {
     const rolesRow = new ActionRowBuilder().addComponents(roleSelect);
     const buttonsRow = new ActionRowBuilder().addComponents(botStaffButton, doneButton);
 
-    return interaction.reply({
-      content: `Select which roles can view **${ticketTypeName}** tickets (optional):\n\nClick "✓ Include Bot Staff" to add all bot staff members to this ticket type.`,
+    return interaction.update({
+      content: `Select which roles can view **${pending.label}** tickets (optional):\n\nClick "✓ Include Bot Staff" to add all bot staff members to this ticket type.`,
       components: [rolesRow, buttonsRow],
-      ephemeral: true,
     });
   } catch (error) {
-    console.error('Error in ticket add type modal:', error);
+    console.error('Error handling ticket type button color:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

@@ -29,10 +29,11 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Reaction Role System:** Staff/admins can use `/reactionrolemessage` to create messages with emoji reactions that automatically assign roles. Up to 5 emoji-role pairs per message. Menu-based workflow: "Send a New Message" creates a reaction role message, "Add Emoji to Existing Message" adds emoji-role pairs via modals. Requires `GatewayIntentBits.GuildMessageReactions` intent to receive reaction events.
 - **Ticket Support System:** Staff/admins can use `/ticketsupportenable` (requires log channel configured) to enable the system, then `/ticketsupportsetup` to configure it. Setup includes:
   - Customizing panel title and description
-  - Choosing button color (Primary Blue, Secondary Gray, Success Green, or Danger Red)
   - Selecting a channel for the ticket panel
-  - Adding custom ticket types with role access control
-  - Option to include bot staff (all users/roles on the bot's staff list automatically get access to that ticket type)
+  - Adding custom ticket types with:
+    - Choosing button color (Primary Blue, Secondary Gray, Success Green, or Danger Red)
+    - Role access control
+    - Option to include bot staff (all users/roles on the bot's staff list automatically get access to that ticket type)
   
   When users click a button on the panel, they enter a description modal to provide details about their issue. A private ticket channel is created only visible to the user, assigned roles, and any bot staff members (if selected for that type). The ticket description is displayed in a welcome embed. Tickets are logged and tracked in the database. After each setup step, the menu automatically returns to the main setup menu for seamless navigation.
 - **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket), ensuring per-server data isolation and persistence.
