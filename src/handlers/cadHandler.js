@@ -452,7 +452,7 @@ export async function handleCADVehicleCharacterSelect(interaction) {
   try {
     const modal = new ModalBuilder()
       .setCustomId(`cadvehicle_add_modal_${characterId}`)
-      .setTitle('Add Vehicle')
+      .setTitle('Register Vehicle')
       .addComponents(
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
@@ -480,11 +480,11 @@ export async function handleCADVehicleCharacterSelect(interaction) {
         ),
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
-            .setCustomId('vehicle_year')
-            .setLabel('Year')
-            .setPlaceholder('e.g., 2022')
+            .setCustomId('vehicle_plate')
+            .setLabel('License Plate (from GTA5)')
+            .setPlaceholder('e.g., ABCD1234')
             .setStyle(TextInputStyle.Short)
-            .setRequired(false)
+            .setRequired(true)
         ),
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
@@ -511,18 +511,16 @@ export async function handleCADVehicleAddModal(interaction) {
   const make = interaction.fields.getTextInputValue('vehicle_make');
   const model = interaction.fields.getTextInputValue('vehicle_model');
   const color = interaction.fields.getTextInputValue('vehicle_color');
-  const plate = `${interaction.user.id.slice(0, 2).toUpperCase()}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-  const year = interaction.fields.getTextInputValue('vehicle_year') || null;
+  const plate = interaction.fields.getTextInputValue('vehicle_plate').toUpperCase();
   const condition = interaction.fields.getTextInputValue('vehicle_condition') || null;
 
   try {
     await CADCharacter.updateOne(
       { _id: characterId },
-      { $push: { vehicles: { make, model, color, licensePlate: plate, year, condition } } }
+      { $push: { vehicles: { make, model, color, licensePlate: plate, condition } } }
     );
 
     let successMsg = `**${make} ${model}**\n🎨 Color: ${color}\n📍 Plate: ${plate}`;
-    if (year) successMsg += `\n📅 Year: ${year}`;
     if (condition) successMsg += `\n⚙️ Condition: ${condition}`;
 
     return interaction.reply({
