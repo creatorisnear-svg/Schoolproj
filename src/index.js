@@ -399,6 +399,9 @@ client.on('interactionCreate', async interaction => {
       } else {
         await handleDenyRoleRequest(interaction);
       }
+    } else if (interaction.customId.startsWith('skip_approver_members_')) {
+      const { handleSkipApproverMembers } = await import('./handlers/roleRequestHandler.js');
+      await handleSkipApproverMembers(interaction);
     }
   }
 

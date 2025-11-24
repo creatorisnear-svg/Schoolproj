@@ -122,18 +122,27 @@ export async function handleSelectApproverRoles(interaction) {
     const requestedRoleId = customIdParts.slice(3).join('_');
     const selectedApproverRoleIds = interaction.values;
 
-    // Show approver member selection
+    // Show approver member selection with skip button
     const approverMemberSelect = new ActionRowBuilder()
       .addComponents(
         new UserSelectMenuBuilder()
           .setCustomId(`select_approver_members_${requestedRoleId}_${selectedApproverRoleIds.join(',')}`)
           .setPlaceholder('Select approver members (optional)...')
           .setMaxValues(25)
+          .setMinValues(0)
+      );
+
+    const skipButtonRow = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`skip_approver_members_${requestedRoleId}_${selectedApproverRoleIds.join(',')}`)
+          .setLabel('Skip')
+          .setStyle(ButtonStyle.Secondary)
       );
 
     await interaction.reply({
-      content: 'Step 3: Select individual members who can also approve (optional)',
-      components: [approverMemberSelect],
+      content: 'Step 3: Select individual members who can also approve (or click Skip)',
+      components: [approverMemberSelect, skipButtonRow],
       ephemeral: true,
     });
   } catch (error) {
@@ -388,7 +397,11 @@ export async function handleSelectApprover(interaction) {
             const dmEmbed = new EmbedBuilder()
               .setColor('#FFA500')
               .setTitle('Role Request Approval')
-              .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>\n\n**Requester:** ${requesterUsername}\n**Requested Role:** ${roleConfig.roleName}`)
+              .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>`)
+              .addFields(
+                { name: 'Requester', value: requesterUsername, inline: true },
+                { name: 'Requested Role', value: roleConfig.roleName, inline: true }
+              )
               .setFooter({ text: 'EverLink' });
 
             const buttons = new ActionRowBuilder()
@@ -423,7 +436,11 @@ export async function handleSelectApprover(interaction) {
         const dmEmbed = new EmbedBuilder()
           .setColor('#FFA500')
           .setTitle('Role Request Approval')
-          .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>\n\n**Requester:** ${requesterUsername}\n**Requested Role:** ${roleConfig.roleName}`)
+          .setDescription(`<@${requesterId}> has requested the role <@&${roleConfig.roleId}>`)
+          .addFields(
+            { name: 'Requester', value: requesterUsername, inline: true },
+            { name: 'Requested Role', value: roleConfig.roleName, inline: true }
+          )
           .setFooter({ text: 'EverLink' });
 
         const buttons = new ActionRowBuilder()
@@ -687,6 +704,52 @@ export async function handleRemoveRoleFromMember(interaction) {
     });
   } catch (error) {
     console.error('Error removing role from member:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleSkipApproverMembers(interaction) {
+  try {
+    const customIdParts = interaction.customId.split('_');
+    const requestedRoleId = customIdParts.slice(3, 4)[0];
+    const approverRoleIdsStr = customIdParts.slice(4).join('_');
+    const selectedApproverMemberIds = [];
+
+    const approverRoleIds = approverRoleIdsStr ? approverRoleIdsStr.split(',') : [];
+
+    // Fetch role info
+    const role = await interaction.guild.roles.fetch(requestedRoleId);
+
+    // Add to config
+    const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+    const roleRequestId = uuidv4();
+
+    config.roles.push({
+      id: roleRequestId,
+      roleId: requestedRoleId,
+      roleName: role.name,
+      approverRoleIds: approverRoleIds,
+      approverMemberIds: selectedApproverMemberIds,
+      createdAt: new Date(),
+    });
+
+    await config.save();
+
+    const successMsg = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('Role Request Type Added')
+      .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: None`)
+      .setFooter({ text: 'EverLink' });
+
+    await interaction.reply({
+      embeds: [successMsg],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error skipping approver members:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
