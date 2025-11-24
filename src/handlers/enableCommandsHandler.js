@@ -58,17 +58,9 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Success)
         );
 
-      const enableDoneRow = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('enable_done')
-            .setLabel('Done')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
       return interaction.reply({
         embeds: [embed],
-        components: [enableRow1, enableRow2, enableDoneRow],
+        components: [enableRow1, enableRow2],
         ephemeral: true,
       });
     } else {
@@ -111,17 +103,9 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Danger)
         );
 
-      const disableDoneRow = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('disable_done')
-            .setLabel('Done')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
       return interaction.reply({
         embeds: [embed],
-        components: [disableRow1, disableRow2, disableDoneRow],
+        components: [disableRow1, disableRow2],
         ephemeral: true,
       });
     }

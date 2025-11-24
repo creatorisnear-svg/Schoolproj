@@ -385,10 +385,6 @@ client.on('interactionCreate', async interaction => {
       await handleTicketDeleteButton(interaction);
     } else if (interaction.customId === 'choice_enable' || interaction.customId === 'choice_disable' || interaction.customId === 'choice_done') {
       await handleEnableChoiceButton(interaction);
-    } else if (interaction.customId === 'enable_done' || interaction.customId === 'disable_done') {
-      await interaction.update({
-        components: [],
-      });
     } else if (interaction.customId.startsWith('enable_')) {
       await handleEnableCommandButton(interaction);
     } else if (interaction.customId.startsWith('disable_')) {
