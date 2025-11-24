@@ -5,7 +5,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('07strikesystemsetup')
+  .setName('g_strikesystemsetup')
   .setDescription('Configure the strike system for your server');
 
 export async function execute(interaction) {

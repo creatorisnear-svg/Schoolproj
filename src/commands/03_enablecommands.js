@@ -4,7 +4,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('03enablecommands')
+  .setName('c_enablecommands')
   .setDescription('Enable or disable all bot features (Admin/Staff only)');
 
 export async function execute(interaction) {

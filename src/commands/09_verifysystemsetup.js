@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('09verifysystemsetup')
+  .setName('i_verifysystemsetup')
   .setDescription('Configure the verification system for your server');
 
 export async function execute(interaction) {

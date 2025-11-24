@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('05roleplaycalendersetup')
+  .setName('e_roleplaycalendersetup')
   .setDescription('Set up the roleplay calendar system (Admin only)');
 
 export async function execute(interaction) {

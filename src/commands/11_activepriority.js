@@ -5,7 +5,7 @@ import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('11activepriority')
+  .setName('k_activepriority')
   .setDescription('Activate priority in the tracker (Staff only)');
 
 export async function execute(interaction) {

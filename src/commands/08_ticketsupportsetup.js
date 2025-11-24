@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('08ticketsupportsetup')
+  .setName('h_ticketsupportsetup')
   .setDescription('Setup the ticket support system (Staff only)');
 
 export async function execute(interaction) {
