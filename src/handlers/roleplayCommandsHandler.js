@@ -363,8 +363,22 @@ export async function handleAnonPostModal(interaction) {
   }
 }
 
+// Track recent 911 submissions to prevent duplicates
+const recent911Submissions = new Map();
+
 export async function handle911ReportModal(interaction) {
   try {
+    // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
+    const submissionKey = `${interaction.guildId}-${interaction.user.id}`;
+    if (recent911Submissions.has(submissionKey)) {
+      return interaction.reply({
+        content: '⏳ Please wait before submitting another 911 report.',
+        ephemeral: true,
+      });
+    }
+    recent911Submissions.set(submissionKey, true);
+    setTimeout(() => recent911Submissions.delete(submissionKey), 2000);
+
     const issue = interaction.fields.getTextInputValue('issue');
     const location = interaction.fields.getTextInputValue('location');
     const suspectsDesc = interaction.fields.getTextInputValue('suspectsDescription') || 'N/A';

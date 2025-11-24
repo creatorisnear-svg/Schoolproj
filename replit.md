@@ -135,13 +135,16 @@ The codebase is organized into `src/` containing:
 - **Fixed:** License plate search not showing personal info - added handleCADCharacterCreateModal routing, characters now created with full personal data
 - **Fixed:** Twitter and Anon post modals not working - added handleTwitterPostModal and handleAnonPostModal routing
 - **Fixed:** Duplicate 911 calls being created - removed legacy handle911Report from modalHandler.js that was conflicting with new handler
-- **Verified:** Complete 911/CAD workflow working:
+- **Fixed:** Duplicate 911 calls being created (second issue) - removed old handleRoleplayCommandsSelect duplicate code
+- **Fixed:** Duplicate 911 messages in channel - added anti-duplicate protection with 2-second cooldown per user per guild
+- **Verified:** Complete 911/CAD workflow working end-to-end:
   - Civilians report 911 with single call created
   - Emergency calls saved to database
   - LEO/Fire Department roles pinged once automatically
   - LEO database shows active 911 calls with response options
   - License plate search shows full personal information
   - Twitter and anon messages working properly
+  - No duplicate 911 messages being sent
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with Discord API
