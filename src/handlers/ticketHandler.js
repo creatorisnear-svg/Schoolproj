@@ -21,6 +21,7 @@ async function showSetupMenu(interaction) {
           { label: 'Select Panel Channel', value: 'select_channel' },
           { label: 'Add Ticket Type', value: 'add_type' },
           { label: 'View Ticket Types', value: 'view_types' },
+          { label: 'Remove Ticket Type', value: 'remove_type' },
           { label: 'Send Panel', value: 'send_panel' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
@@ -153,6 +154,36 @@ export async function handleTicketSetupMenu(interaction) {
       });
     }
 
+    if (choice === 'remove_type') {
+      if (ticketConfig.ticketTypes.length === 0) {
+        const menuData = await showSetupMenu(interaction);
+        return interaction.reply({
+          ...menuData,
+          embeds: [errorEmbed('No ticket types to remove.')],
+        });
+      }
+
+      const removeMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('ticketsupport_remove_type_select')
+            .setPlaceholder('Choose a ticket type to remove...')
+            .addOptions(
+              ticketConfig.ticketTypes.map((t, i) => ({
+                label: t.label,
+                value: t.id,
+                description: `${t.allowedRoleIds.length} role(s)`,
+              }))
+            )
+        );
+
+      return interaction.reply({
+        content: 'Select a ticket type to remove:',
+        components: [removeMenu],
+        ephemeral: true,
+      });
+    }
+
     if (choice === 'send_panel') {
       if (ticketConfig.ticketTypes.length === 0) {
         const menuData = await showSetupMenu(interaction);
@@ -170,7 +201,27 @@ export async function handleTicketSetupMenu(interaction) {
         });
       }
 
-      await sendTicketPanel(interaction, ticketConfig);
+      // Show type selection menu
+      const typeSelectMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('ticketsupport_panel_types_select')
+            .setPlaceholder('Choose ticket types to include in this panel...')
+            .setMinValues(1)
+            .setMaxValues(Math.min(ticketConfig.ticketTypes.length, 25))
+            .addOptions(
+              ticketConfig.ticketTypes.map(t => ({
+                label: t.label,
+                value: t.id,
+              }))
+            )
+        );
+
+      return interaction.reply({
+        content: `Select which ticket types to include in this panel (sending to <#${ticketConfig.panelChannelId}>):`,
+        components: [typeSelectMenu],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'setup_done') {
@@ -547,7 +598,7 @@ export async function handleTicketChannelSelect(interaction) {
   }
 }
 
-async function sendTicketPanel(interaction, ticketConfig) {
+async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null) {
   try {
     const channel = await interaction.guild.channels.fetch(ticketConfig.panelChannelId).catch(() => null);
 
@@ -559,6 +610,19 @@ async function sendTicketPanel(interaction, ticketConfig) {
       });
     }
 
+    // Use selected types or all types
+    const typesToUse = selectedTypeIds 
+      ? ticketConfig.ticketTypes.filter(t => selectedTypeIds.includes(t.id))
+      : ticketConfig.ticketTypes;
+
+    if (typesToUse.length === 0) {
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
+        embeds: [errorEmbed('No ticket types selected.')],
+      });
+    }
+
     // Create the panel embed with custom title and description
     const panelEmbed = new EmbedBuilder()
       .setColor('#0099ff')
@@ -567,9 +631,9 @@ async function sendTicketPanel(interaction, ticketConfig) {
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    // Create buttons for each ticket type with custom color
+    // Create buttons for each selected ticket type with custom color
     const buttonStyle = getButtonStyle(ticketConfig.buttonColor);
-    const buttons = ticketConfig.ticketTypes.map(type =>
+    const buttons = typesToUse.map(type =>
       new ButtonBuilder()
         .setCustomId(`ticket_create_${type.id}`)
         .setLabel(type.label)
@@ -902,6 +966,69 @@ export async function handleTicketDeleteButton(interaction) {
     console.error('Error deleting ticket:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred while deleting the ticket.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRemoveTicketType(interaction) {
+  const ticketTypeId = interaction.values[0];
+
+  try {
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    const typeToRemove = ticketConfig.ticketTypes.find(t => t.id === ticketTypeId);
+
+    if (!typeToRemove) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket type not found.')],
+        ephemeral: true,
+      });
+    }
+
+    ticketConfig.ticketTypes = ticketConfig.ticketTypes.filter(t => t.id !== ticketTypeId);
+    await ticketConfig.save();
+
+    const menuData = await showSetupMenu(interaction);
+    return interaction.update({
+      ...menuData,
+      embeds: [successEmbed('Ticket Type Removed', `"${typeToRemove.label}" has been removed.`)],
+    });
+  } catch (error) {
+    console.error('Error removing ticket type:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handlePanelTypesSelect(interaction) {
+  const selectedTypeIds = interaction.values;
+
+  try {
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+
+    if (!ticketConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Send panel with only selected types
+    await sendTicketPanel(interaction, ticketConfig, selectedTypeIds);
+  } catch (error) {
+    console.error('Error handling panel types select:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
     });
   }

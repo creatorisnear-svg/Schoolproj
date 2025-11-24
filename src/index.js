@@ -190,7 +190,7 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isStringSelectMenu()) {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
-    const { handleTicketSetupMenu, handleTicketTypeButtonColor } = await import('./handlers/ticketHandler.js');
+    const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
@@ -198,6 +198,10 @@ client.on('interactionCreate', async interaction => {
       await handleTicketSetupMenu(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_button_color_')) {
       await handleTicketTypeButtonColor(interaction);
+    } else if (interaction.customId === 'ticketsupport_remove_type_select') {
+      await handleRemoveTicketType(interaction);
+    } else if (interaction.customId === 'ticketsupport_panel_types_select') {
+      await handlePanelTypesSelect(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
