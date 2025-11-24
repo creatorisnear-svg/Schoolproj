@@ -92,19 +92,27 @@ export async function handleSelectRoleForRequest(interaction) {
   try {
     const selectedRoleId = interaction.values[0];
 
-    // Show approver role selection
+    // Show approver role selection with skip button
     const approverRoleSelect = new ActionRowBuilder()
       .addComponents(
         new RoleSelectMenuBuilder()
           .setCustomId(`select_approver_roles_${selectedRoleId}`)
-          .setPlaceholder('Select approver roles...')
-          .setMinValues(1)
+          .setPlaceholder('Select approver roles (optional)...')
+          .setMinValues(0)
           .setMaxValues(25)
       );
 
+    const skipButtonRow = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`skip_approver_roles_${selectedRoleId}`)
+          .setLabel('Skip')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     await interaction.reply({
-      content: 'Step 2: Select which roles can approve requests for this role',
-      components: [approverRoleSelect],
+      content: 'Step 2: Select which roles can approve requests for this role (or click Skip)',
+      components: [approverRoleSelect, skipButtonRow],
       ephemeral: true,
     });
   } catch (error) {
@@ -634,6 +642,43 @@ export async function handleRemoveRoleFromMember(interaction) {
     });
   } catch (error) {
     console.error('Error removing role from member:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleSkipApproverRoles(interaction) {
+  try {
+    const customIdParts = interaction.customId.split('_');
+    const requestedRoleId = customIdParts.slice(3).join('_');
+
+    // Show approver member selection with skip button (no roles selected)
+    const approverMemberSelect = new ActionRowBuilder()
+      .addComponents(
+        new UserSelectMenuBuilder()
+          .setCustomId(`select_approver_members_${requestedRoleId}_`)
+          .setPlaceholder('Select approver members (optional)...')
+          .setMaxValues(25)
+          .setMinValues(0)
+      );
+
+    const skipButtonRow = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`skip_approver_members_${requestedRoleId}_`)
+          .setLabel('Skip')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    await interaction.reply({
+      content: 'Step 3: Select individual members who can also approve (or click Skip)',
+      components: [approverMemberSelect, skipButtonRow],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error skipping approver roles:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

@@ -405,6 +405,9 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId.startsWith('skip_approver_members_')) {
       const { handleSkipApproverMembers } = await import('./handlers/roleRequestHandler.js');
       await handleSkipApproverMembers(interaction);
+    } else if (interaction.customId.startsWith('skip_approver_roles_')) {
+      const { handleSkipApproverRoles } = await import('./handlers/roleRequestHandler.js');
+      await handleSkipApproverRoles(interaction);
     }
   }
 
