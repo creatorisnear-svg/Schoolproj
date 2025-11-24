@@ -178,7 +178,7 @@ export async function handleEnableCommandButton(interaction) {
     } else if (customId === 'enable_rolerequest') {
       featureName = 'Role Request';
       model = RoleRequestConfig;
-      setupCommand = 'Run `/rolerequestadd` to add role request types.';
+      setupCommand = 'Run `/rolerequestsetup` to configure.';
     }
 
     // Save to database
