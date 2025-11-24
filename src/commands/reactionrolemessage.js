@@ -1,14 +1,21 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
+import { SlashCommandBuilder } from 'discord.js';
+import ReactionRole from '../models/ReactionRole.js';
+import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('reactionrolemessage')
-  .setDescription('Create a message with emoji reactions for role assignment (Staff only)')
+  .setDescription('Send a reaction role message to a channel (Staff only)')
+  .addChannelOption(option =>
+    option
+      .setName('channel')
+      .setDescription('The channel to send the message to')
+      .setRequired(true)
+  )
   .addStringOption(option =>
     option
       .setName('message')
-      .setDescription('The message content to send (up to 2000 characters)')
+      .setDescription('The message content')
       .setRequired(true)
   );
 
@@ -20,22 +27,37 @@ export async function execute(interaction) {
     });
   }
 
+  const channel = interaction.options.getChannel('channel');
   const messageContent = interaction.options.getString('message');
 
-  const menu = new ActionRowBuilder()
-    .addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('reactionrole_setup')
-        .setPlaceholder('Select action...')
-        .addOptions(
-          { label: 'Send Reaction Role Message', value: 'send_message', description: 'Send the reaction role message' },
-          { label: 'Configure Emoji-Role Pairs', value: 'config_emojis', description: 'Set up emoji-role pairs' }
-        )
-    );
+  if (!channel.isTextBased()) {
+    return interaction.reply({
+      embeds: [errorEmbed('Please select a text channel.')],
+      ephemeral: true,
+    });
+  }
 
-  await interaction.reply({
-    content: `**Message to Send:**\n\`\`\`\n${messageContent}\n\`\`\`\n\nSelect an action below:`,
-    components: [menu],
-    ephemeral: true,
-  });
+  try {
+    // Send the message to the channel
+    const sentMessage = await channel.send(messageContent);
+
+    // Create the reaction role record
+    await ReactionRole.create({
+      guildId: interaction.guildId,
+      messageId: sentMessage.id,
+      channelId: channel.id,
+      emojiRoles: [],
+    });
+
+    return interaction.reply({
+      embeds: [successEmbed('Reaction Role Message Sent', `Message sent to <#${channel.id}>\n\n**Message ID:** \`${sentMessage.id}\`\n\nUse \`/reactionroleadd\` to add emoji-role pairs using this ID.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error sending reaction role message:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while sending the message.')],
+      ephemeral: true,
+    });
+  }
 }
