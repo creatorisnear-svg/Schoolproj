@@ -51,7 +51,10 @@ for (const file of orderedFiles) {
 client.once('clientReady', async () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
-  console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
+  console.log(`📋 Commands loaded: ${commands.length}`);
+
+  // Register commands to Discord
+  await registerCommandsAsync();
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
@@ -63,21 +66,26 @@ client.once('clientReady', async () => {
   startBOLOAutoDelete();
 });
 
-function registerCommandsAsync() {
-  console.log('📤 Commands will be registered shortly...');
-  
-  setTimeout(async () => {
-    try {
-      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-      const result = await rest.put(
-        Routes.applicationCommands(client.user.id),
-        { body: commands }
-      );
-      console.log(`✅ Registered ${result.length} commands globally!`);
-    } catch (error) {
-      console.log('⚠️  Commands may take a few minutes to appear in Discord');
+async function registerCommandsAsync() {
+  try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    console.log('📤 Registering commands to Discord...');
+    
+    // Register to each guild for faster availability
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const response = await rest.put(
+          Routes.applicationGuildCommands(client.user.id, guild.id),
+          { body: commands }
+        );
+        console.log(`✅ ${response.length} commands registered to ${guild.name}`);
+      } catch (error) {
+        console.error(`Error registering to ${guild.name}: ${error.message}`);
+      }
     }
-  }, 2000);
+  } catch (error) {
+    console.error('❌ Registration error:', error.message);
+  }
 }
 
 async function startPriorityTrackerUpdater() {

@@ -32,7 +32,7 @@ export async function execute(interaction) {
     }).join('\n');
 
     const embed = infoEmbed('__**EverLink Bot Staff List**__', staffList);
-    embed.addFields({ name: '__Total Staff Members__', value: `${staffMembers.length}`, inline: true });
+    embed.addFields({ name: '20ststafflist', value: `${staffMembers.length}`, inline: true });
 
     return interaction.reply({ embeds: [embed] });
   } catch (error) {
