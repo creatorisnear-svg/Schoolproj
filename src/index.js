@@ -48,21 +48,10 @@ for (const file of commandFiles) {
 client.once('clientReady', async () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
+  console.log(`📋 Total commands to register: ${commands.length}`);
   
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-  try {
-    console.log('🔄 Started refreshing application (/) commands...');
-
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands },
-    );
-
-    console.log('✅ Successfully reloaded application (/) commands globally.');
-  } catch (error) {
-    console.error('❌ Error registering commands:', error);
-  }
+  // Register commands non-blocking (doesn't wait for this)
+  registerCommandsAsync();
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
@@ -70,6 +59,38 @@ client.once('clientReady', async () => {
   // Start auto-deletion for unresponded 911 calls
   startEmergencyCallAutoDelete();
 });
+
+async function registerCommandsAsync() {
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log('🔄 Started refreshing application (/) commands...');
+    console.log(`📤 Registering ${commands.length} commands to ${client.guilds.cache.size} guild(s)...`);
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    // Register commands per-guild (much faster than global registration)
+    for (const [guildId, guild] of client.guilds.cache) {
+      try {
+        await rest.put(
+          Routes.applicationGuildCommands(client.user.id, guildId),
+          { body: commands },
+        );
+        console.log(`✅ Commands registered for guild: ${guild.name}`);
+        successCount++;
+      } catch (guildError) {
+        console.error(`❌ Failed to register commands for guild ${guild.name}:`, guildError.message);
+        failureCount++;
+      }
+    }
+
+    console.log(`✅ Command registration complete: ${successCount} successful, ${failureCount} failed.`);
+  } catch (error) {
+    console.error('❌ Command registration system error:', error.message);
+    console.log('⚠️  Bot will continue running. Commands may not be visible in Discord.');
+  }
+}
 
 async function startPriorityTrackerUpdater() {
   const { default: Priority } = await import('./models/Priority.js');
