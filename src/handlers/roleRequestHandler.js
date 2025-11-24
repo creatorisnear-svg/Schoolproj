@@ -164,6 +164,8 @@ export async function handleSelectApproverRoles(interaction) {
 
 export async function handleSelectApproverMembers(interaction) {
   try {
+    await interaction.deferReply({ ephemeral: true });
+
     const customIdParts = interaction.customId.split('_');
     const requestedRoleId = customIdParts.slice(3, 4)[0];
     const approverRoleIdsStr = customIdParts.slice(4).join('_');
@@ -195,16 +197,21 @@ export async function handleSelectApproverMembers(interaction) {
       .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
       .setFooter({ text: 'EverLink' });
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [successMsg],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error selecting approver members:', error);
-    await interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
+    if (interaction.replied) {
+      await interaction.editReply({
+        embeds: [errorEmbed('An error occurred.')],
+      });
+    } else {
+      await interaction.reply({
+        embeds: [errorEmbed('An error occurred.')],
+        ephemeral: true,
+      });
+    }
   }
 }
 
