@@ -57,11 +57,7 @@ export async function execute(interaction) {
         new ButtonBuilder()
           .setCustomId('choice_disable')
           .setLabel('Disable Features')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('choice_done')
-          .setLabel('Done')
-          .setStyle(ButtonStyle.Secondary)
+          .setStyle(ButtonStyle.Danger)
       );
 
     return interaction.reply({
