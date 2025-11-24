@@ -87,9 +87,17 @@ export async function handleFireDepartmentMenu(interaction) {
             .addOptions(callOptions)
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_fd_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         embeds,
-        components: [callMenu],
+        components: [callMenu, backButton],
         ephemeral: true,
       });
     }
@@ -165,9 +173,17 @@ export async function handleFireDepartmentMenu(interaction) {
             })))
         );
 
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_fd_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
       return interaction.reply({
         content: 'Select a character to add a vehicle to:',
-        components: [charMenu],
+        components: [charMenu, backButton],
         ephemeral: true,
       });
     }

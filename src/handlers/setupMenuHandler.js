@@ -191,6 +191,24 @@ export async function handleBackToMenu(interaction) {
         content: '**CIVILIAN DATABASE**\n\nSelect an option:',
         components: [menu],
       });
+    } else if (customId === 'back_to_fd_menu') {
+      // Return to main Fire Department database menu
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('firedepartmentdatabase_menu')
+            .setPlaceholder('Choose an option...')
+            .addOptions(
+              { label: '🚨 Active 911 Calls', value: 'active_calls' },
+              { label: '👤 Create Character', value: 'create_character' },
+              { label: '🚗 Add Vehicle', value: 'add_vehicle' }
+            )
+        );
+
+      await interaction.update({
+        content: '**FIRE DEPARTMENT DATABASE**\n\nSelect an option:',
+        components: [menu],
+      });
     } else if (customId === 'back_to_calendar_menu') {
       const menu = new ActionRowBuilder()
         .addComponents(
