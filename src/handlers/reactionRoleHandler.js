@@ -15,27 +15,47 @@ export async function handleReactionAdd(reaction, user) {
       messageId: reaction.message.id,
     });
 
-    if (!reactionRole) return;
+    if (!reactionRole) {
+      console.log(`❌ No reaction role config found for message ${reaction.message.id}`);
+      return;
+    }
 
     // Find the emoji-role pair
-    const emojiRole = reactionRole.emojiRoles.find(er => er.emoji === reaction.emoji.toString());
+    const emojiString = reaction.emoji.toString();
+    const emojiRole = reactionRole.emojiRoles.find(er => er.emoji === emojiString);
 
-    if (!emojiRole) return;
+    if (!emojiRole) {
+      console.log(`❌ Emoji ${emojiString} not configured for this message. Available: ${reactionRole.emojiRoles.map(er => er.emoji).join(', ')}`);
+      return;
+    }
 
     // Get the guild and member
     const guild = reaction.message.guild;
-    if (!guild) return;
+    if (!guild) {
+      console.log('❌ Guild not found');
+      return;
+    }
 
-    const member = await guild.members.fetch(user.id).catch(() => null);
+    const member = await guild.members.fetch(user.id).catch(err => {
+      console.log(`❌ Could not fetch member: ${err.message}`);
+      return null;
+    });
     if (!member) return;
 
     // Get the role
     const role = guild.roles.cache.get(emojiRole.roleId);
-    if (!role) return;
+    if (!role) {
+      console.log(`❌ Role ${emojiRole.roleId} not found in cache`);
+      return;
+    }
 
     // Add the role
-    await member.roles.add(role).catch(() => {});
-    console.log(`✅ Added role ${role.name} to ${user.tag} via reaction role`);
+    try {
+      await member.roles.add(role);
+      console.log(`✅ Added role ${role.name} to ${user.tag} via reaction role`);
+    } catch (err) {
+      console.error(`❌ Failed to add role to member: ${err.message}`);
+    }
   } catch (error) {
     console.error('Error in handleReactionAdd:', error);
   }
@@ -59,7 +79,8 @@ export async function handleReactionRemove(reaction, user) {
     if (!reactionRole) return;
 
     // Find the emoji-role pair
-    const emojiRole = reactionRole.emojiRoles.find(er => er.emoji === reaction.emoji.toString());
+    const emojiString = reaction.emoji.toString();
+    const emojiRole = reactionRole.emojiRoles.find(er => er.emoji === emojiString);
 
     if (!emojiRole) return;
 
@@ -75,8 +96,12 @@ export async function handleReactionRemove(reaction, user) {
     if (!role) return;
 
     // Remove the role
-    await member.roles.remove(role).catch(() => {});
-    console.log(`✅ Removed role ${role.name} from ${user.tag} via reaction role`);
+    try {
+      await member.roles.remove(role);
+      console.log(`✅ Removed role ${role.name} from ${user.tag} via reaction role`);
+    } catch (err) {
+      console.error(`❌ Failed to remove role from member: ${err.message}`);
+    }
   } catch (error) {
     console.error('Error in handleReactionRemove:', error);
   }
