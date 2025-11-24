@@ -308,6 +308,14 @@ export async function handleSelectApprover(interaction) {
       });
     }
 
+    // Verify the selected user is authorized to approve this role
+    if (!roleConfig.approverMemberIds.includes(approverId)) {
+      return interaction.reply({
+        embeds: [errorEmbed(`${approverMember.user.username} is not authorized to approve the **${roleConfig.roleName}** role.`)],
+        ephemeral: true,
+      });
+    }
+
     // Create the request
     const requestId = `ROLEREQ-${Date.now()}`;
     const requesterUsername = interaction.user.username;
