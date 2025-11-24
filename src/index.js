@@ -252,7 +252,7 @@ client.on('interactionCreate', async interaction => {
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
-    const { handleCADVehicleAddModal, handleCADGunAddModal, handleCADCharacterCreateModal } = await import('./handlers/cadHandler.js');
+    const { handleCADVehicleAddModal, handleCADGunAddModal, handleCADCharacterCreateModal, handleCharacterHeightRaceModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleFDCharacterCreateModal, handleFDVehicleAddModal } = await import('./handlers/fireDepartmentHandler.js');
@@ -270,6 +270,9 @@ client.on('interactionCreate', async interaction => {
       await handleFDCharacterCreateModal(interaction);
     } else if (interaction.customId === 'cadcharacter_create_modal') {
       await handleCADCharacterCreateModal(interaction);
+    } else if (interaction.customId.startsWith('char_height_race_modal_')) {
+      const charId = interaction.customId.replace('char_height_race_modal_', '');
+      await handleCharacterHeightRaceModal(interaction, charId);
     } else if (interaction.customId.startsWith('cadvehicle_add_modal_')) {
       await handleCADVehicleAddModal(interaction);
     } else if (interaction.customId.startsWith('fd_vehicle_add_modal_')) {
@@ -306,6 +309,7 @@ client.on('interactionCreate', async interaction => {
     const { data, execute } = await import('./commands/verify.js');
     const { handleTicketButtonClick, handleAddBotStaffButton, handleRolesDoneButton, handleTicketCloseButton, handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
     const { handleCharacterEdit, handleCharacterDelete, handleCharacterDeleteConfirm } = await import('./handlers/civilianDatabaseHandler.js');
+    const { handleCharacterContinue, handleCharacterStatusNone } = await import('./handlers/cadHandler.js');
 
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
@@ -332,6 +336,12 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId.startsWith('char_delete_confirm_')) {
       const charId = interaction.customId.replace('char_delete_confirm_', '');
       await handleCharacterDeleteConfirm(interaction, charId);
+    } else if (interaction.customId.startsWith('char_continue_')) {
+      const charId = interaction.customId.replace('char_continue_', '');
+      await handleCharacterContinue(interaction, charId);
+    } else if (interaction.customId.startsWith('char_status_none_')) {
+      const charId = interaction.customId.replace('char_status_none_', '');
+      await handleCharacterStatusNone(interaction, charId);
     } else if (interaction.customId === 'char_delete_cancel') {
       await interaction.reply({
         content: 'Character deletion cancelled.',

@@ -135,41 +135,30 @@ The codebase is organized into `src/` containing:
 - `fireDepartmentHandler.js`: Fire Department database menu and 911 call viewing
 - `cadHandler.js`: Character creation and vehicle/firearm management for all roles
 
-## Recent Changes (Session: November 24, 2025 - Height/Race Fields & Ticket Display)
-- **Character Creation Modal Updated:** Added Height and Race fields during character creation
-  - **Form Fields:** Name, Age, Gender, Height, Race
-  - Height field supports entries like "5'10"", "6 feet", etc.
-  - Race field supports entries like "African American", "Asian", etc.
-  - Both fields optional but recorded for LEO searches
-- **LEO Character Search Enhanced:** Traffic tickets now displayed when searching characters
-  - **New Section:** "🎫 TRAFFIC TICKETS" shows:
-    - Ticket ID (e.g., TKT-1732446283)
-    - Violation Type
-    - Fine Amount (if issued)
-    - Shows up to 5 most recent tickets
-    - Shows count of additional tickets if more than 5
-  - **Complete Character Profile** shows:
-    - Age, Gender
-    - Height, Race (newly added)
-    - Hair Color, Eye Color, Build
-    - SSN, License Status, Veteran/Organ Donor status
-    - Vehicles with makes, models, colors, plates
-    - Weapons registered
-    - Traffic tickets issued
-    - Wanted status
-- **Character Creation Modal Changed:**
-  - Replaced hair color and eye color fields with height and race
-  - Modal now displays 5 fields: Name, Age, Gender, Height, Race
-  - Hair/Eye color can be added later via manage character edit feature
-- **Character Creation Flow:**
-  1. User runs `/cadcharacter` (or equivalent)
-  2. Fills form with name, age, gender, height, race (name auto-capitalized)
-  3. Character created with SSN auto-generated
-  4. User sees 2 button rows for license status and special status selection
-  5. Both selections saved to character profile
+## Recent Changes (Session: November 24, 2025 - Multi-Step Character Creation & Status Selection)
+- **Character Creation Redesigned as 3-Step Process:**
+  - **Step 1/3 - Basic Info:** Modal with Name, Age, Gender fields
+    - Name auto-capitalized (first and last names)
+    - User clicks "📝 Continue Character Setup" button to proceed
+  - **Step 2/3 - Physical Description:** Modal with Height and Race fields
+    - Height field supports entries like "5'10"", "6 feet", etc.
+    - Race field supports entries like "African American", "Asian", etc.
+    - Both fields optional
+    - After submission, user proceeds to status selection
+  - **Step 3/3 - Final Setup:** Two button rows for status selection
+    - **License Status Row:** "✅ Valid License" or "❌ Invalid License" (required selection)
+    - **Special Status Row:** "🎖️ Veteran", "❤️ Organ Donor", or "None" (now explicit option)
+    - Users can clearly choose "None" instead of skipping
+- **Character Profile Structure:**
+  - All fields properly saved with height in `height` field, race in `distinguishingFeatures`
+  - SSN auto-generated only (no license plate or driver's license auto-generation)
+  - License status defaults to 'valid', veteran status defaults to 'none'
+- **LEO Character Search Display:**
+  - Shows complete profile: Personal info, Physical description (Height/Race), Identification
+  - Displays up to 5 most recent traffic tickets with ID, violation type, and fine amount
 - **Updated Handlers:**
-  - `cadHandler.js` - Updated character creation modal with height/race fields
-  - `leoDatabaseHandler.js` - Added traffic ticket display in character search results
+  - `cadHandler.js` - Redesigned character creation with 3-step process (handleCADCharacterCreateModal, handleCharacterContinue, handleCharacterHeightRaceModal, handleCharacterStatusNone)
+  - `index.js` - Added routing for new handlers and modal submissions
 - **Result:** Bot maintains zero warnings, 34 commands registered, all features fully operational
 
 ## External Dependencies

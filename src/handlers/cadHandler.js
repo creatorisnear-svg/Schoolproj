@@ -197,7 +197,7 @@ export async function handleCADCharacterMenu(interaction) {
     if (choice === 'create_character') {
       const modal = new ModalBuilder()
         .setCustomId('cadcharacter_create_modal')
-        .setTitle('Create Character')
+        .setTitle('Create Character - Step 1')
         .addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -225,19 +225,23 @@ export async function handleCADCharacterMenu(interaction) {
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_height')
-              .setLabel('Height')
+              .setCustomId('char_placeholder_1')
+              .setLabel('Info')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., 5\'10"')
+              .setPlaceholder('(Step 1 of 3)')
               .setRequired(false)
+              .setMaxLength(1)
+              .setValue(' ')
           ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId('character_race')
-              .setLabel('Race')
+              .setCustomId('char_placeholder_2')
+              .setLabel('Next Step')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., African American')
+              .setPlaceholder('→ Click "Continue" below')
               .setRequired(false)
+              .setMaxLength(1)
+              .setValue(' ')
           )
         );
 
@@ -498,34 +502,6 @@ export async function handleCADCharacterCreateModal(interaction) {
   let characterName = interaction.fields.getTextInputValue('character_name');
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
-  
-  // Support both old (hair_color/eye_color) and new (height/race) field names
-  let height = null;
-  let race = null;
-  try {
-    height = interaction.fields.getTextInputValue('character_height') || null;
-  } catch {
-    height = null;
-  }
-  try {
-    race = interaction.fields.getTextInputValue('character_race') || null;
-  } catch {
-    race = null;
-  }
-  
-  // Fallback to old field names if new ones don't exist
-  let hairColor = null;
-  let eyeColor = null;
-  try {
-    hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;
-  } catch {
-    hairColor = null;
-  }
-  try {
-    eyeColor = interaction.fields.getTextInputValue('character_eye_color') || null;
-  } catch {
-    eyeColor = null;
-  }
 
   // Capitalize first letter of each word
   characterName = characterName.split(' ').map(word => 
@@ -542,7 +518,7 @@ export async function handleCADCharacterCreateModal(interaction) {
       });
     }
 
-    // Auto-generate SSN only, no license plate or driver's license
+    // Auto-generate SSN only
     const ssn = `${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 90) + 10}-${Math.floor(Math.random() * 9000) + 1000}`;
 
     const character = new CADCharacter({
@@ -551,13 +527,9 @@ export async function handleCADCharacterCreateModal(interaction) {
       characterName,
       age: age ? parseInt(age) : null,
       gender,
-      height: height || null,
-      hairColor: hairColor || null,
-      eyeColor: eyeColor || null,
-      distinguishingFeatures: race || null, // Store race in distinguishingFeatures
       socialSecurityNumber: ssn,
-      driverLicenseStatus: 'valid', // Default to valid
-      veteranStatus: 'none', // Will be updated after user selection
+      driverLicenseStatus: 'valid',
+      veteranStatus: 'none',
     });
 
     await character.save();
@@ -568,25 +540,156 @@ export async function handleCADCharacterCreateModal(interaction) {
     if (gender) description += `**Gender:** ${gender}\n`;
     description += `\n**🪪 Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
-    
-    let physicalInfo = '';
-    if (height) physicalInfo += `**Height:** ${height}\n`;
-    if (race) physicalInfo += `**Race:** ${race}\n`;
-    if (hairColor) physicalInfo += `**Hair:** ${hairColor}\n`;
-    if (eyeColor) physicalInfo += `**Eyes:** ${eyeColor}\n`;
-    if (physicalInfo) description += `\n**👤 Physical Description**\n${physicalInfo}`;
 
     const embed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle('✅ Character Created Successfully')
+      .setTitle('✅ Character Created - Step 1/3')
       .setDescription(description)
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
-    // Create status selection buttons for license and veteran status
+    // Show "Continue Character" button for Step 2
+    const { ButtonBuilder, ActionRowBuilder: ARB } = await import('discord.js');
+    const continueButton = new ARB().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`char_continue_${character._id}`)
+        .setLabel('📝 Continue Character Setup')
+        .setStyle('Primary')
+    );
+
+    return interaction.reply({
+      embeds: [embed],
+      components: [continueButton],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error creating character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while creating the character.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterContinue(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOne({
+      _id: characterId,
+      guildId: interaction.guildId,
+      userId: interaction.user.id
+    });
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    // Show Height and Race modal
+    const modal = new ModalBuilder()
+      .setCustomId(`char_height_race_modal_${characterId}`)
+      .setTitle('Create Character - Step 2')
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('character_height')
+            .setLabel('Height')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., 5\'10"')
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('character_race')
+            .setLabel('Race')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., African American')
+            .setRequired(false)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('char_placeholder_1')
+            .setLabel('Step 2 of 3')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('(Step 2 of 3)')
+            .setRequired(false)
+            .setMaxLength(1)
+            .setValue(' ')
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('char_placeholder_2')
+            .setLabel('Next Step')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('→ Fill in then submit')
+            .setRequired(false)
+            .setMaxLength(1)
+            .setValue(' ')
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('char_placeholder_3')
+            .setLabel('Continue')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('→ Choose status/license')
+            .setRequired(false)
+            .setMaxLength(1)
+            .setValue(' ')
+        )
+      );
+
+    return interaction.showModal(modal);
+  } catch (error) {
+    console.error('Error continuing character:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterHeightRaceModal(interaction, characterId) {
+  const height = interaction.fields.getTextInputValue('character_height') || null;
+  const race = interaction.fields.getTextInputValue('character_race') || null;
+
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { height, distinguishingFeatures: race },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    let description = `**📋 Personal Information**\n`;
+    description += `**Name:** ${character.characterName}\n`;
+    if (character.age) description += `**Age:** ${character.age}\n`;
+    if (character.gender) description += `**Gender:** ${character.gender}\n`;
+    description += `\n**🪪 Identification**\n`;
+    description += `**SSN:** ${character.socialSecurityNumber}\n`;
+    
+    if (height || race) {
+      description += `\n**👤 Physical Description**\n`;
+      if (height) description += `**Height:** ${height}\n`;
+      if (race) description += `**Race:** ${race}\n`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle('✅ Character Setup - Step 2/3')
+      .setDescription(description)
+      .setFooter({ text: 'EverLink' })
+      .setTimestamp();
+
+    // Show license and veteran status buttons for Step 3
     const { ButtonBuilder, ActionRowBuilder: ARB } = await import('discord.js');
     
-    // License status row
     const licenseButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_license_valid_${character._id}`)
@@ -598,7 +701,6 @@ export async function handleCADCharacterCreateModal(interaction) {
         .setStyle('Danger')
     );
 
-    // Special status row
     const specialButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_veteran_${character._id}`)
@@ -607,13 +709,17 @@ export async function handleCADCharacterCreateModal(interaction) {
       new ButtonBuilder()
         .setCustomId(`char_organ_donor_${character._id}`)
         .setLabel('❤️ Organ Donor')
+        .setStyle('Secondary'),
+      new ButtonBuilder()
+        .setCustomId(`char_status_none_${character._id}`)
+        .setLabel('None')
         .setStyle('Secondary')
     );
 
     const statusEmbed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle('📋 Set License & Status')
-      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or skip if none)')
+      .setTitle('📋 Final Setup - Step 3/3')
+      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or choose "None")')
       .setFooter({ text: 'EverLink' });
 
     return interaction.reply({
@@ -622,9 +728,37 @@ export async function handleCADCharacterCreateModal(interaction) {
       ephemeral: true,
     });
   } catch (error) {
-    console.error('Error creating character:', error);
+    console.error('Error updating character height/race:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while creating the character.')],
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleCharacterStatusNone(interaction, characterId) {
+  try {
+    const character = await CADCharacter.findOneAndUpdate(
+      { _id: characterId, guildId: interaction.guildId, userId: interaction.user.id },
+      { veteranStatus: 'none' },
+      { new: true }
+    );
+
+    if (!character) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character not found.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.reply({
+      content: `✅ **${character.characterName}** - Character Setup Complete!`,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting status none:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
     });
   }
