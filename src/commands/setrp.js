@@ -165,12 +165,14 @@ function buildCalendarEmbed(calendar) {
       description += `No events scheduled\n\n`;
     } else {
       dayEvents.forEach(event => {
-        description += `• **${event.person}** - <t:${event.timestamp}:t> ${event.timezone}\n`;
+        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
         description += `  PSN: ${event.psn}\n`;
         description += `  ${event.description}\n\n`;
       });
     }
   });
+
+  description += '*Times are shown in your local timezone*';
 
   return {
     title: 'Roleplay Calendar',
