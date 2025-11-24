@@ -28,11 +28,31 @@ client.commands = new Collection();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const commandsPath = join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const allCommandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+// Define command load order
+const commandOrder = [
+  'addstaff.js',
+  'setlogchannel.js',
+  'enablecommands.js',
+  'prioritytrackersetup.js',
+  'roleplaycalendersetup.js',
+  'roleplaycommandsetup.js',
+  'strikesystemsetup.js',
+  'ticketsupportsetup.js',
+  'verifysystemsetup.js',
+  'welcomesystemsetup.js'
+];
+
+// Load priority commands first, then rest alphabetically
+const orderedFiles = [
+  ...commandOrder.filter(f => allCommandFiles.includes(f)),
+  ...allCommandFiles.filter(f => !commandOrder.includes(f)).sort()
+];
 
 const commands = [];
 
-for (const file of commandFiles) {
+for (const file of orderedFiles) {
   const filePath = join(commandsPath, file);
   const command = await import(`file://${filePath}`);
   
