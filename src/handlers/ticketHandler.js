@@ -589,10 +589,15 @@ async function sendTicketPanel(interaction, ticketConfig) {
       components: rows,
     });
 
+    // Reset ticket types and channel for next panel
+    ticketConfig.ticketTypes = [];
+    ticketConfig.panelChannelId = null;
+    await ticketConfig.save();
+
     const menuData = await showSetupMenu(interaction);
     return interaction.update({
       ...menuData,
-      embeds: [successEmbed('Panel Sent', `Ticket panel sent to <#${ticketConfig.panelChannelId}>`)],
+      embeds: [successEmbed('Panel Sent & Reset', `✅ Panel sent successfully!\n\n📝 Setup reset - you can now add different ticket types and send to another channel!`)],
     });
   } catch (error) {
     console.error('Error sending ticket panel:', error);

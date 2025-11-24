@@ -35,7 +35,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
     - Role access control
     - Option to include bot staff (all users/roles on the bot's staff list automatically get access to that ticket type)
   
-  When users click a button on the panel, they enter a description modal to provide details about their issue. A private ticket channel is created only visible to the user, assigned roles, and any bot staff members (if selected for that type). The ticket description is displayed in a welcome embed. Tickets are logged and tracked in the database. After each setup step, the menu automatically returns to the main setup menu for seamless navigation.
+  When users click a button on the panel, they enter a description modal to provide details about their issue. A private ticket channel is created only visible to the user, assigned roles, and any bot staff members (if selected for that type). The ticket description is displayed in a welcome embed. Tickets are logged and tracked in the database. After each setup step, the menu automatically returns to the main setup menu for seamless navigation. After sending a panel, the ticket types and channel selection automatically reset, allowing staff to immediately add different ticket types and send a new panel to another channel.
 - **Database Integration:** Mongoose schemas define the data models for each system (Staff, Verification, Welcome, Config, StrikeUser, StrikeConfig, Priority, RoleplayCalendar, Sticky, ReactionRole, TicketConfig, Ticket), ensuring per-server data isolation and persistence.
 
 **Project Structure:**
