@@ -29,9 +29,16 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option
       .setName('color')
-      .setDescription('Embed color in hex format (optional, default: #2E2E2E)')
+      .setDescription('Embed color (optional, default: grey)')
       .setRequired(false)
-      .setMaxLength(7)
+      .addChoices(
+        { name: 'Red', value: 'red' },
+        { name: 'Blue', value: 'blue' },
+        { name: 'Green', value: 'green' },
+        { name: 'White', value: 'white' },
+        { name: 'Black', value: 'black' },
+        { name: 'Grey', value: 'grey' }
+      )
   );
 
 export async function execute(interaction) {
@@ -40,7 +47,19 @@ export async function execute(interaction) {
   const message = interaction.options.getString('message');
   const channel = interaction.options.getChannel('channel') || interaction.channel;
   const title = interaction.options.getString('title');
-  const colorInput = interaction.options.getString('color') || '#2E2E2E';
+  const colorName = interaction.options.getString('color') || 'grey';
+
+  // Color mapping
+  const colorMap = {
+    red: '#FF0000',
+    blue: '#0099FF',
+    green: '#00AA00',
+    white: '#FFFFFF',
+    black: '#000000',
+    grey: '#2E2E2E'
+  };
+
+  const colorHex = colorMap[colorName];
 
   try {
     // Check if user is staff or admin
@@ -65,17 +84,9 @@ export async function execute(interaction) {
       });
     }
 
-    // Validate color format
-    if (!colorInput.match(/^#[0-9A-F]{6}$/i)) {
-      return interaction.reply({
-        embeds: [errorEmbed('Invalid color format. Use hex format like #FF0000')],
-        flags: 64,
-      });
-    }
-
     // Create embed
     const embed = new EmbedBuilder()
-      .setColor(colorInput)
+      .setColor(colorHex)
       .setDescription(message)
       .setTimestamp()
       .setFooter({ text: 'EverLink' });
