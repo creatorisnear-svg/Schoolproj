@@ -18,6 +18,13 @@ export async function execute(interaction) {
   try {
     const config = await Config.findOne({ guildId: interaction.guildId });
 
+    if (!config || !config.antiPromotingEnabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('⚙️ Anti-Promoting Not Enabled', 'Use `/enablecommands` → Enable Features → Anti-Promoting')],
+        flags: 64,
+      });
+    }
+
     const menu = new ActionRowBuilder()
       .addComponents(
         new StringSelectMenuBuilder()
