@@ -7,6 +7,7 @@ import TrafficTicket from '../models/TrafficTicket.js';
 import BOLO from '../models/BOLO.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { EmbedBuilder } from 'discord.js';
+import { capitalizeName } from '../utils/nameFormatter.js';
 
 export async function handleLEODatabaseMenu(interaction) {
   const choice = interaction.values[0];
@@ -189,6 +190,55 @@ export async function handleLEODatabaseMenu(interaction) {
       return interaction.update({
         embeds,
         components: [backButton],
+      });
+    }
+
+    if (choice === 'manage_bolos') {
+      const bolos = await BOLO.find({ 
+        guildId: interaction.guildId, 
+        active: true 
+      }).sort({ createdAt: -1 });
+
+      if (bolos.length === 0) {
+        const backButton = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('back_to_leo_menu')
+              .setLabel('← Back')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+        return interaction.update({
+          embeds: [infoEmbed('Manage BOLOs', 'No active BOLOs.')],
+          components: [backButton],
+        });
+      }
+
+      const boloOptions = bolos.slice(0, 25).map(bolo => ({
+        label: `${bolo.boloId} - ${bolo.characterName}`,
+        value: bolo.boloId,
+        description: bolo.reason.substring(0, 100)
+      }));
+
+      const boloMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('leo_manage_bolos_select')
+            .setPlaceholder('Select a BOLO to view or delete...')
+            .addOptions(boloOptions)
+        );
+
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_leo_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        embeds: [infoEmbed('Manage BOLOs', `${bolos.length} active BOLO(s) found`)],
+        components: [boloMenu, backButton],
       });
     }
 
@@ -436,8 +486,21 @@ export async function handleLEOSearchPlateModal(interaction) {
       if (vehicle.condition) description += `Condition: ${vehicle.condition}\n`;
     }
 
+    // Check for vehicle BOLOs
+    const BOLO = await import('../models/BOLO.js').then(m => m.default);
+    const vehicleBolos = await BOLO.find({
+      guildId: interaction.guildId,
+      'vehicles.licensePlate': plate,
+      active: true
+    });
+
     description += `\n**⚖️ STATUS**\n`;
-    if (character.status === 'wanted') {
+    if (vehicleBolos.length > 0) {
+      description += `🚨 **VEHICLE BOLO ALERT**\n`;
+      vehicleBolos.forEach(bolo => {
+        description += `• ${bolo.boloId} - ${bolo.reason}\n`;
+      });
+    } else if (character.status === 'wanted') {
       description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
     } else {
       description += `✅ **CLEAN**`;
@@ -455,8 +518,9 @@ export async function handleLEOSearchPlateModal(interaction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
+    const embedColor = vehicleBolos.length > 0 || character.status === 'wanted' ? '#ff0000' : '#00ff00';
     const embed = new EmbedBuilder()
-      .setColor(character.status === 'wanted' ? '#ff0000' : '#00ff00')
+      .setColor(embedColor)
       .setTitle(`License Plate Search: ${plate}`)
       .setDescription(description)
       .setFooter({ text: 'EverLink' })
@@ -720,7 +784,7 @@ export async function handleLEOAttachResponse(interaction) {
 }
 
 export async function handleLEOSearchCharacterModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('character_search');
+  const characterName = capitalizeName(interaction.fields.getTextInputValue('character_search'));
 
   try {
     // Verify permissions
@@ -868,7 +932,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
 }
 
 export async function handleLEORevokeWeaponModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('character_name_for_revoke');
+  const characterName = capitalizeName(interaction.fields.getTextInputValue('character_name_for_revoke'));
   const weaponName = interaction.fields.getTextInputValue('weapon_name_to_revoke');
   const revokeReason = interaction.fields.getTextInputValue('revoke_reason');
 
@@ -940,7 +1004,7 @@ export async function handleLEOIssueTicketModal(interaction) {
   console.log('🎫 Ticket modal submitted by:', interaction.user.tag);
   
   try {
-    const characterName = interaction.fields.getTextInputValue('ticket_character_name') || '';
+    const characterName = capitalizeName(interaction.fields.getTextInputValue('ticket_character_name')) || '';
     const violation = interaction.fields.getTextInputValue('ticket_violation') || '';
     const description = interaction.fields.getTextInputValue('ticket_description') || '';
     const fineAmount = parseInt(interaction.fields.getTextInputValue('ticket_fine') || '0') || 0;
@@ -1021,7 +1085,7 @@ export async function handleLEOIssueTicketModal(interaction) {
 }
 
 export async function handleLEOCreateBOLOModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('bolo_character_name');
+  const characterName = capitalizeName(interaction.fields.getTextInputValue('bolo_character_name'));
   const reason = interaction.fields.getTextInputValue('bolo_reason');
   const description = interaction.fields.getTextInputValue('bolo_description');
   const vehiclesInput = interaction.fields.getTextInputValue('bolo_vehicles');
@@ -1247,6 +1311,94 @@ export async function handleLEOViewCharacterProfile(interaction) {
     });
   } catch (error) {
     console.error('Error viewing character profile:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOManageBolosSelect(interaction) {
+  const boloId = interaction.values[0];
+
+  try {
+    const bolo = await BOLO.findOne({ boloId, guildId: interaction.guildId });
+
+    if (!bolo) {
+      return interaction.reply({
+        embeds: [errorEmbed('BOLO not found.')],
+        ephemeral: true,
+      });
+    }
+
+    let description = `**BOLO ID:** ${bolo.boloId}\n`;
+    description += `**Character:** ${bolo.characterName}\n`;
+    description += `**Reason:** ${bolo.reason}\n`;
+    if (bolo.description) description += `**Details:** ${bolo.description}\n`;
+    
+    if (bolo.vehicles.length > 0) {
+      description += `\n**Associated Vehicles:**\n`;
+      bolo.vehicles.forEach(v => {
+        description += `• ${v.make} ${v.model} (${v.color})`;
+        if (v.licensePlate) description += ` - Plate: **${v.licensePlate}**`;
+        description += '\n';
+      });
+    }
+
+    description += `\n**Issued By:** <@${bolo.issuedBy}>\n`;
+    description += `**Created:** <t:${Math.floor(bolo.createdAt.getTime() / 1000)}:R>`;
+
+    const deleteButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`leo_delete_bolo_${bolo.boloId}`)
+          .setLabel('🗑️ Delete BOLO')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('back_to_leo_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+    const embed = new EmbedBuilder()
+      .setColor('#ff0000')
+      .setTitle(`BOLO Details`)
+      .setDescription(description)
+      .setFooter({ text: 'EverLink' })
+      .setTimestamp();
+
+    return interaction.update({
+      embeds: [embed],
+      components: [deleteButton],
+    });
+  } catch (error) {
+    console.error('Error managing BOLO:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEODeleteBOLO(interaction) {
+  const boloId = interaction.customId.replace('leo_delete_bolo_', '');
+
+  try {
+    const bolo = await BOLO.findOneAndDelete({ boloId, guildId: interaction.guildId });
+
+    if (!bolo) {
+      return interaction.reply({
+        embeds: [errorEmbed('BOLO not found or already deleted.')],
+        ephemeral: true,
+      });
+    }
+
+    return interaction.reply({
+      embeds: [successEmbed('BOLO Deleted', `BOLO **${boloId}** for ${bolo.characterName} has been removed.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error deleting BOLO:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

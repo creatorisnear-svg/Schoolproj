@@ -2,6 +2,7 @@ import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, Strin
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADCharacter from '../models/CADCharacter.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
+import { capitalizeName } from '../utils/nameFormatter.js';
 
 export async function handleCivilianDatabaseMenu(interaction) {
   const choice = interaction.values[0];

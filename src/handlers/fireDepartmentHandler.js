@@ -4,6 +4,7 @@ import CADConfig from '../models/CADConfig.js';
 import CADCharacter from '../models/CADCharacter.js';
 import EmergencyCall from '../models/EmergencyCall.js';
 import { errorEmbed, successEmbed, infoEmbed } from '../utils/embedBuilder.js';
+import { capitalizeName } from '../utils/nameFormatter.js';
 
 export async function handleFireDepartmentMenu(interaction) {
   const choice = interaction.values[0];
@@ -203,7 +204,7 @@ export async function handleFireDepartmentMenu(interaction) {
 }
 
 export async function handleFDCharacterCreateModal(interaction) {
-  const characterName = interaction.fields.getTextInputValue('character_name');
+  const characterName = capitalizeName(interaction.fields.getTextInputValue('character_name'));
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
   const hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;

@@ -49,6 +49,7 @@ export async function execute(interaction) {
             { label: '👤 Search Character Name', value: 'search_character' },
             { label: '📋 View Wanted List', value: 'wanted_list' },
             { label: '🚨 View Active BOLOs', value: 'active_bolos' },
+            { label: '🚨 Manage BOLOs', value: 'manage_bolos' },
             { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
             { label: '🎫 Issue Traffic Ticket', value: 'issue_ticket' },
             { label: '🚨 Create BOLO', value: 'create_bolo' }
