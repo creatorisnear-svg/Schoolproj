@@ -13,6 +13,14 @@ export const data = new SlashCommandBuilder()
   .addRoleOption(option =>
     option.setName('role')
       .setDescription('The role to add as staff')
+      .setRequired(false))
+  .addStringOption(option =>
+    option.setName('action')
+      .setDescription('Choose to add staff or remove all staff')
+      .addChoices(
+        { name: 'Add', value: 'add' },
+        { name: 'Remove All Staff', value: 'remove_all' }
+      )
       .setRequired(false));
 
 export async function execute(interaction) {
@@ -25,6 +33,23 @@ export async function execute(interaction) {
 
   const user = interaction.options.getUser('user');
   const role = interaction.options.getRole('role');
+  const action = interaction.options.getString('action') || 'add';
+
+  if (action === 'remove_all') {
+    try {
+      const result = await Staff.deleteMany({ guildId: interaction.guildId });
+      return interaction.reply({
+        embeds: [successEmbed('All Staff Removed', `Removed ${result.deletedCount} staff member(s) from the bot staff team.`)],
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error('Error removing all staff:', error);
+      return interaction.reply({
+        embeds: [errorEmbed('An error occurred while removing staff.')],
+        ephemeral: true,
+      });
+    }
+  }
 
   if (!user && !role) {
     return interaction.reply({
