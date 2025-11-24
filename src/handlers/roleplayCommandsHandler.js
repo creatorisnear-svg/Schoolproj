@@ -368,12 +368,14 @@ const recent911Submissions = new Map();
 
 export async function handle911ReportModal(interaction) {
   try {
+    // Immediately defer the reply to prevent interaction timeout
+    await interaction.deferReply({ ephemeral: true });
+
     // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
     const submissionKey = `${interaction.guildId}-${interaction.user.id}`;
     if (recent911Submissions.has(submissionKey)) {
-      return interaction.reply({
+      return interaction.editReply({
         content: '⏳ Please wait before submitting another 911 report.',
-        ephemeral: true,
       });
     }
     recent911Submissions.set(submissionKey, true);
@@ -388,18 +390,16 @@ export async function handle911ReportModal(interaction) {
     const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
 
     if (!roleplayConfig || !roleplayConfig.use911Channel) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('911 channel not configured.')],
-        ephemeral: true,
       });
     }
 
     const channel = await interaction.guild.channels.fetch(roleplayConfig.use911Channel).catch(() => null);
 
     if (!channel) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('911 channel not found.')],
-        ephemeral: true,
       });
     }
 
@@ -454,15 +454,14 @@ export async function handle911ReportModal(interaction) {
       embeds: [emergencyEmbed] 
     });
 
-    return interaction.reply({
+    return interaction.editReply({
       content: '✅ 911 report submitted!',
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error handling 911 report:', error);
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [errorEmbed('An error occurred while submitting the report.')],
-      ephemeral: true,
+      content: '',
     });
   }
 }
