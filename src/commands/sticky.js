@@ -68,10 +68,13 @@ export async function execute(interaction) {
     const formattedMessage = `__**Stickied Message:**__\n\n${messageContent}`;
 
     // Post the sticky message
+    console.log(`📌 Posting sticky message to ${channel.name}...`);
     const stickyMessage = await channel.send(formattedMessage);
+    console.log(`📌 Sticky message posted with ID: ${stickyMessage.id}`);
 
     // Save to database
-    await Sticky.create({
+    console.log(`📌 Saving sticky to database for guild ${guildId}, channel ${channel.id}...`);
+    const savedSticky = await Sticky.create({
       guildId,
       channelId: channel.id,
       messageId: stickyMessage.id,
@@ -79,6 +82,7 @@ export async function execute(interaction) {
       createdBy: userId,
       messageCount: 0,
     });
+    console.log(`📌 Sticky saved to database with ID: ${savedSticky._id}`);
 
     return interaction.reply({
       content: `✅ Sticky message created in ${channel}`,
