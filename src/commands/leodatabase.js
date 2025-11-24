@@ -44,9 +44,10 @@ export async function execute(interaction) {
           .setCustomId('leodatabase_menu')
           .setPlaceholder('Choose an action...')
           .addOptions(
-            { label: 'Search License Plate', value: 'search_plate' },
-            { label: 'Search Character Name', value: 'search_character' },
-            { label: 'View Wanted List', value: 'wanted_list' }
+            { label: '🚨 View Active 911 Calls', value: 'active_calls' },
+            { label: '🔍 Search License Plate', value: 'search_plate' },
+            { label: '👤 Search Character Name', value: 'search_character' },
+            { label: '📋 View Wanted List', value: 'wanted_list' }
           )
       );
 

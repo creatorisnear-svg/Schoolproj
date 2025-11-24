@@ -260,14 +260,14 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
             .addOptions(
               { label: '🚑 Select 911 Channel', value: 'setup_911' },
               { label: '🚔 Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
-              { label: '🚒 Set Fire Department Roles (Pinged on Dispatch)', value: 'set_fd_roles' },
+              { label: '🚒 Set Fire Department Roles (Pinged on 911)', value: 'set_fd_roles' },
               { label: '👮 Set Staff Roles', value: 'set_staff_roles' },
               { label: '✅ Done - Back to Main Menu', value: 'emergency_done' }
             )
         );
 
       return interaction.reply({
-        content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports and CAD dispatch:',
+        content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
         components: [emergencyMenu],
         ephemeral: true,
       });
@@ -498,6 +498,7 @@ export async function handle911ReportModal(interaction) {
 
     // Get LEO and Fire Department roles to ping
     const CADConfig = await import('../models/CADConfig.js').then(m => m.default);
+    const EmergencyCall = await import('../models/EmergencyCall.js').then(m => m.default);
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
     
     let mentions = [];
@@ -511,6 +512,22 @@ export async function handle911ReportModal(interaction) {
     }
     const mention = mentions.length > 0 ? mentions.join(' ') : '@here Emergency report incoming!';
 
+    // Create emergency call record
+    const callId = `${interaction.guildId}-${Date.now()}`;
+    const emergencyCall = new EmergencyCall({
+      guildId: interaction.guildId,
+      callId,
+      issue,
+      location,
+      suspectsDescription: suspectsDesc,
+      lastSeen,
+      contact,
+      reporterUsername: interaction.user.username,
+      reporterId: interaction.user.id,
+      status: 'active'
+    });
+    await emergencyCall.save();
+
     const emergencyEmbed = new EmbedBuilder()
       .setColor('#ff0000')
       .setTitle('🚨 911 Emergency Report')
@@ -522,7 +539,7 @@ export async function handle911ReportModal(interaction) {
         { name: 'Last Seen', value: lastSeen, inline: false },
         { name: 'Contact Info', value: contact, inline: false }
       )
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: `EverLink | Call ID: ${callId}` })
       .setTimestamp();
 
     await channel.send({ 

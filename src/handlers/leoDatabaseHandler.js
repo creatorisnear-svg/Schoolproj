@@ -1,7 +1,8 @@
-import { ActionRowBuilder, TextInputBuilder, TextInputStyle, ModalBuilder } from 'discord.js';
+import { ActionRowBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADConfig from '../models/CADConfig.js';
 import CADCharacter from '../models/CADCharacter.js';
+import EmergencyCall from '../models/EmergencyCall.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { EmbedBuilder } from 'discord.js';
 
@@ -63,6 +64,64 @@ export async function handleLEODatabaseMenu(interaction) {
         );
 
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'active_calls') {
+      const activeCalls = await EmergencyCall.find({
+        guildId: interaction.guildId,
+        status: 'active'
+      }).sort({ timestamp: -1 });
+
+      if (activeCalls.length === 0) {
+        return interaction.reply({
+          embeds: [infoEmbed('Active 911 Calls', 'No active emergency calls.')],
+          ephemeral: true,
+        });
+      }
+
+      const embeds = activeCalls.map((call, index) => {
+        const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'None';
+        const attached = call.attachedLeoIds.length > 0 
+          ? call.attachedLeoIds.map(id => `<@${id}>`).join(', ')
+          : 'None';
+
+        let description = `**Issue:** ${call.issue}\n`;
+        description += `**Location:** ${call.location}\n`;
+        description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n\n`;
+        description += `**Status:**\n`;
+        description += `• Primary Response: ${responding}\n`;
+        description += `• Attached Units: ${attached}\n`;
+        if (call.suspectsDescription) description += `\n**Suspects & Vehicles:** ${call.suspectsDescription}\n`;
+        if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
+
+        return new EmbedBuilder()
+          .setColor('#ff6600')
+          .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
+          .setDescription(description)
+          .setFooter({ text: `EverLink | ID: ${call.callId}` })
+          .setTimestamp(call.timestamp);
+      });
+
+      // Create selection menu for choosing a call to respond to
+      const callOptions = activeCalls.slice(0, 25).map((call, index) => ({
+        label: `Call #${index + 1}: ${call.issue}`,
+        value: call.callId,
+        description: call.location
+      }));
+
+      const callMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('leodatabase_respond_call')
+            .setPlaceholder('Select a call to respond to...')
+            .addOptions(callOptions)
+        );
+
+      return interaction.reply({
+        embeds,
+        components: [callMenu],
+        ephemeral: true,
+      });
     }
 
     if (choice === 'wanted_list') {
@@ -199,6 +258,161 @@ export async function handleLEOSearchPlateModal(interaction) {
     });
   } catch (error) {
     console.error('Error searching license plate:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEORespondCall(interaction) {
+  const callId = interaction.values[0];
+
+  try {
+    // Verify permissions
+    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    if (!roleplayConfig || !roleplayConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('Roleplay commands are not enabled.')],
+        ephemeral: true,
+      });
+    }
+
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+
+    if (!hasLeoRole) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access denied.')],
+        ephemeral: true,
+      });
+    }
+
+    const call = await EmergencyCall.findOne({ callId, guildId: interaction.guildId });
+
+    if (!call) {
+      return interaction.reply({
+        embeds: [errorEmbed('Call not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (call.status !== 'active') {
+      return interaction.reply({
+        embeds: [errorEmbed('This call is no longer active.')],
+        ephemeral: true,
+      });
+    }
+
+    // Check if LEO is already responding
+    if (call.respondingLeoId === interaction.user.id) {
+      return interaction.reply({
+        embeds: [errorEmbed('You are already the primary responder for this call.')],
+        ephemeral: true,
+      });
+    }
+
+    // Check if LEO is already attached
+    if (call.attachedLeoIds.includes(interaction.user.id)) {
+      return interaction.reply({
+        embeds: [errorEmbed('You are already attached to this call.')],
+        ephemeral: true,
+      });
+    }
+
+    // Show options to respond or attach
+    const respondBtn = new ButtonBuilder()
+      .setCustomId(`leo_respond_primary_${callId}`)
+      .setLabel('Respond as Primary')
+      .setStyle(ButtonStyle.Primary);
+
+    const attachBtn = new ButtonBuilder()
+      .setCustomId(`leo_respond_attach_${callId}`)
+      .setLabel('Attach to Call')
+      .setStyle(ButtonStyle.Secondary);
+
+    const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
+
+    return interaction.reply({
+      content: `Choose how you want to respond to **${call.issue}** at **${call.location}**:`,
+      components: [row],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error responding to call:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOPrimaryResponse(interaction) {
+  const callId = interaction.customId.split('_').pop();
+
+  try {
+    const call = await EmergencyCall.findOne({ callId, guildId: interaction.guildId });
+
+    if (!call) {
+      return interaction.reply({
+        embeds: [errorEmbed('Call not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (call.respondingLeoId && call.respondingLeoId !== interaction.user.id) {
+      return interaction.reply({
+        embeds: [errorEmbed(`This call already has a primary responder: <@${call.respondingLeoId}>`)],
+        ephemeral: true,
+      });
+    }
+
+    call.respondingLeoId = interaction.user.id;
+    call.respondingLeoUsername = interaction.user.username;
+    await call.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Response Accepted', `You are now the primary responder for **${call.issue}** at **${call.location}**`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error accepting primary response:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleLEOAttachResponse(interaction) {
+  const callId = interaction.customId.split('_').pop();
+
+  try {
+    const call = await EmergencyCall.findOne({ callId, guildId: interaction.guildId });
+
+    if (!call) {
+      return interaction.reply({
+        embeds: [errorEmbed('Call not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (call.attachedLeoIds.includes(interaction.user.id)) {
+      return interaction.reply({
+        embeds: [errorEmbed('You are already attached to this call.')],
+        ephemeral: true,
+      });
+    }
+
+    call.attachedLeoIds.push(interaction.user.id);
+    await call.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Attached to Call', `You have attached to **${call.issue}** at **${call.location}**`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error attaching to call:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

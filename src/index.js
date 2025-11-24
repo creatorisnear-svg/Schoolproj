@@ -172,6 +172,7 @@ client.on('interactionCreate', async interaction => {
     const { handleTwitterPostModal, handleAnonPostModal, handle911ReportModal } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADCharacterCreateModal, handleCADVehicleAddModal, handleCADGunAddModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
+    const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
@@ -242,6 +243,11 @@ client.on('interactionCreate', async interaction => {
       await handlePanelTypesSelect(interaction);
     } else if (interaction.customId === 'leodatabase_menu') {
       await handleLEODatabaseMenu(interaction);
+    } else if (interaction.customId === 'civiliandatabase_menu') {
+      await handleCivilianDatabaseMenu(interaction);
+    } else if (interaction.customId === 'leodatabase_respond_call') {
+      const { handleLEORespondCall } = await import('./handlers/leoDatabaseHandler.js');
+      await handleLEORespondCall(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
@@ -315,6 +321,16 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId.startsWith('ticket_delete_')) {
       const { handleTicketDeleteButton } = await import('./handlers/ticketHandler.js');
       await handleTicketDeleteButton(interaction);
+    }
+
+    if (interaction.customId.startsWith('leo_respond_primary_')) {
+      const { handleLEOPrimaryResponse } = await import('./handlers/leoDatabaseHandler.js');
+      await handleLEOPrimaryResponse(interaction);
+    }
+
+    if (interaction.customId.startsWith('leo_respond_attach_')) {
+      const { handleLEOAttachResponse } = await import('./handlers/leoDatabaseHandler.js');
+      await handleLEOAttachResponse(interaction);
     }
   }
 });

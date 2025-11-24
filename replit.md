@@ -11,31 +11,41 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 ## System Architecture
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
-**Roleplay Commands System (911, Twitter, Anon, CAD):**
-Members access roleplay commands directly as slash commands.
+**Roleplay Commands System (911, Twitter, Anon):**
+Members access roleplay commands through `/civiliandatabase` (civilians) and `/leodatabase` (LEO only).
 
 **Setup Process:**
 1. Staff runs `/roleplaycommandsenable true` or `/roleplaycommandsenable false` to enable/disable the entire system
 2. Staff runs `/roleplaycommandsetup` to configure which commands are available through dropdown menu with options:
-   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and CAD dispatch:
+   - **🚨 911 & CAD - Emergency/Dispatch** → Combined setup for emergency reporting and LEO response system:
      - Select 911 Channel for emergency reports
-     - Set LEO Roles (automatically pinged on 911 reports)
-     - Set Fire Department Roles (automatically pinged on CAD dispatch)
+     - Set LEO Roles (automatically pinged on 911 reports, can respond/attach to calls)
+     - Set Fire Department Roles (automatically pinged on 911 reports)
      - Set Staff Roles for CAD access
    - **🐦 Twitter - Public Messages** → Select channel for public OOC posts  
    - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
 
-**Emergency Role Pinging:**
-- **911 Reports:** When a member submits a 911 report via `/911`, the message automatically pings all configured LEO and Fire Department roles in the dispatch channel
+**Member Access (Civilians):**
+- `/civiliandatabase` - Menu with options to:
+  - 🚨 Report 911 Emergency - Submit emergency with form modal
+  - 🐦 Post to Twitter - Share public OOC message
+  - 🤫 Post Anonymously - Post anonymous/black market message
 
-**Member Access:**
-- `/911` - Report an emergency (if configured; pings LEO and Fire Department roles)
-- `/twitter` - Post a public OOC message (if configured)
-- `/anon` - Post an anonymous/black market message (if configured)
-- `/cad` - View CAD dispatch information (if enabled)
+**LEO Access:**
+- `/leodatabase` - Menu with options to:
+  - 🚨 View Active 911 Calls - See all active emergency calls with response options
+    - **Respond as Primary:** Claim the call (only one primary responder per call)
+    - **Attach to Call:** Join the call as supporting unit (multiple can attach)
+  - 🔍 Search License Plate - Look up character profiles by vehicle plate
+  - 👤 Search Character Name - Search for character profiles by name
+  - 📋 View Wanted List - See all wanted suspects
 
-All commands are only available if staff has enabled them through setup.
+**Emergency System Features:**
+- **911 Call Tracking:** All emergency calls are tracked in the database with unique IDs
+- **Primary Response:** First LEO to claim primary response is marked as main responder
+- **Unit Attachment:** Other LEOs can attach as supporting units without removing primary responder
+- **Role Pinging:** When 911 report is submitted, all configured LEO and Fire Department roles are automatically pinged
 
 **CAD System (Computer Aided Dispatch):**
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
@@ -52,11 +62,12 @@ GTA5 RP CAD system with character and vehicle management for LEO/Fire Department
 - View wanted list of all suspects
 - Only available if roleplay commands are enabled and user has LEO role
 
-**CAD Configuration (through `/roleplaycommandsetup`):**
-- Staff configures CAD through `/roleplaycommandsetup` → select "🚨 911 & CAD - Emergency/Dispatch"
+**CAD & Emergency Configuration (through `/roleplaycommandsetup`):**
+- Staff configures emergency system through `/roleplaycommandsetup` → select "🚨 911 & CAD - Emergency/Dispatch"
+- Members use `/civiliandatabase` to report emergencies and post messages
+- LEO use `/leodatabase` to view active calls, search characters, and manage responses
 - Separate `/cadcharacter` command for members to create characters and add vehicles/guns
-- Separate `/leodatabase` command for LEO to search license plates, character names, and view wanted list
-- Each server has independent CAD configuration
+- Each server has independent CAD and emergency call configuration
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded user interface.
