@@ -51,8 +51,6 @@ const ticketConfigSchema = new mongoose.Schema({
   },
 });
 
-ticketConfigSchema.index({ guildId: 1 });
-
 const TicketConfig = mongoose.model('TicketConfig', ticketConfigSchema);
 
 export default TicketConfig;

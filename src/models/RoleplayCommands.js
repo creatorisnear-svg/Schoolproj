@@ -52,8 +52,6 @@ const roleplayCommandsSchema = new mongoose.Schema({
   },
 });
 
-roleplayCommandsSchema.index({ guildId: 1 });
-
 const RoleplayCommands = mongoose.model('RoleplayCommands', roleplayCommandsSchema);
 
 export default RoleplayCommands;

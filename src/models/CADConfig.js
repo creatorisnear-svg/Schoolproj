@@ -19,8 +19,6 @@ const cadConfigSchema = new mongoose.Schema({
   },
 });
 
-cadConfigSchema.index({ guildId: 1 });
-
 const CADConfig = mongoose.model('CADConfig', cadConfigSchema);
 
 export default CADConfig;
