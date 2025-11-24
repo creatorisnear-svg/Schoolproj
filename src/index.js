@@ -259,6 +259,9 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'fd_vehicle_character_select') {
       const { handleFDVehicleCharacterSelect } = await import('./handlers/fireDepartmentHandler.js');
       await handleFDVehicleCharacterSelect(interaction);
+    } else if (interaction.customId === 'fd_respond_call') {
+      const { handleFDRespondCall } = await import('./handlers/fireDepartmentHandler.js');
+      await handleFDRespondCall(interaction);
     } else {
       await handleSelectMenu(interaction);
     }
@@ -342,6 +345,16 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId.startsWith('leo_respond_attach_')) {
       const { handleLEOAttachResponse } = await import('./handlers/leoDatabaseHandler.js');
       await handleLEOAttachResponse(interaction);
+    }
+
+    if (interaction.customId.startsWith('fd_respond_primary_')) {
+      const { handleFDPrimaryResponse } = await import('./handlers/fireDepartmentHandler.js');
+      await handleFDPrimaryResponse(interaction);
+    }
+
+    if (interaction.customId.startsWith('fd_respond_attach_')) {
+      const { handleFDAttachResponse } = await import('./handlers/fireDepartmentHandler.js');
+      await handleFDAttachResponse(interaction);
     }
   }
 });

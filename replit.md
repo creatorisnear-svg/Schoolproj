@@ -45,6 +45,9 @@ Members access roleplay commands through `/civiliandatabase` (civilians) and `/l
 
 **Fire Department Access:**
 - `/firedepartmentdatabase` - Menu with options to:
+  - 🚨 View Active 911 Calls - See all active emergency calls with response options
+    - **Respond as Primary:** Claim the call (only one primary responder per call)
+    - **Attach to Call:** Join the call as supporting unit (multiple can attach)
   - 👤 Create FD Character - Create a fire department character profile
   - 🚗 Add Vehicle - Add a vehicle to an existing FD character
 
