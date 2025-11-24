@@ -148,10 +148,9 @@ export async function handleSelectRoleForRequest(interaction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-    await interaction.reply({
+    await interaction.update({
       content: 'Step 2: Select which roles can approve requests for this role (or click Skip)',
       components: [approverRoleSelect, skipButtonRow],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error selecting role for request:', error);
@@ -186,10 +185,9 @@ export async function handleSelectApproverRoles(interaction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-    await interaction.reply({
+    await interaction.update({
       content: 'Step 3: Select individual members who can also approve (or click Skip)',
       components: [approverMemberSelect, skipButtonRow],
-      ephemeral: true,
     });
   } catch (error) {
     console.error('Error selecting approver roles:', error);
