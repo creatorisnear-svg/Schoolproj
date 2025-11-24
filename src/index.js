@@ -210,6 +210,7 @@ client.on('interactionCreate', async interaction => {
     const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
+    const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
