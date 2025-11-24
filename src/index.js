@@ -64,6 +64,9 @@ client.once('clientReady', async () => {
 
   // Start auto-deletion for expired BOLOs
   startBOLOAutoDelete();
+
+  // Start status heartbeat sender
+  startStatusHeartbeatSender();
 });
 
 async function clearAndRegisterCommands() {
@@ -229,6 +232,60 @@ async function startBOLOAutoDelete() {
   }, 60000); // Check every minute
 
   console.log('⏱️ BOLO auto-delete started (1-hour expiration for all BOLOs)');
+}
+
+async function startStatusHeartbeatSender() {
+  const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
+
+  setInterval(async () => {
+    try {
+      const statusConfigs = await StatusHeartbeat.find({ enabled: true });
+
+      for (const config of statusConfigs) {
+        try {
+          const guild = client.guilds.cache.get(config.guildId);
+          if (!guild || !config.heartbeatChannelId) continue;
+
+          const channel = await guild.channels.fetch(config.heartbeatChannelId).catch(() => null);
+          if (!channel || !channel.isTextBased()) continue;
+
+          // Send heartbeat message
+          const heartbeatMsg = await channel.send({
+            content: '🟢 **EverLink Heartbeat** - Status: UP',
+            embeds: [{
+              color: 0x00FF00,
+              title: 'EverLink Status',
+              description: 'System is operational',
+              footer: { text: 'EverLink' },
+              timestamp: new Date()
+            }]
+          });
+
+          // Store message ID for tracking
+          config.lastHeartbeatMessageId = heartbeatMsg.id;
+          await config.save();
+
+          // Delete after specified seconds
+          setTimeout(async () => {
+            try {
+              await heartbeatMsg.delete();
+              console.log(`🗑️ Deleted heartbeat message for guild ${config.guildId}`);
+            } catch (err) {
+              console.log(`⚠️ Could not delete heartbeat message for guild ${config.guildId}`);
+            }
+          }, config.deleteAfterSeconds * 1000);
+
+          console.log(`💚 Sent heartbeat to ${guild.name}`);
+        } catch (error) {
+          console.error(`Error sending heartbeat for guild ${config.guildId}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in status heartbeat sender:', error);
+    }
+  }, 8 * 60 * 1000); // Check every 8 minutes
+
+  console.log('💚 Status heartbeat sender started (8-minute interval)');
 }
 
 client.on('interactionCreate', async interaction => {

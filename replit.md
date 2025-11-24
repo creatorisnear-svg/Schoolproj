@@ -11,9 +11,9 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 - General members restricted to roleplay/verification commands only
 
 ## Permission Structure
-**Admins** - Can use ALL 30 commands (includes all staff permissions)
+**Admins** - Can use ALL 34 commands (includes all staff permissions)
 - **Admin-Only (2 commands):** `/addstaff`, `/removestaff`
-**Staff** - Added via `/addstaff`, can use 28 administrative commands (all except addstaff & removestaff)
+**Staff** - Added via `/addstaff`, can use 32 administrative commands (all except addstaff & removestaff)
 **General Members** - Can only use roleplay/verification commands (7 commands)
 
 ## System Architecture
@@ -40,9 +40,10 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Roleplay Calendar:** Weekly RP events with automatic timezone conversion.
 - **Sticky Messages:** Auto-reposts every 1 message with a "__**Stickied Message:**__" prefix.
 - **Anti-Promoting System:** Detects and removes non-whitelisted Discord invite links with a staff bypass option.
-- **Reaction Role System:** Up to 5 emoji-role pairs per message with a menu-based workflow.
+- **Reaction Role System:** Up to 5 emoji-role pairs per message (works with ANY message, not just bot-created ones). Configurable channel and message IDs for external messages.
 - **Ticket Support System:** Custom ticket types with role access control and automatic channel creation.
 - **Role Request System:** Allows members to request roles and staff to approve/deny via DMs. Configurable for specific roles and approvers.
+- **Status Heartbeat System:** Sends periodic heartbeat messages to a configured channel (default every 8 minutes, configurable 1-1440 minutes). Other bots can listen for these messages to monitor EverLink status. Messages auto-delete after 1 minute (configurable).
 - **Database Integration:** Mongoose schemas ensure per-server data isolation and persistence.
 
 **Core Workflow for Feature Management:**

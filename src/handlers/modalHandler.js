@@ -32,6 +32,10 @@ export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'antipromotingsetup_add_link_modal') {
     await handleAntiPromotingAddLinkModal(interaction);
   }
+
+  if (interaction.customId === 'status_set_interval_modal') {
+    await handleStatusSetIntervalModal(interaction);
+  }
 }
 
 async function handleVerifyModal(interaction) {
@@ -302,6 +306,41 @@ async function handleAntiPromotingAddLinkModal(interaction) {
     console.error('Stack:', error.stack);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the link.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleStatusSetIntervalModal(interaction) {
+  const { default: StatusHeartbeat } = await import('../models/StatusHeartbeat.js');
+  
+  try {
+    const intervalInput = interaction.fields.getTextInputValue('interval_minutes');
+    const intervalMinutes = parseInt(intervalInput);
+
+    if (isNaN(intervalMinutes) || intervalMinutes < 1 || intervalMinutes > 1440) {
+      return interaction.reply({
+        embeds: [errorEmbed('Invalid interval. Please enter a number between 1 and 1440 minutes.')],
+        flags: 64,
+      });
+    }
+
+    let statusConfig = await StatusHeartbeat.findOne({ guildId: interaction.guildId });
+    if (!statusConfig) {
+      statusConfig = await StatusHeartbeat.create({ guildId: interaction.guildId });
+    }
+
+    statusConfig.intervalMinutes = intervalMinutes;
+    await statusConfig.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Interval Updated', `Heartbeat messages will now be sent every ${intervalMinutes} minute(s).`)],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error in status interval modal:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
       flags: 64,
     });
   }
