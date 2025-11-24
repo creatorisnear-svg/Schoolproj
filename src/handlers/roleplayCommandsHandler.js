@@ -496,14 +496,20 @@ export async function handle911ReportModal(interaction) {
       });
     }
 
-    // Get LEO roles to ping
+    // Get LEO and Fire Department roles to ping
     const CADConfig = await import('../models/CADConfig.js').then(m => m.default);
     const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
     
-    let mention = '';
-    if (cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0) {
-      mention = cadConfig.leoRoleIds.map(id => `<@&${id}>`).join(' ');
+    let mentions = [];
+    if (cadConfig) {
+      if (cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0) {
+        mentions.push(...cadConfig.leoRoleIds.map(id => `<@&${id}>`));
+      }
+      if (cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0) {
+        mentions.push(...cadConfig.fireDepartmentRoleIds.map(id => `<@&${id}>`));
+      }
     }
+    const mention = mentions.length > 0 ? mentions.join(' ') : '@here Emergency report incoming!';
 
     const emergencyEmbed = new EmbedBuilder()
       .setColor('#ff0000')
@@ -520,7 +526,7 @@ export async function handle911ReportModal(interaction) {
       .setTimestamp();
 
     await channel.send({ 
-      content: mention || '@here Emergency report incoming!',
+      content: mention,
       embeds: [emergencyEmbed] 
     });
 

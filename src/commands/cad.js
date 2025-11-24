@@ -18,21 +18,6 @@ export async function execute(interaction) {
       });
     }
 
-    // Get LEO and Fire Department roles to ping
-    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-    
-    let mention = '';
-    if (cadConfig) {
-      const mentions = [];
-      if (cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0) {
-        mentions.push(...cadConfig.leoRoleIds.map(id => `<@&${id}>`));
-      }
-      if (cadConfig.fireDepartmentRoleIds && cadConfig.fireDepartmentRoleIds.length > 0) {
-        mentions.push(...cadConfig.fireDepartmentRoleIds.map(id => `<@&${id}>`));
-      }
-      mention = mentions.join(' ');
-    }
-
     const cadEmbed = new EmbedBuilder()
       .setColor('#0099ff')
       .setTitle('📡 GTA5 RP - CAD System')
@@ -46,7 +31,6 @@ export async function execute(interaction) {
       .setTimestamp();
 
     return interaction.reply({
-      content: mention ? `${mention} Dispatch update:` : undefined,
       embeds: [cadEmbed],
       ephemeral: false,
     });

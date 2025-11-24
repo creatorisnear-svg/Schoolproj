@@ -26,15 +26,14 @@ Members access roleplay commands directly as slash commands.
    - **🤫 Anon - Anonymous Messages** → Select channel for anonymous/black market messages
    - **✅ Done - Close Setup** → Finish configuration
 
-**Emergency & Dispatch Role Pinging:**
-- **911 Reports:** When a member submits a 911 report via `/911`, the message automatically pings all configured LEO roles in the dispatch channel
-- **CAD Dispatch:** When a user views `/cad`, the message automatically pings all configured LEO and Fire Department roles
+**Emergency Role Pinging:**
+- **911 Reports:** When a member submits a 911 report via `/911`, the message automatically pings all configured LEO and Fire Department roles in the dispatch channel
 
 **Member Access:**
-- `/911` - Report an emergency (if configured; pings LEO roles)
+- `/911` - Report an emergency (if configured; pings LEO and Fire Department roles)
 - `/twitter` - Post a public OOC message (if configured)
 - `/anon` - Post an anonymous/black market message (if configured)
-- `/cad` - View CAD dispatch information (if enabled; pings LEO and FD roles)
+- `/cad` - View CAD dispatch information (if enabled)
 
 All commands are only available if staff has enabled them through setup.
 
