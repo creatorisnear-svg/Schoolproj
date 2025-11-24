@@ -46,10 +46,9 @@ export async function handleCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can access LEO features (search license plates, etc.):',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -62,10 +61,9 @@ export async function handleCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can access Fire Department features:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -78,17 +76,17 @@ export async function handleCADSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can manage the CAD system:',
         components: [row],
-        ephemeral: true,
       });
     }
 
     if (choice === 'setup_done') {
-      return interaction.reply({
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
         embeds: [successEmbed('CAD Setup Complete', 'Your CAD system is ready! Members can now create characters.')],
-        ephemeral: true,
       });
     }
   } catch (error) {

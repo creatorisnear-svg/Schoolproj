@@ -92,24 +92,9 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       cadConfig.enabled = true;
       await cadConfig.save();
 
-      const emergencyMenu = new ActionRowBuilder()
-        .addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('roleplaycommands_emergency_setup_menu')
-            .setPlaceholder('Choose emergency/dispatch option...')
-            .addOptions(
-              { label: '🚑 Select 911 Channel', value: 'setup_911' },
-              { label: '🚔 Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
-              { label: '🚒 Set Fire Department Roles (Pinged on 911)', value: 'set_fd_roles' },
-              { label: '👮 Set Staff Roles', value: 'set_staff_roles' },
-              { label: '✅ Done - Back to Main Menu', value: 'emergency_done' }
-            )
-        );
-
-      return interaction.reply({
-        content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
-        components: [emergencyMenu],
-        ephemeral: true,
+      const menuData = await showEmergencySetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
       });
     }
 
@@ -121,10 +106,9 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel for Twitter posts:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -136,10 +120,9 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel for anonymous messages:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -508,10 +491,9 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel where 911 reports will be sent:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -524,10 +506,9 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that will be pinged on 911 reports (LEO):',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -540,10 +521,9 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that will be pinged on 911 reports (Fire Department):',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -556,10 +536,9 @@ export async function handleRoleplayCommandsEmergencySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the roles that can manage the CAD/911 system:',
         components: [row],
-        ephemeral: true,
       });
     }
 

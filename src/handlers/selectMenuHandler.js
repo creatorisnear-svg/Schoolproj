@@ -194,10 +194,9 @@ async function handleVerifySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel where users can verify:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -209,10 +208,9 @@ async function handleVerifySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel where welcome messages will be sent:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -223,10 +221,9 @@ async function handleVerifySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the role that unverified members will have:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -237,10 +234,9 @@ async function handleVerifySetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the role that verified members will receive:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -294,9 +290,9 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'verify_setup_done') {
+      const menuData = createSetupMenu();
       return interaction.update({
-        content: '',
-        components: [],
+        ...menuData,
         embeds: [successEmbed('Verification system setup is complete. Your verification system is now active.')],
       });
     }

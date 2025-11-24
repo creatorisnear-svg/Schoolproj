@@ -106,10 +106,9 @@ export async function handleTicketSetupMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select the channel where the ticket panel should be sent:',
         components: [row],
-        ephemeral: true,
       });
     }
 
@@ -134,7 +133,7 @@ export async function handleTicketSetupMenu(interaction) {
     if (choice === 'view_types') {
       if (ticketConfig.ticketTypes.length === 0) {
         const menuData = await showSetupMenu(interaction);
-        return interaction.reply({
+        return interaction.update({
           ...menuData,
           embeds: [infoEmbed('Ticket Types', 'No ticket types configured yet.')],
         });
@@ -148,7 +147,7 @@ export async function handleTicketSetupMenu(interaction) {
         .join('\n');
 
       const menuData = await showSetupMenu(interaction);
-      return interaction.reply({
+      return interaction.update({
         ...menuData,
         embeds: [infoEmbed('Configured Ticket Types', typesList)],
       });
@@ -157,7 +156,7 @@ export async function handleTicketSetupMenu(interaction) {
     if (choice === 'remove_type') {
       if (ticketConfig.ticketTypes.length === 0) {
         const menuData = await showSetupMenu(interaction);
-        return interaction.reply({
+        return interaction.update({
           ...menuData,
           embeds: [errorEmbed('No ticket types to remove.')],
         });
@@ -177,17 +176,16 @@ export async function handleTicketSetupMenu(interaction) {
             )
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: 'Select a ticket type to remove:',
         components: [removeMenu],
-        ephemeral: true,
       });
     }
 
     if (choice === 'send_panel') {
       if (ticketConfig.ticketTypes.length === 0) {
         const menuData = await showSetupMenu(interaction);
-        return interaction.reply({
+        return interaction.update({
           ...menuData,
           embeds: [errorEmbed('Please add at least one ticket type before sending the panel.')],
         });
@@ -195,7 +193,7 @@ export async function handleTicketSetupMenu(interaction) {
 
       if (!ticketConfig.panelChannelId) {
         const menuData = await showSetupMenu(interaction);
-        return interaction.reply({
+        return interaction.update({
           ...menuData,
           embeds: [errorEmbed('Please select a channel for the panel first.')],
         });
@@ -217,10 +215,9 @@ export async function handleTicketSetupMenu(interaction) {
             )
         );
 
-      return interaction.reply({
+      return interaction.update({
         content: `Select which ticket types to include in this panel (sending to <#${ticketConfig.panelChannelId}>):`,
         components: [typeSelectMenu],
-        ephemeral: true,
       });
     }
 
