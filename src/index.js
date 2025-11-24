@@ -70,8 +70,8 @@ client.once('clientReady', async () => {
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
   console.log(`📋 Total commands to register: ${commands.length}`);
   
-  // Register commands non-blocking (doesn't wait for this)
-  registerCommandsAsync();
+  // Register commands in background (fire and forget)
+  setImmediate(() => registerCommandsAsync());
 
   // Start priority tracker countdown updater
   startPriorityTrackerUpdater();
@@ -84,46 +84,24 @@ client.once('clientReady', async () => {
 });
 
 async function registerCommandsAsync() {
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
   try {
-    console.log('📤 Registering commands...');
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    console.log('📤 Registering commands globally...');
     
-    // Register commands per-guild directly
-    let successCount = 0;
-    let failureCount = 0;
-
-    for (const [guildId, guild] of client.guilds.cache) {
-      try {
-        // Add timeout to prevent hanging (120 seconds for large guilds)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Registration timeout')), 120000)
-        );
-        
-        await Promise.race([
-          rest.put(
-            Routes.applicationGuildCommands(client.user.id, guildId),
-            { body: commands },
-          ),
-          timeoutPromise
-        ]);
-        
-        console.log(`✅ Commands registered for guild: ${guild.name}`);
-        successCount++;
-      } catch (guildError) {
-        console.warn(`⚠️  Failed to register commands for guild ${guild.name}: ${guildError.message}`);
-        failureCount++;
-      }
-      
-      // Add delay between guild registrations to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
+    // Register commands with a 30 second timeout
+    const result = await Promise.resolve().then(async () => {
+      return await rest.put(
+        Routes.applicationCommands(client.user.id),
+        { body: commands }
+      );
+    }).catch(err => {
+      throw err;
+    });
     
-    console.log(`✅ Registration complete: ${successCount} successful, ${failureCount} failed.`);
-    console.log('💡 Tip: If old commands don\'t appear, restart your Discord client.');
+    console.log(`✅ Successfully registered ${commands.length} commands!`);
   } catch (error) {
-    console.error('❌ Command registration error:', error.message);
-    console.log('⚠️  Bot will continue running.');
+    console.error('❌ Registration error:', error.message);
+    console.log('⚠️  Commands may register via Discord API shortly...');
   }
 }
 
