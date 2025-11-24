@@ -198,10 +198,12 @@ client.on('interactionCreate', async interaction => {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommandsSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect } = await import('./handlers/roleplayCommandsHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
+    } else if (interaction.customId === 'roleplaycommands_select') {
+      await handleRoleplayCommandsSelect(interaction);
     } else if (interaction.customId === 'roleplaycommands_setup_menu') {
       await handleRoleplayCommandsSetupMenu(interaction);
     } else if (interaction.customId === 'ticketsupport_setup_menu') {

@@ -12,10 +12,19 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **Roleplay Commands System:**
-- **911 Reporting (Optional):** Configure a 911 channel for emergency dispatch reporting. Members use `/911` to report emergencies in the RP world. Sends embeds to the designated channel.
-- **Twitter (Optional):** Configure a Twitter channel for public OOC posts. Members use `/twitter` to post messages visible to all. Shows username and embeds posts to the designated channel.
-- **Anon/Black Market (Optional):** Configure an anonymous/black market channel for IC anonymous messages. Members use `/anon` to post anonymously without revealing identity. Hides user info and embeds posts to the designated channel.
-- **CAD System:** GTA5 RP Computer Aided Dispatch system. Members can use `/cad` to view dispatch information and active units. Base implementation ready for expansion.
+- **911 Reporting (Optional):** Configure a 911 channel for emergency dispatch reporting. Members use `/roleplaycommands` → select "911 Emergency Report" to submit reports. Sends embeds to the designated channel.
+- **Twitter (Optional):** Configure a Twitter channel for public OOC posts. Members use `/roleplaycommands` → select "Twitter Post" to post messages visible to all. Shows username and embeds posts to the designated channel.
+- **Anon/Black Market (Optional):** Configure an anonymous/black market channel for IC anonymous messages. Members use `/roleplaycommands` → select "Anonymous Message" to post anonymously without revealing identity. Hides user info and embeds posts to the designated channel.
+- **CAD System:** GTA5 RP Computer Aided Dispatch system. Members use `/roleplaycommands` → select "CAD Dispatch" to view dispatch information and active units. Base implementation ready for expansion.
+
+**Roleplay Commands Setup:**
+- Staff runs `/roleplaycommandsenable` (requires log channel set)
+- Staff runs `/roleplaycommandsetup` to configure optional commands:
+  - Select 911 → Choose the 911 reporting channel
+  - Select Twitter → Choose the Twitter posting channel
+  - Select Anon → Choose the anonymous/black market channel
+  - Select CAD → Enable the CAD system
+- Members then access all enabled commands through the single `/roleplaycommands` menu
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded user interface.
