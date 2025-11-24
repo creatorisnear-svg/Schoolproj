@@ -5,6 +5,7 @@ import Priority from '../models/Priority.js';
 import { StrikeConfig } from '../models/Strike.js';
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import TicketConfig from '../models/TicketConfig.js';
+import RoleRequestConfig from '../models/RoleRequestConfig.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
@@ -58,9 +59,17 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Success)
         );
 
+      const enableRow3 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('enable_rolerequest')
+            .setLabel('Role Request')
+            .setStyle(ButtonStyle.Success)
+        );
+
       return interaction.reply({
         embeds: [embed],
-        components: [enableRow1, enableRow2],
+        components: [enableRow1, enableRow2, enableRow3],
         ephemeral: true,
       });
     } else {
@@ -103,9 +112,17 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Danger)
         );
 
+      const disableRow3 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('disable_rolerequest')
+            .setLabel('Role Request')
+            .setStyle(ButtonStyle.Danger)
+        );
+
       return interaction.reply({
         embeds: [embed],
-        components: [disableRow1, disableRow2],
+        components: [disableRow1, disableRow2, disableRow3],
         ephemeral: true,
       });
     }
@@ -158,6 +175,10 @@ export async function handleEnableCommandButton(interaction) {
         embeds: [embed],
         ephemeral: true,
       });
+    } else if (customId === 'enable_rolerequest') {
+      featureName = 'Role Request';
+      model = RoleRequestConfig;
+      setupCommand = 'Run `/rolerequestadd` to add role request types.';
     }
 
     // Save to database
@@ -217,6 +238,9 @@ export async function handleDisableCommandButton(interaction) {
         embeds: [embed],
         ephemeral: true,
       });
+    } else if (customId === 'disable_rolerequest') {
+      featureName = 'Role Request';
+      model = RoleRequestConfig;
     }
 
     // Save to database

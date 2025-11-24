@@ -266,6 +266,7 @@ client.on('interactionCreate', async interaction => {
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleFDCharacterCreateModal, handleFDVehicleAddModal } = await import('./handlers/fireDepartmentHandler.js');
     const { handle911ReportModal, handleTwitterPostModal, handleAnonPostModal } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleAddRoleRequestTypeModal } = await import('./handlers/roleRequestHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
@@ -304,6 +305,8 @@ client.on('interactionCreate', async interaction => {
       const { handleCharacterEditModal } = await import('./handlers/civilianDatabaseHandler.js');
       const charId = interaction.customId.replace('char_edit_modal_', '');
       await handleCharacterEditModal(interaction, charId);
+    } else if (interaction.customId === 'add_rolerequest_type_modal') {
+      await handleAddRoleRequestTypeModal(interaction);
     } else if (interaction.customId.includes('setup_')) {
       await handleSetupModals(interaction);
     } else {
@@ -389,6 +392,13 @@ client.on('interactionCreate', async interaction => {
       await handleEnableCommandButton(interaction);
     } else if (interaction.customId.startsWith('disable_')) {
       await handleDisableCommandButton(interaction);
+    } else if (interaction.customId.startsWith('approve_rolereq_') || interaction.customId.startsWith('deny_rolereq_')) {
+      const { handleApproveRoleRequest, handleDenyRoleRequest } = await import('./handlers/roleRequestHandler.js');
+      if (interaction.customId.startsWith('approve_rolereq_')) {
+        await handleApproveRoleRequest(interaction);
+      } else {
+        await handleDenyRoleRequest(interaction);
+      }
     }
   }
 
@@ -400,6 +410,7 @@ client.on('interactionCreate', async interaction => {
     const { handleCADSetupMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     const { handleLEODatabaseMenu } = await import('./handlers/leoDatabaseHandler.js');
     const { handleCivilianDatabaseMenu } = await import('./handlers/civilianDatabaseHandler.js');
+    const { handleRoleRequestSetupMenu, handleSelectRoleToRequest, handleSelectApprover } = await import('./handlers/roleRequestHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
       await handleUnsetRpSelect(interaction);
@@ -421,6 +432,12 @@ client.on('interactionCreate', async interaction => {
       await handlePanelTypesSelect(interaction);
     } else if (interaction.customId === 'leodatabase_menu') {
       await handleLEODatabaseMenu(interaction);
+    } else if (interaction.customId === 'rolerequest_setup_menu') {
+      await handleRoleRequestSetupMenu(interaction);
+    } else if (interaction.customId === 'select_role_to_request') {
+      await handleSelectRoleToRequest(interaction);
+    } else if (interaction.customId.startsWith('select_approver_')) {
+      await handleSelectApprover(interaction);
     } else if (interaction.customId === 'civiliandatabase_menu') {
       await handleCivilianDatabaseMenu(interaction);
     } else if (interaction.customId === 'civilian_manage_character_select') {
