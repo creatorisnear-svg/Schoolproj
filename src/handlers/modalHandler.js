@@ -28,6 +28,10 @@ export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'leodatabase_create_bolo_modal') {
     await handleLEOCreateBOLOModal(interaction);
   }
+
+  if (interaction.customId === 'antipromotingsetup_add_link_modal') {
+    await handleAntiPromotingAddLinkModal(interaction);
+  }
 }
 
 async function handleVerifyModal(interaction) {
@@ -213,6 +217,35 @@ async function handleReactionRoleAddEmojiModal(interaction) {
     console.error('Error in add emoji modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleAntiPromotingAddLinkModal(interaction) {
+  const link = interaction.fields.getTextInputValue('link_input').trim();
+
+  try {
+    let config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+
+    if (config.whitelistedInviteLinks.includes(link)) {
+      return interaction.reply({
+        embeds: [errorEmbed('This link is already whitelisted.')],
+        flags: 64,
+      });
+    }
+
+    config.whitelistedInviteLinks.push(link);
+    await config.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Link Whitelisted', `The invite link has been added to the whitelist.\n\nLink: ${link}`)],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error adding whitelisted link:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while adding the link.')],
       flags: 64,
     });
   }

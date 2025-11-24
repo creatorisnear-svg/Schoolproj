@@ -180,6 +180,14 @@ export async function handleSelectMenu(interaction) {
     await handleStrikeActionSelect(interaction, 4);
   }
 
+  if (interaction.customId === 'antipromotingsetup_menu') {
+    await handleAntiPromotingSetupMenu(interaction);
+  }
+
+  if (interaction.customId === 'antipromotingsetup_remove_link') {
+    await handleAntiPromotingRemoveLink(interaction);
+  }
+
 }
 
 async function handleVerifySetupMenu(interaction) {
@@ -1222,6 +1230,202 @@ async function handleReactionRoleSelect(interaction) {
     pendingEmojiRoles.delete(tempKey);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleAntiPromotingSetupMenu(interaction) {
+  const choice = interaction.values[0];
+  const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder } = await import('discord.js');
+
+  try {
+    if (choice === 'add_link') {
+      const modal = new ModalBuilder()
+        .setCustomId('antipromotingsetup_add_link_modal')
+        .setTitle('Add Whitelisted Link');
+
+      const linkInput = new TextInputBuilder()
+        .setCustomId('link_input')
+        .setLabel('Discord Invite Link')
+        .setPlaceholder('https://discord.gg/xyz')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+      const row = new ActionRowBuilder().addComponents(linkInput);
+      modal.addComponents(row);
+
+      return await interaction.showModal(modal);
+    }
+
+    if (choice === 'remove_link') {
+      const config = await Config.findOne({ guildId: interaction.guildId });
+      
+      if (!config || !config.whitelistedInviteLinks || config.whitelistedInviteLinks.length === 0) {
+        return interaction.update({
+          embeds: [errorEmbed('No whitelisted links found.')],
+          components: [],
+        });
+      }
+
+      const options = config.whitelistedInviteLinks.map((link, index) => ({
+        label: `${index + 1}. ${link.substring(0, 50)}...`,
+        value: `remove_${index}`,
+      }));
+
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId('antipromotingsetup_remove_link')
+        .setPlaceholder('Select a link to remove...')
+        .addOptions(options);
+
+      const row = new ActionRowBuilder().addComponents(menu);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_antipromotingsetup_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        content: 'Select a whitelisted link to remove:',
+        components: [row, backButton],
+      });
+    }
+
+    if (choice === 'view_links') {
+      const config = await Config.findOne({ guildId: interaction.guildId });
+      
+      if (!config || !config.whitelistedInviteLinks || config.whitelistedInviteLinks.length === 0) {
+        return interaction.update({
+          embeds: [infoEmbed('Whitelisted Links', 'No whitelisted links configured.')],
+          components: [],
+        });
+      }
+
+      let linkList = '';
+      config.whitelistedInviteLinks.forEach((link, index) => {
+        linkList += `${index + 1}. ${link}\n`;
+      });
+
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_antipromotingsetup_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      const embed = new EmbedBuilder()
+        .setColor('#2E2E2E')
+        .setTitle('Whitelisted Invite Links')
+        .setDescription(linkList)
+        .setFooter({ text: 'EverLink' });
+
+      return interaction.update({
+        embeds: [embed],
+        components: [backButton],
+      });
+    }
+
+    if (choice === 'toggle_staff_bypass') {
+      const config = await Config.findOne({ guildId: interaction.guildId }) || new Config({ guildId: interaction.guildId });
+      config.staffCanBypassLinks = !config.staffCanBypassLinks;
+      await config.save();
+
+      const status = config.staffCanBypassLinks ? 'enabled' : 'disabled';
+      const description = config.staffCanBypassLinks 
+        ? '✅ Bot staff members can now send invite links without deletion.'
+        : '🔒 Bot staff members can no longer send invite links without deletion. All staff are subject to anti-promoting rules.';
+
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_antipromotingsetup_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      const embed = new EmbedBuilder()
+        .setColor(config.staffCanBypassLinks ? '#00AA00' : '#FF0000')
+        .setTitle('Staff Bypass Updated')
+        .setDescription(description)
+        .setFooter({ text: 'EverLink' });
+
+      return interaction.update({
+        embeds: [embed],
+        components: [backButton],
+      });
+    }
+
+    if (choice === 'view_settings') {
+      const config = await Config.findOne({ guildId: interaction.guildId });
+      
+      const linkCount = config?.whitelistedInviteLinks?.length || 0;
+      const staffBypass = config?.staffCanBypassLinks ? '✅ Enabled' : '🔒 Disabled';
+
+      const description = `**Whitelisted Links:** ${linkCount}\n**Staff Bypass:** ${staffBypass}`;
+
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_antipromotingsetup_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      const embed = new EmbedBuilder()
+        .setColor('#2E2E2E')
+        .setTitle('Anti-Promoting Settings')
+        .setDescription(description)
+        .setFooter({ text: 'EverLink' });
+
+      return interaction.update({
+        embeds: [embed],
+        components: [backButton],
+      });
+    }
+
+    if (choice === 'setup_done') {
+      return interaction.update({
+        content: '✅ Anti-Promoting setup closed.',
+        components: [],
+      });
+    }
+  } catch (error) {
+    console.error('Error in anti-promoting setup menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleAntiPromotingRemoveLink(interaction) {
+  const selectedIndex = parseInt(interaction.values[0].replace('remove_', ''));
+
+  try {
+    const config = await Config.findOne({ guildId: interaction.guildId });
+    
+    if (!config || !config.whitelistedInviteLinks || !config.whitelistedInviteLinks[selectedIndex]) {
+      return interaction.reply({
+        embeds: [errorEmbed('Link not found.')],
+        flags: 64,
+      });
+    }
+
+    const removedLink = config.whitelistedInviteLinks[selectedIndex];
+    config.whitelistedInviteLinks.splice(selectedIndex, 1);
+    await config.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Link Removed', `The invite link has been removed from the whitelist.\n\nLink: ${removedLink}`)],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error removing whitelisted link:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while removing the link.')],
       flags: 64,
     });
   }

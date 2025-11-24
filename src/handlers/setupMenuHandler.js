@@ -229,6 +229,26 @@ export async function handleBackToMenu(interaction) {
         content: '**Roleplay Calendar Setup**\n\nSelect an option below to configure:',
         components: [menu],
       });
+    } else if (customId === 'back_to_antipromotingsetup_menu') {
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('antipromotingsetup_menu')
+            .setPlaceholder('Choose an option...')
+            .addOptions(
+              { label: 'Add Whitelisted Link', value: 'add_link' },
+              { label: 'Remove Whitelisted Link', value: 'remove_link' },
+              { label: 'View Whitelisted Links', value: 'view_links' },
+              { label: 'Toggle Staff Bypass', value: 'toggle_staff_bypass' },
+              { label: 'View Settings', value: 'view_settings' },
+              { label: '✅ Done - Close Setup', value: 'setup_done' }
+            )
+        );
+
+      await interaction.update({
+        content: '**Anti-Promoting System Setup**\n\nManage whitelisted invite links and staff bypass settings',
+        components: [menu],
+      });
     }
   } catch (error) {
     console.error('Error going back to menu:', error);
