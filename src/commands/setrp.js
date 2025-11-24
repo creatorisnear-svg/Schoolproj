@@ -31,7 +31,7 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option
       .setName('time')
-      .setDescription('Time in HH:MM format (e.g., 19:30)')
+      .setDescription('Time in 12-hour format with AM/PM (e.g., 7:30 PM, 2:00 AM)')
       .setRequired(true)
   )
   .addStringOption(option =>
@@ -88,10 +88,10 @@ export async function execute(interaction) {
     const psn = interaction.options.getString('psn');
     const description = interaction.options.getString('description');
 
-    // Validate time format
-    if (!/^\d{1,2}:\d{2}$/.test(time)) {
+    // Validate time format (12-hour with AM/PM)
+    if (!/^\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/.test(time)) {
       return interaction.reply({
-        embeds: [errorEmbed('Invalid time format. Please use HH:MM format (e.g., 19:30).')],
+        embeds: [errorEmbed('Invalid time format. Please use 12-hour format with AM/PM (e.g., 7:30 PM or 2:00 AM).')],
         ephemeral: true,
       });
     }
@@ -198,8 +198,22 @@ function convertToTimestamp(day, time, timezone) {
     'Friday': 5, 'Saturday': 6, 'Sunday': 0,
   };
 
-  // Parse time
-  const [hours, minutes] = time.split(':').map(Number);
+  // Parse time in 12-hour format with AM/PM
+  const timeRegex = /^(\d{1,2}):(\d{2})\s+(AM|PM|am|pm)$/;
+  const match = time.match(timeRegex);
+  if (!match) return Math.floor(Date.now() / 1000);
+
+  let [, hoursStr, minutesStr, period] = match;
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
+  const isPM = period.toUpperCase() === 'PM';
+
+  // Convert to 24-hour format
+  if (isPM && hours !== 12) {
+    hours += 12;
+  } else if (!isPM && hours === 12) {
+    hours = 0;
+  }
 
   // Get timezone offset
   const offset = timezoneMap[timezone.toUpperCase()] || 0;
