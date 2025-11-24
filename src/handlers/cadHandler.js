@@ -206,6 +206,38 @@ export async function handleCADCharacterMenu(interaction) {
               .setStyle(TextInputStyle.Short)
               .setPlaceholder('e.g., John Smith')
               .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_age')
+              .setLabel('Age')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., 28')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_hair_color')
+              .setLabel('Hair Color')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Brown')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_address')
+              .setLabel('Address')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., 123 Main Street')
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('character_occupation')
+              .setLabel('Occupation')
+              .setStyle(TextInputStyle.Short)
+              .setPlaceholder('e.g., Police Officer')
+              .setRequired(false)
           )
         );
 
@@ -278,12 +310,28 @@ export async function handleCADCharacterMenu(interaction) {
         });
       }
 
-      const charList = characters
-        .map(c => `**${c.characterName}** - ${c.licensePlate}\n  Vehicles: ${c.vehicles.length} | Guns: ${c.guns.length}`)
-        .join('\n\n');
+      const embeds = characters.map(c => {
+        let description = `**License Plate:** ${c.licensePlate}\n`;
+        description += `**Driver's License:** ${c.driversLicense}\n`;
+        if (c.age) description += `**Age:** ${c.age}\n`;
+        if (c.hairColor) description += `**Hair Color:** ${c.hairColor}\n`;
+        if (c.address) description += `**Address:** ${c.address}\n`;
+        if (c.occupation) description += `**Occupation:** ${c.occupation}\n`;
+        if (c.phoneNumber) description += `**Phone:** ${c.phoneNumber}\n`;
+        description += `\n**Vehicles:** ${c.vehicles.length}\n`;
+        description += `**Guns:** ${c.guns.length}\n`;
+        description += `**Status:** ${c.status === 'wanted' ? `🚨 Wanted${c.wantedReason ? ` - ${c.wantedReason}` : ''}` : '✅ Clean'}`;
+
+        return new EmbedBuilder()
+          .setColor(c.status === 'wanted' ? '#ff0000' : '#00ff00')
+          .setTitle(c.characterName)
+          .setDescription(description)
+          .setFooter({ text: 'EverLink' })
+          .setTimestamp();
+      });
 
       return interaction.reply({
-        embeds: [infoEmbed('Your Characters', charList)],
+        embeds,
         ephemeral: true,
       });
     }
@@ -298,6 +346,10 @@ export async function handleCADCharacterMenu(interaction) {
 
 export async function handleCADCharacterCreateModal(interaction) {
   const characterName = interaction.fields.getTextInputValue('character_name');
+  const age = interaction.fields.getTextInputValue('character_age') || null;
+  const hairColor = interaction.fields.getTextInputValue('character_hair_color') || null;
+  const address = interaction.fields.getTextInputValue('character_address') || null;
+  const occupation = interaction.fields.getTextInputValue('character_occupation') || null;
 
   try {
     const existing = await CADCharacter.findOne({ guildId: interaction.guildId, userId: interaction.user.id, characterName });
@@ -309,22 +361,35 @@ export async function handleCADCharacterCreateModal(interaction) {
       });
     }
 
+    const licensePlate = `${interaction.user.id.slice(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    const driversLicense = `DL${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
     const character = new CADCharacter({
       guildId: interaction.guildId,
       userId: interaction.user.id,
       characterName,
-      licensePlate: `${interaction.user.id.slice(0, 4).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+      age: age ? parseInt(age) : null,
+      hairColor,
+      address,
+      occupation,
+      licensePlate,
+      driversLicense,
     });
 
     await character.save();
 
+    let description = `**Character Name:** ${characterName}\n`;
+    description += `**License Plate:** ${licensePlate}\n`;
+    description += `**Driver's License:** ${driversLicense}\n`;
+    if (age) description += `**Age:** ${age}\n`;
+    if (hairColor) description += `**Hair Color:** ${hairColor}\n`;
+    if (address) description += `**Address:** ${address}\n`;
+    if (occupation) description += `**Occupation:** ${occupation}\n`;
+
     const embed = new EmbedBuilder()
       .setColor('#0099ff')
-      .setTitle('Character Created')
-      .addFields(
-        { name: 'Character Name', value: characterName },
-        { name: 'License Plate', value: character.licensePlate }
-      )
+      .setTitle('✅ Character Created')
+      .setDescription(description)
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 

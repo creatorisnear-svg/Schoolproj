@@ -13,10 +13,34 @@ const cadCharacterSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  age: {
+    type: Number,
+    default: null,
+  },
+  hairColor: {
+    type: String,
+    default: null,
+  },
+  address: {
+    type: String,
+    default: null,
+  },
+  occupation: {
+    type: String,
+    default: null,
+  },
+  phoneNumber: {
+    type: String,
+    default: null,
+  },
   licensePlate: {
     type: String,
     unique: true,
     sparse: true,
+  },
+  driversLicense: {
+    type: String,
+    default: null,
   },
   vehicles: [
     {

@@ -39,10 +39,10 @@ All commands are only available if staff has enabled them through setup.
 GTA5 RP CAD system with character and vehicle management for LEO/Fire Department roleplay.
 
 **Member Features (`/cadcharacter`):**
-- Create characters with auto-generated license plates
+- Create characters with detailed information (name, age, hair color, address, occupation, auto-generated license plate and driver's license)
 - Add multiple vehicles per character (make, model, color, license plate)
 - Register guns to characters
-- View all your characters and their inventory
+- View all your characters with complete details and inventory (vehicles, guns, status)
 
 **LEO Features (`/cadlicensesearch`):**
 - Search license plates to view character information
