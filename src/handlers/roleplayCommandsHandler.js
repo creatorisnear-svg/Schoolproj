@@ -12,8 +12,6 @@ async function showSetupMenu(interaction) {
         .setPlaceholder('Choose a command to configure...')
         .addOptions(
           { label: '🚨 911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
-          { label: '🐦 Twitter - Public Messages', value: 'setup_twitter' },
-          { label: '🤫 Anon - Anonymous Messages', value: 'setup_anon' },
           { label: '✅ Done - Close Setup', value: 'setup_done' }
         )
     );
@@ -121,37 +119,6 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
     }
   } catch (error) {
     console.error('Error in roleplay commands setup menu:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      ephemeral: true,
-    });
-  }
-}
-
-export async function handleRoleplayCommand911Channel(interaction) {
-  const channelId = interaction.values[0];
-
-  try {
-    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
-
-    if (!roleplayConfig) {
-      return interaction.reply({
-        embeds: [errorEmbed('Roleplay commands not found.')],
-        ephemeral: true,
-      });
-    }
-
-    roleplayConfig.use911 = true;
-    roleplayConfig.use911Channel = channelId;
-    await roleplayConfig.save();
-
-    const menuData = await showSetupMenu(interaction);
-    return interaction.update({
-      ...menuData,
-      embeds: [successEmbed('911 Channel Set', `911 reports will be sent to <#${channelId}>`)],
-    });
-  } catch (error) {
-    console.error('Error setting 911 channel:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,
