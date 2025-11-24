@@ -126,7 +126,7 @@ export async function execute(interaction) {
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`${targetUser.username} has been striked`, `Strike level: ${strikeLevel}/4\nAction: ${actionTaken}`)],
+      embeds: [successEmbed(`${targetUser.username} Striked Successfully`, `${targetUser.username} is now at strike level ${strikeLevel}/4\n\nAction Taken: ${actionTaken}`)],
       ephemeral: true,
     });
   } catch (error) {
