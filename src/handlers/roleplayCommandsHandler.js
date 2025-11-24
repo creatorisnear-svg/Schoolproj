@@ -1,5 +1,6 @@
 import RoleplayCommands from '../models/RoleplayCommands.js';
-import { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from 'discord.js';
+import CADConfig from '../models/CADConfig.js';
+import { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, StringSelectMenuBuilder, RoleSelectMenuBuilder } from 'discord.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 // Helper to show main menu
@@ -225,10 +226,27 @@ export async function handleRoleplayCommandsSetupMenu(interaction) {
       roleplayConfig.useCAD = true;
       await roleplayConfig.save();
 
-      const menuData = await showSetupMenu(interaction);
-      return interaction.update({
-        ...menuData,
-        embeds: [successEmbed('CAD Enabled', 'GTA5 CAD system has been enabled. Members can now use `/cad` to access dispatch info, `/cadcharacter` to manage characters, and LEO can use `/cadlicensesearch` to search plates.')],
+      let cadConfig = await CADConfig.findOne({ guildId: interaction.guildId }) || new CADConfig({ guildId: interaction.guildId });
+      cadConfig.enabled = true;
+      await cadConfig.save();
+
+      const cadMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('roleplaycommands_cad_setup_menu')
+            .setPlaceholder('Choose CAD setup option...')
+            .addOptions(
+              { label: 'Set LEO Roles', value: 'set_leo_roles' },
+              { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
+              { label: 'Set Staff Roles', value: 'set_staff_roles' },
+              { label: '✅ Done - Back to Main Menu', value: 'cad_done' }
+            )
+        );
+
+      return interaction.reply({
+        content: '**CAD System Setup**\n\nConfigure which roles have access to CAD features:',
+        components: [cadMenu],
+        ephemeral: true,
       });
     }
 
@@ -518,6 +536,170 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
     }
   } catch (error) {
     console.error('Error in roleplay commands enable menu:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsCADSetupMenu(interaction) {
+  const choice = interaction.values[0];
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_leo_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_leo_roles')
+        .setPlaceholder('Select LEO roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that can access LEO features (search license plates, etc.):',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_fd_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_fd_roles')
+        .setPlaceholder('Select Fire Department roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that can access Fire Department features:',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'set_staff_roles') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('roleplaycommands_cad_staff_roles')
+        .setPlaceholder('Select staff roles...')
+        .setMinValues(0)
+        .setMaxValues(5);
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+
+      return interaction.reply({
+        content: 'Select the roles that can manage the CAD system:',
+        components: [row],
+        ephemeral: true,
+      });
+    }
+
+    if (choice === 'cad_done') {
+      const menuData = await showSetupMenu(interaction);
+      return interaction.update({
+        ...menuData,
+        embeds: [successEmbed('CAD Setup Complete', 'Returning to main roleplay commands setup menu.')],
+      });
+    }
+  } catch (error) {
+    console.error('Error in roleplay commands CAD setup:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsCADLeoRoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.leoRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('LEO Roles Set', `${selectedRoles.length} LEO role(s) configured.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting LEO roles:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsCADFDRoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.fireDepartmentRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Fire Department Roles Set', `${selectedRoles.length} FD role(s) configured.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting FD roles:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      ephemeral: true,
+    });
+  }
+}
+
+export async function handleRoleplayCommandsCADStaffRoles(interaction) {
+  const selectedRoles = interaction.values;
+
+  try {
+    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+    if (!cadConfig) {
+      return interaction.reply({
+        embeds: [errorEmbed('CAD system not found.')],
+        ephemeral: true,
+      });
+    }
+
+    cadConfig.staffRoleIds = selectedRoles;
+    await cadConfig.save();
+
+    return interaction.reply({
+      embeds: [successEmbed('Staff Roles Set', `${selectedRoles.length} staff role(s) configured.`)],
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error('Error setting staff roles:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       ephemeral: true,

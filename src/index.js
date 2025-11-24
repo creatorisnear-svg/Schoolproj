@@ -205,7 +205,7 @@ client.on('interactionCreate', async interaction => {
     const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
     const { handleUnsetRpSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketSetupMenu, handleTicketTypeButtonColor, handleRemoveTicketType, handlePanelTypesSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommandsSetupMenu, handleRoleplayCommandsSelect, handleRoleplayCommandsCADSetupMenu } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADSetupMenu, handleCADCharacterMenu, handleCADVehicleCharacterSelect, handleCADGunCharacterSelect } = await import('./handlers/cadHandler.js');
     
     if (interaction.customId.includes('unsetrp_select')) {
@@ -214,6 +214,8 @@ client.on('interactionCreate', async interaction => {
       await handleRoleplayCommandsSelect(interaction);
     } else if (interaction.customId === 'roleplaycommands_setup_menu') {
       await handleRoleplayCommandsSetupMenu(interaction);
+    } else if (interaction.customId === 'roleplaycommands_cad_setup_menu') {
+      await handleRoleplayCommandsCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadsystem_setup_menu') {
       await handleCADSetupMenu(interaction);
     } else if (interaction.customId === 'cadcharacter_menu') {
@@ -240,7 +242,7 @@ client.on('interactionCreate', async interaction => {
     const { handlePriorityTrackerChannelSelect } = await import('./handlers/priorityTrackerHandler.js');
     const { handleRoleplayCalendarChannelSelect } = await import('./handlers/roleplayCalendarHandler.js');
     const { handleTicketChannelSelect, handleTicketRoleSelect } = await import('./handlers/ticketHandler.js');
-    const { handleRoleplayCommand911Channel, handleRoleplayCommandTwitterChannel, handleRoleplayCommandAnonChannel } = await import('./handlers/roleplayCommandsHandler.js');
+    const { handleRoleplayCommand911Channel, handleRoleplayCommandTwitterChannel, handleRoleplayCommandAnonChannel, handleRoleplayCommandsCADLeoRoles, handleRoleplayCommandsCADFDRoles, handleRoleplayCommandsCADStaffRoles } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleCADLeoRoles, handleCADFDRoles, handleCADStaffRoles } = await import('./handlers/cadHandler.js');
     
     if (interaction.customId.includes('prioritytrackersetup_channel')) {
@@ -259,6 +261,12 @@ client.on('interactionCreate', async interaction => {
       await handleCADFDRoles(interaction);
     } else if (interaction.customId === 'cadsystem_staff_roles') {
       await handleCADStaffRoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_cad_leo_roles') {
+      await handleRoleplayCommandsCADLeoRoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_cad_fd_roles') {
+      await handleRoleplayCommandsCADFDRoles(interaction);
+    } else if (interaction.customId === 'roleplaycommands_cad_staff_roles') {
+      await handleRoleplayCommandsCADStaffRoles(interaction);
     } else if (interaction.customId === 'ticketsupport_panel_channel') {
       await handleTicketChannelSelect(interaction);
     } else if (interaction.customId.startsWith('ticketsupport_type_roles_')) {
