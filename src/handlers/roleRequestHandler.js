@@ -309,7 +309,22 @@ export async function handleSelectApprover(interaction) {
     }
 
     // Verify the selected user is authorized to approve this role
-    if (!roleConfig.approverMemberIds.includes(approverId)) {
+    let isAuthorized = false;
+
+    // Check if they have any of the approver roles
+    for (const approverRoleId of roleConfig.approverRoleIds) {
+      if (approverMember.roles.cache.has(approverRoleId)) {
+        isAuthorized = true;
+        break;
+      }
+    }
+
+    // Check if they're in the approver members list
+    if (!isAuthorized && roleConfig.approverMemberIds.includes(approverId)) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
       return interaction.reply({
         embeds: [errorEmbed(`${approverMember.user.username} is not authorized to approve the **${roleConfig.roleName}** role.`)],
         ephemeral: true,
