@@ -5,7 +5,7 @@ import { isAdmin } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('addstaff')
-  .setDescription('Add a user or role to the bot staff team')
+  .setDescription('Add staff or staff roles to configure the bot (Admin only) - Required to set up log channel')
   .addUserOption(option =>
     option.setName('user')
       .setDescription('The user to add as staff')
@@ -16,8 +16,9 @@ export const data = new SlashCommandBuilder()
       .setRequired(false))
   .addStringOption(option =>
     option.setName('action')
-      .setDescription('Choose to add staff or remove all staff')
+      .setDescription('Choose action')
       .addChoices(
+        { name: 'None', value: 'none' },
         { name: 'Add', value: 'add' },
         { name: 'Remove All Staff', value: 'remove_all' }
       )
@@ -34,6 +35,13 @@ export async function execute(interaction) {
   const user = interaction.options.getUser('user');
   const role = interaction.options.getRole('role');
   const action = interaction.options.getString('action') || 'add';
+
+  if (action === 'none') {
+    return interaction.reply({
+      embeds: [errorEmbed('Please select an action (Add or Remove All Staff).')],
+      ephemeral: true,
+    });
+  }
 
   if (action === 'remove_all') {
     try {

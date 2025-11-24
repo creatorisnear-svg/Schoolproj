@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setlogchannel')
-  .setDescription('Set the log channel for server events and anti-promoting reports (Staff only)');
+  .setDescription('Set the log channel - Must add staff first using /addstaff (Staff only)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
