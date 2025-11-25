@@ -48,7 +48,7 @@ for (const file of orderedFiles) {
   }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
   console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
