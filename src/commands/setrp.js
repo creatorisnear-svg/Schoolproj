@@ -43,17 +43,17 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption(option =>
     option
-      .setName('psn')
-      .setDescription('PSN gamertag')
-      .setRequired(true)
-      .setMaxLength(100)
-  )
-  .addStringOption(option =>
-    option
       .setName('description')
       .setDescription('Description of the RP event')
       .setRequired(true)
       .setMaxLength(500)
+  )
+  .addStringOption(option =>
+    option
+      .setName('psn')
+      .setDescription('PSN gamertag (optional)')
+      .setRequired(false)
+      .setMaxLength(100)
   )
   .addStringOption(option =>
     option
@@ -163,22 +163,28 @@ async function updateCalendarMessage(interaction, calendar) {
 
 function buildCalendarEmbed(calendar) {
   const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+  };
+  
   const now = new Date();
   const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
   let description = '**Roleplay Calendar**\n\n';
 
   daysOrder.forEach(dayName => {
-    const dayMap = {
-      'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-      'Friday': 5, 'Saturday': 6, 'Sunday': 0,
-    };
-    
     const targetDay = dayMap[dayName];
     let daysUntil = targetDay - currentDay;
     
-    // If day has passed this week, show next week's date
-    if (daysUntil <= 0) daysUntil += 7;
+    // Skip past days this week
+    if (daysUntil < 0) daysUntil += 7;
+    
+    // Skip today if it's already occurred (only show future days and today)
+    if (daysUntil === 0 && now.getHours() >= 23) {
+      // If it's almost midnight today, skip to next week
+      daysUntil = 7;
+    }
     
     // Calculate the actual date
     const eventDate = new Date(now);
@@ -191,19 +197,28 @@ function buildCalendarEmbed(calendar) {
     const dateStr = `${dayName}, ${monthShort} ${dateNum}`;
     
     const dayEvents = calendar.events.filter(e => e.day === dayName);
-    description += `**${dateStr}**\n`;
     
-    if (dayEvents.length === 0) {
-      description += `No events scheduled\n\n`;
-    } else {
-      dayEvents.forEach(event => {
-        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-        description += `  PSN: ${event.psn}`;
-        if (event.xbox) {
-          description += ` | XBOX: ${event.xbox}`;
-        }
-        description += `\n  ${event.description}\n\n`;
-      });
+    // Only show days with events or today onwards
+    if (dayEvents.length > 0 || daysUntil >= 0) {
+      description += `**${dateStr}**\n`;
+      
+      if (dayEvents.length === 0) {
+        description += `No events scheduled\n\n`;
+      } else {
+        dayEvents.forEach(event => {
+          description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
+          if (event.psn) {
+            description += `  PSN: ${event.psn}`;
+          }
+          if (event.xbox) {
+            description += event.psn ? ` | XBOX: ${event.xbox}` : `  XBOX: ${event.xbox}`;
+          }
+          if (event.psn || event.xbox) {
+            description += `\n`;
+          }
+          description += `  ${event.description}\n\n`;
+        });
+      }
     }
   });
 
