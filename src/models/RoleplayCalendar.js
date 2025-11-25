@@ -12,6 +12,10 @@ const roleplayEventSchema = new mongoose.Schema({
   },
   description: String,
   timestamp: Number, // Unix timestamp for Discord timestamp conversion
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const roleplayCalendarSchema = new mongoose.Schema({

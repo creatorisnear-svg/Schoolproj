@@ -144,24 +144,21 @@ export async function execute(interaction) {
 }
 
 function cleanupOldEvents(calendar) {
-  const dayMap = {
-    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
-  };
-  
   const now = new Date();
-  const currentDay = now.getDay();
+  const currentDate = now.getTime();
   
-  // Remove events from passed days
+  // Remove events that are more than 7 days old
   calendar.events = calendar.events.filter(event => {
-    const eventDay = dayMap[event.day];
-    let daysUntil = eventDay - currentDay;
-    
-    // If daysUntil is negative, the day has passed
-    if (daysUntil < 0) {
-      return false; // Delete this event
+    // If no createdAt, keep the event
+    if (!event.createdAt) {
+      return true;
     }
-    return true; // Keep this event
+    
+    const eventDate = new Date(event.createdAt).getTime();
+    const daysOld = (currentDate - eventDate) / (1000 * 60 * 60 * 24);
+    
+    // Keep events less than 7 days old
+    return daysOld < 7;
   });
 }
 
