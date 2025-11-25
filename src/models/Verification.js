@@ -26,6 +26,10 @@ const verificationSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  verifiedChannelIds: {
+    type: [String],
+    default: [],
+  },
   customQuestion: {
     type: String,
     default: null,

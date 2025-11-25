@@ -132,6 +132,10 @@ export async function handleSelectMenu(interaction) {
     await handleVerifiedRoleSelect(interaction);
   }
 
+  if (interaction.customId === 'select_verified_channels_menu') {
+    await handleVerifiedChannelsSelect(interaction);
+  }
+
   if (interaction.customId === 'welcome_channel_select') {
     await handleWelcomeSystemChannelSelect(interaction);
   }
@@ -345,14 +349,15 @@ async function handleVerifySetupMenu(interaction) {
       // Apply channel permissions before completing setup
       const verification = await Verification.findOne({ guildId: interaction.guildId });
       
-      if (verification && verification.unverifiedRoleId) {
-        await setVerificationChannelPermissions(interaction.guild, verification.unverifiedRoleId, verification);
+      if (verification) {
+        // Apply permissions for unverified, verified, and staff roles
+        await applyAllVerificationPermissions(interaction.guild, verification);
       }
 
       const menuData = createSetupMenu();
       return interaction.update({
         ...menuData,
-        embeds: [successEmbed('Verification system setup is complete. Your verification system is now active.\n\n✅ Channel permissions have been applied.\nUnverified members can only see the welcome and verify channels.')],
+        embeds: [successEmbed('Verification system setup is complete!\n\n✅ All channel permissions have been applied:\n• **Unverified members** can only see: Welcome & Verify channels\n• **Verified members** can see: Selected channels\n• **Staff/Admins** can see: All channels')],
       });
     }
   } catch (error) {
@@ -765,6 +770,85 @@ async function setVerificationChannelPermissions(guild, unverifiedRoleId, verifi
   }
 }
 
+async function applyAllVerificationPermissions(guild, verification) {
+  try {
+    const allChannels = await guild.channels.fetch();
+
+    // Get all admin/staff roles
+    const adminRoles = guild.roles.cache.filter(role => role.permissions.has('Administrator'));
+    const adminRoleIds = Array.from(adminRoles.keys());
+
+    for (const channel of allChannels.values()) {
+      // Skip non-text channels
+      if (!channel.isTextBased()) continue;
+
+      // 1. Configure unverified role (can only see welcome & verify)
+      if (verification.unverifiedRoleId) {
+        if (channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId) {
+          await channel.permissionOverwrites.edit(
+            verification.unverifiedRoleId,
+            {
+              ViewChannel: true,
+              SendMessages: false,
+              ReadMessageHistory: true,
+            },
+            { reason: 'Verification system - unverified access' }
+          ).catch(() => {});
+        } else {
+          await channel.permissionOverwrites.edit(
+            verification.unverifiedRoleId,
+            {
+              ViewChannel: false,
+            },
+            { reason: 'Verification system - unverified restricted' }
+          ).catch(() => {});
+        }
+      }
+
+      // 2. Configure verified role (can see selected channels)
+      if (verification.verifiedRoleId) {
+        if (verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id)) {
+          await channel.permissionOverwrites.edit(
+            verification.verifiedRoleId,
+            {
+              ViewChannel: true,
+              SendMessages: true,
+              ReadMessageHistory: true,
+            },
+            { reason: 'Verification system - verified access' }
+          ).catch(() => {});
+        } else {
+          await channel.permissionOverwrites.edit(
+            verification.verifiedRoleId,
+            {
+              ViewChannel: false,
+            },
+            { reason: 'Verification system - verified restricted' }
+          ).catch(() => {});
+        }
+      }
+
+      // 3. Configure staff/admin roles (can see all channels)
+      for (const adminRoleId of adminRoleIds) {
+        await channel.permissionOverwrites.edit(
+          adminRoleId,
+          {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+            ManageMessages: true,
+          },
+          { reason: 'Verification system - staff full access' }
+        ).catch(() => {});
+      }
+    }
+
+    console.log(`✅ All verification permissions configured (unverified, verified, staff)`);
+  } catch (error) {
+    console.error('Error applying verification permissions:', error);
+  }
+}
+
 async function handleVerifiedRoleSelect(interaction) {
   try {
     const role = interaction.roles.first();
@@ -780,14 +864,62 @@ async function handleVerifiedRoleSelect(interaction) {
     verification.verifiedRoleId = role.id;
     await verification.save();
 
-    const menuOptions = createSetupMenu();
+    // Show channel selection for verified role
+    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+    const channelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId('select_verified_channels_menu')
+      .setPlaceholder('Select channels verified members can see')
+      .setChannelTypes(ChannelType.GuildText)
+      .setMinValues(1)
+      .setMaxValues(20);
+
+    const row = new ActionRowBuilder().addComponents(channelSelect);
+    const backButton = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('back_to_verify_menu')
+          .setLabel('← Back')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
     return interaction.update({
-      content: '',
-      embeds: [infoEmbed('Verified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.`)],
-      components: menuOptions.components,
+      content: `Verified Role: ${role}\n\nSelect which channels verified members should be able to see:`,
+      embeds: [],
+      components: [row, backButton],
     });
   } catch (error) {
     console.error('Error setting verified role:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleVerifiedChannelsSelect(interaction) {
+  try {
+    const selectedChannelIds = interaction.values;
+
+    if (!selectedChannelIds || selectedChannelIds.length === 0) {
+      return interaction.reply({
+        embeds: [errorEmbed('Please select at least one channel.')],
+        flags: 64,
+      });
+    }
+
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.verifiedChannelIds = selectedChannelIds;
+    await verification.save();
+
+    const channelMentions = selectedChannelIds.map(id => `<#${id}>`).join(', ');
+    const menuOptions = createSetupMenu();
+    return interaction.update({
+      content: '',
+      embeds: [infoEmbed('Verified Channels Set', `Verified members can now see:\n${channelMentions}\n\nSelect your next option below to continue setup.`)],
+      components: menuOptions.components,
+    });
+  } catch (error) {
+    console.error('Error setting verified channels:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
