@@ -80,7 +80,13 @@ async function handleVerifyModal(interaction) {
         await interaction.member.setNickname(newNickname);
         console.log(`✅ Set nickname for ${interaction.user.username}: ${newNickname}`);
       } catch (error) {
-        console.error('Error setting nickname:', error);
+        // Check if this is a permission issue (often due to role hierarchy)
+        if (error.code === 50013) {
+          console.warn(`⚠️ Cannot set nickname for ${interaction.user.username} (likely due to role hierarchy). Intended nickname: ${newNickname}`);
+          // Still send verification message - just without the nickname
+        } else {
+          console.error('Error setting nickname:', error);
+        }
       }
     }
 
