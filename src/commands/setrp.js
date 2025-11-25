@@ -50,17 +50,17 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption(option =>
     option
-      .setName('xbox')
-      .setDescription('XBOX gamertag (optional)')
-      .setRequired(false)
-      .setMaxLength(100)
-  )
-  .addStringOption(option =>
-    option
       .setName('description')
       .setDescription('Description of the RP event')
       .setRequired(true)
       .setMaxLength(500)
+  )
+  .addStringOption(option =>
+    option
+      .setName('xbox')
+      .setDescription('XBOX gamertag (optional)')
+      .setRequired(false)
+      .setMaxLength(100)
   );
 
 export async function execute(interaction) {
