@@ -743,23 +743,35 @@ client.on('guildMemberAdd', async member => {
 });
 
 client.on('messageCreate', async message => {
-  if (!message.guild || message.author.bot) return;
-  const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
-  const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
-  await handleAntiPromoting(message);
-  await handleStickyMessages(message);
+  try {
+    if (!message.guild || message.author.bot) return;
+    const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
+    const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
+    await handleAntiPromoting(message);
+    await handleStickyMessages(message);
+  } catch (error) {
+    console.error('Error handling message:', error);
+  }
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
-  if (user.bot) return;
-  const { handleReactionAdd } = await import('./handlers/reactionRoleHandler.js');
-  await handleReactionAdd(reaction, user);
+  try {
+    if (user.bot) return;
+    const { handleReactionAdd } = await import('./handlers/reactionRoleHandler.js');
+    await handleReactionAdd(reaction, user);
+  } catch (error) {
+    console.error('Error handling reaction add:', error);
+  }
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
-  if (user.bot) return;
-  const { handleReactionRemove } = await import('./handlers/reactionRoleHandler.js');
-  await handleReactionRemove(reaction, user);
+  try {
+    if (user.bot) return;
+    const { handleReactionRemove } = await import('./handlers/reactionRoleHandler.js');
+    await handleReactionRemove(reaction, user);
+  } catch (error) {
+    console.error('Error handling reaction remove:', error);
+  }
 });
 
 client.on('guildCreate', async (guild) => {
@@ -873,6 +885,22 @@ app.post('/send-heartbeat-now', async (req, res) => {
     console.error('Error sending heartbeat:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('SIGINT', async () => {
+  console.log('\n⏹️ Shutting down gracefully...');
+  await client.destroy();
+  process.exit(0);
 });
 
 async function startBot() {
