@@ -35,5 +35,5 @@ externalPort = 80
 SUPPORT_SERVER_ID = "1441548471906734173"
 
 [deployment]
-deploymentTarget = "vm"
+deploymentTarget = "autoscale"
 run = ["npm", "start"]
