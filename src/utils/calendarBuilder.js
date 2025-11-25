@@ -1,3 +1,5 @@
+import { EmbedBuilder } from 'discord.js';
+
 export function buildCalendarEmbed(calendar) {
   const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const dayMap = {
@@ -25,7 +27,7 @@ export function buildCalendarEmbed(calendar) {
   pastDays.sort((a, b) => a.daysFromNow - b.daysFromNow);
   const orderedDays = [...upcomingDays, ...pastDays];
   
-  let description = '**Roleplay Calendar**\n\n';
+  let description = '';
 
   orderedDays.forEach(({ dayName, daysFromNow }) => {
     const daysToAdd = daysFromNow < 0 ? daysFromNow + 7 : daysFromNow;
@@ -58,10 +60,9 @@ export function buildCalendarEmbed(calendar) {
 
   description += '*Times shown in your local timezone*';
 
-  return {
-    title: 'Roleplay Calendar',
-    description,
-    color: 0x00AA00,
-    footer: { text: 'EverLink' },
-  };
+  return new EmbedBuilder()
+    .setTitle('Roleplay Calendar')
+    .setDescription(description)
+    .setColor(0x00AA00)
+    .setFooter({ text: 'EverLink' });
 }
