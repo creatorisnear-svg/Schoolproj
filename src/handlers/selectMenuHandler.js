@@ -350,7 +350,7 @@ async function handleVerifySetupMenu(interaction) {
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
-        embeds: [successEmbed('Verification system setup is complete!\n\n⏳ Configuring channel permissions...\n• **Unverified members** can only see: Welcome & Verify channels\n• **Verified members** can see: Selected channels\n• **Staff/Admins** can see: All channels')],
+        embeds: [successEmbed('Verification system setup is complete!\n\n⏳ Configuring channel permissions...\n• **Unverified members** can send messages and use commands in verified channels\n• **Verified members** can see: Selected channels + welcome\n• **Staff/Admins** can see: All channels\n\n📋 **Please review and adjust permissions as needed** in the server settings. The bot has configured the baseline permissions, but you may want to fine-tune them to your liking.')],
       });
 
       // Apply permissions in background (non-blocking)
@@ -783,15 +783,19 @@ async function applyAllVerificationPermissions(guild, verification) {
       // Skip non-text channels
       if (!channel.isTextBased()) continue;
 
-      // 1. Configure unverified role (can only see welcome & verify)
+      // 1. Configure unverified role (can see welcome & verify, plus can send messages in verified channels)
       if (verification.unverifiedRoleId) {
-        if (channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId) {
+        const isWelcomeOrVerifyChannel = channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId;
+        const isVerifiedChannel = verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id);
+        
+        if (isWelcomeOrVerifyChannel || isVerifiedChannel) {
           await channel.permissionOverwrites.edit(
             verification.unverifiedRoleId,
             {
               ViewChannel: true,
-              SendMessages: false,
+              SendMessages: true,
               ReadMessageHistory: true,
+              UseApplicationCommands: true,
             },
             { reason: 'Verification system - unverified access' }
           ).catch(() => {});
