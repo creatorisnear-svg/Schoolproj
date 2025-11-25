@@ -982,6 +982,114 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+async function refreshAllCalendars() {
+  try {
+    const { default: RoleplayCalendar } = await import('./models/RoleplayCalendar.js');
+    const calendars = await RoleplayCalendar.find({ enabled: true, channelId: { $ne: null } });
+    
+    console.log(`🔄 Refreshing ${calendars.length} calendars...`);
+    
+    for (const calendar of calendars) {
+      try {
+        const guild = client.guilds.cache.get(calendar.guildId);
+        if (!guild) continue;
+        
+        const channel = await guild.channels.fetch(calendar.channelId).catch(() => null);
+        if (!channel) continue;
+        
+        if (!calendar.messageId) continue;
+        
+        try {
+          const message = await channel.messages.fetch(calendar.messageId).catch(() => null);
+          if (!message) continue;
+          
+          const embed = buildCalendarEmbed(calendar);
+          await message.edit({ embeds: [embed] });
+          console.log(`✅ Refreshed calendar for ${guild.name}`);
+        } catch (err) {
+          const embed = buildCalendarEmbed(calendar);
+          const newMsg = await channel.send({ embeds: [embed] });
+          calendar.messageId = newMsg.id;
+          await calendar.save();
+          console.log(`📨 Created new calendar message for ${guild.name}`);
+        }
+      } catch (error) {
+        console.error(`Error refreshing calendar for guild ${calendar.guildId}:`, error.message);
+      }
+    }
+    
+    console.log('✅ Calendar refresh complete');
+  } catch (error) {
+    console.error('Error in calendar refresh:', error);
+  }
+}
+
+function buildCalendarEmbed(calendar) {
+  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+  };
+  
+  const now = new Date();
+  const currentDay = now.getDay();
+  
+  const upcomingDays = [];
+  const pastDays = [];
+  
+  daysOrder.forEach(dayName => {
+    const targetDay = dayMap[dayName];
+    let daysFromNow = targetDay - currentDay;
+    
+    if (daysFromNow < 0) {
+      pastDays.push({ dayName, daysFromNow });
+    } else {
+      upcomingDays.push({ dayName, daysFromNow });
+    }
+  });
+  
+  pastDays.sort((a, b) => a.daysFromNow - b.daysFromNow);
+  const orderedDays = [...upcomingDays, ...pastDays];
+  
+  let description = '**Roleplay Calendar**\n\n';
+
+  orderedDays.forEach(({ dayName, daysFromNow }) => {
+    const daysToAdd = daysFromNow < 0 ? daysFromNow + 7 : daysFromNow;
+    const calendarDate = new Date(now);
+    calendarDate.setDate(calendarDate.getDate() + daysToAdd);
+    calendarDate.setHours(0, 0, 0, 0);
+    
+    const dateStr = `${dayName}, ${calendarDate.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
+    const dayEvents = calendar.events.filter(e => e.day === dayName);
+    
+    description += `**${dateStr}**\n`;
+    
+    if (dayEvents.length === 0) {
+      description += `No events\n\n`;
+    } else {
+      dayEvents.forEach(event => {
+        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
+        const gamertags = [];
+        if (event.psn) gamertags.push(`PSN: ${event.psn}`);
+        if (event.xbox) gamertags.push(`XBOX: ${event.xbox}`);
+        if (gamertags.length > 0) {
+          description += `  ${gamertags.join(' | ')}\n`;
+        }
+        description += `  ${event.description}\n\n`;
+      });
+    }
+  });
+
+  description += '*Times shown in your local timezone*';
+
+  return {
+    title: 'Roleplay Calendar',
+    description,
+    color: 0x00AA00,
+    footer: { text: 'EverLink' },
+  };
+}
+
 async function startBot() {
   try {
     app.listen(PORT, '0.0.0.0', () => {
@@ -997,5 +1105,10 @@ async function startBot() {
     process.exit(1);
   }
 }
+
+client.once('ready', async () => {
+  console.log('🔄 Refreshing all calendars on bot startup...');
+  await refreshAllCalendars();
+});
 
 startBot();
