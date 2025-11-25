@@ -33,3 +33,7 @@ externalPort = 80
 
 [userenv.shared]
 SUPPORT_SERVER_ID = "1441548471906734173"
+
+[deployment]
+deploymentTarget = "vm"
+run = ["npm", "start"]
