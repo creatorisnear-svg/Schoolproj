@@ -271,12 +271,6 @@ export async function handleDisableCommandButton(interaction) {
     } else if (customId === 'disable_verification') {
       featureName = 'Verification System';
       model = Verification;
-      
-      // Revert channel permissions when disabling verification
-      const verification = await Verification.findOne({ guildId });
-      if (verification) {
-        await revertVerificationPermissions(interaction.guild, verification);
-      }
     } else if (customId === 'disable_welcome') {
       featureName = 'Welcome System';
       model = Welcome;
@@ -292,10 +286,20 @@ export async function handleDisableCommandButton(interaction) {
     }
 
     const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\n✅ All channel permissions have been reverted to default.`);
-    return interaction.reply({
+    await interaction.reply({
       embeds: [embed],
       flags: 64,
     });
+
+    // Revert verification permissions in background (non-blocking)
+    if (customId === 'disable_verification') {
+      const verification = await Verification.findOne({ guildId });
+      if (verification) {
+        revertVerificationPermissions(interaction.guild, verification).catch(error => {
+          console.error('Error reverting verification permissions:', error);
+        });
+      }
+    }
   } catch (error) {
     console.error('Error in disable button handler:', error);
     return interaction.reply({
