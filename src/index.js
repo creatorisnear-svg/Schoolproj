@@ -810,6 +810,16 @@ client.on('guildCreate', async (guild) => {
   try {
     console.log(`\n🆕 Bot added to new guild: ${guild.name} (ID: ${guild.id}, Members: ${guild.memberCount})`);
     
+    // Register commands to the new guild immediately
+    try {
+      console.log(`📋 Registering ${commands.length} commands to new guild...`);
+      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+      await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands });
+      console.log(`✅ Commands registered successfully to ${guild.name}`);
+    } catch (syncError) {
+      console.error(`⚠️  Error registering commands to new guild:`, syncError.message);
+    }
+    
     const owner = await guild.fetchOwner();
     console.log(`📤 Attempting to send welcome DM to owner: ${owner.user.tag}`);
     
