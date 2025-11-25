@@ -8,20 +8,21 @@ export const data = new SlashCommandBuilder()
   .setDescription('Set up the roleplay calendar system (Admin/Staff)');
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the roleplay calendar.')],
-      flags: 64,
-    });
-  }
+  // Defer immediately to prevent timeout
+  await interaction.deferReply({ flags: 64 });
 
   try {
+    if (!await isAdmin(interaction.member)) {
+      return interaction.editReply({
+        embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the roleplay calendar.')],
+      });
+    }
+
     const calendar = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
 
     if (!calendar || !calendar.enabled) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('⚙️ Roleplay Calendar Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Calendar')],
-        flags: 64,
       });
     }
 
@@ -34,16 +35,14 @@ export async function execute(interaction) {
           .setChannelTypes(ChannelType.GuildText)
       );
 
-    return interaction.reply({
+    return interaction.editReply({
       content: 'Select a channel where the roleplay calendar will be posted:',
       components: [menu],
-      flags: 64,
     });
   } catch (error) {
     console.error('Error in roleplay calendar setup:', error);
-    return interaction.reply({
+    return interaction.editReply({
       embeds: [errorEmbed('An error occurred while setting up the roleplay calendar.')],
-      flags: 64,
     });
   }
 }
