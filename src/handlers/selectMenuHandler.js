@@ -701,10 +701,13 @@ async function handleUnverifiedRoleSelect(interaction) {
     verification.unverifiedRoleId = role.id;
     await verification.save();
 
+    // Automatically set channel permissions after unverified role is selected
+    await setVerificationChannelPermissions(interaction.guild, role.id, verification);
+
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.`)],
+      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\n✅ Channel permissions configured!\nUnverified members can now only see:\n• ${verification.welcomeChannelId ? '<#' + verification.welcomeChannelId + '>' : 'Welcome channel (not set yet)'}\n• ${verification.verifyChannelId ? '<#' + verification.verifyChannelId + '>' : 'Verify channel (not set yet)'}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -713,6 +716,49 @@ async function handleUnverifiedRoleSelect(interaction) {
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
     });
+  }
+}
+
+async function setVerificationChannelPermissions(guild, unverifiedRoleId, verification) {
+  try {
+    const verifyChannelId = verification.verifyChannelId;
+    const welcomeChannelId = verification.welcomeChannelId;
+
+    // Get all channels
+    const allChannels = await guild.channels.fetch();
+
+    for (const channel of allChannels.values()) {
+      // Skip non-text channels
+      if (!channel.isTextBased()) continue;
+
+      const unverifiedOverwrite = {
+        role: unverifiedRoleId,
+      };
+
+      // If this is the verify or welcome channel, allow viewing
+      if (channel.id === verifyChannelId || channel.id === welcomeChannelId) {
+        unverifiedOverwrite.ViewChannel = true;
+        unverifiedOverwrite.SendMessages = false;
+        unverifiedOverwrite.ReadMessageHistory = true;
+      } else {
+        // Hide all other channels from unverified role
+        unverifiedOverwrite.ViewChannel = false;
+      }
+
+      await channel.permissionOverwrites.set(
+        [...(channel.permissionOverwrites.cache.values())].filter(o => o.id !== unverifiedRoleId).map(o => ({
+          id: o.id,
+          allow: o.allow,
+          deny: o.deny,
+          type: o.type,
+        })).concat([unverifiedOverwrite]),
+        'Verification system setup - restrict unverified role access'
+      );
+    }
+
+    console.log(`✅ Channel permissions configured for unverified role ${unverifiedRoleId}`);
+  } catch (error) {
+    console.error('Error setting channel permissions:', error);
   }
 }
 
