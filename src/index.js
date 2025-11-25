@@ -70,6 +70,10 @@ client.once('ready', async () => {
 
   // Start status heartbeat sender
   startStatusHeartbeatSender();
+
+  // Refresh all calendars on startup
+  console.log('🔄 Refreshing all calendars on bot startup...');
+  await refreshAllCalendars();
 });
 
 async function initializeSupportServerHeartbeat() {
@@ -1040,10 +1044,5 @@ async function startBot() {
     process.exit(1);
   }
 }
-
-client.once('ready', async () => {
-  console.log('🔄 Refreshing all calendars on bot startup...');
-  await refreshAllCalendars();
-});
 
 startBot();
