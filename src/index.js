@@ -808,7 +808,10 @@ client.on('messageReactionRemove', async (reaction, user) => {
 
 client.on('guildCreate', async (guild) => {
   try {
+    console.log(`\n🆕 Bot added to new guild: ${guild.name} (ID: ${guild.id}, Members: ${guild.memberCount})`);
+    
     const owner = await guild.fetchOwner();
+    console.log(`📤 Attempting to send welcome DM to owner: ${owner.user.tag}`);
     
     const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
 
@@ -848,10 +851,31 @@ Ready? Start with __/enablecommands__ to configure your server.
 
 __**EverLink**__ - Made for RP Communities 🎮`;
 
-    await owner.send(welcomeMessage);
-    console.log(`📧 Welcome message sent to ${owner.user.username} for guild: ${guild.name}`);
+    try {
+      await owner.send(welcomeMessage);
+      console.log(`✅ Welcome DM sent successfully to ${owner.user.tag}`);
+    } catch (dmError) {
+      console.error(`❌ Could not send DM to ${owner.user.tag}:`, dmError.message);
+      console.log(`   Reason: Owner may have DMs disabled or bot blocked`);
+      
+      // Fallback: Try to send in a general channel
+      try {
+        const generalChannel = guild.channels.cache.find(ch => 
+          ch.isTextBased() && ch.name === 'general' && ch.permissionsFor(client.user).has('SendMessages')
+        );
+        
+        if (generalChannel) {
+          const channelMessage = `👋 **Welcome ${owner.user.username}!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nJoin support: https://discord.gg/cSdhfGPeV2`;
+          await generalChannel.send(channelMessage);
+          console.log(`✅ Fallback welcome message sent to #general`);
+        }
+      } catch (fallbackError) {
+        console.log(`⚠️  Could not send fallback message:`, fallbackError.message);
+      }
+    }
   } catch (error) {
-    console.error(`⚠️  Could not send welcome message for guild ${guild.name}:`, error.message);
+    console.error(`❌ Error in guildCreate handler for ${guild?.name}:`, error.message);
+    console.error(`   Error details:`, error.code);
   }
 });
 
