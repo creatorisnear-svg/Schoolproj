@@ -75,9 +75,10 @@ async function handleVerifyModal(interaction) {
     }
 
     if (verification.rpTag) {
-      const newNickname = `${verification.rpTag} | ${psnxbox}`;
+      const newNickname = `${verification.rpTag} | ${interaction.user.username}`;
       try {
         await interaction.member.setNickname(newNickname);
+        console.log(`✅ Set nickname for ${interaction.user.username}: ${newNickname}`);
       } catch (error) {
         console.error('Error setting nickname:', error);
       }
