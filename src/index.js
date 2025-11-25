@@ -783,6 +783,12 @@ client.on('guildMemberAdd', async member => {
 
 client.on('messageCreate', async message => {
   try {
+    // Log status bot messages to keep bot alive
+    if (message.author.bot && process.env.STATUS_BOT_ID && message.author.id === process.env.STATUS_BOT_ID) {
+      console.log(`💚 [KEEP-ALIVE] Status bot message received at ${new Date().toISOString()}`);
+      return;
+    }
+
     if (!message.guild || message.author.bot) return;
     const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
     const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
