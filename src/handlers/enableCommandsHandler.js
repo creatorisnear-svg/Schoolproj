@@ -78,10 +78,9 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Success)
         );
 
-      return interaction.reply({
+      return interaction.update({
         embeds: [embed],
         components: [enableRow1, enableRow2, enableRow3],
-        flags: 64,
       });
     } else {
       // Show disable options
@@ -139,18 +138,20 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Danger)
         );
 
-      return interaction.reply({
+      return interaction.update({
         embeds: [embed],
         components: [disableRow1, disableRow2, disableRow3],
-        flags: 64,
       });
     }
   } catch (error) {
     console.error('Error in enable/disable choice handler:', error);
-    return interaction.reply({
-      embeds: [createErrorEmbed('An error occurred.')],
-      flags: 64,
-    });
+    try {
+      return interaction.update({
+        embeds: [createErrorEmbed('An error occurred.')],
+      });
+    } catch (updateError) {
+      console.error('Failed to update after error:', updateError);
+    }
   }
 }
 
@@ -190,9 +191,8 @@ export async function handleEnableCommandButton(interaction) {
       config.antiPromotingEnabled = true;
       await config.save();
       const embed = createSuccessEmbed(`${featureName} Enabled`, `${featureName} has been enabled.`);
-      return interaction.reply({
+      return interaction.update({
         embeds: [embed],
-        flags: 64,
       });
     } else if (customId === 'enable_rolerequest') {
       featureName = 'Role Request';
@@ -216,16 +216,18 @@ export async function handleEnableCommandButton(interaction) {
     }
 
     const embed = createSuccessEmbed(`${featureName} Enabled`, `${featureName} has been enabled. ${setupCommand}`);
-    return interaction.reply({
+    return interaction.update({
       embeds: [embed],
-      flags: 64,
     });
   } catch (error) {
     console.error('Error in enable button handler:', error);
-    return interaction.reply({
-      embeds: [createErrorEmbed('An error occurred.')],
-      flags: 64,
-    });
+    try {
+      return interaction.update({
+        embeds: [createErrorEmbed('An error occurred.')],
+      });
+    } catch (updateError) {
+      console.error('Failed to update after error:', updateError);
+    }
   }
 }
 
@@ -261,9 +263,8 @@ export async function handleDisableCommandButton(interaction) {
         await config.save();
       }
       const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
-      return interaction.reply({
+      return interaction.update({
         embeds: [embed],
-        flags: 64,
       });
     } else if (customId === 'disable_rolerequest') {
       featureName = 'Role Request';
@@ -286,9 +287,8 @@ export async function handleDisableCommandButton(interaction) {
     }
 
     const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\n✅ All channel permissions have been reverted to default.`);
-    await interaction.reply({
+    await interaction.update({
       embeds: [embed],
-      flags: 64,
     });
 
     // Revert verification permissions in background (non-blocking)
@@ -302,10 +302,13 @@ export async function handleDisableCommandButton(interaction) {
     }
   } catch (error) {
     console.error('Error in disable button handler:', error);
-    return interaction.reply({
-      embeds: [createErrorEmbed('An error occurred.')],
-      flags: 64,
-    });
+    try {
+      return interaction.update({
+        embeds: [createErrorEmbed('An error occurred.')],
+      });
+    } catch (updateError) {
+      console.error('Failed to update after error:', updateError);
+    }
   }
 }
 
