@@ -1,5 +1,6 @@
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import { buildCalendarEmbed } from '../utils/calendarBuilder.js';
 
 export async function handleRoleplayCalendarChannelSelect(interaction) {
   if (!interaction.customId.startsWith('roleplaycalendarsetup_channel')) {
@@ -20,14 +21,7 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
     calendar.channelId = selectedChannelId;
     await calendar.save();
 
-    // Send initial calendar message
-    const channel = await interaction.guild.channels.fetch(calendar.channelId);
-    const embed = buildCalendarEmbed(calendar);
-    const message = await channel.send({ embeds: [embed] });
-
-    calendar.messageId = message.id;
-    await calendar.save();
-
+    // Don't send a message here - just set the channel
     const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -38,8 +32,8 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
       );
 
     return interaction.reply({
-      embeds: [successEmbed('Roleplay Calendar Setup Complete', 
-        `Roleplay calendar has been created in <#${calendar.channelId}>. Use /setrp to add events and /unsetrp to remove them.`)],
+      embeds: [successEmbed('Roleplay Calendar Channel Set', 
+        `Calendar channel has been set to <#${calendar.channelId}>. Use /setrp to add your first event!`)],
       components: [backButton],
       flags: 64,
     });
@@ -74,6 +68,10 @@ export async function handleUnsetRpSelect(interaction) {
     calendar.events.splice(eventIndex, 1);
     await calendar.save();
 
+    // Clean up old events
+    cleanupOldEvents(calendar);
+    await calendar.save();
+
     await updateCalendarMessage(interaction, calendar);
 
     return interaction.reply({
@@ -89,10 +87,19 @@ export async function handleUnsetRpSelect(interaction) {
   }
 }
 
-async function updateCalendarMessage(interaction, calendar) {
+export async function updateCalendarMessage(interaction, calendar) {
   try {
     const channel = await interaction.guild.channels.fetch(calendar.channelId);
-    if (!channel || !calendar.messageId) return;
+    if (!channel) return;
+
+    // If no message exists yet, send one
+    if (!calendar.messageId) {
+      const embed = buildCalendarEmbed(calendar);
+      const message = await channel.send({ embeds: [embed] });
+      calendar.messageId = message.id;
+      await calendar.save();
+      return;
+    }
 
     const embed = buildCalendarEmbed(calendar);
 
@@ -100,6 +107,7 @@ async function updateCalendarMessage(interaction, calendar) {
       const message = await channel.messages.fetch(calendar.messageId);
       await message.edit({ embeds: [embed] });
     } catch (err) {
+      // Message might be deleted, send a new one
       const message = await channel.send({ embeds: [embed] });
       calendar.messageId = message.id;
       await calendar.save();
@@ -109,32 +117,22 @@ async function updateCalendarMessage(interaction, calendar) {
   }
 }
 
-function buildCalendarEmbed(calendar) {
-  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  
-  let description = '**Roleplay Calendar**\n\n';
-
-  daysOrder.forEach(day => {
-    const dayEvents = calendar.events.filter(e => e.day === day);
-    description += `**${day}**\n`;
-    
-    if (dayEvents.length === 0) {
-      description += `No events scheduled\n\n`;
-    } else {
-      dayEvents.forEach(event => {
-        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-        description += `  PSN: ${event.psn}\n`;
-        description += `  ${event.description}\n\n`;
-      });
-    }
-  });
-
-  description += '*Times are shown in your local timezone*';
-
-  return {
-    title: 'Roleplay Calendar',
-    description,
-    color: 0x00AA00,
-    footer: { text: 'EverLink' },
+function cleanupOldEvents(calendar) {
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
   };
+  
+  const now = new Date();
+  const currentDay = now.getDay();
+  
+  calendar.events = calendar.events.filter(event => {
+    const eventDay = dayMap[event.day];
+    let daysUntil = eventDay - currentDay;
+    
+    if (daysUntil < 0) {
+      return false;
+    }
+    return true;
+  });
 }

@@ -2,6 +2,7 @@ import { SlashCommandBuilder, StringSelectMenuBuilder, ActionRowBuilder } from '
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { updateCalendarMessage } from '../handlers/roleplayCalendarHandler.js';
 
 export const data = new SlashCommandBuilder()
   .setName('unsetrp')

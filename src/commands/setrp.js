@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { buildCalendarEmbed } from '../utils/calendarBuilder.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setrp')
@@ -191,84 +192,6 @@ async function updateCalendarMessage(interaction, calendar) {
   }
 }
 
-function buildCalendarEmbed(calendar) {
-  const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const dayMap = {
-    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
-  };
-  
-  const now = new Date();
-  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  // Build calendar with days ordered: upcoming first, then past days at bottom
-  const upcomingDays = [];
-  const pastDays = [];
-  
-  daysOrder.forEach(dayName => {
-    const targetDay = dayMap[dayName];
-    let daysFromNow = targetDay - currentDay;
-    
-    // Negative = day has passed this week
-    if (daysFromNow < 0) {
-      pastDays.push({ dayName, daysFromNow });
-    } else {
-      upcomingDays.push({ dayName, daysFromNow });
-    }
-  });
-  
-  // Sort past days, then combine: upcoming first, past days at bottom
-  pastDays.sort((a, b) => a.daysFromNow - b.daysFromNow);
-  const orderedDays = [...upcomingDays, ...pastDays];
-  
-  let description = '**Roleplay Calendar**\n\n';
-
-  orderedDays.forEach(({ dayName, daysFromNow }) => {
-    // Calculate days to add to get the actual calendar date
-    const daysToAdd = daysFromNow < 0 ? daysFromNow + 7 : daysFromNow;
-    
-    // Get the actual calendar date
-    const calendarDate = new Date(now);
-    calendarDate.setDate(calendarDate.getDate() + daysToAdd);
-    calendarDate.setHours(0, 0, 0, 0);
-    
-    // Format: "Monday, Nov 25"
-    const dateStr = `${dayName}, ${calendarDate.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
-    
-    // Get events for this day
-    const dayEvents = calendar.events.filter(e => e.day === dayName);
-    
-    description += `**${dateStr}**\n`;
-    
-    if (dayEvents.length === 0) {
-      description += `No events\n\n`;
-    } else {
-      dayEvents.forEach(event => {
-        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-        
-        // Show gamertags if provided
-        const gamertags = [];
-        if (event.psn) gamertags.push(`PSN: ${event.psn}`);
-        if (event.xbox) gamertags.push(`XBOX: ${event.xbox}`);
-        
-        if (gamertags.length > 0) {
-          description += `  ${gamertags.join(' | ')}\n`;
-        }
-        
-        description += `  ${event.description}\n\n`;
-      });
-    }
-  });
-
-  description += '*Times shown in your local timezone*';
-
-  return {
-    title: 'Roleplay Calendar',
-    description,
-    color: 0x00AA00,
-    footer: { text: 'EverLink' },
-  };
-}
 
 function convertToTimestamp(day, time, timezone) {
   // Timezone offsets from UTC
