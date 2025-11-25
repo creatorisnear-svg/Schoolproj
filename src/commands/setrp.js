@@ -44,8 +44,15 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option
       .setName('psn')
-      .setDescription('PSN or username')
+      .setDescription('PSN gamertag')
       .setRequired(true)
+      .setMaxLength(100)
+  )
+  .addStringOption(option =>
+    option
+      .setName('xbox')
+      .setDescription('XBOX gamertag (optional)')
+      .setRequired(false)
       .setMaxLength(100)
   )
   .addStringOption(option =>
@@ -86,6 +93,7 @@ export async function execute(interaction) {
     const time = interaction.options.getString('time');
     const timezone = interaction.options.getString('timezone');
     const psn = interaction.options.getString('psn');
+    const xbox = interaction.options.getString('xbox') || null;
     const description = interaction.options.getString('description');
 
     // Validate time format (12-hour with AM/PM)
@@ -106,6 +114,7 @@ export async function execute(interaction) {
       time,
       timezone,
       psn,
+      xbox,
       description,
       timestamp,
     });
@@ -166,8 +175,11 @@ function buildCalendarEmbed(calendar) {
     } else {
       dayEvents.forEach(event => {
         description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-        description += `  PSN: ${event.psn}\n`;
-        description += `  ${event.description}\n\n`;
+        description += `  PSN: ${event.psn}`;
+        if (event.xbox) {
+          description += ` | XBOX: ${event.xbox}`;
+        }
+        description += `\n  ${event.description}\n\n`;
       });
     }
   });

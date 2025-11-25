@@ -6,6 +6,10 @@ const roleplayEventSchema = new mongoose.Schema({
   time: String, // HH:MM format
   timezone: String,
   psn: String,
+  xbox: {
+    type: String,
+    default: null,
+  },
   description: String,
   timestamp: Number, // Unix timestamp for Discord timestamp conversion
 });
