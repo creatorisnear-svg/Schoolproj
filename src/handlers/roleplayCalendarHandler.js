@@ -18,47 +18,14 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
       });
     }
 
-    // Delete old message if it exists
-    if (calendar.messageId) {
-      try {
-        const oldChannel = await interaction.guild.channels.fetch(calendar.channelId || selectedChannelId).catch(() => null);
-        if (oldChannel && calendar.messageId) {
-          const oldMessage = await oldChannel.messages.fetch(calendar.messageId).catch(() => null);
-          if (oldMessage) {
-            await oldMessage.delete().catch(() => {});
-            console.log('🗑️ Deleted old calendar message');
-          }
-        }
-      } catch (err) {
-        console.warn('Could not delete old calendar message:', err.message);
-      }
-    }
-
+    // Set the channel only, don't send a message yet
     calendar.channelId = selectedChannelId;
-    calendar.messageId = null; // Clear old message ID
     await calendar.save();
-
-    // Send fresh calendar message with new format
-    const channel = await interaction.guild.channels.fetch(selectedChannelId);
-    const embed = buildCalendarEmbed(calendar);
-    const message = await channel.send({ embeds: [embed] });
-    calendar.messageId = message.id;
-    await calendar.save();
-    console.log(`📨 Sent new calendar message: ${message.id}`);
-
-    const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
-    const backButton = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('back_to_calendar_menu')
-          .setLabel('← Back to Menu')
-          .setStyle(ButtonStyle.Primary)
-      );
+    console.log(`✅ Calendar channel set to: ${selectedChannelId}`);
 
     return interaction.reply({
-      embeds: [successEmbed('Roleplay Calendar Ready', 
-        `Calendar has been set up in <#${calendar.channelId}>. Use /setrp to add events!`)],
-      components: [backButton],
+      embeds: [successEmbed('Roleplay Calendar Channel Set', 
+        `Calendar channel has been set to <#${selectedChannelId}>.\n\nNow use /setrp to add your first event!`)],
       flags: 64,
     });
   } catch (error) {
