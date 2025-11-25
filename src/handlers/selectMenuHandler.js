@@ -342,10 +342,17 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'verify_setup_done') {
+      // Apply channel permissions before completing setup
+      const verification = await Verification.findOne({ guildId: interaction.guildId });
+      
+      if (verification && verification.unverifiedRoleId) {
+        await setVerificationChannelPermissions(interaction.guild, verification.unverifiedRoleId, verification);
+      }
+
       const menuData = createSetupMenu();
       return interaction.update({
         ...menuData,
-        embeds: [successEmbed('Verification system setup is complete. Your verification system is now active.')],
+        embeds: [successEmbed('Verification system setup is complete. Your verification system is now active.\n\n✅ Channel permissions have been applied.\nUnverified members can only see the welcome and verify channels.')],
       });
     }
   } catch (error) {
@@ -701,13 +708,10 @@ async function handleUnverifiedRoleSelect(interaction) {
     verification.unverifiedRoleId = role.id;
     await verification.save();
 
-    // Automatically set channel permissions after unverified role is selected
-    await setVerificationChannelPermissions(interaction.guild, role.id, verification);
-
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\n✅ Channel permissions configured!\nUnverified members can now only see:\n• ${verification.welcomeChannelId ? '<#' + verification.welcomeChannelId + '>' : 'Welcome channel (not set yet)'}\n• ${verification.verifyChannelId ? '<#' + verification.verifyChannelId + '>' : 'Verify channel (not set yet)'}\n\nSelect your next option below to continue setup.`)],
+      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup. Channel permissions will be applied when you finish setup.`)],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -721,6 +725,7 @@ async function handleUnverifiedRoleSelect(interaction) {
 
 async function setVerificationChannelPermissions(guild, unverifiedRoleId, verification) {
   try {
+    const { PermissionFlagsBits } = await import('discord.js');
     const verifyChannelId = verification.verifyChannelId;
     const welcomeChannelId = verification.welcomeChannelId;
 
@@ -731,29 +736,27 @@ async function setVerificationChannelPermissions(guild, unverifiedRoleId, verifi
       // Skip non-text channels
       if (!channel.isTextBased()) continue;
 
-      const unverifiedOverwrite = {
-        role: unverifiedRoleId,
-      };
-
       // If this is the verify or welcome channel, allow viewing
       if (channel.id === verifyChannelId || channel.id === welcomeChannelId) {
-        unverifiedOverwrite.ViewChannel = true;
-        unverifiedOverwrite.SendMessages = false;
-        unverifiedOverwrite.ReadMessageHistory = true;
+        await channel.permissionOverwrites.edit(
+          unverifiedRoleId,
+          {
+            ViewChannel: true,
+            SendMessages: false,
+            ReadMessageHistory: true,
+          },
+          { reason: 'Verification system - allow access to verify/welcome channels' }
+        );
       } else {
         // Hide all other channels from unverified role
-        unverifiedOverwrite.ViewChannel = false;
+        await channel.permissionOverwrites.edit(
+          unverifiedRoleId,
+          {
+            ViewChannel: false,
+          },
+          { reason: 'Verification system - restrict access to other channels' }
+        );
       }
-
-      await channel.permissionOverwrites.set(
-        [...(channel.permissionOverwrites.cache.values())].filter(o => o.id !== unverifiedRoleId).map(o => ({
-          id: o.id,
-          allow: o.allow,
-          deny: o.deny,
-          type: o.type,
-        })).concat([unverifiedOverwrite]),
-        'Verification system setup - restrict unverified role access'
-      );
     }
 
     console.log(`✅ Channel permissions configured for unverified role ${unverifiedRoleId}`);
