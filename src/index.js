@@ -389,12 +389,15 @@ async function startStatusBotPoller() {
   const guildId = process.env.STATUS_CHECK_GUILD;
   const channelId = process.env.STATUS_CHECK_CHANNEL;
 
+  console.log(`📡 [DEBUG] statusBotId: ${statusBotId}, guildId: ${guildId}, channelId: ${channelId}`);
+
   if (!statusBotId || !guildId || !channelId) {
     console.log('⚠️ Status bot poller not configured (missing STATUS_BOT_ID, STATUS_CHECK_GUILD, or STATUS_CHECK_CHANNEL)');
+    console.log(`📡 [DEBUG] statusBotId=${statusBotId}, guildId=${guildId}, channelId=${channelId}`);
     return;
   }
 
-  setInterval(async () => {
+  async function checkStatusBotMessage() {
     try {
       const guild = client.guilds.cache.get(guildId);
       if (!guild) {
@@ -418,16 +421,23 @@ async function startStatusBotPoller() {
       // Look for messages from status bot in the last 5
       const statusBotMessage = messages.find(msg => msg.author.id === statusBotId);
       if (statusBotMessage) {
-        console.log(`💚 [KEEP-ALIVE] Status bot message found at ${statusBotMessage.createdTimestamp} - ${new Date(statusBotMessage.createdTimestamp).toISOString()}`);
+        console.log(`💚 [KEEP-ALIVE] Status bot message found - ${new Date(statusBotMessage.createdTimestamp).toISOString()}`);
       } else {
         console.log(`⏳ [STATUS CHECK] No recent status bot message found (checked 5 latest messages)`);
       }
     } catch (error) {
       console.error('Error in status bot poller:', error);
     }
-  }, 150 * 1000); // Check every 150 seconds
+  }
 
-  console.log('📡 Status bot poller started (150-second interval)');
+  // Check immediately on startup
+  console.log('📡 Status bot poller starting...');
+  await checkStatusBotMessage();
+
+  // Check every 120 seconds (less than 300 second autoscale timeout)
+  setInterval(checkStatusBotMessage, 120 * 1000);
+
+  console.log('📡 Status bot poller started (120-second interval)');
 }
 
 client.on('interactionCreate', async interaction => {
