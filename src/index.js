@@ -123,21 +123,47 @@ async function clearAndRegisterCommands() {
       console.log('⚠️  Could not clear global commands, continuing...');
     }
     
-    // Wait before registering
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Brief wait before registering
+    await new Promise(resolve => setTimeout(resolve, 500));
     console.log('📤 Registering clean commands...');
     
-    for (const guild of client.guilds.cache.values()) {
+    // Register commands sequentially with intelligent retry and staggered delays
+    const guilds = Array.from(client.guilds.cache.values());
+    
+    for (let i = 0; i < guilds.length; i++) {
+      const guild = guilds[i];
+      let success = false;
+      
+      // First attempt with 10s timeout
       try {
         const response = await timeout(
           rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands }),
-          5000
+          10000
         );
         console.log(`✅ ${response.length} clean commands registered to ${guild.name}`);
+        success = true;
       } catch (error) {
-        console.log(`⚠️  Could not register to ${guild.name}, commands may sync later`);
+        // Retry once with 15s timeout
+        try {
+          console.log(`⏳ Retrying registration for ${guild.name}...`);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay before retry
+          const response = await timeout(
+            rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands }),
+            15000
+          );
+          console.log(`✅ ${response.length} clean commands registered to ${guild.name} (retry)`);
+          success = true;
+        } catch (retryError) {
+          console.log(`⚠️  Could not register to ${guild.name}, commands may sync later`);
+        }
+      }
+      
+      // Small delay between guilds to avoid rate limiting
+      if (i < guilds.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
     }
+    
     console.log('✅ Command sync process completed');
   } catch (error) {
     console.error('❌ Error in command cache clearing:', error.message);
