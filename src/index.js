@@ -806,8 +806,21 @@ client.on('messageReactionRemove', async (reaction, user) => {
   }
 });
 
+// Debounce mechanism to prevent duplicate guild events
+const processedGuilds = new Set();
+
 client.on('guildCreate', async (guild) => {
   try {
+    // Check if we already processed this guild recently (debounce)
+    if (processedGuilds.has(guild.id)) {
+      console.log(`⏭️  Skipping duplicate guildCreate for ${guild.name} (already processed)`);
+      return;
+    }
+    
+    // Mark this guild as processed
+    processedGuilds.add(guild.id);
+    setTimeout(() => processedGuilds.delete(guild.id), 5000); // Remove after 5 seconds
+    
     console.log(`\n🆕 Bot added to new guild: ${guild.name} (ID: ${guild.id}, Members: ${guild.memberCount})`);
     
     // Register commands to the new guild immediately
@@ -820,10 +833,12 @@ client.on('guildCreate', async (guild) => {
       console.error(`⚠️  Error registering commands to new guild:`, syncError.message);
     }
     
-    const owner = await guild.fetchOwner();
-    console.log(`📤 Attempting to send welcome DM to owner: ${owner.user.tag}`);
-    
-    const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
+    // Send welcome message to owner
+    try {
+      const owner = await guild.fetchOwner();
+      console.log(`📤 Attempting to send welcome DM to owner: ${owner.user.tag}`);
+      
+      const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
 
 Hi ${owner.user.username}, thanks for adding __**EverLink**__ to your server! 
 
@@ -861,11 +876,10 @@ Ready? Start with __/enablecommands__ to configure your server.
 
 __**EverLink**__ - Made for RP Communities 🎮`;
 
-    try {
       await owner.send(welcomeMessage);
       console.log(`✅ Welcome DM sent successfully to ${owner.user.tag}`);
     } catch (dmError) {
-      console.error(`❌ Could not send DM to ${owner.user.tag}:`, dmError.message);
+      console.error(`❌ Could not send DM to owner:`, dmError.message);
       console.log(`   Reason: Owner may have DMs disabled or bot blocked`);
       
       // Fallback: Try to send in a general channel
@@ -875,7 +889,7 @@ __**EverLink**__ - Made for RP Communities 🎮`;
         );
         
         if (generalChannel) {
-          const channelMessage = `👋 **Welcome ${owner.user.username}!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nJoin support: https://discord.gg/cSdhfGPeV2`;
+          const channelMessage = `👋 **Welcome to EverLink!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nFor detailed help: \`/help\`\nJoin support: https://discord.gg/cSdhfGPeV2`;
           await generalChannel.send(channelMessage);
           console.log(`✅ Fallback welcome message sent to #general`);
         }
@@ -885,7 +899,6 @@ __**EverLink**__ - Made for RP Communities 🎮`;
     }
   } catch (error) {
     console.error(`❌ Error in guildCreate handler for ${guild?.name}:`, error.message);
-    console.error(`   Error details:`, error.code);
   }
 });
 
