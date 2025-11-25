@@ -8,6 +8,7 @@ import TicketConfig from '../models/TicketConfig.js';
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
+import { revertVerificationPermissions } from './selectMenuHandler.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
@@ -270,6 +271,12 @@ export async function handleDisableCommandButton(interaction) {
     } else if (customId === 'disable_verification') {
       featureName = 'Verification System';
       model = Verification;
+      
+      // Revert channel permissions when disabling verification
+      const verification = await Verification.findOne({ guildId });
+      if (verification) {
+        await revertVerificationPermissions(interaction.guild, verification);
+      }
     } else if (customId === 'disable_welcome') {
       featureName = 'Welcome System';
       model = Welcome;
@@ -284,7 +291,7 @@ export async function handleDisableCommandButton(interaction) {
       }
     }
 
-    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
+    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\n✅ All channel permissions have been reverted to default.`);
     return interaction.reply({
       embeds: [embed],
       flags: 64,

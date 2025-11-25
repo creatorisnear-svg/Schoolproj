@@ -850,6 +850,49 @@ async function applyAllVerificationPermissions(guild, verification) {
   }
 }
 
+export async function revertVerificationPermissions(guild, verification) {
+  try {
+    const allChannels = await guild.channels.fetch();
+
+    // Get all admin/staff roles
+    const adminRoles = guild.roles.cache.filter(role => role.permissions.has('Administrator'));
+    const adminRoleIds = Array.from(adminRoles.keys());
+
+    for (const channel of allChannels.values()) {
+      // Skip non-text channels
+      if (!channel.isTextBased()) continue;
+
+      // Remove unverified role overwrite
+      if (verification.unverifiedRoleId) {
+        await channel.permissionOverwrites.delete(
+          verification.unverifiedRoleId,
+          'Verification system disabled - reverting permissions'
+        ).catch(() => {});
+      }
+
+      // Remove verified role overwrite
+      if (verification.verifiedRoleId) {
+        await channel.permissionOverwrites.delete(
+          verification.verifiedRoleId,
+          'Verification system disabled - reverting permissions'
+        ).catch(() => {});
+      }
+
+      // Remove staff/admin role overwrites
+      for (const adminRoleId of adminRoleIds) {
+        await channel.permissionOverwrites.delete(
+          adminRoleId,
+          'Verification system disabled - reverting permissions'
+        ).catch(() => {});
+      }
+    }
+
+    console.log(`✅ All verification permissions reverted`);
+  } catch (error) {
+    console.error('Error reverting verification permissions:', error);
+  }
+}
+
 async function handleVerifiedRoleSelect(interaction) {
   try {
     const role = interaction.roles.first();
