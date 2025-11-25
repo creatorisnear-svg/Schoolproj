@@ -108,6 +108,7 @@ async function clearAndRegisterCommands() {
   try {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     console.log('🗑️  Clearing old command cache...');
+    console.log(`🤖 Bot ID: ${client.user.id}`);
     
     // Set timeout for operations
     const timeout = (promise, ms) => Promise.race([
@@ -125,14 +126,25 @@ async function clearAndRegisterCommands() {
     
     // Brief wait before registering
     await new Promise(resolve => setTimeout(resolve, 500));
-    console.log('📤 Registering clean commands...');
+    console.log(`📤 Registering clean commands to ${client.guilds.cache.size} server(s)...`);
     
     // Register commands sequentially with intelligent retry and staggered delays
     const guilds = Array.from(client.guilds.cache.values());
+    let successCount = 0;
+    let failureCount = 0;
+    const failedGuilds = [];
+    
+    console.log(`\n📋 COMMAND SYNC DETAILS:`);
+    console.log(`Total servers: ${guilds.length}`);
+    console.log(`Commands to register: ${commands.length}`);
+    console.log(`\n`);
     
     for (let i = 0; i < guilds.length; i++) {
       const guild = guilds[i];
       let success = false;
+      const startTime = Date.now();
+      
+      console.log(`[${i + 1}/${guilds.length}] Processing: "${guild.name}" (ID: ${guild.id}, Members: ${guild.memberCount})`);
       
       // First attempt with 10s timeout
       try {
@@ -140,21 +152,30 @@ async function clearAndRegisterCommands() {
           rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands }),
           10000
         );
-        console.log(`✅ ${response.length} clean commands registered to ${guild.name}`);
+        const duration = Date.now() - startTime;
+        console.log(`  ✅ SUCCESS: ${response.length} commands registered in ${duration}ms`);
         success = true;
+        successCount++;
       } catch (error) {
         // Retry once with 15s timeout
         try {
-          console.log(`⏳ Retrying registration for ${guild.name}...`);
+          console.log(`  ⏳ TIMEOUT/ERROR: ${error.message} - Retrying...`);
           await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay before retry
+          const retryStartTime = Date.now();
           const response = await timeout(
             rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands }),
             15000
           );
-          console.log(`✅ ${response.length} clean commands registered to ${guild.name} (retry)`);
+          const duration = Date.now() - retryStartTime;
+          console.log(`  ✅ RETRY SUCCESS: ${response.length} commands registered in ${duration}ms`);
           success = true;
+          successCount++;
         } catch (retryError) {
-          console.log(`⚠️  Could not register to ${guild.name}, commands may sync later`);
+          const totalDuration = Date.now() - startTime;
+          console.log(`  ❌ FAILED: ${guild.name} - Error: ${retryError.message} (${totalDuration}ms)`);
+          console.log(`     Error code: ${retryError.code} | Status: ${retryError.status}`);
+          failureCount++;
+          failedGuilds.push({ name: guild.name, id: guild.id, error: retryError.message });
         }
       }
       
@@ -164,7 +185,18 @@ async function clearAndRegisterCommands() {
       }
     }
     
-    console.log('✅ Command sync process completed');
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`✅ Command sync process completed`);
+    console.log(`📊 SYNC SUMMARY:`);
+    console.log(`   ✅ Successful: ${successCount}/${guilds.length}`);
+    console.log(`   ❌ Failed: ${failureCount}/${guilds.length}`);
+    if (failedGuilds.length > 0) {
+      console.log(`\n   Failed servers:`);
+      failedGuilds.forEach(guild => {
+        console.log(`     • ${guild.name} (${guild.id}): ${guild.error}`);
+      });
+    }
+    console.log(`${'='.repeat(60)}\n`);
   } catch (error) {
     console.error('❌ Error in command cache clearing:', error.message);
   }
