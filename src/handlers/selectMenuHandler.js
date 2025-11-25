@@ -854,10 +854,6 @@ export async function revertVerificationPermissions(guild, verification) {
   try {
     const allChannels = await guild.channels.fetch();
 
-    // Get all admin/staff roles
-    const adminRoles = guild.roles.cache.filter(role => role.permissions.has('Administrator'));
-    const adminRoleIds = Array.from(adminRoles.keys());
-
     for (const channel of allChannels.values()) {
       // Skip non-text channels
       if (!channel.isTextBased()) continue;
@@ -877,17 +873,9 @@ export async function revertVerificationPermissions(guild, verification) {
           'Verification system disabled - reverting permissions'
         ).catch(() => {});
       }
-
-      // Remove staff/admin role overwrites
-      for (const adminRoleId of adminRoleIds) {
-        await channel.permissionOverwrites.delete(
-          adminRoleId,
-          'Verification system disabled - reverting permissions'
-        ).catch(() => {});
-      }
     }
 
-    console.log(`✅ All verification permissions reverted`);
+    console.log(`✅ Verification role permissions reverted (unverified & verified roles)`);
   } catch (error) {
     console.error('Error reverting verification permissions:', error);
   }
