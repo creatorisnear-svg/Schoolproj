@@ -400,10 +400,17 @@ client.on('interactionCreate', async interaction => {
         flags: 64,
       };
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(errorMessage);
-      } else {
-        await interaction.reply(errorMessage);
+      try {
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(errorMessage);
+        } else {
+          await interaction.reply(errorMessage);
+        }
+      } catch (replyError) {
+        // Silently fail if we can't respond - interaction may have already been replied to or timed out
+        if (replyError.code !== 10062 && replyError.code !== 40060) {
+          console.error('Failed to send error message:', replyError);
+        }
       }
     }
   }
@@ -1041,7 +1048,7 @@ async function startBot() {
   }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log('🔄 Refreshing all calendars on bot startup...');
   await refreshAllCalendars();
 });
