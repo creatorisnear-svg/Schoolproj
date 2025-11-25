@@ -3,6 +3,13 @@
 ## Overview
 EverLink is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments.
 
+## Recent Changes (Nov 25, 2024)
+- Fixed calendar event cleanup logic: changed from day-based filtering to age-based (events delete after 7 days, not by day of week)
+- Added `createdAt` timestamp to RoleplayCalendar event schema for proper event age tracking
+- Fixed roleplaycalendersetup command timeout by removing unnecessary defer and using direct reply
+- Verified reaction role data persistence in MongoDB works correctly
+- All 34 commands loaded and registered successfully across 3 production Discord servers
+
 ## User Preferences
 - All bot responses must use Discord embeds
 - EverLink branding on all embeds (footer: "EverLink")
@@ -11,9 +18,9 @@ EverLink is a Discord bot designed for multi-server roleplay and gaming communit
 - General members restricted to roleplay/verification commands only
 
 ## Permission Structure
-**Admins** - Can use ALL 33 commands (includes all staff permissions)
+**Admins** - Can use ALL 34 commands (includes all staff permissions)
 - **Admin-Only (2 commands):** `/addstaff`, `/removestaff`
-**Staff** - Added via `/addstaff`, can use 31 administrative commands (all except addstaff & removestaff)
+**Staff** - Added via `/addstaff`, can use 32 administrative commands (all except addstaff & removestaff)
 **General Members** - Can only use roleplay/verification commands (7 commands)
 
 ## System Architecture
