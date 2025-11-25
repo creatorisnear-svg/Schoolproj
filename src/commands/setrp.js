@@ -201,66 +201,66 @@ function buildCalendarEmbed(calendar) {
   const now = new Date();
   const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  // Create array of days in order: current day onwards, then passed days at end
-  const orderedDays = [];
-  const passedDays = [];
+  // Build calendar with days ordered: upcoming first, then past days at bottom
+  const upcomingDays = [];
+  const pastDays = [];
   
   daysOrder.forEach(dayName => {
     const targetDay = dayMap[dayName];
-    let daysUntil = targetDay - currentDay;
+    let daysFromNow = targetDay - currentDay;
     
-    if (daysUntil < 0) {
-      // Day has passed - add to passed days array
-      passedDays.push({ dayName, daysUntil });
+    // Negative = day has passed this week
+    if (daysFromNow < 0) {
+      pastDays.push({ dayName, daysFromNow });
     } else {
-      // Day is today or in future - add to ordered days
-      orderedDays.push({ dayName, daysUntil });
+      upcomingDays.push({ dayName, daysFromNow });
     }
   });
   
-  // Sort passed days by how far past they are, then add them at the end
-  passedDays.sort((a, b) => a.daysUntil - b.daysUntil);
-  const finalOrder = [...orderedDays, ...passedDays];
+  // Sort past days, then combine: upcoming first, past days at bottom
+  pastDays.sort((a, b) => a.daysFromNow - b.daysFromNow);
+  const orderedDays = [...upcomingDays, ...pastDays];
   
   let description = '**Roleplay Calendar**\n\n';
 
-  finalOrder.forEach(({ dayName, daysUntil }) => {
-    // For passed days, calculate next week's date
-    const actualDaysUntil = daysUntil < 0 ? daysUntil + 7 : daysUntil;
+  orderedDays.forEach(({ dayName, daysFromNow }) => {
+    // Calculate days to add to get the actual calendar date
+    const daysToAdd = daysFromNow < 0 ? daysFromNow + 7 : daysFromNow;
     
-    // Calculate the actual date
-    const eventDate = new Date(now);
-    eventDate.setDate(eventDate.getDate() + actualDaysUntil);
-    eventDate.setHours(0, 0, 0, 0);
+    // Get the actual calendar date
+    const calendarDate = new Date(now);
+    calendarDate.setDate(calendarDate.getDate() + daysToAdd);
+    calendarDate.setHours(0, 0, 0, 0);
     
-    // Format date as "Monday, Nov 25"
-    const monthShort = eventDate.toLocaleString('en-US', { month: 'short' });
-    const dateNum = eventDate.getDate();
-    const dateStr = `${dayName}, ${monthShort} ${dateNum}`;
+    // Format: "Monday, Nov 25"
+    const dateStr = `${dayName}, ${calendarDate.toLocaleString('en-US', { month: 'short', day: 'numeric' })}`;
     
+    // Get events for this day
     const dayEvents = calendar.events.filter(e => e.day === dayName);
+    
     description += `**${dateStr}**\n`;
     
     if (dayEvents.length === 0) {
-      description += `No events scheduled\n\n`;
+      description += `No events\n\n`;
     } else {
       dayEvents.forEach(event => {
         description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-        if (event.psn) {
-          description += `  PSN: ${event.psn}`;
+        
+        // Show gamertags if provided
+        const gamertags = [];
+        if (event.psn) gamertags.push(`PSN: ${event.psn}`);
+        if (event.xbox) gamertags.push(`XBOX: ${event.xbox}`);
+        
+        if (gamertags.length > 0) {
+          description += `  ${gamertags.join(' | ')}\n`;
         }
-        if (event.xbox) {
-          description += event.psn ? ` | XBOX: ${event.xbox}` : `  XBOX: ${event.xbox}`;
-        }
-        if (event.psn || event.xbox) {
-          description += `\n`;
-        }
+        
         description += `  ${event.description}\n\n`;
       });
     }
   });
 
-  description += '*Times are shown in your local timezone*';
+  description += '*Times shown in your local timezone*';
 
   return {
     title: 'Roleplay Calendar',
