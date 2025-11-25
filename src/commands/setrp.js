@@ -120,6 +120,10 @@ export async function execute(interaction) {
     });
 
     await calendar.save();
+    
+    // Clean up old events from passed days
+    cleanupOldEvents(calendar);
+    
     await updateCalendarMessage(interaction, calendar);
 
     return interaction.reply({
@@ -135,10 +139,36 @@ export async function execute(interaction) {
   }
 }
 
+function cleanupOldEvents(calendar) {
+  const dayMap = {
+    'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+    'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+  };
+  
+  const now = new Date();
+  const currentDay = now.getDay();
+  
+  // Remove events from passed days
+  calendar.events = calendar.events.filter(event => {
+    const eventDay = dayMap[event.day];
+    let daysUntil = eventDay - currentDay;
+    
+    // If daysUntil is negative, the day has passed
+    if (daysUntil < 0) {
+      return false; // Delete this event
+    }
+    return true; // Keep this event
+  });
+}
+
 async function updateCalendarMessage(interaction, calendar) {
   try {
     const channel = await interaction.guild.channels.fetch(calendar.channelId);
     if (!channel) return;
+
+    // Clean up old events before displaying
+    cleanupOldEvents(calendar);
+    await calendar.save();
 
     const embed = buildCalendarEmbed(calendar);
 
@@ -171,24 +201,36 @@ function buildCalendarEmbed(calendar) {
   const now = new Date();
   const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  let description = '**Roleplay Calendar**\n\n';
-
+  // Create array of days in order: current day onwards, then passed days at end
+  const orderedDays = [];
+  const passedDays = [];
+  
   daysOrder.forEach(dayName => {
     const targetDay = dayMap[dayName];
     let daysUntil = targetDay - currentDay;
     
-    // Skip past days this week
-    if (daysUntil < 0) daysUntil += 7;
-    
-    // Skip today if it's already occurred (only show future days and today)
-    if (daysUntil === 0 && now.getHours() >= 23) {
-      // If it's almost midnight today, skip to next week
-      daysUntil = 7;
+    if (daysUntil < 0) {
+      // Day has passed - add to passed days array
+      passedDays.push({ dayName, daysUntil });
+    } else {
+      // Day is today or in future - add to ordered days
+      orderedDays.push({ dayName, daysUntil });
     }
+  });
+  
+  // Sort passed days by how far past they are, then add them at the end
+  passedDays.sort((a, b) => a.daysUntil - b.daysUntil);
+  const finalOrder = [...orderedDays, ...passedDays];
+  
+  let description = '**Roleplay Calendar**\n\n';
+
+  finalOrder.forEach(({ dayName, daysUntil }) => {
+    // For passed days, calculate next week's date
+    const actualDaysUntil = daysUntil < 0 ? daysUntil + 7 : daysUntil;
     
     // Calculate the actual date
     const eventDate = new Date(now);
-    eventDate.setDate(eventDate.getDate() + daysUntil);
+    eventDate.setDate(eventDate.getDate() + actualDaysUntil);
     eventDate.setHours(0, 0, 0, 0);
     
     // Format date as "Monday, Nov 25"
@@ -197,28 +239,24 @@ function buildCalendarEmbed(calendar) {
     const dateStr = `${dayName}, ${monthShort} ${dateNum}`;
     
     const dayEvents = calendar.events.filter(e => e.day === dayName);
+    description += `**${dateStr}**\n`;
     
-    // Only show days with events or today onwards
-    if (dayEvents.length > 0 || daysUntil >= 0) {
-      description += `**${dateStr}**\n`;
-      
-      if (dayEvents.length === 0) {
-        description += `No events scheduled\n\n`;
-      } else {
-        dayEvents.forEach(event => {
-          description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
-          if (event.psn) {
-            description += `  PSN: ${event.psn}`;
-          }
-          if (event.xbox) {
-            description += event.psn ? ` | XBOX: ${event.xbox}` : `  XBOX: ${event.xbox}`;
-          }
-          if (event.psn || event.xbox) {
-            description += `\n`;
-          }
-          description += `  ${event.description}\n\n`;
-        });
-      }
+    if (dayEvents.length === 0) {
+      description += `No events scheduled\n\n`;
+    } else {
+      dayEvents.forEach(event => {
+        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
+        if (event.psn) {
+          description += `  PSN: ${event.psn}`;
+        }
+        if (event.xbox) {
+          description += event.psn ? ` | XBOX: ${event.xbox}` : `  XBOX: ${event.xbox}`;
+        }
+        if (event.psn || event.xbox) {
+          description += `\n`;
+        }
+        description += `  ${event.description}\n\n`;
+      });
     }
   });
 
