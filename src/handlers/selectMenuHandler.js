@@ -806,9 +806,12 @@ async function applyAllVerificationPermissions(guild, verification) {
         }
       }
 
-      // 2. Configure verified role (can see selected channels)
+      // 2. Configure verified role (can see selected channels + welcome channel)
       if (verification.verifiedRoleId) {
-        if (verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id)) {
+        const isVerifiedChannel = verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id);
+        const isWelcomeChannel = channel.id === verification.welcomeChannelId;
+        
+        if (isVerifiedChannel || isWelcomeChannel) {
           await channel.permissionOverwrites.edit(
             verification.verifiedRoleId,
             {
