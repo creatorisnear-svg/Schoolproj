@@ -163,12 +163,35 @@ async function updateCalendarMessage(interaction, calendar) {
 
 function buildCalendarEmbed(calendar) {
   const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
   let description = '**Roleplay Calendar**\n\n';
 
-  daysOrder.forEach(day => {
-    const dayEvents = calendar.events.filter(e => e.day === day);
-    description += `**${day}**\n`;
+  daysOrder.forEach(dayName => {
+    const dayMap = {
+      'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
+      'Friday': 5, 'Saturday': 6, 'Sunday': 0,
+    };
+    
+    const targetDay = dayMap[dayName];
+    let daysUntil = targetDay - currentDay;
+    
+    // If day has passed this week, show next week's date
+    if (daysUntil <= 0) daysUntil += 7;
+    
+    // Calculate the actual date
+    const eventDate = new Date(now);
+    eventDate.setDate(eventDate.getDate() + daysUntil);
+    eventDate.setHours(0, 0, 0, 0);
+    
+    // Format date as "Monday, Nov 25"
+    const monthShort = eventDate.toLocaleString('en-US', { month: 'short' });
+    const dateNum = eventDate.getDate();
+    const dateStr = `${dayName}, ${monthShort} ${dateNum}`;
+    
+    const dayEvents = calendar.events.filter(e => e.day === dayName);
+    description += `**${dateStr}**\n`;
     
     if (dayEvents.length === 0) {
       description += `No events scheduled\n\n`;
