@@ -390,11 +390,11 @@ async function startStatusHeartbeatSender() {
 
 async function startStatusBotPoller() {
   console.log('📡 [DEBUG] startStatusBotPoller called');
-  console.log('📡 [DEBUG] process.env keys:', Object.keys(process.env).filter(k => k.includes('STATUS')));
   
-  const statusBotId = process.env.STATUS_BOT_ID;
-  const guildId = process.env.STATUS_CHECK_GUILD;
-  const channelId = process.env.STATUS_CHECK_CHANNEL;
+  // Use env vars or fallback to hardcoded values (for Koyeb deployment)
+  const statusBotId = process.env.STATUS_BOT_ID || '835223338275569676';
+  const guildId = process.env.STATUS_CHECK_GUILD || '1441548471906734173';
+  const channelId = process.env.STATUS_CHECK_CHANNEL || '1442653565427646495';
 
   console.log(`📡 [DEBUG] statusBotId: ${statusBotId}, guildId: ${guildId}, channelId: ${channelId}`);
 
