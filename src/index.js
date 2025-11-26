@@ -386,32 +386,15 @@ async function startStatusHeartbeatSender() {
 
 function startStatusBotPoller() {
   const statusBotId = '835223338275569676';
-  const guildId = '1441548471906734173';
-  const channelId = '1442653565427646495';
+  const watchChannelId = '1442653565427646495';
 
-  console.log(`📡 Status bot poller initialized for guild ${guildId}, channel ${channelId}`);
+  console.log(`📡 Status bot watcher active - listening for messages from ${statusBotId}`);
 
-  setInterval(async () => {
-    try {
-      const guild = client.guilds.cache.get(guildId);
-      if (!guild) return;
-
-      const channel = await guild.channels.fetch(channelId).catch(() => null);
-      if (!channel || !channel.isTextBased()) return;
-
-      const messages = await channel.messages.fetch({ limit: 3 }).catch(() => null);
-      if (!messages) return;
-
-      const found = messages.find(m => m.author.id === statusBotId);
-      if (found) {
-        console.log(`💚 [KEEP-ALIVE] Status bot activity detected - ${new Date().toISOString()}`);
-      }
-    } catch (error) {
-      console.error('Status poller error:', error.message);
+  client.on('messageCreate', (message) => {
+    if (message.author.id === statusBotId && message.channelId === watchChannelId) {
+      console.log(`💚 [KEEP-ALIVE] Status bot message detected - ${new Date().toISOString()}`);
     }
-  }, 120000); // 120 seconds
-
-  console.log('📡 Status bot poller started (120-second checks)');
+  });
 }
 
 client.on('interactionCreate', async interaction => {
