@@ -53,10 +53,6 @@ client.once('clientReady', async () => {
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
   console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
 
-  // Set uptime tracker start time
-  const { setBotStartTime } = await import('./commands/uptime.js');
-  setBotStartTime();
-
   // Clear old cached commands and register new ones
   await clearAndRegisterCommands();
 
