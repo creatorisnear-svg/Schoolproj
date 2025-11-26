@@ -72,7 +72,11 @@ client.once('clientReady', async () => {
   startStatusHeartbeatSender();
 
   // Start status bot poller (keep-alive by checking for status bot messages)
-  startStatusBotPoller();
+  try {
+    await startStatusBotPoller();
+  } catch (err) {
+    console.error('Failed to start status bot poller:', err);
+  }
 });
 
 async function initializeSupportServerHeartbeat() {
@@ -385,6 +389,9 @@ async function startStatusHeartbeatSender() {
 }
 
 async function startStatusBotPoller() {
+  console.log('📡 [DEBUG] startStatusBotPoller called');
+  console.log('📡 [DEBUG] process.env keys:', Object.keys(process.env).filter(k => k.includes('STATUS')));
+  
   const statusBotId = process.env.STATUS_BOT_ID;
   const guildId = process.env.STATUS_CHECK_GUILD;
   const channelId = process.env.STATUS_CHECK_CHANNEL;
