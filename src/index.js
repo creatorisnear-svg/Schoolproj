@@ -382,9 +382,9 @@ async function startStatusHeartbeatSender() {
     } catch (error) {
       console.error('Error in status heartbeat sender:', error);
     }
-  }, 8 * 60 * 1000); // Check every 8 minutes
+  }, 4 * 60 * 1000); // Check every 4 minutes (240 seconds - before 300s Koyeb timeout)
 
-  console.log('💚 Status heartbeat sender started (8-minute interval)');
+  console.log('💚 Status heartbeat sender started (4-minute interval)');
 }
 
 async function checkStatusBotMessageOnStartup() {
