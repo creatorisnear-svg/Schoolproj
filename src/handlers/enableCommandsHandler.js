@@ -9,9 +9,26 @@ import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import { revertVerificationPermissions } from './selectMenuHandler.js';
+import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
+    const isAdminUser = await isAdmin(interaction.member);
+    const isStaffUser = await checkStaffPermission(interaction);
+
+    if (!isAdminUser && !isStaffUser) {
+      const embed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('Permission Denied')
+        .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
+        .setFooter({ text: 'EverLink' });
+      
+      return interaction.reply({
+        embeds: [embed],
+        flags: 64,
+      });
+    }
+
     const customId = interaction.customId;
 
     if (customId === 'choice_done') {
@@ -157,6 +174,22 @@ export async function handleEnableChoiceButton(interaction) {
 
 export async function handleEnableCommandButton(interaction) {
   try {
+    const isAdminUser = await isAdmin(interaction.member);
+    const isStaffUser = await checkStaffPermission(interaction);
+
+    if (!isAdminUser && !isStaffUser) {
+      const embed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('Permission Denied')
+        .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
+        .setFooter({ text: 'EverLink' });
+      
+      return interaction.reply({
+        embeds: [embed],
+        flags: 64,
+      });
+    }
+
     const customId = interaction.customId;
     const guildId = interaction.guildId;
     
