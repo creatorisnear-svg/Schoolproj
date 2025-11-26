@@ -53,6 +53,10 @@ client.once('clientReady', async () => {
   console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
   console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
 
+  // Set uptime tracker start time
+  const { setBotStartTime } = await import('./commands/uptime.js');
+  setBotStartTime();
+
   // Clear old cached commands and register new ones
   await clearAndRegisterCommands();
 
@@ -68,8 +72,8 @@ client.once('clientReady', async () => {
   // Start auto-deletion for expired BOLOs
   startBOLOAutoDelete();
 
-  // Start status heartbeat sender
-  startStatusHeartbeatSender();
+  // Start status heartbeat sender (sends initial heartbeat immediately)
+  await startStatusHeartbeatSender();
 
   // Check for existing status bot messages on startup
   await checkStatusBotMessageOnStartup();
@@ -336,7 +340,7 @@ async function startBOLOAutoDelete() {
 async function startStatusHeartbeatSender() {
   const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
 
-  setInterval(async () => {
+  async function sendHeartbeats() {
     try {
       const statusConfigs = await StatusHeartbeat.find({ enabled: true });
 
@@ -382,9 +386,15 @@ async function startStatusHeartbeatSender() {
     } catch (error) {
       console.error('Error in status heartbeat sender:', error);
     }
-  }, 4 * 60 * 1000); // Check every 4 minutes (240 seconds - before 300s Koyeb timeout)
+  }
 
-  console.log('💚 Status heartbeat sender started (4-minute interval)');
+  // Send initial heartbeat immediately on startup
+  await sendHeartbeats();
+
+  // Then send every 4 minutes (240 seconds - before 300s Koyeb timeout)
+  setInterval(sendHeartbeats, 4 * 60 * 1000);
+
+  console.log('💚 Status heartbeat sender started (initial + 4-minute interval)');
 }
 
 async function checkStatusBotMessageOnStartup() {
