@@ -71,6 +71,9 @@ client.once('clientReady', async () => {
   // Start status heartbeat sender
   startStatusHeartbeatSender();
 
+  // Check for existing status bot messages on startup
+  await checkStatusBotMessageOnStartup();
+
   // Start status bot poller (keep-alive by checking for status bot messages)
   startStatusBotPoller();
 });
@@ -382,6 +385,41 @@ async function startStatusHeartbeatSender() {
   }, 8 * 60 * 1000); // Check every 8 minutes
 
   console.log('💚 Status heartbeat sender started (8-minute interval)');
+}
+
+async function checkStatusBotMessageOnStartup() {
+  const statusBotId = '835223338275569676';
+  const guildId = '1441548471906734173';
+  const channelId = '1442653565427646495';
+
+  try {
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) {
+      console.log('⚠️ Support guild not found');
+      return;
+    }
+
+    const channel = await guild.channels.fetch(channelId).catch(() => null);
+    if (!channel || !channel.isTextBased()) {
+      console.log('⚠️ Status channel not found');
+      return;
+    }
+
+    const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+    if (!messages) {
+      console.log('⚠️ Could not fetch messages from status channel');
+      return;
+    }
+
+    const statusBotMessage = messages.find(m => m.author.id === statusBotId);
+    if (statusBotMessage) {
+      console.log(`💚 [STARTUP] Status bot message found - bot won't sleep if status bot is running`);
+    } else {
+      console.log(`⏳ [STARTUP] No status bot messages found yet - watching for first message...`);
+    }
+  } catch (error) {
+    console.error('Error checking status bot message on startup:', error.message);
+  }
 }
 
 function startStatusBotPoller() {
