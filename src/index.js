@@ -72,11 +72,7 @@ client.once('clientReady', async () => {
   startStatusHeartbeatSender();
 
   // Start status bot poller (keep-alive by checking for status bot messages)
-  try {
-    await startStatusBotPoller();
-  } catch (err) {
-    console.error('Failed to start status bot poller:', err);
-  }
+  startStatusBotPoller();
 });
 
 async function initializeSupportServerHeartbeat() {
@@ -388,63 +384,34 @@ async function startStatusHeartbeatSender() {
   console.log('💚 Status heartbeat sender started (8-minute interval)');
 }
 
-async function startStatusBotPoller() {
-  console.log('📡 [DEBUG] startStatusBotPoller called');
-  
-  // Use env vars or fallback to hardcoded values (for Koyeb deployment)
-  const statusBotId = process.env.STATUS_BOT_ID || '835223338275569676';
-  const guildId = process.env.STATUS_CHECK_GUILD || '1441548471906734173';
-  const channelId = process.env.STATUS_CHECK_CHANNEL || '1442653565427646495';
+function startStatusBotPoller() {
+  const statusBotId = '835223338275569676';
+  const guildId = '1441548471906734173';
+  const channelId = '1442653565427646495';
 
-  console.log(`📡 [DEBUG] statusBotId: ${statusBotId}, guildId: ${guildId}, channelId: ${channelId}`);
+  console.log(`📡 Status bot poller initialized for guild ${guildId}, channel ${channelId}`);
 
-  if (!statusBotId || !guildId || !channelId) {
-    console.log('⚠️ Status bot poller not configured (missing STATUS_BOT_ID, STATUS_CHECK_GUILD, or STATUS_CHECK_CHANNEL)');
-    console.log(`📡 [DEBUG] statusBotId=${statusBotId}, guildId=${guildId}, channelId=${channelId}`);
-    return;
-  }
-
-  async function checkStatusBotMessage() {
+  setInterval(async () => {
     try {
       const guild = client.guilds.cache.get(guildId);
-      if (!guild) {
-        console.log(`⚠️ Could not find status check guild ${guildId}`);
-        return;
-      }
+      if (!guild) return;
 
       const channel = await guild.channels.fetch(channelId).catch(() => null);
-      if (!channel || !channel.isTextBased()) {
-        console.log(`⚠️ Could not find or access status check channel ${channelId}`);
-        return;
-      }
+      if (!channel || !channel.isTextBased()) return;
 
-      // Fetch last 5 messages to find status bot message
-      const messages = await channel.messages.fetch({ limit: 5 }).catch(() => null);
-      if (!messages) {
-        console.log('⚠️ Could not fetch messages from status channel');
-        return;
-      }
+      const messages = await channel.messages.fetch({ limit: 3 }).catch(() => null);
+      if (!messages) return;
 
-      // Look for messages from status bot in the last 5
-      const statusBotMessage = messages.find(msg => msg.author.id === statusBotId);
-      if (statusBotMessage) {
-        console.log(`💚 [KEEP-ALIVE] Status bot message found - ${new Date(statusBotMessage.createdTimestamp).toISOString()}`);
-      } else {
-        console.log(`⏳ [STATUS CHECK] No recent status bot message found (checked 5 latest messages)`);
+      const found = messages.find(m => m.author.id === statusBotId);
+      if (found) {
+        console.log(`💚 [KEEP-ALIVE] Status bot activity detected - ${new Date().toISOString()}`);
       }
     } catch (error) {
-      console.error('Error in status bot poller:', error);
+      console.error('Status poller error:', error.message);
     }
-  }
+  }, 120000); // 120 seconds
 
-  // Check immediately on startup
-  console.log('📡 Status bot poller starting...');
-  await checkStatusBotMessage();
-
-  // Check every 120 seconds (less than 300 second autoscale timeout)
-  setInterval(checkStatusBotMessage, 120 * 1000);
-
-  console.log('📡 Status bot poller started (120-second interval)');
+  console.log('📡 Status bot poller started (120-second checks)');
 }
 
 client.on('interactionCreate', async interaction => {
