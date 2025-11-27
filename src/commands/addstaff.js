@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from 'discord.js';
 import Staff from '../models/Staff.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { isAdminOrManager } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('addstaff')
-  .setDescription('Add staff or staff roles to configure the bot (Admin only) - Required to set up log channel')
+  .setDescription('Add staff or staff roles to configure the bot (Admin/Manager)')
   .addUserOption(option =>
     option.setName('user')
       .setDescription('The user to add as staff')
@@ -32,9 +32,9 @@ export const data = new SlashCommandBuilder()
       .setRequired(false));
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await isAdminOrManager(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can add staff members.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only administrators and managers can add staff members.')],
       flags: 64,
     });
   }

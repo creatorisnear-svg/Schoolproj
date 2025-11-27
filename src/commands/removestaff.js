@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from 'discord.js';
 import Staff from '../models/Staff.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { isAdminOrManager } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('removestaff')
-  .setDescription('Remove a user or role from the bot staff team (Admin only)')
+  .setDescription('Remove a user or role from the bot staff team (Admin/Manager)')
   .addUserOption(option =>
     option.setName('user')
       .setDescription('The user to remove from staff')
@@ -16,9 +16,9 @@ export const data = new SlashCommandBuilder()
       .setRequired(false));
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
+  if (!await isAdminOrManager(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can remove staff members.')],
+      embeds: [errorEmbed('You do not have permission to use this command. Only administrators and managers can remove staff members.')],
       flags: 64,
     });
   }
