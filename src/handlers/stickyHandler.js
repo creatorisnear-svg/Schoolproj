@@ -8,8 +8,8 @@ export async function handleStickyMessages(message) {
 
     if (!sticky) return;
 
-    // Don't count the sticky message itself
-    if (message.id === sticky.messageId) return;
+    // Don't count bot messages except the sticky message itself
+    if (message.author.bot && message.id !== sticky.messageId) return;
 
     console.log(`📌 Found sticky message in ${message.guild.name} #${message.channel.name}, count: ${sticky.messageCount}`);
 
