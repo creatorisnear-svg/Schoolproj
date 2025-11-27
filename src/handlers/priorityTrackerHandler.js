@@ -118,8 +118,10 @@ export async function buildPriorityEmbed(priority) {
   let cooldownText = 'None';
   if (priority.cooldownEndsAt) {
     const now = new Date();
-    const remaining = Math.max(0, Math.floor((priority.cooldownEndsAt - now) / 1000 / 60));
-    cooldownText = `${remaining}m (counting down)`;
+    const remaining = Math.floor((priority.cooldownEndsAt - now) / 1000 / 60);
+    if (remaining > 0) {
+      cooldownText = `${remaining}m (counting down)`;
+    }
   }
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
