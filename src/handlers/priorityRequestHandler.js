@@ -13,10 +13,11 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
       });
     }
 
-    const channel = await interaction.guild.channels.fetch(priority.channelId).catch(() => null);
+    // Send to the channel where the command was used
+    const channel = interaction.channel;
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
-        content: 'Priority channel not found.',
+        content: 'Could not send message to this channel.',
         flags: 64,
       });
     }
@@ -49,7 +50,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
           .setStyle(ButtonStyle.Danger)
       );
 
-    // Send to priority channel
+    // Send to the channel where user submitted the command
     const message = await channel.send({ embeds: [embed], components: [row] });
 
     // Store in database

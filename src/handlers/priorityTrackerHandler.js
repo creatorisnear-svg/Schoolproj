@@ -67,13 +67,26 @@ export async function handlePriorityTrackerMessageModal(interaction) {
     priority.customMessage = customMessage;
     await priority.save();
 
-    // Send initial priority tracker message
+    // Send or update initial priority tracker message
     const channel = await interaction.guild.channels.fetch(priority.channelId);
-    const embed = buildPriorityEmbed(priority);
-    const message = await channel.send({ embeds: [embed] });
+    const embed = await buildPriorityEmbed(priority);
 
-    priority.messageId = message.id;
-    await priority.save();
+    // Check if message already exists and update it, otherwise create new
+    if (priority.messageId) {
+      try {
+        const existingMessage = await channel.messages.fetch(priority.messageId);
+        await existingMessage.edit({ embeds: [embed] });
+      } catch (err) {
+        // Message not found, create new one
+        const message = await channel.send({ embeds: [embed] });
+        priority.messageId = message.id;
+        await priority.save();
+      }
+    } else {
+      const message = await channel.send({ embeds: [embed] });
+      priority.messageId = message.id;
+      await priority.save();
+    }
 
     const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
     const backButton = new ActionRowBuilder()
