@@ -1,7 +1,7 @@
 import Sticky from '../models/Sticky.js';
 
 export async function handleStickyMessages(message) {
-  if (!message.guild || message.author.bot) return;
+  if (!message.guild) return;
 
   try {
     const sticky = await Sticky.findOne({ guildId: message.guildId, channelId: message.channelId });
