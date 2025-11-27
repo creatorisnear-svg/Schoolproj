@@ -9,14 +9,14 @@ import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import { revertVerificationPermissions } from './selectMenuHandler.js';
-import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
+import { isAdmin, isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
 
 export async function handleEnableChoiceButton(interaction) {
   try {
-    const isAdminUser = await isAdmin(interaction.member);
+    const isAdminOrMgr = await isAdminOrManager(interaction);
     const isStaffUser = await checkStaffPermission(interaction);
 
-    if (!isAdminUser && !isStaffUser) {
+    if (!isAdminOrMgr && !isStaffUser) {
       const embed = new EmbedBuilder()
         .setColor('#FF0000')
         .setTitle('Permission Denied')
@@ -174,10 +174,10 @@ export async function handleEnableChoiceButton(interaction) {
 
 export async function handleEnableCommandButton(interaction) {
   try {
-    const isAdminUser = await isAdmin(interaction.member);
+    const isAdminOrMgr = await isAdminOrManager(interaction);
     const isStaffUser = await checkStaffPermission(interaction);
 
-    if (!isAdminUser && !isStaffUser) {
+    if (!isAdminOrMgr && !isStaffUser) {
       const embed = new EmbedBuilder()
         .setColor('#FF0000')
         .setTitle('Permission Denied')
