@@ -168,16 +168,21 @@ function buildPriorityEmbed(priority) {
     : 'None';
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
+  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
+
+  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
+  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
+  description += `**Priority cooldown:** ${cooldownText}\n`;
+  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
+
+  if (priority.customMessage) {
+    description += `\n\n${priority.customMessage}`;
+  }
 
   return new EmbedBuilder()
-    .setColor(priority.priorityActive ? '#00FF00' : '#FF0000')
+    .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
     .setTitle('🚨 Priority Tracker')
-    .setDescription(priority.priorityActive ? '✅ ACTIVE' : '❌ INACTIVE')
-    .addFields(
-      { name: 'Status', value: priority.priorityActive ? 'Active' : 'Inactive', inline: true },
-      { name: 'Issued By', value: priorityIssuedBy, inline: true },
-      { name: 'Cooldown', value: cooldownText, inline: true }
-    )
-    .setFooter({ text: 'EverLink Priority Panel' })
+    .setDescription(description)
+    .setFooter({ text: 'EverLink' })
     .setTimestamp();
 }
