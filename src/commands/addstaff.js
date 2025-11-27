@@ -32,12 +32,7 @@ export const data = new SlashCommandBuilder()
       .setRequired(false));
 
 export async function execute(interaction) {
-  console.log(`[addstaff] User ${interaction.user.tag} attempting to add staff...`);
-  const hasPermission = await isAdminOrManager(interaction);
-  console.log(`[addstaff] Permission check result: ${hasPermission}`);
-  
-  if (!hasPermission) {
-    console.log(`[addstaff] Permission denied for ${interaction.user.tag}`);
+  if (!await isAdminOrManager(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only administrators and managers can add staff members.')],
       flags: 64,

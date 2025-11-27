@@ -26,10 +26,7 @@ export async function isAdmin(member) {
 
 export async function isAdminOrManager(interaction) {
   const adminMember = await isAdmin(interaction.member);
-  console.log(`[permissions] Admin check for ${interaction.user.tag}: ${adminMember}`);
-  
   const isManagerUser = await isManager(interaction.user.id, interaction.guildId);
-  console.log(`[permissions] Manager check for ${interaction.user.tag}: ${isManagerUser}`);
   
   return adminMember || isManagerUser;
 }

@@ -68,6 +68,9 @@ client.once('clientReady', async () => {
   // Start auto-deletion for expired BOLOs
   startBOLOAutoDelete();
 
+  // Start priority auto-deactivate after 10 minutes
+  startPriorityAutoDeactivate();
+
   // Start status heartbeat sender (sends initial heartbeat immediately)
   await startStatusHeartbeatSender();
 
@@ -331,6 +334,52 @@ async function startBOLOAutoDelete() {
   }, 60000); // Check every minute
 
   console.log('⏱️ BOLO auto-delete started (1-hour expiration for all BOLOs)');
+}
+
+async function startPriorityAutoDeactivate() {
+  const { default: Priority } = await import('./models/Priority.js');
+
+  setInterval(async () => {
+    try {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      
+      // Find all active priorities older than 10 minutes
+      const expiredPriorities = await Priority.find({
+        priorityActive: true,
+        activatedAt: { $lt: tenMinutesAgo }
+      });
+
+      if (expiredPriorities.length > 0) {
+        for (const priority of expiredPriorities) {
+          priority.priorityActive = false;
+          priority.priorityIssuedBy = null;
+          await priority.save();
+          
+          // Update priority panel in Discord
+          try {
+            const guild = client.guilds.cache.get(priority.guildId);
+            if (guild && priority.messageId && priority.channelId) {
+              const channel = await guild.channels.fetch(priority.channelId).catch(() => null);
+              if (channel && channel.isTextBased()) {
+                const message = await channel.messages.fetch(priority.messageId).catch(() => null);
+                if (message) {
+                  const embed = buildPriorityEmbed(priority);
+                  await message.edit({ embeds: [embed] });
+                  console.log(`⏱️ Auto-deactivated priority for guild ${priority.guildId}`);
+                }
+              }
+            }
+          } catch (err) {
+            console.log(`⚠️ Could not update priority panel for guild ${priority.guildId}:`, err.message);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in priority auto-deactivate:', error);
+    }
+  }, 60000); // Check every minute
+
+  console.log('⏱️ Priority auto-deactivate started (10-minute timeout for active priorities)');
 }
 
 async function startStatusHeartbeatSender() {

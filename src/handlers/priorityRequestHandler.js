@@ -131,6 +131,7 @@ export async function handlePriorityRequestButton(interaction, client) {
       if (priority) {
         priority.priorityActive = true;
         priority.priorityIssuedBy = `Priority Scene - ${request.username}`;
+        priority.activatedAt = new Date();
         await priority.save();
 
         // Update priority panel embed
