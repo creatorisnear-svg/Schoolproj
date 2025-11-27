@@ -49,7 +49,7 @@ export async function execute(interaction) {
       .setLabel('Ping the host (User ID or @mention)')
       .setStyle(TextInputStyle.Short)
       .setPlaceholder('User ID or mention...')
-      .setRequired(true);
+      .setRequired(false);
 
     modal.addComponents(
       new ActionRowBuilder().addComponents(membersInput),
