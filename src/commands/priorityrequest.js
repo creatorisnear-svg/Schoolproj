@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, UserSelectMenuBuilder } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
@@ -23,13 +23,6 @@ export async function execute(interaction) {
       .setCustomId('priorityrequest_modal')
       .setTitle('Priority Request Form');
 
-    const membersInput = new TextInputBuilder()
-      .setCustomId('priority_members')
-      .setLabel('People apart of the scene (PSN/Xbox)')
-      .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder('List all scene members...')
-      .setRequired(true);
-
     const sceneTypeInput = new TextInputBuilder()
       .setCustomId('priority_scenetype')
       .setLabel('What is your scene?')
@@ -44,18 +37,9 @@ export async function execute(interaction) {
       .setPlaceholder('Explain the reason...')
       .setRequired(true);
 
-    const hostPingInput = new TextInputBuilder()
-      .setCustomId('priority_hostping')
-      .setLabel('Ping the host (User ID or @mention)')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('User ID or mention...')
-      .setRequired(false);
-
     modal.addComponents(
-      new ActionRowBuilder().addComponents(membersInput),
       new ActionRowBuilder().addComponents(sceneTypeInput),
-      new ActionRowBuilder().addComponents(sceneReasonInput),
-      new ActionRowBuilder().addComponents(hostPingInput)
+      new ActionRowBuilder().addComponents(sceneReasonInput)
     );
 
     await interaction.showModal(modal);

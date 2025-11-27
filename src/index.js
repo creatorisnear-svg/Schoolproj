@@ -725,9 +725,14 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isUserSelectMenu()) {
     const { handleSelectApproverMembers } = await import('./handlers/roleRequestHandler.js');
+    const { handlePrioritySelectMembers, handlePrioritySelectHost } = await import('./handlers/priorityRequestHandler.js');
     
     if (interaction.customId.startsWith('select_approver_members_')) {
       await handleSelectApproverMembers(interaction);
+    } else if (interaction.customId === 'priority_select_members') {
+      await handlePrioritySelectMembers(interaction, client);
+    } else if (interaction.customId === 'priority_select_host') {
+      await handlePrioritySelectHost(interaction, client);
     }
   }
 
