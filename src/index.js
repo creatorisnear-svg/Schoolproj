@@ -213,6 +213,7 @@ async function clearAndRegisterCommands() {
 
 async function startPriorityTrackerUpdater() {
   const { default: Priority } = await import('./models/Priority.js');
+  const { buildPriorityEmbed } = await import('./handlers/priorityTrackerHandler.js');
 
   setInterval(async () => {
     try {
@@ -238,7 +239,7 @@ async function startPriorityTrackerUpdater() {
           const message = await channel.messages.fetch(priority.messageId).catch(() => null);
           if (!message) continue;
 
-          const embed = buildPriorityEmbed(priority);
+          const embed = await buildPriorityEmbed(priority);
           await message.edit({ embeds: [embed] });
         } catch (error) {
           console.error(`Error updating priority tracker for guild ${priority.guildId}:`, error);
@@ -252,33 +253,6 @@ async function startPriorityTrackerUpdater() {
   console.log('⏰ Priority tracker countdown updater started');
 }
 
-function buildPriorityEmbed(priority) {
-  let cooldownText = 'None';
-  if (priority.cooldownEndsAt) {
-    const now = new Date();
-    const remaining = Math.max(0, Math.floor((priority.cooldownEndsAt - now) / 1000 / 60));
-    cooldownText = `${remaining}m (counting down)`;
-  }
-
-  const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
-  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
-
-  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
-  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
-  description += `**Priority cooldown:** ${cooldownText}\n`;
-  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
-
-  if (priority.customMessage) {
-    description += `\n\n${priority.customMessage}`;
-  }
-
-  return {
-    title: 'Priority Tracker',
-    description,
-    color: priority.priorityActive ? 0xFF0000 : 0x808080,
-    footer: { text: 'EverLink' },
-  };
-}
 
 async function startEmergencyCallAutoDelete() {
   const { default: EmergencyCall } = await import('./models/EmergencyCall.js');
@@ -338,6 +312,7 @@ async function startBOLOAutoDelete() {
 
 async function startPriorityAutoDeactivate() {
   const { default: Priority } = await import('./models/Priority.js');
+  const { buildPriorityEmbed } = await import('./handlers/priorityTrackerHandler.js');
 
   setInterval(async () => {
     try {
@@ -363,7 +338,7 @@ async function startPriorityAutoDeactivate() {
               if (channel && channel.isTextBased()) {
                 const message = await channel.messages.fetch(priority.messageId).catch(() => null);
                 if (message) {
-                  const embed = buildPriorityEmbed(priority);
+                  const embed = await buildPriorityEmbed(priority);
                   await message.edit({ embeds: [embed] });
                   console.log(`⏱️ Auto-deactivated priority for guild ${priority.guildId}`);
                 }

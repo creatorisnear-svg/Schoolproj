@@ -99,10 +99,15 @@ export async function handlePriorityTrackerMessageModal(interaction) {
   }
 }
 
-function buildPriorityEmbed(priority) {
-  const cooldownText = priority.cooldownEndsAt 
-    ? `${priority.cooldownMinutes}m (counting down)`
-    : 'None';
+export async function buildPriorityEmbed(priority) {
+  const { EmbedBuilder } = await import('discord.js');
+  
+  let cooldownText = 'None';
+  if (priority.cooldownEndsAt) {
+    const now = new Date();
+    const remaining = Math.max(0, Math.floor((priority.cooldownEndsAt - now) / 1000 / 60));
+    cooldownText = `${remaining}m (counting down)`;
+  }
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
   const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
@@ -116,10 +121,10 @@ function buildPriorityEmbed(priority) {
     description += `\n\n${priority.customMessage}`;
   }
 
-  return {
-    title: 'Priority Tracker',
-    description,
-    color: priority.priorityActive ? 0xFF0000 : 0x808080,
-    footer: { text: 'EverLink' },
-  };
+  return new EmbedBuilder()
+    .setTitle('🚨 Priority Tracker')
+    .setDescription(description)
+    .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
+    .setFooter({ text: 'EverLink' })
+    .setTimestamp();
 }
