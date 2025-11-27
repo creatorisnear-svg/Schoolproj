@@ -58,8 +58,6 @@ export async function execute(interaction) {
       new ActionRowBuilder().addComponents(hostPingInput)
     );
 
-    modal.setFooter({ text: 'Copy and Paste to Request Priority' });
-
     await interaction.showModal(modal);
   } catch (error) {
     console.error('Error in priorityrequest:', error);
