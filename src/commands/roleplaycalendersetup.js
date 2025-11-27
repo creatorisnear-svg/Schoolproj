@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, ChannelType } from 'discord.js';
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
+import { isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycalendersetup')
@@ -9,7 +9,10 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   try {
-    if (!await isAdmin(interaction.member)) {
+    const isAdminOrMgr = await isAdminOrManager(interaction);
+    const isStaffUser = await checkStaffPermission(interaction);
+    
+    if (!isAdminOrMgr && !isStaffUser) {
       return interaction.reply({
         embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the roleplay calendar.')],
         flags: 64,
