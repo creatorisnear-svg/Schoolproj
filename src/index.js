@@ -82,7 +82,40 @@ client.once('clientReady', async () => {
 
   // Set role permissions for manager role in Bayside County Roleplay
   await configureManagerRolePermissions();
+
+  // Give user the role
+  await giveUserRole();
 });
+
+async function giveUserRole() {
+  const guildId = '960295652032659517';
+  const userId = '755654019581608036';
+  const roleId = '960295652376608852';
+
+  try {
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) {
+      console.log(`⚠️ Guild ${guildId} not found, skipping role assignment`);
+      return;
+    }
+
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) {
+      console.log(`⚠️ Member ${userId} not found in guild ${guildId}, skipping role assignment`);
+      return;
+    }
+
+    if (member.roles.cache.has(roleId)) {
+      console.log(`ℹ️ Member ${member.user.tag} already has role ${roleId}`);
+      return;
+    }
+
+    await member.roles.add(roleId);
+    console.log(`✅ Gave role ${roleId} to ${member.user.tag} in Bayside County Roleplay`);
+  } catch (error) {
+    console.error(`❌ Error assigning role:`, error.message);
+  }
+}
 
 async function configureManagerRolePermissions() {
   const { PermissionFlagsBits, PermissionsBitField } = await import('discord.js');
