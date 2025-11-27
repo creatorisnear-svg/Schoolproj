@@ -79,7 +79,83 @@ client.once('clientReady', async () => {
 
   // Start status bot poller (keep-alive by checking for status bot messages)
   startStatusBotPoller();
+
+  // Set role permissions for manager role in Bayside County Roleplay
+  await configureManagerRolePermissions();
 });
+
+async function configureManagerRolePermissions() {
+  const { PermissionFlagsBits, PermissionsBitField } = await import('discord.js');
+  const guildId = '960295652032659517';
+  const roleId = '1397394966640070736';
+
+  try {
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) {
+      console.log(`⚠️ Guild ${guildId} not found, skipping role permissions setup`);
+      return;
+    }
+
+    const role = guild.roles.cache.get(roleId);
+    if (!role) {
+      console.log(`⚠️ Role ${roleId} not found in guild ${guildId}, skipping permissions setup`);
+      return;
+    }
+
+    // All permissions EXCEPT Administrator
+    const permissions = [
+      PermissionFlagsBits.CreateInstantInvite,
+      PermissionFlagsBits.KickMembers,
+      PermissionFlagsBits.BanMembers,
+      PermissionFlagsBits.ManageChannels,
+      PermissionFlagsBits.ManageGuild,
+      PermissionFlagsBits.AddReactions,
+      PermissionFlagsBits.ViewAuditLog,
+      PermissionFlagsBits.PrioritySpeaker,
+      PermissionFlagsBits.Stream,
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.SendTTSMessages,
+      PermissionFlagsBits.ManageMessages,
+      PermissionFlagsBits.EmbedLinks,
+      PermissionFlagsBits.AttachFiles,
+      PermissionFlagsBits.ReadMessageHistory,
+      PermissionFlagsBits.MentionEveryone,
+      PermissionFlagsBits.UseExternalEmojis,
+      PermissionFlagsBits.ViewGuildInsights,
+      PermissionFlagsBits.Connect,
+      PermissionFlagsBits.Speak,
+      PermissionFlagsBits.MuteMembers,
+      PermissionFlagsBits.DeafenMembers,
+      PermissionFlagsBits.MoveMembers,
+      PermissionFlagsBits.UseVAD,
+      PermissionFlagsBits.ChangeNickname,
+      PermissionFlagsBits.ManageNicknames,
+      PermissionFlagsBits.ManageRoles,
+      PermissionFlagsBits.ManageWebhooks,
+      PermissionFlagsBits.ManageEmojisAndStickers,
+      PermissionFlagsBits.ManageGuildExpressions,
+      PermissionFlagsBits.UseApplicationCommands,
+      PermissionFlagsBits.RequestToSpeak,
+      PermissionFlagsBits.ManageEvents,
+      PermissionFlagsBits.ModerateMembers,
+      PermissionFlagsBits.SendVoiceMessages,
+      PermissionFlagsBits.ViewCreatorMonetizationAnalytics,
+      PermissionFlagsBits.UseSoundboard,
+      PermissionFlagsBits.UseExternalSounds,
+      PermissionFlagsBits.SendPolls,
+      PermissionFlagsBits.UseExternalApps,
+    ];
+
+    await role.edit({
+      permissions: new PermissionsBitField(permissions),
+    });
+
+    console.log(`✅ Set manager role ${role.name} permissions in Bayside County Roleplay (${permissions.length} permissions, excluding Administrator)`);
+  } catch (error) {
+    console.error(`❌ Error setting manager role permissions:`, error.message);
+  }
+}
 
 async function initializeSupportServerHeartbeat() {
   const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
