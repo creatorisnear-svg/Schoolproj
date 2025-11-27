@@ -1,5 +1,4 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { isAdminOrManager }
 import Staff from '../models/Staff.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
