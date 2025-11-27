@@ -479,6 +479,7 @@ client.on('interactionCreate', async interaction => {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
+    const { handlePriorityRequestModal } = await import('./handlers/priorityRequestHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
     const { handleCADVehicleAddModal, handleCADGunAddModal, handleCADCharacterCreateModal, handleCharacterHeightRaceModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
@@ -487,7 +488,9 @@ client.on('interactionCreate', async interaction => {
     const { handle911ReportModal, handleTwitterPostModal, handleAnonPostModal } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleAddRoleRequestTypeModal } = await import('./handlers/roleRequestHandler.js');
     
-    if (interaction.customId.includes('prioritytrackersetup_message')) {
+    if (interaction.customId === 'priorityrequest_modal') {
+      await handlePriorityRequestModal(interaction, client);
+    } else if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
     } else if (interaction.customId === '911report') {
       await handle911ReportModal(interaction);
@@ -545,7 +548,11 @@ client.on('interactionCreate', async interaction => {
     const { handleCharacterEdit, handleCharacterDelete, handleCharacterDeleteConfirm } = await import('./handlers/civilianDatabaseHandler.js');
     const { handleCharacterContinue, handleCharacterStatusNone } = await import('./handlers/cadHandler.js');
     const { handleEnableChoiceButton, handleEnableCommandButton, handleDisableCommandButton } = await import('./handlers/enableCommandsHandler.js');
+    const { handlePriorityRequestButton } = await import('./handlers/priorityRequestHandler.js');
 
+    if (interaction.customId === 'priority_approve' || interaction.customId === 'priority_deny') {
+      await handlePriorityRequestButton(interaction, client);
+    } else
     if (interaction.customId.startsWith('911_respond_')) {
       await handle911RespondButton(interaction);
     } else if (interaction.customId.startsWith('911_attach_')) {

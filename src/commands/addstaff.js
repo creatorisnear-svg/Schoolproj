@@ -15,6 +15,14 @@ export const data = new SlashCommandBuilder()
       .setDescription('The role to add as staff')
       .setRequired(false))
   .addStringOption(option =>
+    option.setName('position')
+      .setDescription('Staff position (Staff or Manager)')
+      .addChoices(
+        { name: 'Staff', value: 'staff' },
+        { name: 'Manager', value: 'manager' }
+      )
+      .setRequired(false))
+  .addStringOption(option =>
     option.setName('action')
       .setDescription('Choose action')
       .addChoices(
@@ -33,6 +41,7 @@ export async function execute(interaction) {
 
   const user = interaction.options.getUser('user');
   const role = interaction.options.getRole('role');
+  const position = interaction.options.getString('position') || 'staff';
   const action = interaction.options.getString('action') || 'add';
 
   // Validate action is one of the valid choices
@@ -79,13 +88,14 @@ export async function execute(interaction) {
       await Staff.create({
         guildId: interaction.guildId,
         type: 'user',
+        position: position,
         userId: user.id,
         username: user.tag,
         addedBy: interaction.user.id,
       });
 
       return interaction.reply({
-        embeds: [successEmbed(`Successfully added ${user.tag} to the bot staff team!`)],
+        embeds: [successEmbed(`Successfully added ${user.tag} to the bot staff team as ${position}!`)],
         flags: 64,
       });
     }
@@ -102,13 +112,14 @@ export async function execute(interaction) {
       await Staff.create({
         guildId: interaction.guildId,
         type: 'role',
+        position: position,
         roleId: role.id,
         roleName: role.name,
         addedBy: interaction.user.id,
       });
 
       return interaction.reply({
-        embeds: [successEmbed(`Successfully added the role ${role.name} to the bot staff team!`)],
+        embeds: [successEmbed(`Successfully added the role ${role.name} to the bot staff team as ${position}!`)],
         flags: 64,
       });
     }

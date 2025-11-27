@@ -10,6 +10,11 @@ const staffSchema = new mongoose.Schema({
     enum: ['user', 'role'],
     required: true,
   },
+  position: {
+    type: String,
+    enum: ['staff', 'manager'],
+    default: 'staff',
+  },
   userId: {
     type: String,
     default: null,
