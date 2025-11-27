@@ -18,10 +18,24 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
       });
     }
 
-    // Set the channel only, don't send a message yet
+    // Set the channel and send initial calendar message
     calendar.channelId = selectedChannelId;
     await calendar.save();
     console.log(`✅ Calendar channel set to: ${selectedChannelId}`);
+
+    // Send initial calendar message
+    try {
+      const channel = await interaction.guild.channels.fetch(selectedChannelId).catch(() => null);
+      if (channel && channel.isTextBased()) {
+        const embed = buildCalendarEmbed(calendar);
+        const message = await channel.send({ embeds: [embed] });
+        calendar.messageId = message.id;
+        await calendar.save();
+        console.log(`📅 Initial calendar message sent to channel ${selectedChannelId}`);
+      }
+    } catch (err) {
+      console.error('Error sending initial calendar message:', err.message);
+    }
 
     return interaction.reply({
       embeds: [successEmbed('Roleplay Calendar Channel Set', 
