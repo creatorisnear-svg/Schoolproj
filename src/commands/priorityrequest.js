@@ -1,10 +1,37 @@
-import { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, UserSelectMenuBuilder } from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
+import { handlePriorityRequestCommand } from '../handlers/priorityRequestHandler.js';
 
 export const data = new SlashCommandBuilder()
   .setName('priorityrequest')
-  .setDescription('Request a priority scene');
+  .setDescription('Request a priority scene')
+  .addStringOption(option =>
+    option
+      .setName('scene_type')
+      .setDescription('What type of scene is this?')
+      .setRequired(true)
+      .setMaxLength(100)
+  )
+  .addStringOption(option =>
+    option
+      .setName('scene_reason')
+      .setDescription('Why are you doing this scene?')
+      .setRequired(true)
+      .setMaxLength(500)
+  )
+  .addUserOption(option =>
+    option
+      .setName('members')
+      .setDescription('First scene member (you can add more after)')
+      .setRequired(true)
+  )
+  .addUserOption(option =>
+    option
+      .setName('host')
+      .setDescription('Host to ping')
+      .setRequired(true)
+  );
 
 export async function execute(interaction) {
   try {
@@ -18,35 +45,17 @@ export async function execute(interaction) {
       });
     }
 
-    // Show modal for priority request
-    const modal = new ModalBuilder()
-      .setCustomId('priorityrequest_modal')
-      .setTitle('Priority Request Form');
+    // Get command options
+    const sceneType = interaction.options.getString('scene_type');
+    const sceneReason = interaction.options.getString('scene_reason');
+    const member = interaction.options.getUser('members');
+    const host = interaction.options.getUser('host');
 
-    const sceneTypeInput = new TextInputBuilder()
-      .setCustomId('priority_scenetype')
-      .setLabel('What is your scene?')
-      .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder('Describe your scene...')
-      .setRequired(true);
-
-    const sceneReasonInput = new TextInputBuilder()
-      .setCustomId('priority_reason')
-      .setLabel('Why are you doing this scene?')
-      .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder('Explain the reason...')
-      .setRequired(true);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(sceneTypeInput),
-      new ActionRowBuilder().addComponents(sceneReasonInput)
-    );
-
-    await interaction.showModal(modal);
+    await handlePriorityRequestCommand(interaction, sceneType, sceneReason, member, host);
   } catch (error) {
     console.error('Error in priorityrequest:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while opening the priority request form.')],
+      embeds: [errorEmbed('An error occurred while submitting the priority request.')],
       flags: 64,
     });
   }

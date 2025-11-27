@@ -479,7 +479,6 @@ client.on('interactionCreate', async interaction => {
     const { handleModalSubmit } = await import('./handlers/modalHandler.js');
     const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
     const { handlePriorityTrackerMessageModal } = await import('./handlers/priorityTrackerHandler.js');
-    const { handlePriorityRequestModal } = await import('./handlers/priorityRequestHandler.js');
     const { handleTicketSetupModal, handleTicketCreationModal, handlePanelTitleModal, handlePanelDescriptionModal } = await import('./handlers/ticketHandler.js');
     const { handleCADVehicleAddModal, handleCADGunAddModal, handleCADCharacterCreateModal, handleCharacterHeightRaceModal } = await import('./handlers/cadHandler.js');
     const { handleLEOSearchPlateModal, handleLEOSearchCharacterModal } = await import('./handlers/leoDatabaseHandler.js');
@@ -488,9 +487,7 @@ client.on('interactionCreate', async interaction => {
     const { handle911ReportModal, handleTwitterPostModal, handleAnonPostModal } = await import('./handlers/roleplayCommandsHandler.js');
     const { handleAddRoleRequestTypeModal } = await import('./handlers/roleRequestHandler.js');
     
-    if (interaction.customId === 'priorityrequest_modal') {
-      await handlePriorityRequestModal(interaction, client);
-    } else if (interaction.customId.includes('prioritytrackersetup_message')) {
+    if (interaction.customId.includes('prioritytrackersetup_message')) {
       await handlePriorityTrackerMessageModal(interaction);
     } else if (interaction.customId === '911report') {
       await handle911ReportModal(interaction);
@@ -725,14 +722,9 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isUserSelectMenu()) {
     const { handleSelectApproverMembers } = await import('./handlers/roleRequestHandler.js');
-    const { handlePrioritySelectMembers, handlePrioritySelectHost } = await import('./handlers/priorityRequestHandler.js');
     
     if (interaction.customId.startsWith('select_approver_members_')) {
       await handleSelectApproverMembers(interaction);
-    } else if (interaction.customId === 'priority_select_members') {
-      await handlePrioritySelectMembers(interaction, client);
-    } else if (interaction.customId === 'priority_select_host') {
-      await handlePrioritySelectHost(interaction, client);
     }
   }
 

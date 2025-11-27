@@ -1,87 +1,10 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import PriorityRequest from '../models/PriorityRequest.js';
 import Priority from '../models/Priority.js';
 import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
 
-export async function handlePriorityRequestModal(interaction, client) {
+export async function handlePriorityRequestCommand(interaction, sceneType, sceneReason, member, host) {
   try {
-    const sceneType = interaction.fields.getTextInputValue('priority_scenetype');
-    const sceneReason = interaction.fields.getTextInputValue('priority_reason');
-
-    // Show user select menus for members and host
-    const membersSelect = new UserSelectMenuBuilder()
-      .setCustomId('priority_select_members')
-      .setPlaceholder('Select scene members (Discord users)')
-      .setMaxValues(25);
-
-    const hostSelect = new UserSelectMenuBuilder()
-      .setCustomId('priority_select_host')
-      .setPlaceholder('Select host to ping')
-      .setMaxValues(1);
-
-    return interaction.reply({
-      content: '**Step 1/2:** Select the Discord members involved in this scene',
-      components: [new ActionRowBuilder().addComponents(membersSelect)],
-      flags: 64,
-    });
-  } catch (error) {
-    console.error('Error handling priority request modal:', error);
-    return interaction.reply({
-      content: 'An error occurred while processing your request.',
-      flags: 64,
-    });
-  }
-}
-
-export async function handlePrioritySelectMembers(interaction, client) {
-  try {
-    const selectedMembers = interaction.values;
-    const sceneType = interaction.message.content; // Will be passed via defer
-    
-    // Show host select menu
-    const hostSelect = new UserSelectMenuBuilder()
-      .setCustomId('priority_select_host')
-      .setPlaceholder('Select host to ping')
-      .setMaxValues(1);
-
-    // Store temporary data
-    await interaction.deferUpdate();
-    interaction.user.priorityData = {
-      members: selectedMembers,
-      sceneType: interaction.fields?.getTextInputValue?.('priority_scenetype') || 'Scene Type',
-      sceneReason: interaction.fields?.getTextInputValue?.('priority_reason') || 'Scene Reason',
-    };
-
-    return interaction.message.reply({
-      content: `**Step 2/2:** Select the host to ping (Members selected: ${selectedMembers.length})`,
-      components: [new ActionRowBuilder().addComponents(hostSelect)],
-      flags: 64,
-    });
-  } catch (error) {
-    console.error('Error in priority select members:', error);
-    return interaction.reply({
-      content: 'An error occurred while selecting members.',
-      flags: 64,
-    });
-  }
-}
-
-export async function handlePrioritySelectHost(interaction, client) {
-  try {
-    const selectedHost = interaction.values[0];
-    
-    // Get stored data from previous interaction
-    const recentMessages = await interaction.channel.messages.fetch({ limit: 10 });
-    let sceneType = 'Scene Type';
-    let sceneReason = 'Scene Reason';
-    let sceneMembers = 'Members';
-
-    // Find user select from 2 messages ago (step 1)
-    const memberMessage = recentMessages.find(m => m.content?.includes('Step 1/2'));
-    if (memberMessage && memberMessage.components?.[0]?.components?.[0]?.data?.custom_id === 'priority_select_members') {
-      sceneMembers = interaction.values.map(id => `<@${id}>`).join(', ');
-    }
-
     const priority = await Priority.findOne({ guildId: interaction.guildId });
     if (!priority || !priority.channelId) {
       return interaction.reply({
@@ -105,10 +28,10 @@ export async function handlePrioritySelectHost(interaction, client) {
       .setDescription('Awaiting staff approval')
       .addFields(
         { name: 'Requested by', value: `${interaction.user.tag}`, inline: false },
-        { name: 'Scene Members', value: interaction.message.components?.[0]?.components?.[0]?.data?.custom_id ? 'See above' : sceneMembers, inline: false },
+        { name: 'Scene Member', value: `<@${member.id}>`, inline: false },
         { name: 'Scene Type', value: sceneType, inline: false },
         { name: 'Scene Reason', value: sceneReason, inline: false },
-        { name: 'Host Ping', value: `<@${selectedHost}>`, inline: false }
+        { name: 'Host Ping', value: `<@${host.id}>`, inline: false }
       )
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
@@ -136,19 +59,18 @@ export async function handlePrioritySelectHost(interaction, client) {
       username: interaction.user.tag,
       channelId: priority.channelId,
       messageId: message.id,
-      sceneMembers: interaction.message.components?.[0]?.components?.[0]?.data?.custom_id ? 'Selected via menu' : sceneMembers,
+      sceneMembers: `<@${member.id}>`,
       sceneType,
       sceneReason,
-      hostPing: `<@${selectedHost}>`,
+      hostPing: `<@${host.id}>`,
     });
 
-    await interaction.deferUpdate();
-    return interaction.message.reply({
+    return interaction.reply({
       content: '✅ Priority request submitted! Staff will review it shortly.',
       flags: 64,
     });
   } catch (error) {
-    console.error('Error handling priority select host:', error);
+    console.error('Error handling priority request command:', error);
     return interaction.reply({
       content: 'An error occurred while submitting your request.',
       flags: 64,
@@ -246,21 +168,16 @@ function buildPriorityEmbed(priority) {
     : 'None';
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
-  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
 
-  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
-  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
-  description += `**Priority cooldown:** ${cooldownText}\n`;
-  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
-
-  if (priority.customMessage) {
-    description += `\n\n${priority.customMessage}`;
-  }
-
-  return {
-    title: 'Priority Tracker',
-    description,
-    color: priority.priorityActive ? 0xFF0000 : 0x808080,
-    footer: { text: 'EverLink' },
-  };
+  return new EmbedBuilder()
+    .setColor(priority.priorityActive ? '#00FF00' : '#FF0000')
+    .setTitle('🚨 Priority Tracker')
+    .setDescription(priority.priorityActive ? '✅ ACTIVE' : '❌ INACTIVE')
+    .addFields(
+      { name: 'Status', value: priority.priorityActive ? 'Active' : 'Inactive', inline: true },
+      { name: 'Issued By', value: priorityIssuedBy, inline: true },
+      { name: 'Cooldown', value: cooldownText, inline: true }
+    )
+    .setFooter({ text: 'EverLink Priority Panel' })
+    .setTimestamp();
 }
