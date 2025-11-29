@@ -100,7 +100,7 @@ export async function execute(interaction) {
         messageId: stickyMessage.id,
         messageContent,
         createdBy: userId,
-        messageCount: -1,
+        messageCount: 0,
       });
       console.log(`📌 Sticky saved to database with ID: ${savedSticky._id}`);
 
