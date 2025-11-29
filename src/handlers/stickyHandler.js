@@ -25,7 +25,9 @@ export async function handleStickyMessages(message) {
         const oldMessage = await message.channel.messages.fetch(sticky.messageId).catch(() => null);
         console.log(`📌 Old message fetch result:`, oldMessage ? 'found' : 'not found');
         if (oldMessage) {
-          await oldMessage.delete();
+          await oldMessage.delete().catch((err) => {
+            console.log(`📌 Could not delete old message (might be already deleted):`, err.message);
+          });
           console.log(`📌 Deleted old sticky message`);
         }
 

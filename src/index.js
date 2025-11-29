@@ -565,13 +565,28 @@ function startStatusBotPoller() {
   const statusBotId = '835223338275569676';
   const watchChannelId = '1442653565427646495';
 
-  console.log(`📡 Status bot watcher active - listening for messages from ${statusBotId}`);
+  console.log(`📡 Status bot watcher active - watching channel ${watchChannelId} for messages from ${statusBotId}`);
 
-  client.on('messageCreate', (message) => {
-    if (message.author.id === statusBotId && message.channelId === watchChannelId) {
-      console.log(`💚 [KEEP-ALIVE] Status bot message detected - ${new Date().toISOString()}`);
+  // Poll every 4 minutes to check if status bot is alive
+  setInterval(async () => {
+    try {
+      const guild = client.guilds.cache.find(g => g.channels.cache.has(watchChannelId));
+      if (!guild) return;
+
+      const channel = await guild.channels.fetch(watchChannelId).catch(() => null);
+      if (!channel || !channel.isTextBased()) return;
+
+      const messages = await channel.messages.fetch({ limit: 5 }).catch(() => null);
+      if (!messages) return;
+
+      const statusBotMessage = messages.find(m => m.author.id === statusBotId);
+      if (statusBotMessage) {
+        console.log(`💚 [KEEP-ALIVE] Status bot message found - ${new Date().toISOString()}`);
+      }
+    } catch (error) {
+      console.log(`⏳ Status bot poller check...`);
     }
-  });
+  }, 4 * 60 * 1000); // 4 minutes
 }
 
 client.on('interactionCreate', async interaction => {
