@@ -9,6 +9,7 @@ function createSetupMenu() {
   const steps = [
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
+    { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
     { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
     { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
   ];
@@ -250,6 +251,26 @@ async function handleVerifySetupMenu(interaction) {
       });
     }
 
+    if (choice === 'select_unverified_role') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('select_unverified_role_menu')
+        .setPlaceholder('Select the unverified role');
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        content: 'Select the role that unverified members will receive when they join:',
+        components: [row, backButton],
+      });
+    }
 
     if (choice === 'set_rp_tag') {
       const modal = new ModalBuilder()
