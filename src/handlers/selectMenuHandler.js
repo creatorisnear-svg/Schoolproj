@@ -7,13 +7,8 @@ import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function createSetupMenu() {
   const steps = [
-    { id: 'select_verify_channel', label: 'Select Verify Channel' },
-    { id: 'select_welcome_channel', label: 'Select Welcome Channel' },
-    { id: 'select_unverified_role', label: 'Select Unverified Role' },
-    { id: 'select_verified_role', label: 'Select Verified Role' },
-    { id: 'set_rp_tag', label: 'Set RP Tag (Required)' },
-    { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
-    { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
+    { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
+    { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
     { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
   ];
 
@@ -32,7 +27,7 @@ function createSetupMenu() {
     );
 
   return {
-    content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
+    content: '**Verification System Setup**\n\nVerification is simple: Just set the verify channel and verified role. The bot handles the rest!\n\nSetup channel permissions yourself based on your server needs.',
     components: [menu],
     flags: 64
   };
@@ -232,48 +227,6 @@ async function handleVerifySetupMenu(interaction) {
       });
     }
 
-    if (choice === 'select_welcome_channel') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
-      const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('select_welcome_channel_menu')
-        .setPlaceholder('Select the welcome channel')
-        .setChannelTypes(ChannelType.GuildText);
-
-      const row = new ActionRowBuilder().addComponents(channelSelect);
-      const backButton = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-      return interaction.update({
-        content: 'Select the channel where welcome messages will be sent:',
-        components: [row, backButton],
-      });
-    }
-
-    if (choice === 'select_unverified_role') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
-      const roleSelect = new RoleSelectMenuBuilder()
-        .setCustomId('select_unverified_role_menu')
-        .setPlaceholder('Select the unverified role');
-
-      const row = new ActionRowBuilder().addComponents(roleSelect);
-      const backButton = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-      return interaction.update({
-        content: 'Select the role that unverified members will have:',
-        components: [row, backButton],
-      });
-    }
 
     if (choice === 'select_verified_role') {
       const { ButtonBuilder, ButtonStyle } = await import('discord.js');
@@ -296,54 +249,6 @@ async function handleVerifySetupMenu(interaction) {
       });
     }
 
-    if (choice === 'set_rp_tag') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_rp_tag_modal')
-        .setTitle('Set RP Tag');
-
-      const input = new TextInputBuilder()
-        .setCustomId('rp_tag')
-        .setLabel('Enter your server RP tag')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('e.g., SARP, CARP, LARP')
-        .setRequired(true)
-        .setMaxLength(10);
-
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
-    }
-
-    if (choice === 'set_custom_question') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_custom_question_modal')
-        .setTitle('Set Custom Question');
-
-      const input = new TextInputBuilder()
-        .setCustomId('question')
-        .setLabel('Enter your custom verification question')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('Leave empty to skip')
-        .setRequired(false);
-
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
-    }
-
-    if (choice === 'set_dm_message') {
-      const modal = new ModalBuilder()
-        .setCustomId('setup_dm_message_modal')
-        .setTitle('Set DM Message');
-
-      const input = new TextInputBuilder()
-        .setCustomId('message')
-        .setLabel('Enter the message sent to verified members')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('Welcome message...')
-        .setRequired(false);
-
-      modal.addComponents(new ActionRowBuilder().addComponents(input));
-      return interaction.showModal(modal);
-    }
 
     if (choice === 'verify_setup_done') {
       // Respond immediately, then apply permissions in background
