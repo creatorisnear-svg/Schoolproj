@@ -3,12 +3,19 @@
 ## Overview
 EverLink is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments.
 
-## Recent Changes (Nov 25, 2024)
+## Recent Changes (Dec 22, 2025)
+- **Added Terms of Service endpoint** (`/terms`) for Discord bot verification
+  - Accessible at: `https://<koyeb-domain>/terms`
+  - Includes: User agreement, compliance info, data handling, liability, and support links
+  - Ready for Discord Developer Portal submission
+- **Fixed priorityrequest command** by adding numeric prefix (15_priorityrequest.js)
+  - Command now loads and registers properly with all other commands
+- **Bot is deployed on Koyeb** with keep-alive heartbeat polling every 4 minutes
+- All 35 commands (including priorityrequest) loaded and registered successfully
 - Fixed calendar event cleanup logic: changed from day-based filtering to age-based (events delete after 7 days, not by day of week)
 - Added `createdAt` timestamp to RoleplayCalendar event schema for proper event age tracking
 - Fixed roleplaycalendersetup command timeout by removing unnecessary defer and using direct reply
 - Verified reaction role data persistence in MongoDB works correctly
-- All 34 commands loaded and registered successfully across 3 production Discord servers
 - Fixed Discord bot login by updating DISCORD_TOKEN secret
 - Enhanced interaction error handling to gracefully catch API errors
 - Changed ready event from 'ready' to 'clientReady' for Discord.js v14 compatibility
