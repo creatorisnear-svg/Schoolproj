@@ -1269,6 +1269,112 @@ app.get('/terms', (req, res) => {
   `);
 });
 
+// Privacy Policy endpoint
+app.get('/privacy', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>EverLink - Privacy Policy</title>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; border-bottom: 3px solid #0066cc; padding-bottom: 10px; }
+        h2 { color: #0066cc; margin-top: 20px; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .timestamp { color: #666; font-size: 12px; }
+        ul { margin: 10px 0; }
+        li { margin: 8px 0; }
+        .highlight { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>EverLink Discord Bot - Privacy Policy</h1>
+        <p class="timestamp">Last Updated: December 22, 2025</p>
+        
+        <h2>1. Introduction</h2>
+        <p>EverLink ("we", "us", "our", or the "Bot") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and otherwise process your personal information in connection with the Bot.</p>
+        
+        <h2>2. Information We Collect</h2>
+        <p>The Bot collects the following information to provide its services:</p>
+        <ul>
+          <li><strong>Discord User IDs:</strong> Used to identify users and manage permissions, roles, and commands</li>
+          <li><strong>Server IDs (Guild IDs):</strong> Used to organize and store server-specific configurations</li>
+          <li><strong>Channel IDs:</strong> Used to identify channels for logging, announcements, and feature configuration</li>
+          <li><strong>Role IDs:</strong> Used for permission management and role-based features</li>
+          <li><strong>Interaction Data:</strong> Commands executed, timestamps, and command parameters</li>
+          <li><strong>Configuration Data:</strong> Server settings and feature preferences</li>
+          <li><strong>Roleplay Data:</strong> Character information, event details, and calendar entries (only when users voluntarily provide)</li>
+          <li><strong>Priority/Strike Information:</strong> User requests and administrative records</li>
+        </ul>
+        
+        <h2>3. How We Use Your Information</h2>
+        <p>We use the collected information for the following purposes:</p>
+        <ul>
+          <li>Providing and maintaining the Bot's functionality</li>
+          <li>Managing user permissions and access controls</li>
+          <li>Storing and retrieving server configurations</li>
+          <li>Facilitating roleplay community management</li>
+          <li>Processing administrative commands and requests</li>
+          <li>Maintaining audit logs for security and moderation</li>
+          <li>Improving and optimizing Bot performance</li>
+        </ul>
+        
+        <h2>4. Data Storage and Security</h2>
+        <p>Your data is stored in a secure MongoDB Atlas database. We implement industry-standard security measures to protect your information. However, no method of transmission over the internet or electronic storage is 100% secure.</p>
+        <p><strong>Data Retention:</strong> We retain your data for as long as the Bot is in use on your server. You may request deletion of your data at any time by contacting us.</p>
+        
+        <h2>5. Information Sharing</h2>
+        <p>We do <strong>not</strong> share, sell, or distribute your personal information to third parties. Your data is only accessible to:</p>
+        <ul>
+          <li>Discord (as required by the Discord API and platform)</li>
+          <li>MongoDB Atlas (our database provider, under strict confidentiality agreements)</li>
+          <li>Bot administrators and staff (for legitimate administrative purposes only)</li>
+        </ul>
+        
+        <h2>6. User Rights</h2>
+        <p>You have the right to:</p>
+        <ul>
+          <li><strong>Access Your Data:</strong> Request a copy of all data we hold about you</li>
+          <li><strong>Delete Your Data:</strong> Request removal of your information from our systems</li>
+          <li><strong>Opt-Out:</strong> Stop using the Bot at any time</li>
+          <li><strong>Data Portability:</strong> Request your data in a portable format</li>
+        </ul>
+        <p>To exercise these rights, contact us through the support server.</p>
+        
+        <h2>7. Discord API and Compliance</h2>
+        <p>The Bot is built using the Discord API and must comply with Discord's privacy standards. For more information about how Discord processes your data, please refer to Discord's <a href="https://discord.com/privacy" target="_blank">Privacy Policy</a>.</p>
+        
+        <h2>8. Children's Privacy</h2>
+        <p>The Bot is not intended for children under 13 years of age. We do not knowingly collect information from children. If we become aware that a child has provided us with personal information, we will delete such information promptly.</p>
+        
+        <h2>9. Changes to This Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time. We will notify users of any significant changes by posting the updated policy and updating the "Last Updated" date.</p>
+        
+        <h2>10. Contact Us</h2>
+        <p>For questions, concerns, or requests regarding your privacy, please contact us through our support server:</p>
+        <div class="highlight">
+          <p><a href="https://discord.gg/cSdhfGPeV2" target="_blank">Join EverLink Support Server</a></p>
+        </div>
+        
+        <h2>11. Legal Compliance</h2>
+        <p>We comply with applicable data protection laws including GDPR, CCPA, and other regional privacy regulations. If you are located in a jurisdiction with specific data protection requirements, we will honor those requirements.</p>
+        
+        <hr style="margin-top: 40px; margin-bottom: 20px;">
+        <p style="color: #666; font-size: 12px; text-align: center;">
+          EverLink © 2025. All rights reserved. | 
+          <a href="https://discord.gg/cSdhfGPeV2" target="_blank">Support Server</a> | 
+          <a href="/terms">Terms of Service</a>
+        </p>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
