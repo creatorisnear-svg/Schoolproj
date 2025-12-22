@@ -1145,6 +1145,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Install/Invite link endpoint
+app.get('/install', (req, res) => {
+  const clientId = '1441306995641683978'; // EverLink Bot ID
+  const permissions = 1099511627775; // All permissions
+  const scope = 'bot%20applications.commands';
+  const redirectUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${scope}`;
+  res.redirect(redirectUrl);
+});
+
 app.post('/send-heartbeat-now', async (req, res) => {
   try {
     const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
