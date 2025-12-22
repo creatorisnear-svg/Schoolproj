@@ -9,6 +9,7 @@ function createSetupMenu() {
   const steps = [
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
+    { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
     { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
   ];
 
@@ -249,6 +250,23 @@ async function handleVerifySetupMenu(interaction) {
       });
     }
 
+
+    if (choice === 'set_rp_tag') {
+      const modal = new ModalBuilder()
+        .setCustomId('setup_rp_tag_modal')
+        .setTitle('Set RP Tag');
+
+      const input = new TextInputBuilder()
+        .setCustomId('rp_tag')
+        .setLabel('Enter your server RP tag')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('e.g., SARP, CARP, LARP')
+        .setRequired(false)
+        .setMaxLength(10);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
+    }
 
     if (choice === 'verify_setup_done') {
       // Respond immediately, then apply permissions in background

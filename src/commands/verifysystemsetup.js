@@ -37,6 +37,7 @@ export async function execute(interaction) {
   const steps = [
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
+    { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
   ];
 
   const menu = new ActionRowBuilder()
