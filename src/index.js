@@ -1191,6 +1191,84 @@ app.post('/send-heartbeat-now', async (req, res) => {
   }
 });
 
+// Terms of Service endpoint
+app.get('/terms', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>EverLink - Terms of Service</title>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; border-bottom: 3px solid #0066cc; padding-bottom: 10px; }
+        h2 { color: #0066cc; margin-top: 20px; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .timestamp { color: #666; font-size: 12px; }
+        ul { margin: 10px 0; }
+        li { margin: 8px 0; }
+        .highlight { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>EverLink Discord Bot - Terms of Service</h1>
+        <p class="timestamp">Last Updated: December 22, 2025</p>
+        
+        <h2>1. Agreement to Terms</h2>
+        <p>By using the EverLink Discord Bot (the "Bot"), you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, you may not use the Bot.</p>
+        
+        <h2>2. Use of the Bot</h2>
+        <p>The Bot is provided on an "as-is" basis for managing roleplay communities on Discord. You agree to use the Bot only for lawful purposes and in a way that does not violate the rights of others or restrict their use and enjoyment of the Bot.</p>
+        <ul>
+          <li>Prohibited behavior includes: harassment, illegal activity, spam, or any action that violates Discord's Terms of Service</li>
+          <li>The Bot must not be used to facilitate illegal gambling, scams, or fraudulent activity</li>
+          <li>Use must comply with all applicable Discord Community Guidelines</li>
+        </ul>
+        
+        <h2>3. Compliance with Discord Terms</h2>
+        <p>As a Discord Bot, EverLink must comply with Discord's Developer Terms of Service and Community Guidelines. All users must also adhere to <a href="https://discord.com/terms" target="_blank">Discord's Terms of Service</a> and <a href="https://discord.com/guidelines" target="_blank">Community Guidelines</a>.</p>
+        
+        <h2>4. Data and Privacy</h2>
+        <p>The Bot collects limited data necessary for operation, including:</p>
+        <ul>
+          <li>Guild IDs and channel IDs for configuration</li>
+          <li>User IDs for permission and role management</li>
+          <li>Role request and priority request information</li>
+          <li>Event information for the roleplay calendar</li>
+        </ul>
+        <p>This data is stored in our secure database and will not be shared with third parties without your consent.</p>
+        
+        <h2>5. Limitation of Liability</h2>
+        <div class="highlight">
+          <p><strong>The Bot is provided "as-is" without warranty of any kind.</strong> We are not liable for any damages, data loss, or service interruptions resulting from the use of the Bot. Users assume all risk of use.</p>
+        </div>
+        
+        <h2>6. Termination of Service</h2>
+        <p>We reserve the right to disable the Bot in any Discord server that violates these terms or Discord's policies. We also reserve the right to discontinue the Bot at any time.</p>
+        
+        <h2>7. Modifications to Terms</h2>
+        <p>We may modify these Terms of Service at any time. Continued use of the Bot following changes constitutes acceptance of the modified terms.</p>
+        
+        <h2>8. Support</h2>
+        <p>For support, questions, or to report abuse, please join our support server: <a href="https://discord.gg/cSdhfGPeV2" target="_blank">discord.gg/cSdhfGPeV2</a></p>
+        
+        <h2>9. Contact</h2>
+        <p>For legal inquiries, contact us through the EverLink Support Discord server.</p>
+        
+        <hr style="margin-top: 40px; margin-bottom: 20px;">
+        <p style="color: #666; font-size: 12px; text-align: center;">
+          EverLink © 2025. All rights reserved. | 
+          <a href="https://discord.gg/cSdhfGPeV2" target="_blank">Support Server</a>
+        </p>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
