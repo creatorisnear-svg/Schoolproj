@@ -35,13 +35,8 @@ export async function execute(interaction) {
   }
 
   const steps = [
-    { id: 'select_verify_channel', label: 'Select Verify Channel' },
-    { id: 'select_welcome_channel', label: 'Select Welcome Channel' },
-    { id: 'select_unverified_role', label: 'Select Unverified Role' },
-    { id: 'select_verified_role', label: 'Select Verified Role' },
-    { id: 'set_rp_tag', label: 'Set RP Tag (Required)' },
-    { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
-    { id: 'set_dm_message', label: 'Set DM Message (Optional)' },
+    { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
+    { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -59,7 +54,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Verification System Setup**\n\nSelect an option below to configure your verification system:',
+    content: '**Verification System Setup**\n\nVerification is simple: Just set the verify channel and verified role. The bot handles the rest!\n\nSetup channel permissions yourself based on your server needs.',
     components: [menu],
     flags: 64,
   });
