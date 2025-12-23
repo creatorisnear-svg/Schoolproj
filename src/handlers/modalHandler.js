@@ -40,7 +40,14 @@ export async function handleModalSubmit(interaction) {
 
 async function handleVerifyModal(interaction) {
   const psnxbox = interaction.fields.getTextInputValue('psnxbox');
-  const customAnswer = interaction.fields.getTextInputValue('custom_question') || null;
+  // Only get custom_question if it exists in the modal
+  let customAnswer = null;
+  try {
+    customAnswer = interaction.fields.getTextInputValue('custom_question');
+  } catch (e) {
+    // Field doesn't exist, which is fine if no custom question was set
+    customAnswer = null;
+  }
 
   try {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
