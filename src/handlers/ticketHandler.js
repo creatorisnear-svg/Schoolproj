@@ -972,25 +972,27 @@ export async function handleTicketDeleteButton(interaction) {
 
     const channelId = ticket.channelId;
 
-    // Delete ticket from database
-    await Ticket.deleteOne({ ticketId, guildId: interaction.guildId });
-
-    // Delete the channel
-    const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
-    if (channel) {
-      await channel.delete();
-    }
-
+    // Reply immediately to avoid interaction timeout
     await interaction.reply({
       embeds: [successEmbed('Ticket Deleted', `Ticket **${ticketId}** and its channel have been permanently deleted.`)],
       flags: 64,
     });
+
+    // Delete ticket from database and channel in background
+    await Ticket.deleteOne({ ticketId, guildId: interaction.guildId });
+
+    const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+    if (channel) {
+      await channel.delete().catch(() => {});
+    }
   } catch (error) {
     console.error('Error deleting ticket:', error);
-    await interaction.reply({
-      embeds: [errorEmbed('An error occurred while deleting the ticket.')],
-      flags: 64,
-    });
+    if (!interaction.replied) {
+      await interaction.reply({
+        embeds: [errorEmbed('An error occurred while deleting the ticket.')],
+        flags: 64,
+      }).catch(() => {});
+    }
   }
 }
 
