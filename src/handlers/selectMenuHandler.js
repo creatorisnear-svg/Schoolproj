@@ -847,28 +847,12 @@ async function handleVerifiedRoleSelect(interaction) {
     verification.verifiedRoleId = role.id;
     await verification.save();
 
-    // Show channel selection for verified role
-    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
-    const channelSelect = new ChannelSelectMenuBuilder()
-      .setCustomId('select_verified_channels_menu')
-      .setPlaceholder('Select channels verified members can see')
-      .setChannelTypes(ChannelType.GuildText)
-      .setMinValues(1)
-      .setMaxValues(20);
-
-    const row = new ActionRowBuilder().addComponents(channelSelect);
-    const backButton = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('back_to_verify_menu')
-          .setLabel('← Back')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
+    // Return to setup menu
+    const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `Verified Role: ${role}\n\nSelect which channels verified members should be able to see:`,
-      embeds: [],
-      components: [row, backButton],
+      content: '',
+      embeds: [infoEmbed('Verified Role Set', `Verified Role: ${role}\n\nSelect your next option below to continue setup.`)],
+      components: menuOptions.components,
     });
   } catch (error) {
     console.error('Error setting verified role:', error);
