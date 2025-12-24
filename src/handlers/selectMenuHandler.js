@@ -1876,7 +1876,7 @@ async function handleStatusChannelSelect(interaction) {
 
 async function handleApprovalToggle(interaction, enabled) {
   try {
-    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType } = await import('discord.js');
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
     
     if (enabled) {
