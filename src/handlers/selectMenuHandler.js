@@ -2110,7 +2110,6 @@ async function handleApprovalChannelSelect(interaction) {
 }
 
 export {
-  handleSelectMenu,
   handleVerificationApprove,
   handleVerificationReject,
   handleDeleteCustomQuestion
