@@ -149,7 +149,7 @@ async function handleVerifyModal(interaction) {
           
           const embed = new EmbedBuilder()
             .setColor('#FFA500')
-            .setTitle('⏳ Verification Pending Approval')
+            .setTitle('Verification Pending Approval')
             .addFields(
               { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
               { name: 'PSN / XBOX', value: psnxbox, inline: false }
@@ -216,7 +216,7 @@ async function handleVerifyModal(interaction) {
         if (logChannel && logChannel.isTextBased()) {
           const logEmbed = new EmbedBuilder()
             .setColor('#0099ff')
-            .setTitle('✅ Member Verified with Questions')
+            .setTitle('Member Verified with Questions')
             .addFields(
               { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false }
             );
@@ -239,7 +239,7 @@ async function handleVerifyModal(interaction) {
     await interaction.user.send({
       embeds: [new EmbedBuilder()
         .setColor('#00ff00')
-        .setTitle('✅ Verification Successful')
+        .setTitle('Verification Successful')
         .setDescription(dmMessage)
         .setFooter({ text: 'EverLink' })
       ]
@@ -247,7 +247,7 @@ async function handleVerifyModal(interaction) {
 
     const successMsg = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('✅ You\'re Verified!')
+      .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
       .setFooter({ text: 'EverLink' });
 

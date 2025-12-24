@@ -1981,7 +1981,7 @@ async function handleVerificationApprove(interaction) {
       await member.user.send({
         embeds: [new EmbedBuilder()
           .setColor('#00ff00')
-          .setTitle('✅ Verification Approved')
+          .setTitle('Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
           .setFooter({ text: 'EverLink' })
         ]
@@ -1993,7 +1993,7 @@ async function handleVerificationApprove(interaction) {
     await interaction.update({
       embeds: [new EmbedBuilder()
         .setColor('#00ff00')
-        .setTitle('✅ Approved')
+        .setTitle('Approved')
         .setDescription(`${pending.username} has been verified.`)
         .setFooter({ text: 'EverLink' })
       ],
@@ -2028,7 +2028,7 @@ async function handleVerificationReject(interaction) {
       await member.user.send({
         embeds: [new EmbedBuilder()
           .setColor('#ff0000')
-          .setTitle('❌ Verification Rejected')
+          .setTitle('Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
           .setFooter({ text: 'EverLink' })
         ]
@@ -2040,7 +2040,7 @@ async function handleVerificationReject(interaction) {
     await interaction.update({
       embeds: [new EmbedBuilder()
         .setColor('#ff0000')
-        .setTitle('❌ Rejected')
+        .setTitle('Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
         .setFooter({ text: 'EverLink' })
       ],
@@ -2108,3 +2108,10 @@ async function handleApprovalChannelSelect(interaction) {
     });
   }
 }
+
+export {
+  handleSelectMenu,
+  handleVerificationApprove,
+  handleVerificationReject,
+  handleDeleteCustomQuestion
+};
