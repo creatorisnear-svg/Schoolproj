@@ -21,7 +21,7 @@ export async function handleRoleplayCalendarChannelSelect(interaction) {
     // Set the channel and send initial calendar message
     calendar.channelId = selectedChannelId;
     await calendar.save();
-    console.log(`✅ Calendar channel set to: ${selectedChannelId}`);
+    console.log(`Calendar channel set to: ${selectedChannelId}`);
 
     // Send initial calendar message
     try {

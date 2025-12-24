@@ -41,7 +41,7 @@ export async function handleStickyMessages(message) {
         sticky.messageCount = 0;
         await sticky.save();
 
-        console.log(`✅ Reposted sticky message in ${message.guild.name} #${message.channel.name}`);
+        console.log(`Reposted sticky message in ${message.guild.name} #${message.channel.name}`);
       } catch (error) {
         console.error('❌ Error reposting sticky message:', error);
       }

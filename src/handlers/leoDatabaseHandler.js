@@ -957,7 +957,7 @@ export async function handleLEOIssueTicketModal(interaction) {
     const description = interaction.fields.getTextInputValue('ticket_description') || '';
     const fineAmount = parseInt(interaction.fields.getTextInputValue('ticket_fine') || '0') || 0;
 
-    console.log(`📝 Ticket details - Name: ${characterName}, Violation: ${violation}, Fine: ${fineAmount}`);
+    console.log(`Ticket details - Name: ${characterName}, Violation: ${violation}, Fine: ${fineAmount}`);
 
     // Verify permissions
     const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
@@ -979,21 +979,21 @@ export async function handleLEOIssueTicketModal(interaction) {
     }
 
     // Find character
-    console.log(`🔍 Searching for character: ${characterName}`);
+    console.log(`Searching for character: ${characterName}`);
     const character = await CADCharacter.findOne({
       guildId: interaction.guildId,
       characterName: { $regex: characterName, $options: 'i' }
     });
 
     if (!character) {
-      console.log(`❌ Character not found: ${characterName}`);
+      console.log(`Character not found: ${characterName}`);
       return interaction.reply({
         embeds: [errorEmbed('Character Not Found', `No character named **${characterName}** found.`)],
         flags: 64,
       });
     }
 
-    console.log(`✅ Found character: ${character.characterName}`);
+    console.log(`Found character: ${character.characterName}`);
 
     // Create ticket
     const ticketId = `TKT-${Date.now()}`;
@@ -1010,7 +1010,7 @@ export async function handleLEOIssueTicketModal(interaction) {
 
     console.log(`💾 Saving ticket: ${ticketId}`);
     await ticket.save();
-    console.log(`✅ Ticket saved successfully`);
+    console.log(`Ticket saved successfully`);
 
     let responseDesc = `**Ticket ID:** ${ticketId}\n`;
     responseDesc += `**Character:** ${character.characterName}\n`;

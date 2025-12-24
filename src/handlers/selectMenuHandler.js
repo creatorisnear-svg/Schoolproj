@@ -841,7 +841,7 @@ async function setVerificationChannelPermissions(guild, unverifiedRoleId, verifi
       }
     }
 
-    console.log(`✅ Channel permissions configured for unverified role ${unverifiedRoleId}`);
+    console.log(`Channel permissions configured for unverified role ${unverifiedRoleId}`);
   } catch (error) {
     console.error('Error setting channel permissions:', error);
   }
@@ -927,7 +927,7 @@ async function applyAllVerificationPermissions(guild, verification) {
       }
     }
 
-    console.log(`✅ All verification permissions configured (unverified, verified, staff)`);
+    console.log(`All verification permissions configured (unverified, verified, staff)`);
   } catch (error) {
     console.error('Error applying verification permissions:', error);
   }
@@ -958,7 +958,7 @@ export async function revertVerificationPermissions(guild, verification) {
       }
     }
 
-    console.log(`✅ Verification role permissions reverted (unverified & verified roles)`);
+    console.log(`Verification role permissions reverted (unverified & verified roles)`);
   } catch (error) {
     console.error('Error reverting verification permissions:', error);
   }
@@ -1542,7 +1542,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
 
   try {
     if (choice === 'add_link') {
-      console.log('📋 Creating add_link modal...');
+      console.log(' Creating add_link modal...');
       const modal = new ModalBuilder()
         .setCustomId('antipromotingsetup_add_link_modal')
         .setTitle('Add Whitelisted Link');

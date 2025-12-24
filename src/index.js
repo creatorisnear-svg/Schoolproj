@@ -42,16 +42,16 @@ for (const file of orderedFiles) {
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
     commands.push(command.data.toJSON());
-    console.log(`✅ Loaded command: ${command.data.name}`);
+    console.log(`Loaded command: ${command.data.name}`);
   } else {
-    console.log(`⚠️  Warning: ${file} is missing required "data" or "execute" property.`);
+    console.log(`Warning: ${file} is missing required "data" or "execute" property.`);
   }
 }
 
 client.once('clientReady', async () => {
-  console.log(`🤖 Bot logged in as ${client.user.tag}`);
-  console.log(`📊 Serving ${client.guilds.cache.size} server(s)`);
-  console.log(`📋 Commands loaded: ${commands.length} and ready to use`);
+  console.log(`Bot logged in as ${client.user.tag}`);
+  console.log(`Serving ${client.guilds.cache.size} server(s)`);
+  console.log(`Commands loaded: ${commands.length} and ready to use`);
 
   // Clear old cached commands and register new ones
   await clearAndRegisterCommands();
@@ -95,13 +95,13 @@ async function giveUserRole() {
   try {
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
-      console.log(`⚠️ Guild ${guildId} not found, skipping role assignment`);
+      console.log(`Guild ${guildId} not found, skipping role assignment`);
       return;
     }
 
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member) {
-      console.log(`⚠️ Member ${userId} not found in guild ${guildId}, skipping role assignment`);
+      console.log(`Member ${userId} not found in guild ${guildId}, skipping role assignment`);
       return;
     }
 
@@ -111,7 +111,7 @@ async function giveUserRole() {
     }
 
     await member.roles.add(roleId);
-    console.log(`✅ Gave role ${roleId} to ${member.user.tag} in Bayside County Roleplay`);
+    console.log(`Gave role ${roleId} to ${member.user.tag} in Bayside County Roleplay`);
   } catch (error) {
     console.error(`❌ Error assigning role:`, error.message);
   }
@@ -125,13 +125,13 @@ async function configureManagerRolePermissions() {
   try {
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
-      console.log(`⚠️ Guild ${guildId} not found, skipping role permissions setup`);
+      console.log(`Guild ${guildId} not found, skipping role permissions setup`);
       return;
     }
 
     const role = guild.roles.cache.get(roleId);
     if (!role) {
-      console.log(`⚠️ Role ${roleId} not found in guild ${guildId}, skipping permissions setup`);
+      console.log(`Role ${roleId} not found in guild ${guildId}, skipping permissions setup`);
       return;
     }
 
@@ -184,7 +184,7 @@ async function configureManagerRolePermissions() {
       permissions: new PermissionsBitField(permissions),
     });
 
-    console.log(`✅ Set manager role ${role.name} permissions in Bayside County Roleplay (${permissions.length} permissions, excluding Administrator)`);
+    console.log(`Set manager role ${role.name} permissions in Bayside County Roleplay (${permissions.length} permissions, excluding Administrator)`);
   } catch (error) {
     console.error(`❌ Error setting manager role permissions:`, error.message);
   }
@@ -195,7 +195,7 @@ async function initializeSupportServerHeartbeat() {
   const supportServerId = '1441548471906734173';
 
   if (!supportServerId) {
-    console.log('⚠️ Support server ID not set, skipping heartbeat initialization');
+    console.log(' Support server ID not set, skipping heartbeat initialization');
     return;
   }
 
@@ -210,12 +210,12 @@ async function initializeSupportServerHeartbeat() {
         intervalMinutes: 8,
         deleteAfterSeconds: 60,
       });
-      console.log('✅ Created support server heartbeat config');
+      console.log(' Created support server heartbeat config');
     } else if (!statusConfig.enabled || !statusConfig.heartbeatChannelId) {
       statusConfig.enabled = true;
       statusConfig.heartbeatChannelId = '1442653565427646495';
       await statusConfig.save();
-      console.log('✅ Enabled support server heartbeat');
+      console.log(' Enabled support server heartbeat');
     }
   } catch (error) {
     console.error('Error initializing support server heartbeat:', error);
@@ -225,8 +225,8 @@ async function initializeSupportServerHeartbeat() {
 async function clearAndRegisterCommands() {
   try {
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    console.log('🗑️  Clearing old command cache...');
-    console.log(`🤖 Bot ID: ${client.user.id}`);
+    console.log('  Clearing old command cache...');
+    console.log(`Bot ID: ${client.user.id}`);
     
     // Set timeout for operations
     const timeout = (promise, ms) => Promise.race([
@@ -237,14 +237,14 @@ async function clearAndRegisterCommands() {
     try {
       // Clear global commands with timeout
       await timeout(rest.put(Routes.applicationCommands(client.user.id), { body: [] }), 5000);
-      console.log('✅ Global commands cleared');
+      console.log(' Global commands cleared');
     } catch (e) {
-      console.log('⚠️  Could not clear global commands, continuing...');
+      console.log('  Could not clear global commands, continuing...');
     }
     
     // Brief wait before registering
     await new Promise(resolve => setTimeout(resolve, 500));
-    console.log(`📤 Registering clean commands to ${client.guilds.cache.size} server(s)...`);
+    console.log(`Registering clean commands to ${client.guilds.cache.size} server(s)...`);
     
     // Register commands sequentially with intelligent retry and staggered delays
     const guilds = Array.from(client.guilds.cache.values());
@@ -304,8 +304,8 @@ async function clearAndRegisterCommands() {
     }
     
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`✅ Command sync process completed`);
-    console.log(`📊 SYNC SUMMARY:`);
+    console.log(`Command sync process completed`);
+    console.log(`SYNC SUMMARY:`);
     console.log(`   ✅ Successful: ${successCount}/${guilds.length}`);
     console.log(`   ❌ Failed: ${failureCount}/${guilds.length}`);
     if (failedGuilds.length > 0) {
@@ -379,16 +379,16 @@ async function startEmergencyCallAutoDelete() {
       if (expiredCalls.length > 0) {
         for (const call of expiredCalls) {
           await EmergencyCall.deleteOne({ _id: call._id });
-          console.log(`🗑️ Auto-deleted 911 call ${call.callId} (>10 min old)`);
+          console.log(`Auto-deleted 911 call ${call.callId} (>10 min old)`);
         }
-        console.log(`📊 Deleted ${expiredCalls.length} expired 911 call(s)`);
+        console.log(`Deleted ${expiredCalls.length} expired 911 call(s)`);
       }
     } catch (error) {
       console.error('Error in emergency call auto-delete:', error);
     }
   }, 60000); // Check every minute
 
-  console.log('⏱️ Emergency call auto-delete started (10-minute timeout for all calls)');
+  console.log(' Emergency call auto-delete started (10-minute timeout for all calls)');
 }
 
 async function startBOLOAutoDelete() {
@@ -407,16 +407,16 @@ async function startBOLOAutoDelete() {
       if (expiredBOLOs.length > 0) {
         for (const bolo of expiredBOLOs) {
           await BOLO.deleteOne({ _id: bolo._id });
-          console.log(`🗑️ Auto-deleted BOLO ${bolo.boloId} (expired)`);
+          console.log(`Auto-deleted BOLO ${bolo.boloId} (expired)`);
         }
-        console.log(`📊 Deleted ${expiredBOLOs.length} expired BOLO alert(s)`);
+        console.log(`Deleted ${expiredBOLOs.length} expired BOLO alert(s)`);
       }
     } catch (error) {
       console.error('Error in BOLO auto-delete:', error);
     }
   }, 60000); // Check every minute
 
-  console.log('⏱️ BOLO auto-delete started (1-hour expiration for all BOLOs)');
+  console.log(' BOLO auto-delete started (1-hour expiration for all BOLOs)');
 }
 
 async function startPriorityAutoDeactivate() {
@@ -449,12 +449,12 @@ async function startPriorityAutoDeactivate() {
                 if (message) {
                   const embed = await buildPriorityEmbed(priority);
                   await message.edit({ embeds: [embed] });
-                  console.log(`⏱️ Auto-deactivated priority for guild ${priority.guildId}`);
+                  console.log(`Auto-deactivated priority for guild ${priority.guildId}`);
                 }
               }
             }
           } catch (err) {
-            console.log(`⚠️ Could not update priority panel for guild ${priority.guildId}:`, err.message);
+            console.log(`Could not update priority panel for guild ${priority.guildId}:`, err.message);
           }
         }
       }
@@ -463,7 +463,7 @@ async function startPriorityAutoDeactivate() {
     }
   }, 60000); // Check every minute
 
-  console.log('⏱️ Priority auto-deactivate started (10-minute timeout for active priorities)');
+  console.log(' Priority auto-deactivate started (10-minute timeout for active priorities)');
 }
 
 async function startStatusHeartbeatSender() {
@@ -501,13 +501,13 @@ async function startStatusHeartbeatSender() {
           setTimeout(async () => {
             try {
               await heartbeatMsg.delete();
-              console.log(`🗑️ Deleted heartbeat message for guild ${config.guildId}`);
+              console.log(`Deleted heartbeat message for guild ${config.guildId}`);
             } catch (err) {
-              console.log(`⚠️ Could not delete heartbeat message for guild ${config.guildId}`);
+              console.log(`Could not delete heartbeat message for guild ${config.guildId}`);
             }
           }, config.deleteAfterSeconds * 1000);
 
-          console.log(`💚 Sent heartbeat to ${guild.name}`);
+          console.log(`Sent heartbeat to ${guild.name}`);
         } catch (error) {
           console.error(`Error sending heartbeat for guild ${config.guildId}:`, error);
         }
@@ -523,7 +523,7 @@ async function startStatusHeartbeatSender() {
   // Then send every 4 minutes (240 seconds - before 300s Koyeb timeout)
   setInterval(sendHeartbeats, 4 * 60 * 1000);
 
-  console.log('💚 Status heartbeat sender started (initial + 4-minute interval)');
+  console.log(' Status heartbeat sender started (initial + 4-minute interval)');
 }
 
 async function checkStatusBotMessageOnStartup() {
@@ -534,25 +534,25 @@ async function checkStatusBotMessageOnStartup() {
   try {
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
-      console.log('⚠️ Support guild not found');
+      console.log(' Support guild not found');
       return;
     }
 
     const channel = await guild.channels.fetch(channelId).catch(() => null);
     if (!channel || !channel.isTextBased()) {
-      console.log('⚠️ Status channel not found');
+      console.log(' Status channel not found');
       return;
     }
 
     const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
     if (!messages) {
-      console.log('⚠️ Could not fetch messages from status channel');
+      console.log(' Could not fetch messages from status channel');
       return;
     }
 
     const statusBotMessage = messages.find(m => m.author.id === statusBotId);
     if (statusBotMessage) {
-      console.log(`💚 [STARTUP] Status bot message found - bot won't sleep if status bot is running`);
+      console.log(`[STARTUP] Status bot message found - bot won't sleep if status bot is running`);
     } else {
       console.log(`⏳ [STARTUP] No status bot messages found yet - watching for first message...`);
     }
@@ -565,7 +565,7 @@ function startStatusBotPoller() {
   const statusBotId = '835223338275569676';
   const watchChannelId = '1442653565427646495';
 
-  console.log(`📡 Status bot watcher active - watching channel ${watchChannelId} for messages from ${statusBotId}`);
+  console.log(`Status bot watcher active - watching channel ${watchChannelId} for messages from ${statusBotId}`);
 
   // Poll every 4 minutes to check if status bot is alive
   setInterval(async () => {
@@ -581,7 +581,7 @@ function startStatusBotPoller() {
 
       const statusBotMessage = messages.find(m => m.author.id === statusBotId);
       if (statusBotMessage) {
-        console.log(`💚 [KEEP-ALIVE] Status bot message found - ${new Date().toISOString()}`);
+        console.log(`[KEEP-ALIVE] Status bot message found - ${new Date().toISOString()}`);
       }
     } catch (error) {
       console.log(`⏳ Status bot poller check...`);
@@ -791,6 +791,12 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.customId === 'approval_toggle_yes' || interaction.customId === 'approval_toggle_no') {
       const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
       await handleSelectMenu(interaction);
+    } else if (interaction.customId.startsWith('verify_approve_')) {
+      const { handleVerificationApprove } = await import('./handlers/selectMenuHandler.js');
+      await handleVerificationApprove(interaction);
+    } else if (interaction.customId.startsWith('verify_reject_')) {
+      const { handleVerificationReject } = await import('./handlers/selectMenuHandler.js');
+      await handleVerificationReject(interaction);
     }
   }
 
@@ -944,7 +950,7 @@ client.on('guildMemberAdd', async member => {
       const unverifiedRole = member.guild.roles.cache.get(verification.unverifiedRoleId);
       if (unverifiedRole) {
         await member.roles.add(unverifiedRole);
-        console.log(`✅ Assigned unverified role to ${member.user.tag}`);
+        console.log(`Assigned unverified role to ${member.user.tag}`);
       }
     }
 
@@ -988,7 +994,7 @@ client.on('guildMemberAdd', async member => {
           console.log(`Could not send DM to ${member.user.tag}. They may have DMs disabled.`);
         });
 
-        console.log(`✅ Sent welcome message to ${member.user.tag}`);
+        console.log(`Sent welcome message to ${member.user.tag}`);
       }
     }
   } catch (error) {
@@ -1000,7 +1006,7 @@ client.on('messageCreate', async message => {
   try {
     // Log status bot messages to keep bot alive
     if (message.author.bot && process.env.STATUS_BOT_ID && message.author.id === process.env.STATUS_BOT_ID) {
-      console.log(`💚 [KEEP-ALIVE] Status bot message received at ${new Date().toISOString()}`);
+      console.log(`[KEEP-ALIVE] Status bot message received at ${new Date().toISOString()}`);
       return;
     }
 
@@ -1053,10 +1059,10 @@ client.on('guildCreate', async (guild) => {
     
     // Register commands to the new guild immediately
     try {
-      console.log(`📋 Registering ${commands.length} commands to new guild...`);
+      console.log(`Registering ${commands.length} commands to new guild...`);
       const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
       await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commands });
-      console.log(`✅ Commands registered successfully to ${guild.name}`);
+      console.log(`Commands registered successfully to ${guild.name}`);
     } catch (syncError) {
       console.error(`⚠️  Error registering commands to new guild:`, syncError.message);
     }
@@ -1064,7 +1070,7 @@ client.on('guildCreate', async (guild) => {
     // Send welcome message to owner
     try {
       const owner = await guild.fetchOwner();
-      console.log(`📤 Attempting to send welcome DM to owner: ${owner.user.tag}`);
+      console.log(`Attempting to send welcome DM to owner: ${owner.user.tag}`);
       
       const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
 
@@ -1105,7 +1111,7 @@ Ready? Start with __/enablecommands__ to configure your server.
 __**EverLink**__ - Made for RP Communities 🎮`;
 
       await owner.send(welcomeMessage);
-      console.log(`✅ Welcome DM sent successfully to ${owner.user.tag}`);
+      console.log(`Welcome DM sent successfully to ${owner.user.tag}`);
     } catch (dmError) {
       console.error(`❌ Could not send DM to owner:`, dmError.message);
       console.log(`   Reason: Owner may have DMs disabled or bot blocked`);
@@ -1119,10 +1125,10 @@ __**EverLink**__ - Made for RP Communities 🎮`;
         if (generalChannel) {
           const channelMessage = `👋 **Welcome to EverLink!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nFor detailed help: \`/help\`\nJoin support: https://discord.gg/cSdhfGPeV2`;
           await generalChannel.send(channelMessage);
-          console.log(`✅ Fallback welcome message sent to #general`);
+          console.log(`Fallback welcome message sent to #general`);
         }
       } catch (fallbackError) {
-        console.log(`⚠️  Could not send fallback message:`, fallbackError.message);
+        console.log(` Could not send fallback message:`, fallbackError.message);
       }
     }
   } catch (error) {
@@ -1409,7 +1415,7 @@ async function refreshAllCalendars() {
     const { buildCalendarEmbed } = await import('./utils/calendarBuilder.js');
     const calendars = await RoleplayCalendar.find({ enabled: true, channelId: { $ne: null } });
     
-    console.log(`🔄 Refreshing ${calendars.length} calendars...`);
+    console.log(`Refreshing ${calendars.length} calendars...`);
     
     for (const calendar of calendars) {
       try {
@@ -1427,7 +1433,7 @@ async function refreshAllCalendars() {
           
           const embed = buildCalendarEmbed(calendar);
           await message.edit({ embeds: [embed] });
-          console.log(`✅ Refreshed calendar for ${guild.name}`);
+          console.log(`Refreshed calendar for ${guild.name}`);
         } catch (err) {
           const embed = buildCalendarEmbed(calendar);
           const newMsg = await channel.send({ embeds: [embed] });
@@ -1440,7 +1446,7 @@ async function refreshAllCalendars() {
       }
     }
     
-    console.log('✅ Calendar refresh complete');
+    console.log(' Calendar refresh complete');
   } catch (error) {
     console.error('Error in calendar refresh:', error);
   }
@@ -1449,8 +1455,8 @@ async function refreshAllCalendars() {
 async function startBot() {
   try {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🌐 HTTP server running on port ${PORT}`);
-      console.log(`📡 Health check available at /health`);
+      console.log(`HTTP server running on port ${PORT}`);
+      console.log(`Health check available at /health`);
     });
     
     await connectDatabase();
@@ -1463,7 +1469,7 @@ async function startBot() {
 }
 
 client.once('clientReady', async () => {
-  console.log('🔄 Refreshing all calendars on bot startup...');
+  console.log(' Refreshing all calendars on bot startup...');
   await refreshAllCalendars();
 });
 

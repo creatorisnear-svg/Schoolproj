@@ -32,7 +32,7 @@ export async function handleAntiPromoting(message) {
     const whitelistedLinks = Array.isArray(config.whitelistedInviteLinks) ? config.whitelistedInviteLinks : [];
     const nonWhitelistedLinks = inviteLinks.filter(link => !whitelistedLinks.includes(link));
     if (nonWhitelistedLinks.length === 0) {
-      console.log(`✅ All links are whitelisted, allowing message`);
+      console.log(`All links are whitelisted, allowing message`);
       return;
     }
 

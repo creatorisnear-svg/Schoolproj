@@ -121,14 +121,14 @@ export async function execute(interaction) {
     });
 
     await calendar.save();
-    console.log('📝 Event saved to database');
+    console.log(' Event saved to database');
     
     // Clean up old events from passed days
     cleanupOldEvents(calendar);
     
-    console.log(`🔄 Updating calendar message... Channel: ${calendar.channelId}, MessageId: ${calendar.messageId}, Events: ${calendar.events.length}`);
+    console.log(`Updating calendar message... Channel: ${calendar.channelId}, MessageId: ${calendar.messageId}, Events: ${calendar.events.length}`);
     await updateCalendarMessage(interaction, calendar);
-    console.log('✅ Calendar message updated');
+    console.log(' Calendar message updated');
 
     return interaction.reply({
       embeds: [successEmbed('RP Event Added', `Added ${person}'s RP event for ${day} at ${time} ${timezone}`)],
@@ -176,18 +176,18 @@ async function updateCalendarMessage(interaction, calendar) {
     // Clean up old events before displaying
     cleanupOldEvents(calendar);
     await calendar.save();
-    console.log(`📊 Events after cleanup: ${calendar.events.length}`);
+    console.log(`Events after cleanup: ${calendar.events.length}`);
 
     const embed = buildCalendarEmbed(calendar);
     console.log(`🎨 Embed built successfully`);
 
     if (calendar.messageId) {
-      console.log(`🔍 Fetching existing message: ${calendar.messageId}`);
+      console.log(`Fetching existing message: ${calendar.messageId}`);
       try {
         const message = await channel.messages.fetch(calendar.messageId);
         console.log(`✏️ Editing existing message...`);
         await message.edit({ embeds: [embed] });
-        console.log(`✅ Message edited successfully`);
+        console.log(`Message edited successfully`);
       } catch (err) {
         console.warn(`⚠️ Could not fetch existing message (${err.message}), sending new one...`);
         const message = await channel.send({ embeds: [embed] });
@@ -200,7 +200,7 @@ async function updateCalendarMessage(interaction, calendar) {
       const message = await channel.send({ embeds: [embed] });
       calendar.messageId = message.id;
       await calendar.save();
-      console.log(`✅ New message sent and saved with ID: ${message.id}`);
+      console.log(`New message sent and saved with ID: ${message.id}`);
     }
   } catch (error) {
     console.error('❌ Error updating calendar message:', error);

@@ -307,7 +307,7 @@ export async function handle911ReportModal(interaction) {
     // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
     const submissionKey = `${interaction.guildId}-${interaction.user.id}`;
     if (recent911Submissions.has(submissionKey)) {
-      console.log(`⚠️ DUPLICATE 911 DETECTED - blocking user ${interaction.user.id}`);
+      console.log(`DUPLICATE 911 DETECTED - blocking user ${interaction.user.id}`);
       return interaction.editReply({
         content: '⏳ Please wait before submitting another 911 report.',
       });
