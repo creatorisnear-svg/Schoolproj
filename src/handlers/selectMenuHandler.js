@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType, StringSelectMenuBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
@@ -235,7 +235,6 @@ async function handleVerifySetupMenu(interaction) {
 
   try {
     if (choice === 'select_verify_channel') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const channelSelect = new ChannelSelectMenuBuilder()
         .setCustomId('select_verify_channel_menu')
         .setPlaceholder('Select the verify channel')
@@ -258,7 +257,6 @@ async function handleVerifySetupMenu(interaction) {
 
 
     if (choice === 'select_verified_role') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('select_verified_role_menu')
         .setPlaceholder('Select the verified role');
@@ -279,7 +277,6 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'select_unverified_role') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('select_unverified_role_menu')
         .setPlaceholder('Select the unverified role');
@@ -365,7 +362,6 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'toggle_approval_required') {
-      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
       const approveButton = new ButtonBuilder()
         .setCustomId('approval_toggle_yes')
         .setLabel('✅ Enable Approval')
@@ -1897,7 +1893,7 @@ async function handleStatusChannelSelect(interaction) {
 
 async function handleApprovalToggle(interaction, enabled) {
   try {
-    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType } = await import('discord.js');
+    const { ChannelType } = await import('discord.js');
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
     
     if (enabled) {
