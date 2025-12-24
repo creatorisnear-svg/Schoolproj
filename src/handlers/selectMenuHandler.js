@@ -1943,6 +1943,25 @@ async function handleApprovalToggle(interaction, enabled) {
 async function handleVerificationApprove(interaction) {
   try {
     await interaction.deferUpdate();
+    
+    // Check if user is staff or admin
+    const { default: Staff } = await import('../models/Staff.js');
+    const staffCheck = await Staff.findOne({
+      guildId: interaction.guildId,
+      $or: [
+        { type: 'user', userId: interaction.user.id },
+        { type: 'role', roleId: { $in: interaction.member.roles.cache.map(r => r.id) } }
+      ]
+    });
+    
+    // Allow server admins or staff/managers
+    const isAdmin = interaction.member.permissions.has('Administrator');
+    if (!isAdmin && !staffCheck) {
+      return await interaction.editReply({
+        embeds: [errorEmbed('You do not have permission to approve verifications. Only staff members can approve applications.')],
+      });
+    }
+    
     const pendingId = interaction.customId.replace('verify_approve_', '');
     const { default: PendingVerification } = await import('../models/PendingVerification.js');
     
@@ -2007,6 +2026,25 @@ async function handleVerificationApprove(interaction) {
 async function handleVerificationReject(interaction) {
   try {
     await interaction.deferUpdate();
+    
+    // Check if user is staff or admin
+    const { default: Staff } = await import('../models/Staff.js');
+    const staffCheck = await Staff.findOne({
+      guildId: interaction.guildId,
+      $or: [
+        { type: 'user', userId: interaction.user.id },
+        { type: 'role', roleId: { $in: interaction.member.roles.cache.map(r => r.id) } }
+      ]
+    });
+    
+    // Allow server admins or staff/managers
+    const isAdmin = interaction.member.permissions.has('Administrator');
+    if (!isAdmin && !staffCheck) {
+      return await interaction.editReply({
+        embeds: [errorEmbed('You do not have permission to reject verifications. Only staff members can reject applications.')],
+      });
+    }
+    
     const pendingId = interaction.customId.replace('verify_reject_', '');
     const { default: PendingVerification } = await import('../models/PendingVerification.js');
     
