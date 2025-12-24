@@ -882,12 +882,12 @@ async function applyAllVerificationPermissions(guild, verification) {
       // Skip non-text channels
       if (!channel.isTextBased()) continue;
 
-      // 1. Configure unverified role (can see welcome & verify, plus can send messages in verified categories)
+      // 1. Configure unverified role (can ONLY see verify & welcome channels)
       if (verification.unverifiedRoleId) {
         const isWelcomeOrVerifyChannel = channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId;
-        const isVerifiedCategory = verification.verifiedChannelIds && channel.parentId && verification.verifiedChannelIds.includes(channel.parentId);
         
-        if (isWelcomeOrVerifyChannel || isVerifiedCategory) {
+        if (isWelcomeOrVerifyChannel) {
+          // Allow viewing only verify and welcome channels
           await channel.permissionOverwrites.edit(
             verification.unverifiedRoleId,
             {
@@ -899,10 +899,13 @@ async function applyAllVerificationPermissions(guild, verification) {
             { reason: 'Verification system - unverified access' }
           ).catch(() => {});
         } else {
+          // Explicitly DENY all other channels for unverified
           await channel.permissionOverwrites.edit(
             verification.unverifiedRoleId,
             {
               ViewChannel: false,
+              SendMessages: false,
+              ReadMessageHistory: false,
             },
             { reason: 'Verification system - unverified restricted' }
           ).catch(() => {});
