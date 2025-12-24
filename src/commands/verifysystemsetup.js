@@ -38,6 +38,7 @@ export async function execute(interaction) {
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
     { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
+    { id: 'select_verified_channels', label: 'Select Verified Channels (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
     { id: 'delete_custom_question', label: 'Delete Custom Question (Optional)' },
     { id: 'toggle_approval_required', label: 'Toggle Approval Required (Optional)' },
@@ -59,7 +60,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Verification System Setup**\n\nVerification is simple: Just set the verify channel and verified role. The bot handles the rest!\n\nSetup channel permissions yourself based on your server needs.',
+    content: '**Verification System Setup**\n\nVerification is simple: Set the verify channel, verified role, which channels verified members can see, and the unverified role. The bot will automatically configure all channel permissions!\n\n✅ **Verified Members** will see: Selected channels + welcome channel\n❌ **Unverified Members** will see: Verify channel + welcome channel',
     components: [menu],
     flags: 64,
   });

@@ -10,6 +10,7 @@ function createSetupMenu() {
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
     { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
+    { id: 'select_verified_channels', label: 'Select Verified Channels (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
     { id: 'delete_custom_question', label: 'Delete Custom Question (Optional)' },
     { id: 'toggle_approval_required', label: 'Toggle Approval Required (Optional)' },
@@ -122,6 +123,10 @@ export async function handleSelectMenu(interaction) {
   
   if (interaction.customId === 'select_welcome_channel_menu') {
     await handleWelcomeChannelSelect(interaction);
+  }
+
+  if (interaction.customId === 'select_verified_channels_menu') {
+    await handleVerifiedChannelsSelect(interaction);
   }
   
   if (interaction.customId === 'select_unverified_role_menu') {
@@ -361,6 +366,28 @@ async function handleVerifySetupMenu(interaction) {
       }
     }
 
+    if (choice === 'select_verified_channels') {
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('select_verified_channels_menu')
+        .setPlaceholder('Select channels verified members can see')
+        .setChannelTypes(ChannelType.GuildText)
+        .setMaxValues(25);
+
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        content: 'Select which channels verified members should be able to see:',
+        components: [row, backButton],
+      });
+    }
+
     if (choice === 'toggle_approval_required') {
       const approveButton = new ButtonBuilder()
         .setCustomId('approval_toggle_yes')
@@ -408,7 +435,7 @@ async function handleVerifySetupMenu(interaction) {
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
-        embeds: [successEmbed('Verification system setup is complete!\n\n⏳ Configuring channel permissions...\n• **Unverified members** can send messages and use commands in verified channels\n• **Verified members** can see: Selected channels + welcome\n• **Staff/Admins** can see: All channels\n\n📋 **Please review and adjust permissions as needed** in the server settings. The bot has configured the baseline permissions, but you may want to fine-tune them to your liking.')],
+        embeds: [successEmbed('✅ Verification system setup is complete!\n\n⏳ Automatically configuring channel permissions...\n\n• **Verified members** → Can see: Selected channels + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\n✨ All channel permissions have been automatically configured based on your settings!')],
       });
 
       // Apply permissions in background (non-blocking)
