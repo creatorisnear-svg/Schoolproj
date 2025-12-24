@@ -53,9 +53,21 @@ async function handleSetupCustomQuestionModal(interaction) {
       });
     }
 
-    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    let verification = await Verification.findOne({ guildId: interaction.guildId });
     
-    if (!verification.customQuestions) {
+    if (!verification) {
+      verification = new Verification({ 
+        guildId: interaction.guildId,
+        customQuestions: []
+      });
+    }
+    
+    console.log('📝 Adding question for guild:', interaction.guildId);
+    console.log('📝 Question text:', question);
+    console.log('📝 Before update - customQuestions:', verification.customQuestions);
+    
+    // Initialize customQuestions if missing
+    if (!Array.isArray(verification.customQuestions)) {
       verification.customQuestions = [];
     }
     
@@ -64,7 +76,11 @@ async function handleSetupCustomQuestionModal(interaction) {
       verification.customQuestions.push(question);
     }
     
+    console.log('📝 After push - customQuestions:', verification.customQuestions);
+    // Explicitly mark the array as modified before saving
+    verification.markModified('customQuestions');
     await verification.save();
+    console.log('✅ Question saved to DB');
 
     const { createSetupMenu } = await import('./selectMenuHandler.js');
     const menuOptions = createSetupMenu();

@@ -24,6 +24,10 @@ export async function execute(interaction) {
       });
     }
 
+    // Debug: Log what we're getting from the database
+    console.log('🔍 Verify modal opened for guild:', interaction.guildId);
+    console.log('📝 Custom Questions in DB:', verification.customQuestions);
+
     // Ensure customQuestions is initialized for older documents
     if (!verification.customQuestions) {
       verification.customQuestions = [];

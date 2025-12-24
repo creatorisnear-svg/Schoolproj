@@ -319,12 +319,17 @@ async function handleVerifySetupMenu(interaction) {
       try {
         let verification = await Verification.findOne({ guildId: interaction.guildId });
         
+        // Debug: Log what we're getting
+        console.log('🔍 Delete menu opened for guild:', interaction.guildId);
+        console.log('📝 Custom Questions in DB:', verification?.customQuestions);
+        
         // Ensure customQuestions is initialized for older documents
         if (verification && !verification.customQuestions) {
           verification.customQuestions = [];
         }
         
         if (!verification || !verification.customQuestions || verification.customQuestions.length === 0) {
+          console.log('⚠️ No questions found');
           return interaction.update({
             embeds: [errorEmbed('No custom questions found.')],
             components: [],
@@ -2068,6 +2073,7 @@ async function handleDeleteCustomQuestion(interaction) {
 
     const deletedQuestion = verification.customQuestions[selectedIndex];
     verification.customQuestions.splice(selectedIndex, 1);
+    verification.markModified('customQuestions');
     await verification.save();
 
     const menuOptions = createSetupMenu();
