@@ -139,30 +139,28 @@ async function handleVerifyModal(interaction) {
         if (approvalChannel && approvalChannel.isTextBased()) {
           const approveButton = new ButtonBuilder()
             .setCustomId(`verify_approve_${pending._id}`)
-            .setLabel('✅ Approve')
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅');
+            .setLabel('Approve')
+            .setStyle(ButtonStyle.Success);
 
           const rejectButton = new ButtonBuilder()
             .setCustomId(`verify_reject_${pending._id}`)
-            .setLabel('❌ Reject')
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji('❌');
+            .setLabel('Reject')
+            .setStyle(ButtonStyle.Danger);
 
           const row = new ActionRowBuilder().addComponents(approveButton, rejectButton);
           
           const embed = new EmbedBuilder()
             .setColor('#FFA500')
-            .setTitle('📋 Verification Pending Approval')
+            .setTitle('Verification Pending Approval')
             .addFields(
-              { name: '👤 Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
-              { name: '🎮 PSN / XBOX', value: psnxbox, inline: false }
+              { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
+              { name: 'PSN / XBOX', value: psnxbox, inline: false }
             );
 
           // Handle multiple custom questions
           if (verification.customQuestions && verification.customQuestions.length > 0 && customAnswer) {
             const questionFields = verification.customQuestions.map(question => ({
-              name: `❓ ${question}`,
+              name: question,
               value: customAnswer,
               inline: false
             }));
@@ -174,12 +172,12 @@ async function handleVerifyModal(interaction) {
           const msg = await approvalChannel.send({ embeds: [embed], components: [row] });
           pending.messageId = msg.id;
           await pending.save();
-          console.log(`📝 Verification request created for ${interaction.user.username} (Pending ID: ${pending._id})`);
+          console.log(`Verification request created for ${interaction.user.username} (Pending ID: ${pending._id})`);
         }
       }
 
       return interaction.reply({
-        embeds: [infoEmbed('✅ Application Submitted', 'Your verification application has been submitted and is awaiting staff approval.')],
+        embeds: [infoEmbed('Application Submitted', 'Your verification application has been submitted and is awaiting staff approval.')],
         flags: 64,
       });
     }
@@ -204,12 +202,12 @@ async function handleVerifyModal(interaction) {
       const newNickname = `${verification.rpTag} | ${psnxbox}`;
       try {
         await interaction.member.setNickname(newNickname);
-        console.log(`✅ Set nickname for ${interaction.user.username}: ${newNickname}`);
+        console.log(`Set nickname for ${interaction.user.username}: ${newNickname}`);
       } catch (error) {
         if (error.code === 50013) {
-          console.warn(`⚠️ Cannot set nickname for ${interaction.user.username} (likely due to role hierarchy). Intended nickname: ${newNickname}`);
+          console.warn(`Cannot set nickname for ${interaction.user.username} (likely due to role hierarchy). Intended nickname: ${newNickname}`);
         } else {
-          console.error('❌ Error setting nickname:', error);
+          console.error('Error setting nickname:', error);
         }
       }
     }
@@ -244,7 +242,7 @@ async function handleVerifyModal(interaction) {
     await interaction.user.send({
       embeds: [new EmbedBuilder()
         .setColor('#00ff00')
-        .setTitle('✅ Verification Successful')
+        .setTitle('Verification Successful')
         .setDescription(dmMessage)
         .setFooter({ text: 'EverLink' })
       ]
@@ -252,17 +250,17 @@ async function handleVerifyModal(interaction) {
 
     const successMsg = new EmbedBuilder()
       .setColor('#00ff00')
-      .setTitle('✅ You\'re Verified!')
+      .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
       .setFooter({ text: 'EverLink' });
 
-    console.log(`✅ Member ${interaction.user.username} successfully verified (instant)`);
+    console.log(`Member ${interaction.user.username} successfully verified (instant)`);
     return interaction.reply({
       embeds: [successMsg],
       flags: 64,
     });
   } catch (error) {
-    console.error('❌ Error verifying member:', error);
+    console.error('Error verifying member:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred during verification. Please try again or contact an administrator.')],
       flags: 64,
