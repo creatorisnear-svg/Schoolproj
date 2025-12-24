@@ -1831,10 +1831,12 @@ async function handleApprovalToggle(interaction, enabled) {
   try {
     const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
-    verification.approvalRequired = enabled;
     
     if (enabled) {
       // If enabling, ask for approval channel
+      verification.approvalRequired = true;
+      await verification.save();
+
       const channelSelect = new ChannelSelectMenuBuilder()
         .setCustomId('select_approval_channel_menu')
         .setPlaceholder('Select the approval channel')
@@ -1870,7 +1872,7 @@ async function handleApprovalToggle(interaction, enabled) {
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
-    });
+    }).catch(() => {});
   }
 }
 
