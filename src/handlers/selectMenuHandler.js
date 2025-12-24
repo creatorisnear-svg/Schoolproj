@@ -495,7 +495,7 @@ export async function handleSetupModals(interaction) {
     }
 
     if (customId === 'setup_custom_question_modal') {
-      const question = interaction.fields.getTextInputValue('question') || null;
+      const question = interaction.fields.getTextInputValue('custom_question_input') || null;
       verification.customQuestion = question;
       await verification.save();
 
