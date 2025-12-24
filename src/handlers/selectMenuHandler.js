@@ -912,20 +912,19 @@ async function applyAllVerificationPermissions(guild, verification) {
         }
       }
 
-      // 2. Configure verified role (can see selected categories + welcome channel)
+      // 2. Configure verified role (can ONLY view selected categories + welcome channel)
       if (verification.verifiedRoleId) {
         const isVerifiedCategory = verification.verifiedChannelIds && channel.parentId && verification.verifiedChannelIds.includes(channel.parentId);
         const isWelcomeChannel = channel.id === verification.welcomeChannelId;
         
         if (isVerifiedCategory || isWelcomeChannel) {
+          // Only allow viewing, not sending messages
           await channel.permissionOverwrites.edit(
             verification.verifiedRoleId,
             {
               ViewChannel: true,
-              SendMessages: true,
-              ReadMessageHistory: true,
             },
-            { reason: 'Verification system - verified access' }
+            { reason: 'Verification system - verified view access' }
           ).catch(() => {});
         } else {
           await channel.permissionOverwrites.edit(
