@@ -317,11 +317,8 @@ async function handleVerifySetupMenu(interaction) {
 
     if (choice === 'delete_custom_question') {
       try {
+        const { ButtonBuilder, ButtonStyle } = await import('discord.js');
         let verification = await Verification.findOne({ guildId: interaction.guildId });
-        
-        // Debug: Log what we're getting
-        console.log('🔍 Delete menu opened for guild:', interaction.guildId);
-        console.log('📝 Custom Questions in DB:', verification?.customQuestions);
         
         // Ensure customQuestions is initialized for older documents
         if (verification && !verification.customQuestions) {
@@ -329,7 +326,6 @@ async function handleVerifySetupMenu(interaction) {
         }
         
         if (!verification || !verification.customQuestions || verification.customQuestions.length === 0) {
-          console.log('⚠️ No questions found');
           return interaction.update({
             embeds: [errorEmbed('No custom questions found.')],
             components: [],

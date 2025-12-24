@@ -62,10 +62,6 @@ async function handleSetupCustomQuestionModal(interaction) {
       });
     }
     
-    console.log('📝 Adding question for guild:', interaction.guildId);
-    console.log('📝 Question text:', question);
-    console.log('📝 Before update - customQuestions:', verification.customQuestions);
-    
     // Initialize customQuestions if missing
     if (!Array.isArray(verification.customQuestions)) {
       verification.customQuestions = [];
@@ -76,11 +72,9 @@ async function handleSetupCustomQuestionModal(interaction) {
       verification.customQuestions.push(question);
     }
     
-    console.log('📝 After push - customQuestions:', verification.customQuestions);
     // Explicitly mark the array as modified before saving
     verification.markModified('customQuestions');
     await verification.save();
-    console.log('✅ Question saved to DB');
 
     const { createSetupMenu } = await import('./selectMenuHandler.js');
     const menuOptions = createSetupMenu();
@@ -163,9 +157,12 @@ async function handleVerifyModal(interaction) {
 
           // Handle multiple custom questions
           if (verification.customQuestions && verification.customQuestions.length > 0 && customAnswer) {
-            verification.customQuestions.forEach(question => {
-              embed.addField(question, customAnswer, false);
-            });
+            const questionFields = verification.customQuestions.map(question => ({
+              name: question,
+              value: customAnswer,
+              inline: false
+            }));
+            embed.addFields(questionFields);
           }
 
           embed.setTimestamp().setFooter({ text: 'EverLink' });
@@ -224,9 +221,12 @@ async function handleVerifyModal(interaction) {
               { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false }
             );
 
-          verification.customQuestions.forEach(question => {
-            logEmbed.addField(question, customAnswer, false);
-          });
+          const questionFields = verification.customQuestions.map(question => ({
+            name: question,
+            value: customAnswer,
+            inline: false
+          }));
+          logEmbed.addFields(questionFields);
 
           logEmbed.setTimestamp().setFooter({ text: 'EverLink' });
 
