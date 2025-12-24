@@ -37,10 +37,12 @@ export async function execute(interaction) {
     const row1 = new ActionRowBuilder().addComponents(psnXboxInput);
     modal.addComponents(row1);
 
-    if (verification.customQuestion) {
+    // Add custom questions if they exist
+    if (verification.customQuestions && verification.customQuestions.length > 0) {
+      // Take the first question for now (modal can only have one custom question field)
       const customInput = new TextInputBuilder()
         .setCustomId('custom_question')
-        .setLabel(verification.customQuestion)
+        .setLabel(verification.customQuestions[0])
         .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
 

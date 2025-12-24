@@ -544,14 +544,28 @@ export async function handleSetupModals(interaction) {
     }
 
     if (customId === 'setup_custom_question_modal') {
-      const question = interaction.fields.getTextInputValue('custom_question_input') || null;
-      verification.customQuestion = question;
+      const question = interaction.fields.getTextInputValue('custom_question_input');
+      if (!question || question.trim().length === 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('Question cannot be empty.')],
+          flags: 64,
+        });
+      }
+
+      if (!verification.customQuestions) {
+        verification.customQuestions = [];
+      }
+      
+      if (!verification.customQuestions.includes(question)) {
+        verification.customQuestions.push(question);
+      }
+      
       await verification.save();
 
       const menuOptions = createSetupMenu();
       return interaction.reply({
         content: '',
-        embeds: [infoEmbed('Custom Question Updated', question ? `Question: ${question}\n\nSelect your next option below to continue setup.` : 'Custom question removed. Select your next option below.')],
+        embeds: [infoEmbed('Custom Question Added', `Question: "${question}"\n\nTotal questions: ${verification.customQuestions.length}\n\nSelect your next option below to continue setup.`)],
         components: menuOptions.components,
         flags: 64,
       });
