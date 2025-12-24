@@ -24,6 +24,11 @@ export async function execute(interaction) {
       });
     }
 
+    // Ensure customQuestions is initialized for older documents
+    if (!verification.customQuestions) {
+      verification.customQuestions = [];
+    }
+
     const modal = new ModalBuilder()
       .setCustomId('verify_modal')
       .setTitle('Server Verification');

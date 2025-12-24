@@ -318,6 +318,12 @@ async function handleVerifySetupMenu(interaction) {
     if (choice === 'delete_custom_question') {
       try {
         let verification = await Verification.findOne({ guildId: interaction.guildId });
+        
+        // Ensure customQuestions is initialized for older documents
+        if (verification && !verification.customQuestions) {
+          verification.customQuestions = [];
+        }
+        
         if (!verification || !verification.customQuestions || verification.customQuestions.length === 0) {
           return interaction.update({
             embeds: [errorEmbed('No custom questions found.')],
