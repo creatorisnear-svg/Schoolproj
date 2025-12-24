@@ -1936,7 +1936,7 @@ async function handleApprovalToggle(interaction, enabled) {
       });
     }
   } catch (error) {
-    console.error('Error toggling approval:', error);
+    console.error('❌ Error toggling approval:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
@@ -1981,7 +1981,7 @@ async function handleVerificationApprove(interaction) {
       await member.user.send({
         embeds: [new EmbedBuilder()
           .setColor('#00ff00')
-          .setTitle('Verification Approved')
+          .setTitle('✅ Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
           .setFooter({ text: 'EverLink' })
         ]
@@ -1990,17 +1990,18 @@ async function handleVerificationApprove(interaction) {
 
     await PendingVerification.findByIdAndDelete(pendingId);
     
+    console.log(`✅ Verification approved for ${pending.username}`);
     await interaction.update({
       embeds: [new EmbedBuilder()
         .setColor('#00ff00')
-        .setTitle('Approved')
+        .setTitle('✅ Approved')
         .setDescription(`${pending.username} has been verified.`)
         .setFooter({ text: 'EverLink' })
       ],
       components: [],
     });
   } catch (error) {
-    console.error('Error approving verification:', error);
+    console.error('❌ Error approving verification:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred while approving.')],
       flags: 64,
@@ -2028,7 +2029,7 @@ async function handleVerificationReject(interaction) {
       await member.user.send({
         embeds: [new EmbedBuilder()
           .setColor('#ff0000')
-          .setTitle('Verification Rejected')
+          .setTitle('❌ Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
           .setFooter({ text: 'EverLink' })
         ]
@@ -2037,17 +2038,18 @@ async function handleVerificationReject(interaction) {
 
     await PendingVerification.findByIdAndDelete(pendingId);
     
+    console.log(`❌ Verification rejected for ${pending.username}`);
     await interaction.update({
       embeds: [new EmbedBuilder()
         .setColor('#ff0000')
-        .setTitle('Rejected')
+        .setTitle('❌ Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
         .setFooter({ text: 'EverLink' })
       ],
       components: [],
     });
   } catch (error) {
-    console.error('Error rejecting verification:', error);
+    console.error('❌ Error rejecting verification:', error);
     await interaction.reply({
       embeds: [errorEmbed('An error occurred while rejecting.')],
       flags: 64,
@@ -2079,7 +2081,7 @@ async function handleDeleteCustomQuestion(interaction) {
       components: menuOptions.components,
     });
   } catch (error) {
-    console.error('Error deleting custom question:', error);
+    console.error('❌ Error deleting custom question:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while deleting the question.')],
       flags: 64,
