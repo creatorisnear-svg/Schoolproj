@@ -224,6 +224,10 @@ export async function handleSelectMenu(interaction) {
     await handleVerificationReject(interaction);
   }
 
+  if (interaction.customId === 'delete_custom_question_menu') {
+    await handleDeleteCustomQuestion(interaction);
+  }
+
 }
 
 async function handleVerifySetupMenu(interaction) {
@@ -298,14 +302,14 @@ async function handleVerifySetupMenu(interaction) {
     if (choice === 'set_custom_question') {
       const modal = new ModalBuilder()
         .setCustomId('setup_custom_question_modal')
-        .setTitle('Set Custom Question');
+        .setTitle('Add Custom Question');
 
       const input = new TextInputBuilder()
         .setCustomId('custom_question_input')
         .setLabel('Enter your custom question')
         .setStyle(TextInputStyle.Paragraph)
         .setPlaceholder('e.g., What is your character backstory?')
-        .setRequired(false);
+        .setRequired(true);
 
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       return interaction.showModal(modal);
@@ -314,18 +318,35 @@ async function handleVerifySetupMenu(interaction) {
     if (choice === 'delete_custom_question') {
       try {
         let verification = await Verification.findOne({ guildId: interaction.guildId });
-        if (!verification) {
-          verification = new Verification({ guildId: interaction.guildId });
+        if (!verification || !verification.customQuestions || verification.customQuestions.length === 0) {
+          return interaction.update({
+            embeds: [errorEmbed('No custom questions found.')],
+            components: [],
+          });
         }
         
-        verification.customQuestion = null;
-        await verification.save();
-        
-        const menuOptions = createSetupMenu();
+        const options = verification.customQuestions.map((question, index) => ({
+          label: `${index + 1}. ${question.substring(0, 50)}${question.length > 50 ? '...' : ''}`,
+          value: `delete_question_${index}`,
+        }));
+
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId('delete_custom_question_menu')
+          .setPlaceholder('Select a question to delete...')
+          .addOptions(options);
+
+        const row = new ActionRowBuilder().addComponents(menu);
+        const backButton = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('back_to_verify_menu')
+              .setLabel('← Back')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
         return interaction.update({
-          content: '',
-          embeds: [infoEmbed('Custom Question Deleted', 'The custom question has been removed. Users will no longer see it during verification.')],
-          components: menuOptions.components,
+          content: 'Select a custom question to delete:',
+          components: [row, backButton],
         });
       } catch (error) {
         console.error('Error deleting custom question:', error);
@@ -2010,6 +2031,37 @@ async function handleVerificationReject(interaction) {
       embeds: [errorEmbed('An error occurred while rejecting.')],
       flags: 64,
     }).catch(() => {});
+  }
+}
+
+async function handleDeleteCustomQuestion(interaction) {
+  try {
+    const selectedIndex = parseInt(interaction.values[0].replace('delete_question_', ''));
+    let verification = await Verification.findOne({ guildId: interaction.guildId });
+    
+    if (!verification || !verification.customQuestions || !verification.customQuestions[selectedIndex]) {
+      return interaction.reply({
+        embeds: [errorEmbed('Question not found.')],
+        flags: 64,
+      });
+    }
+
+    const deletedQuestion = verification.customQuestions[selectedIndex];
+    verification.customQuestions.splice(selectedIndex, 1);
+    await verification.save();
+
+    const menuOptions = createSetupMenu();
+    return interaction.update({
+      content: '',
+      embeds: [successEmbed('Custom Question Deleted', `Question removed: "${deletedQuestion}"\n\nSelect your next option below to continue setup.`)],
+      components: menuOptions.components,
+    });
+  } catch (error) {
+    console.error('Error deleting custom question:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while deleting the question.')],
+      flags: 64,
+    });
   }
 }
 

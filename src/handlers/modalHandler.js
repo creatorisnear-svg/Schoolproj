@@ -45,16 +45,32 @@ export async function handleModalSubmit(interaction) {
 
 async function handleSetupCustomQuestionModal(interaction) {
   try {
-    const question = interaction.fields.getTextInputValue('custom_question_input') || null;
+    const question = interaction.fields.getTextInputValue('custom_question_input');
+    if (!question || question.trim().length === 0) {
+      return interaction.reply({
+        embeds: [errorEmbed('Question cannot be empty.')],
+        flags: 64,
+      });
+    }
+
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
-    verification.customQuestion = question;
+    
+    if (!verification.customQuestions) {
+      verification.customQuestions = [];
+    }
+    
+    // Add new question (avoid duplicates)
+    if (!verification.customQuestions.includes(question)) {
+      verification.customQuestions.push(question);
+    }
+    
     await verification.save();
 
     const { createSetupMenu } = await import('./selectMenuHandler.js');
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Custom Question Set', `Custom Question: ${question || 'None (removed)'}`)],
+      embeds: [infoEmbed('Custom Question Added', `Question: "${question}"\n\nTotal questions: ${verification.customQuestions.length}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -129,8 +145,11 @@ async function handleVerifyModal(interaction) {
               { name: 'PSN / XBOX', value: psnxbox, inline: false }
             );
 
-          if (verification.customQuestion && customAnswer) {
-            embed.addField(verification.customQuestion, customAnswer, false);
+          // Handle multiple custom questions
+          if (verification.customQuestions && verification.customQuestions.length > 0 && customAnswer) {
+            verification.customQuestions.forEach(question => {
+              embed.addField(question, customAnswer, false);
+            });
           }
 
           embed.setTimestamp().setFooter({ text: 'EverLink' });
@@ -177,21 +196,23 @@ async function handleVerifyModal(interaction) {
       }
     }
 
-    if (customAnswer && verification.customQuestion) {
+    if (customAnswer && verification.customQuestions && verification.customQuestions.length > 0) {
       const config = await Config.findOne({ guildId: interaction.guildId });
       if (config && config.logChannelId) {
         const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
         if (logChannel && logChannel.isTextBased()) {
           const logEmbed = new EmbedBuilder()
             .setColor('#0099ff')
-            .setTitle('✅ Member Verified with Question')
+            .setTitle('✅ Member Verified with Questions')
             .addFields(
-              { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false },
-              { name: 'Question', value: verification.customQuestion, inline: false },
-              { name: 'Answer', value: customAnswer, inline: false }
-            )
-            .setTimestamp()
-            .setFooter({ text: 'EverLink' });
+              { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false }
+            );
+
+          verification.customQuestions.forEach(question => {
+            logEmbed.addField(question, customAnswer, false);
+          });
+
+          logEmbed.setTimestamp().setFooter({ text: 'EverLink' });
 
           await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
