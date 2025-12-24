@@ -92,13 +92,13 @@ export async function handleBackToMenu(interaction) {
             .setCustomId('verify_setup_menu')
             .setPlaceholder('Choose a setup option...')
             .addOptions(
-              { label: 'Select Verify Channel', value: 'select_verify_channel' },
-              { label: 'Select Welcome Channel', value: 'select_welcome_channel' },
-              { label: 'Select Unverified Role', value: 'select_unverified_role' },
-              { label: 'Select Verified Role', value: 'select_verified_role' },
-              { label: 'Set RP Tag (Required)', value: 'set_rp_tag' },
+              { label: 'Select Verify Channel (Required)', value: 'select_verify_channel' },
+              { label: 'Select Verified Role (Required)', value: 'select_verified_role' },
+              { label: 'Select Unverified Role (Required)', value: 'select_unverified_role' },
               { label: 'Set Custom Question (Optional)', value: 'set_custom_question' },
-              { label: 'Set DM Message (Optional)', value: 'set_dm_message' },
+              { label: 'Delete Custom Question (Optional)', value: 'delete_custom_question' },
+              { label: 'Toggle Approval Required (Optional)', value: 'toggle_approval_required' },
+              { label: 'Set RP Tag (Optional)', value: 'set_rp_tag' },
               { label: '✅ Done - Close Setup', value: 'verify_setup_done' }
             )
         );

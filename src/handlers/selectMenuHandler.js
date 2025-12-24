@@ -11,6 +11,7 @@ function createSetupMenu() {
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
     { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
     { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
+    { id: 'delete_custom_question', label: 'Delete Custom Question (Optional)' },
     { id: 'toggle_approval_required', label: 'Toggle Approval Required (Optional)' },
     { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
     { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
@@ -308,6 +309,31 @@ async function handleVerifySetupMenu(interaction) {
 
       modal.addComponents(new ActionRowBuilder().addComponents(input));
       return interaction.showModal(modal);
+    }
+
+    if (choice === 'delete_custom_question') {
+      try {
+        let verification = await Verification.findOne({ guildId: interaction.guildId });
+        if (!verification) {
+          verification = new Verification({ guildId: interaction.guildId });
+        }
+        
+        verification.customQuestion = null;
+        await verification.save();
+        
+        const menuOptions = createSetupMenu();
+        return interaction.update({
+          content: '',
+          embeds: [infoEmbed('Custom Question Deleted', 'The custom question has been removed. Users will no longer see it during verification.')],
+          components: menuOptions.components,
+        });
+      } catch (error) {
+        console.error('Error deleting custom question:', error);
+        return interaction.reply({
+          embeds: [errorEmbed('An error occurred while deleting the question.')],
+          flags: 64,
+        });
+      }
     }
 
     if (choice === 'toggle_approval_required') {
