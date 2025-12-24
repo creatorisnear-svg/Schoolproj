@@ -6,7 +6,7 @@ dotenv.config();
 export async function connectDatabase() {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log(' Connected to MongoDB Atlas successfully');
+    console.log('✅ Connected to MongoDB Atlas successfully');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);
@@ -14,7 +14,7 @@ export async function connectDatabase() {
 }
 
 mongoose.connection.on('disconnected', () => {
-  console.log('  MongoDB disconnected');
+  console.log('📴 MongoDB disconnected');
 });
 
 mongoose.connection.on('error', (error) => {
