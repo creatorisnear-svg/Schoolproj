@@ -38,6 +38,8 @@ export async function execute(interaction) {
     { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
     { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
     { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
+    { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
+    { id: 'toggle_approval_required', label: 'Toggle Approval Required (Optional)' },
     { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
   ];
 

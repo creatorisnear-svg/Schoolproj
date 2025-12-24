@@ -1,7 +1,8 @@
 import { EmbedBuilder } from 'discord.js';
 import Config from '../models/Config.js';
 import Verification from '../models/Verification.js';
-import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import PendingVerification from '../models/PendingVerification.js';
+import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { handleLEORevokeWeaponModal, handleLEOIssueTicketModal, handleLEOCreateBOLOModal } from './leoDatabaseHandler.js';
 
 export async function handleModalSubmit(interaction) {
@@ -36,16 +37,41 @@ export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'status_set_interval_modal') {
     await handleStatusSetIntervalModal(interaction);
   }
+
+  if (interaction.customId === 'setup_custom_question_modal') {
+    await handleSetupCustomQuestionModal(interaction);
+  }
+}
+
+async function handleSetupCustomQuestionModal(interaction) {
+  try {
+    const question = interaction.fields.getTextInputValue('custom_question_input') || null;
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.customQuestion = question;
+    await verification.save();
+
+    const { createSetupMenu } = await import('./selectMenuHandler.js');
+    const menuOptions = createSetupMenu();
+    return interaction.update({
+      content: '',
+      embeds: [infoEmbed('Custom Question Set', `Custom Question: ${question || 'None (removed)'}`)],
+      components: menuOptions.components,
+    });
+  } catch (error) {
+    console.error('Error setting custom question:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      flags: 64,
+    });
+  }
 }
 
 async function handleVerifyModal(interaction) {
   const psnxbox = interaction.fields.getTextInputValue('psnxbox');
-  // Only get custom_question if it exists in the modal
   let customAnswer = null;
   try {
     customAnswer = interaction.fields.getTextInputValue('custom_question');
   } catch (e) {
-    // Field doesn't exist, which is fine if no custom question was set
     customAnswer = null;
   }
 
@@ -66,6 +92,62 @@ async function handleVerifyModal(interaction) {
       });
     }
 
+    // If approval is required, create pending verification
+    if (verification.approvalRequired) {
+      const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      
+      const pending = new PendingVerification({
+        guildId: interaction.guildId,
+        userId: interaction.user.id,
+        username: interaction.user.username,
+        psnxbox,
+        customAnswer: customAnswer || null,
+      });
+      await pending.save();
+
+      // Send to approval channel
+      if (verification.approvalChannelId) {
+        const approvalChannel = await interaction.guild.channels.fetch(verification.approvalChannelId).catch(() => null);
+        if (approvalChannel && approvalChannel.isTextBased()) {
+          const approveButton = new ButtonBuilder()
+            .setCustomId(`verify_approve_${pending._id}`)
+            .setLabel('✅ Approve')
+            .setStyle(ButtonStyle.Success);
+
+          const rejectButton = new ButtonBuilder()
+            .setCustomId(`verify_reject_${pending._id}`)
+            .setLabel('❌ Reject')
+            .setStyle(ButtonStyle.Danger);
+
+          const row = new ActionRowBuilder().addComponents(approveButton, rejectButton);
+          
+          const embed = new EmbedBuilder()
+            .setColor('#FFA500')
+            .setTitle('⏳ Verification Pending Approval')
+            .addFields(
+              { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
+              { name: 'PSN / XBOX', value: psnxbox, inline: false }
+            );
+
+          if (verification.customQuestion && customAnswer) {
+            embed.addField(verification.customQuestion, customAnswer, false);
+          }
+
+          embed.setTimestamp().setFooter({ text: 'EverLink' });
+
+          const msg = await approvalChannel.send({ embeds: [embed], components: [row] });
+          pending.messageId = msg.id;
+          await pending.save();
+        }
+      }
+
+      return interaction.reply({
+        embeds: [infoEmbed('Application Submitted', 'Your verification application has been submitted and is awaiting staff approval.')],
+        flags: 64,
+      });
+    }
+
+    // Instant verification (no approval required)
     const verifiedRole = interaction.guild.roles.cache.get(verification.verifiedRoleId);
     const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
 
@@ -87,17 +169,14 @@ async function handleVerifyModal(interaction) {
         await interaction.member.setNickname(newNickname);
         console.log(`✅ Set nickname for ${interaction.user.username}: ${newNickname}`);
       } catch (error) {
-        // Check if this is a permission issue (often due to role hierarchy)
         if (error.code === 50013) {
           console.warn(`⚠️ Cannot set nickname for ${interaction.user.username} (likely due to role hierarchy). Intended nickname: ${newNickname}`);
-          // Still send verification message - just without the nickname
         } else {
           console.error('Error setting nickname:', error);
         }
       }
     }
 
-    // Log verification with custom question if it exists
     if (customAnswer && verification.customQuestion) {
       const config = await Config.findOne({ guildId: interaction.guildId });
       if (config && config.logChannelId) {

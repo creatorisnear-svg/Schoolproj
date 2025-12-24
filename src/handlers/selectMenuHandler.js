@@ -133,6 +133,10 @@ export async function handleSelectMenu(interaction) {
     await handleVerifiedChannelsSelect(interaction);
   }
 
+  if (interaction.customId === 'select_approval_channel_menu') {
+    await handleApprovalChannelSelect(interaction);
+  }
+
   if (interaction.customId === 'welcome_channel_select') {
     await handleWelcomeSystemChannelSelect(interaction);
   }
@@ -199,6 +203,22 @@ export async function handleSelectMenu(interaction) {
 
   if (interaction.customId === 'status_heartbeat_channel_select') {
     await handleStatusChannelSelect(interaction);
+  }
+
+  if (interaction.customId === 'approval_toggle_yes') {
+    await handleApprovalToggle(interaction, true);
+  }
+
+  if (interaction.customId === 'approval_toggle_no') {
+    await handleApprovalToggle(interaction, false);
+  }
+
+  if (interaction.customId.startsWith('verify_approve_')) {
+    await handleVerificationApprove(interaction);
+  }
+
+  if (interaction.customId.startsWith('verify_reject_')) {
+    await handleVerificationReject(interaction);
   }
 
 }
@@ -269,6 +289,48 @@ async function handleVerifySetupMenu(interaction) {
       return interaction.update({
         content: 'Select the role that unverified members will receive when they join:',
         components: [row, backButton],
+      });
+    }
+
+    if (choice === 'set_custom_question') {
+      const modal = new ModalBuilder()
+        .setCustomId('setup_custom_question_modal')
+        .setTitle('Set Custom Question');
+
+      const input = new TextInputBuilder()
+        .setCustomId('custom_question_input')
+        .setLabel('Enter your custom question')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('e.g., What is your character backstory?')
+        .setRequired(false);
+
+      modal.addComponents(new ActionRowBuilder().addComponents(input));
+      return interaction.showModal(modal);
+    }
+
+    if (choice === 'toggle_approval_required') {
+      const { ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const approveButton = new ButtonBuilder()
+        .setCustomId('approval_toggle_yes')
+        .setLabel('✅ Enable Approval')
+        .setStyle(ButtonStyle.Success);
+
+      const rejectButton = new ButtonBuilder()
+        .setCustomId('approval_toggle_no')
+        .setLabel('❌ Disable Approval')
+        .setStyle(ButtonStyle.Danger);
+
+      const backButton = new ButtonBuilder()
+        .setCustomId('back_to_verify_menu')
+        .setLabel('← Back')
+        .setStyle(ButtonStyle.Secondary);
+
+      const row1 = new ActionRowBuilder().addComponents(approveButton, rejectButton);
+      const row2 = new ActionRowBuilder().addComponents(backButton);
+
+      return interaction.update({
+        content: 'Do you want to require staff approval for verification?\n\n✅ **Enable**: Users submit verification, staff reviews and approves/rejects\n❌ **Disable**: Users are instantly verified',
+        components: [row1, row2],
       });
     }
 
@@ -1758,6 +1820,186 @@ async function handleStatusChannelSelect(interaction) {
     console.error('Error in status channel select:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleApprovalToggle(interaction, enabled) {
+  try {
+    const { ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.approvalRequired = enabled;
+    
+    if (enabled) {
+      // If enabling, ask for approval channel
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('select_approval_channel_menu')
+        .setPlaceholder('Select the approval channel')
+        .setChannelTypes(ChannelType.GuildText);
+
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        content: 'Select the channel where staff will review and approve/reject verifications:',
+        components: [row, backButton],
+      });
+    } else {
+      verification.approvalRequired = false;
+      verification.approvalChannelId = null;
+      await verification.save();
+
+      const menuOptions = createSetupMenu();
+      return interaction.update({
+        content: '',
+        embeds: [infoEmbed('Approval Disabled', 'Users will now be instantly verified without staff approval.')],
+        components: menuOptions.components,
+      });
+    }
+  } catch (error) {
+    console.error('Error toggling approval:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
+      flags: 64,
+    });
+  }
+}
+
+async function handleVerificationApprove(interaction) {
+  try {
+    const pendingId = interaction.customId.replace('verify_approve_', '');
+    const { default: PendingVerification } = await import('../models/PendingVerification.js');
+    
+    const pending = await PendingVerification.findById(pendingId);
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('This verification request is no longer available.')],
+        flags: 64,
+      });
+    }
+
+    const member = await interaction.guild.members.fetch(pending.userId).catch(() => null);
+    const verification = await Verification.findOne({ guildId: interaction.guildId });
+    
+    if (member && verification) {
+      const verifiedRole = interaction.guild.roles.cache.get(verification.verifiedRoleId);
+      const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
+      
+      if (verifiedRole) {
+        await member.roles.add(verifiedRole);
+      }
+      if (unverifiedRole) {
+        await member.roles.remove(unverifiedRole);
+      }
+
+      // Set nickname if RP tag is set
+      if (verification.rpTag && member) {
+        const newNickname = `${verification.rpTag} | ${pending.psnxbox}`;
+        await member.setNickname(newNickname).catch(() => {});
+      }
+
+      // Send DM to user
+      await member.user.send({
+        embeds: [new EmbedBuilder()
+          .setColor('#00ff00')
+          .setTitle('✅ Verification Approved')
+          .setDescription('Your verification has been approved! You now have access to member channels.')
+          .setFooter({ text: 'EverLink' })
+        ]
+      }).catch(() => {});
+    }
+
+    await PendingVerification.findByIdAndDelete(pendingId);
+    
+    await interaction.update({
+      embeds: [new EmbedBuilder()
+        .setColor('#00ff00')
+        .setTitle('✅ Approved')
+        .setDescription(`${pending.username} has been verified.`)
+        .setFooter({ text: 'EverLink' })
+      ],
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error approving verification:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred while approving.')],
+      flags: 64,
+    }).catch(() => {});
+  }
+}
+
+async function handleVerificationReject(interaction) {
+  try {
+    const pendingId = interaction.customId.replace('verify_reject_', '');
+    const { default: PendingVerification } = await import('../models/PendingVerification.js');
+    
+    const pending = await PendingVerification.findById(pendingId);
+    if (!pending) {
+      return interaction.reply({
+        embeds: [errorEmbed('This verification request is no longer available.')],
+        flags: 64,
+      });
+    }
+
+    const member = await interaction.guild.members.fetch(pending.userId).catch(() => null);
+    
+    // Send DM to user
+    if (member) {
+      await member.user.send({
+        embeds: [new EmbedBuilder()
+          .setColor('#ff0000')
+          .setTitle('❌ Verification Rejected')
+          .setDescription('Your verification application has been rejected. Please try again with more information.')
+          .setFooter({ text: 'EverLink' })
+        ]
+      }).catch(() => {});
+    }
+
+    await PendingVerification.findByIdAndDelete(pendingId);
+    
+    await interaction.update({
+      embeds: [new EmbedBuilder()
+        .setColor('#ff0000')
+        .setTitle('❌ Rejected')
+        .setDescription(`${pending.username}'s verification has been rejected.`)
+        .setFooter({ text: 'EverLink' })
+      ],
+      components: [],
+    });
+  } catch (error) {
+    console.error('Error rejecting verification:', error);
+    await interaction.reply({
+      embeds: [errorEmbed('An error occurred while rejecting.')],
+      flags: 64,
+    }).catch(() => {});
+  }
+}
+
+async function handleApprovalChannelSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
+    verification.approvalChannelId = channelId;
+    await verification.save();
+
+    const menuOptions = createSetupMenu();
+    return interaction.update({
+      content: '',
+      embeds: [infoEmbed('Approval Channel Set', `Staff will review verifications in <#${channelId}>`)],
+      components: menuOptions.components,
+    });
+  } catch (error) {
+    console.error('Error setting approval channel:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
     });
   }

@@ -34,6 +34,14 @@ const verificationSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  approvalRequired: {
+    type: Boolean,
+    default: false,
+  },
+  approvalChannelId: {
+    type: String,
+    default: null,
+  },
   verifyDMMessage: {
     type: String,
     default: 'Welcome to our community! You have been verified and can now access all member channels.',
