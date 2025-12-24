@@ -367,13 +367,13 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'select_verified_channels') {
-      const channelSelect = new ChannelSelectMenuBuilder()
+      const categorySelect = new ChannelSelectMenuBuilder()
         .setCustomId('select_verified_channels_menu')
-        .setPlaceholder('Select channels verified members can see')
-        .setChannelTypes(ChannelType.GuildText)
+        .setPlaceholder('Select categories verified members can see')
+        .setChannelTypes(ChannelType.GuildCategory)
         .setMaxValues(25);
 
-      const row = new ActionRowBuilder().addComponents(channelSelect);
+      const row = new ActionRowBuilder().addComponents(categorySelect);
       const backButton = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
@@ -383,7 +383,7 @@ async function handleVerifySetupMenu(interaction) {
         );
 
       return interaction.update({
-        content: 'Select which channels verified members should be able to see:',
+        content: 'Select which categories verified members should be able to see:',
         components: [row, backButton],
       });
     }
@@ -435,7 +435,7 @@ async function handleVerifySetupMenu(interaction) {
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
-        embeds: [successEmbed('✅ Verification system setup is complete!\n\n⏳ Automatically configuring channel permissions...\n\n• **Verified members** → Can see: Selected channels + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\n✨ All channel permissions have been automatically configured based on your settings!')],
+        embeds: [successEmbed('✅ Verification system setup is complete!\n\n⏳ Automatically configuring channel permissions...\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\n✨ All channel permissions have been automatically configured based on your settings!')],
       });
 
       // Apply permissions in background (non-blocking)
@@ -882,12 +882,12 @@ async function applyAllVerificationPermissions(guild, verification) {
       // Skip non-text channels
       if (!channel.isTextBased()) continue;
 
-      // 1. Configure unverified role (can see welcome & verify, plus can send messages in verified channels)
+      // 1. Configure unverified role (can see welcome & verify, plus can send messages in verified categories)
       if (verification.unverifiedRoleId) {
         const isWelcomeOrVerifyChannel = channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId;
-        const isVerifiedChannel = verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id);
+        const isVerifiedCategory = verification.verifiedChannelIds && channel.parentId && verification.verifiedChannelIds.includes(channel.parentId);
         
-        if (isWelcomeOrVerifyChannel || isVerifiedChannel) {
+        if (isWelcomeOrVerifyChannel || isVerifiedCategory) {
           await channel.permissionOverwrites.edit(
             verification.unverifiedRoleId,
             {
@@ -909,12 +909,12 @@ async function applyAllVerificationPermissions(guild, verification) {
         }
       }
 
-      // 2. Configure verified role (can see selected channels + welcome channel)
+      // 2. Configure verified role (can see selected categories + welcome channel)
       if (verification.verifiedRoleId) {
-        const isVerifiedChannel = verification.verifiedChannelIds && verification.verifiedChannelIds.includes(channel.id);
+        const isVerifiedCategory = verification.verifiedChannelIds && channel.parentId && verification.verifiedChannelIds.includes(channel.parentId);
         const isWelcomeChannel = channel.id === verification.welcomeChannelId;
         
-        if (isVerifiedChannel || isWelcomeChannel) {
+        if (isVerifiedCategory || isWelcomeChannel) {
           await channel.permissionOverwrites.edit(
             verification.verifiedRoleId,
             {
@@ -950,7 +950,7 @@ async function applyAllVerificationPermissions(guild, verification) {
       }
     }
 
-    console.log(`All verification permissions configured (unverified, verified, staff)`);
+    console.log(`All verification permissions configured for categories (unverified, verified, staff)`);
   } catch (error) {
     console.error('Error applying verification permissions:', error);
   }
@@ -1020,28 +1020,32 @@ async function handleVerifiedRoleSelect(interaction) {
 
 async function handleVerifiedChannelsSelect(interaction) {
   try {
-    const selectedChannelIds = interaction.values;
+    const selectedCategoryIds = interaction.values;
 
-    if (!selectedChannelIds || selectedChannelIds.length === 0) {
+    if (!selectedCategoryIds || selectedCategoryIds.length === 0) {
       return interaction.reply({
-        embeds: [errorEmbed('Please select at least one channel.')],
+        embeds: [errorEmbed('Please select at least one category.')],
         flags: 64,
       });
     }
 
     let verification = await Verification.findOne({ guildId: interaction.guildId }) || new Verification({ guildId: interaction.guildId });
-    verification.verifiedChannelIds = selectedChannelIds;
+    verification.verifiedChannelIds = selectedCategoryIds;
     await verification.save();
 
-    const channelMentions = selectedChannelIds.map(id => `<#${id}>`).join(', ');
+    const categoryMentions = selectedCategoryIds.map(id => {
+      const channel = interaction.guild.channels.cache.get(id);
+      return channel ? `📁 ${channel.name}` : 'Unknown';
+    }).join('\n');
+    
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Verified Channels Set', `Verified members can now see:\n${channelMentions}\n\nSelect your next option below to continue setup.`)],
+      embeds: [infoEmbed('Verified Categories Set', `Verified members can now see all channels in:\n${categoryMentions}\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
     });
   } catch (error) {
-    console.error('Error setting verified channels:', error);
+    console.error('Error setting verified categories:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
