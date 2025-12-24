@@ -1942,14 +1942,14 @@ async function handleApprovalToggle(interaction, enabled) {
 
 async function handleVerificationApprove(interaction) {
   try {
+    await interaction.deferUpdate();
     const pendingId = interaction.customId.replace('verify_approve_', '');
     const { default: PendingVerification } = await import('../models/PendingVerification.js');
     
     const pending = await PendingVerification.findById(pendingId);
     if (!pending) {
-      return interaction.reply({
+      return await interaction.editReply({
         embeds: [errorEmbed('This verification request is no longer available.')],
-        flags: 64,
       });
     }
 
@@ -1987,7 +1987,7 @@ async function handleVerificationApprove(interaction) {
     await PendingVerification.findByIdAndDelete(pendingId);
     
     console.log(`Verification approved for ${pending.username}`);
-    await interaction.update({
+    await interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor('#00ff00')
         .setTitle('Approved')
@@ -1998,23 +1998,22 @@ async function handleVerificationApprove(interaction) {
     });
   } catch (error) {
     console.error('Error approving verification:', error);
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [errorEmbed('An error occurred while approving.')],
-      flags: 64,
     }).catch(() => {});
   }
 }
 
 async function handleVerificationReject(interaction) {
   try {
+    await interaction.deferUpdate();
     const pendingId = interaction.customId.replace('verify_reject_', '');
     const { default: PendingVerification } = await import('../models/PendingVerification.js');
     
     const pending = await PendingVerification.findById(pendingId);
     if (!pending) {
-      return interaction.reply({
+      return await interaction.editReply({
         embeds: [errorEmbed('This verification request is no longer available.')],
-        flags: 64,
       });
     }
 
@@ -2035,7 +2034,7 @@ async function handleVerificationReject(interaction) {
     await PendingVerification.findByIdAndDelete(pendingId);
     
     console.log(`Verification rejected for ${pending.username}`);
-    await interaction.update({
+    await interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor('#ff0000')
         .setTitle('Rejected')
@@ -2046,9 +2045,8 @@ async function handleVerificationReject(interaction) {
     });
   } catch (error) {
     console.error('Error rejecting verification:', error);
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [errorEmbed('An error occurred while rejecting.')],
-      flags: 64,
     }).catch(() => {});
   }
 }
