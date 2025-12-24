@@ -30,9 +30,9 @@ const verificationSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
-  customQuestion: {
-    type: String,
-    default: null,
+  customQuestions: {
+    type: [String],
+    default: [],
   },
   approvalRequired: {
     type: Boolean,
