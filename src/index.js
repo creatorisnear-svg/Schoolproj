@@ -42,7 +42,7 @@ for (const file of orderedFiles) {
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
     commands.push(command.data.toJSON());
-    console.log(`📝 Loaded command: ${command.data.name}`);
+    console.log(`✅ Loaded command: ${command.data.name}`);
   } else {
     console.log(`⚠️ Warning: ${file} is missing required "data" or "execute" property.`);
   }
