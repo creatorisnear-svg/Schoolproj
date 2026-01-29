@@ -253,9 +253,15 @@ client.on('interactionCreate', async interaction => {
 connectDatabase().then(() => {
   // Status Heartbeat System
   const startHeartbeat = async () => {
+    if (mongoose.connection.readyState !== 1) {
+      console.log('[STATUS] Skipping heartbeat: Database not connected');
+      return;
+    }
     try {
       const StatusHeartbeat = (await import('./models/StatusHeartbeat.js')).default;
       const configs = await StatusHeartbeat.find({ enabled: true });
+      
+      if (configs.length === 0) return;
       
       console.log(`[STATUS] Starting heartbeat for ${configs.length} guild(s)`);
       
