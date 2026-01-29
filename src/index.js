@@ -309,9 +309,9 @@ connectDatabase().then(() => {
   };
 
   // Run immediately on startup (after a small delay to ensure cache is ready)
-  setTimeout(startHeartbeat, 15000);
+  setTimeout(startHeartbeat, 5000);
   // Then run on interval
-  setInterval(startHeartbeat, 8 * 60 * 1000);
+  setInterval(startHeartbeat, 1 * 60 * 1000); // Check every minute for more responsive testing
 
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, '0.0.0.0', () => {
