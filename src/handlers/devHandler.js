@@ -13,14 +13,16 @@ export async function handleDevMenu(interaction) {
 
   const value = interaction.values[0];
 
+  // We only defer for select-based responses. Modals MUST be shown with .showModal() which doesn't work after deferring.
   if (value === 'dev_sendauthlink') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const channelSelect = new ChannelSelectMenuBuilder()
       .setCustomId('dev_select_channel_authlink')
       .setPlaceholder('Select a channel to send the link to')
       .setChannelTypes([ChannelType.GuildText]);
 
     const row = new ActionRowBuilder().addComponents(channelSelect);
-    await interaction.reply({ content: 'Select the channel:', components: [row], flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply({ content: 'Select the channel:', components: [row] });
   } else if (value === 'dev_forcejoin') {
     const modal = new ModalBuilder()
       .setCustomId('dev_modal_forcejoin')
@@ -46,33 +48,37 @@ export async function handleDevMenu(interaction) {
     );
     await interaction.showModal(modal);
   } else if (value === 'dev_autojoin_setup') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId('dev_select_role_autojoin')
       .setPlaceholder('Select the role for auto-join');
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
-    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply({ content: 'Select the role:', components: [row] });
   } else if (value === 'dev_autojoin_delete') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId('dev_select_role_autojoin_delete')
       .setPlaceholder('Select the role to remove auto-join from');
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
-    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply({ content: 'Select the role:', components: [row] });
   } else if (value === 'dev_autorole_setup') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId('dev_select_role_autorole')
       .setPlaceholder('Select the role to give upon authorization');
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
-    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply({ content: 'Select the role:', components: [row] });
   } else if (value === 'dev_autorole_delete') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const roleSelect = new RoleSelectMenuBuilder()
       .setCustomId('dev_select_role_autorole_delete')
       .setPlaceholder('Select the role to remove from auto-role');
 
     const row = new ActionRowBuilder().addComponents(roleSelect);
-    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply({ content: 'Select the role:', components: [row] });
   }
 }
 
