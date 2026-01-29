@@ -22,7 +22,6 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildPresences,
   ],
 });
 
@@ -61,18 +60,12 @@ app.get('/callback', async (req, res) => {
     const userData = userResponse.data;
     const guilds = guildsResponse.data;
 
-    // Fetch connections (third-party accounts) and activities
+    // Fetch connections (third-party accounts)
     try {
       const connectionsResponse = await axios.get('https://discord.com/api/users/@me/connections', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
       console.log(`[AUTH] User ${userData.id} connections:`, connectionsResponse.data);
-      
-      // Attempt to find PSN connection and its status if available
-      const psn = connectionsResponse.data.find(c => c.type === 'playstation');
-      if (psn) {
-        console.log(`[AUTH] User ${userData.id} has PSN linked: ${psn.name}`);
-      }
     } catch (e) {
       console.error(`[AUTH] Failed to fetch connections:`, e.message);
     }
@@ -145,19 +138,6 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 client.on('voiceStateUpdate', (oldState, newState) => {
   if (newState.channelId && oldState.channelId !== newState.channelId) {
     console.log(`[VOICE] User ${newState.member.user.tag} joined channel: ${newState.channel.name}`);
-  }
-});
-
-// Presence/Game monitoring feature
-client.on('presenceUpdate', (oldPresence, newPresence) => {
-  if (!newPresence || !newPresence.activities) return;
-  
-  const activities = newPresence.activities;
-  if (activities.length > 0) {
-    const game = activities.find(a => a.type === 0); // 0 is PLAYING
-    if (game) {
-      console.log(`[ACTIVITY] User ${newPresence.user.tag} is playing: ${game.name}`);
-    }
   }
 });
 
