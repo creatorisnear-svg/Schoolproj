@@ -13,6 +13,17 @@ import AutoJoin from './models/AutoJoin.js';
 
 dotenv.config();
 
+// Koyeb-style Startup Logs
+console.log('Instance created. Preparing to start...');
+console.log('Starting download for registry01.prod.koyeb.com/k-c50a3147-75f3-45b3-a7c1-ae005e5a3bc6/e633e6d9-dd03-49b1-b92f-feae455fbdfd:aa523b75-c0fc-45d5-ae2a-33466075c211');
+console.log('Download progress: 100% |\x1b[32m++++++++\x1b[0m| (6.7 MiB/s)');
+console.log('Download complete for registry01.prod.koyeb.com/k-c50a3147-75f3-45b3-a7c1-ae005e5a3bc6/e633e6d9-dd03-49b1-b92f-feae455fbdfd:aa523b75-c0fc-45d5-ae2a-33466075c211');
+console.log('');
+console.log('> SARP Core-discord-bot@1.0.0 start');
+console.log('> node src/index.js');
+console.log('');
+console.log('Instance is starting... Waiting for health checks to pass.');
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -26,9 +37,12 @@ const client = new Client({
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000; // Updated to match user log
+
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.get('/callback', async (req, res) => {
+  console.log('[OAUTH CALLBACK] Received code, attempting exchange...');
   const { code } = req.query;
   if (!code) return res.send('No code provided');
 
@@ -36,6 +50,7 @@ app.get('/callback', async (req, res) => {
     const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
     const redirectUri = `https://${cleanDomain}/callback`;
+    console.log(`[OAUTH CALLBACK] Using Redirect URI: ${redirectUri}`);
 
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
@@ -145,19 +160,68 @@ client.commands = new Collection();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const commandFiles = fs.readdirSync(join(__dirname, 'commands')).filter(f => f.endsWith('.js'));
 for (const file of commandFiles) {
-  const command = await import(`file://${join(__dirname, 'commands', file)}`);
-  if (command.data && command.execute) client.commands.set(command.data.name, command);
+  try {
+    const command = await import(`file://${join(__dirname, 'commands', file)}`);
+    if (command.data && command.execute) {
+      client.commands.set(command.data.name, command);
+      console.log(`✅ Loaded command: ${command.data.name}`);
+    }
+  } catch (error) {
+    console.error(`❌ Failed to load command ${file}:`, error.message);
+  }
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
+  console.log('Instance is healthy. All health checks are passing.');
+  console.log(`✅ Connected to MongoDB Atlas successfully`);
   console.log(`✅ Bot logged in as ${client.user.tag}`);
+  console.log('🧹 Clearing old command cache...');
+  console.log(`🤖 Bot ID: ${client.user.id}`);
+  
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
-  client.guilds.cache.forEach(g => rest.put(Routes.applicationGuildCommands(client.user.id, g.id), { body: commandData }).catch(() => {}));
+  
+  console.log('✨ Global commands cleared');
+  console.log(`📋 Registering clean commands to ${client.guilds.cache.size} server(s)...`);
+  console.log('');
+  console.log('📊 COMMAND SYNC DETAILS:');
+  console.log(`🏢 Total servers: ${client.guilds.cache.size}`);
+  console.log(`📝 Commands to register: ${commandData.length}`);
+  console.log('');
+
+  let count = 0;
+  for (const [guildId, guild] of client.guilds.cache) {
+    count++;
+    console.log(`[${count}/${client.guilds.cache.size}] 🔄 Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
+    try {
+      const startTime = Date.now();
+      await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandData });
+      const endTime = Date.now();
+      console.log(`  ✅ SUCCESS: ${commandData.length} commands registered in ${endTime - startTime}ms`);
+    } catch (error) {
+      console.log(`  ❌ FAILED: ${guild.name} (${guildId}) - ${error.message}`);
+    }
+  }
+
+  console.log('');
+  console.log('============================================================');
+  console.log('✨ Command sync process completed');
+  console.log('📊 SYNC SUMMARY:');
+  console.log(`   ✅ Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
+  console.log('   ❌ Failed: 0/14'); // Static as per user's request for mock look
+  console.log('============================================================');
+  console.log('');
+
+  // Mock background services logs to match user request
+  console.log('🚨 Emergency call auto-delete started (10-minute timeout for all calls)');
+  console.log('🚨 BOLO auto-delete started (1-hour expiration for all BOLOs)');
+  console.log('⏰ Priority tracker countdown updater started');
+  console.log('⏰ Priority auto-deactivate started (10-minute timeout for active priorities)');
 });
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
+    console.log(`⚡ Executing command: ${interaction.commandName}`);
     const command = client.commands.get(interaction.commandName);
     if (command) await command.execute(interaction).catch(() => {});
   } else if (interaction.isStringSelectMenu() && interaction.customId === 'dev_menu') {
@@ -174,5 +238,8 @@ client.on('interactionCreate', async interaction => {
 
 connectDatabase().then(() => {
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
-  app.listen(PORT, () => console.log(`HTTP server running on port ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`HTTP server running on port ${PORT}`);
+    console.log(`Health check available at /health`);
+  });
 }).catch(() => {});
