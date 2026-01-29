@@ -253,28 +253,48 @@ client.on('interactionCreate', async interaction => {
 connectDatabase().then(() => {
   // Status Heartbeat System
   const startHeartbeat = async () => {
-    if (mongoose.connection.readyState !== 1) {
-      console.log('[STATUS] Skipping heartbeat: Database not connected');
-      return;
-    }
+    // If DB isn't connected, we can't get configs. But we might still want to report status
+    // for specific guilds if they're hardcoded or if we fallback.
+    // However, the model uses StatusHeartbeat collection.
+    
     try {
       const StatusHeartbeat = (await import('./models/StatusHeartbeat.js')).default;
+      
+      // If mongoose isn't connected, this find() will buffer or fail.
+      // We'll skip if not connected to avoid the buffering error.
+      if (mongoose.connection.readyState !== 1) {
+        console.log('[STATUS] Skipping heartbeat: Database not connected');
+        return;
+      }
+
       const configs = await StatusHeartbeat.find({ enabled: true });
       
-      if (configs.length === 0) return;
+      if (configs.length === 0) {
+        console.log('[STATUS] No enabled heartbeat configs found in database.');
+        return;
+      }
       
       console.log(`[STATUS] Starting heartbeat for ${configs.length} guild(s)`);
       
       for (const config of configs) {
         try {
           const guild = client.guilds.cache.get(config.guildId);
-          if (!guild) continue;
+          if (!guild) {
+            console.log(`[STATUS] Guild ${config.guildId} not found in cache`);
+            continue;
+          }
 
           const channelId = config.heartbeatChannelId;
-          if (!channelId) continue;
+          if (!channelId) {
+            console.log(`[STATUS] No channel ID for guild ${guild.name}`);
+            continue;
+          }
 
           const channel = await guild.channels.fetch(channelId).catch(() => null);
-          if (!channel || !channel.isTextBased()) continue;
+          if (!channel || !channel.isTextBased()) {
+            console.log(`[STATUS] Channel ${channelId} not found or not text-based in ${guild.name}`);
+            continue;
+          }
 
           const embed = new EmbedBuilder()
             .setColor('#00ff00')
