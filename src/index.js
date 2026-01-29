@@ -173,6 +173,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 connectDatabase().then(() => {
-  client.login(process.env.DISCORD_TOKEN).catch(() => {});
+  client.login(process.env.DISCORD_TOKEN).catch(err => console.error('❌ Discord login failed:', err.message));
   app.listen(PORT, () => console.log(`HTTP server running on port ${PORT}`));
-}).catch(() => {});
+}).catch(err => console.error('❌ Database connection failed:', err.message));

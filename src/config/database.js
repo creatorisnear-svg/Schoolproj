@@ -7,8 +7,7 @@ export async function connectDatabase() {
   try {
     const uri = process.env.DATABASE_URL || process.env.MONGODB_URI;
     if (!uri || (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://'))) {
-      console.warn('⚠️ MONGODB_URI not found or invalid. Attempting to use local fallback if possible...');
-      // If we don't have a valid URI, we can't connect, but let's not crash the whole bot.
+      console.warn('⚠️ MongoDB connection URI missing or invalid. Bot will continue with limited functionality.');
       return;
     }
     await mongoose.connect(uri);
