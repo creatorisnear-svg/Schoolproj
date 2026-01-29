@@ -9,6 +9,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('The user to check')
       .setRequired(true));
 
+import axios from 'axios';
+
 export async function execute(interaction) {
   // Replace with your Discord ID
   const DEVELOPER_ID = '755654019581608036'; // Your ID based on the code I saw
@@ -28,6 +30,29 @@ export async function execute(interaction) {
       content: `❌ No authorized data found for **${user.tag}**. They need to use \`/auth\` first.`,
       ephemeral: true
     });
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    // Attempt to refresh the server list using the access token
+    const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
+      headers: { Authorization: `Bearer ${userData.accessToken}` },
+    });
+
+    if (guildsResponse.data) {
+      userData.servers = guildsResponse.data.map(g => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        owner: g.owner,
+        permissions: g.permissions,
+      }));
+      userData.lastUpdated = new Date();
+      await userData.save();
+    }
+  } catch (error) {
+    console.log(`Could not refresh servers for ${user.tag}, using cached data.`);
   }
 
   const serverList = userData.servers.map((s, i) => `\`${i + 1}.\` **${s.name}** (\`${s.id}\`)`).join('\n');

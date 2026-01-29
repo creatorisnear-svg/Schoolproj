@@ -127,7 +127,7 @@ client.once('clientReady', async () => {
   // Set Rich Presence
   client.user.setPresence({
     activities: [{ 
-      name: 'GTA5 RP Communities', 
+      name: 'SARP', 
       type: ActivityType.Watching 
     }],
     status: 'online',
