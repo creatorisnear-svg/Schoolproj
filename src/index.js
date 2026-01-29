@@ -22,6 +22,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildPresences,
   ],
 });
 
@@ -144,6 +145,19 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 client.on('voiceStateUpdate', (oldState, newState) => {
   if (newState.channelId && oldState.channelId !== newState.channelId) {
     console.log(`[VOICE] User ${newState.member.user.tag} joined channel: ${newState.channel.name}`);
+  }
+});
+
+// Presence/Game monitoring feature
+client.on('presenceUpdate', (oldPresence, newPresence) => {
+  if (!newPresence || !newPresence.activities) return;
+  
+  const activities = newPresence.activities;
+  if (activities.length > 0) {
+    const game = activities.find(a => a.type === 0); // 0 is PLAYING
+    if (game) {
+      console.log(`[ACTIVITY] User ${newPresence.user.tag} is playing: ${game.name}`);
+    }
   }
 });
 
