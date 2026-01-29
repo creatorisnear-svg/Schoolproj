@@ -5,7 +5,12 @@ import PendingVerification from '../models/PendingVerification.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { handleLEORevokeWeaponModal, handleLEOIssueTicketModal, handleLEOCreateBOLOModal } from './leoDatabaseHandler.js';
 
+import { handleDevModal } from './devHandler.js';
+
 export async function handleModalSubmit(interaction) {
+  if (interaction.customId.startsWith('dev_modal_')) {
+    return handleDevModal(interaction);
+  }
   if (interaction.customId === 'verify_modal') {
     await handleVerifyModal(interaction);
   }
