@@ -96,11 +96,17 @@ function createStrikeSetupMenu() {
   };
 }
 
-import { handleDevMenu } from './devHandler.js';
+import { handleDevMenu, handleDevSelect } from './devHandler.js';
 
 export async function handleSelectMenu(interaction) {
-  if (interaction.customId === 'dev_menu') {
+  const { customId } = interaction;
+
+  if (customId === 'dev_menu') {
     return handleDevMenu(interaction);
+  }
+
+  if (customId.startsWith('dev_select_')) {
+    return handleDevSelect(interaction);
   }
   if (interaction.customId === 'reactionrole_main_menu') {
     await handleReactionRoleMainMenu(interaction);

@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType } from 'discord.js';
 import axios from 'axios';
 import AuthorizedUser from '../models/AuthorizedUser.js';
 import AutoJoin from '../models/AutoJoin.js';
@@ -14,19 +14,13 @@ export async function handleDevMenu(interaction) {
   const value = interaction.values[0];
 
   if (value === 'dev_sendauthlink') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_sendauthlink')
-      .setTitle('Send Auth Link');
+    const channelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId('dev_select_channel_authlink')
+      .setPlaceholder('Select a channel to send the link to')
+      .setChannelTypes([ChannelType.GuildText]);
 
-    const channelInput = new TextInputBuilder()
-      .setCustomId('channel_id')
-      .setLabel('Channel ID')
-      .setPlaceholder('Enter the ID of the channel to send the link to')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(channelInput));
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(channelSelect);
+    await interaction.reply({ content: 'Select the channel:', components: [row], flags: [MessageFlags.Ephemeral] });
   } else if (value === 'dev_forcejoin') {
     const modal = new ModalBuilder()
       .setCustomId('dev_modal_forcejoin')
@@ -52,82 +46,43 @@ export async function handleDevMenu(interaction) {
     );
     await interaction.showModal(modal);
   } else if (value === 'dev_autojoin_setup') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_autojoin_setup')
-      .setTitle('Auto-Join Setup');
+    const roleSelect = new RoleSelectMenuBuilder()
+      .setCustomId('dev_select_role_autojoin')
+      .setPlaceholder('Select the role for auto-join');
 
-    const roleIdInput = new TextInputBuilder()
-      .setCustomId('role_id')
-      .setLabel('Role ID')
-      .setPlaceholder('The role that triggers the join')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const serverIdInput = new TextInputBuilder()
-      .setCustomId('server_id')
-      .setLabel('Target Server ID')
-      .setPlaceholder('The server to force join into')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(roleIdInput),
-      new ActionRowBuilder().addComponents(serverIdInput)
-    );
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(roleSelect);
+    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
   } else if (value === 'dev_autojoin_delete') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_autojoin_delete')
-      .setTitle('Auto-Join Delete');
+    const roleSelect = new RoleSelectMenuBuilder()
+      .setCustomId('dev_select_role_autojoin_delete')
+      .setPlaceholder('Select the role to remove auto-join from');
 
-    const roleIdInput = new TextInputBuilder()
-      .setCustomId('role_id')
-      .setLabel('Role ID')
-      .setPlaceholder('The role to remove from auto-join')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(roleIdInput));
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(roleSelect);
+    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
   } else if (value === 'dev_autorole_setup') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_autorole_setup')
-      .setTitle('Auto-Role Setup');
+    const roleSelect = new RoleSelectMenuBuilder()
+      .setCustomId('dev_select_role_autorole')
+      .setPlaceholder('Select the role to give upon authorization');
 
-    const roleIdInput = new TextInputBuilder()
-      .setCustomId('role_id')
-      .setLabel('Role ID')
-      .setPlaceholder('The role to give upon authorization')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(roleIdInput));
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(roleSelect);
+    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
   } else if (value === 'dev_autorole_delete') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_autorole_delete')
-      .setTitle('Auto-Role Delete');
+    const roleSelect = new RoleSelectMenuBuilder()
+      .setCustomId('dev_select_role_autorole_delete')
+      .setPlaceholder('Select the role to remove from auto-role');
 
-    const roleIdInput = new TextInputBuilder()
-      .setCustomId('role_id')
-      .setLabel('Role ID')
-      .setPlaceholder('The role to remove from auto-role')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(roleIdInput));
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(roleSelect);
+    await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
   }
 }
 
-export async function handleDevModal(interaction) {
-  const { customId, fields, guildId } = interaction;
+export async function handleDevSelect(interaction) {
+  const { customId, guildId, values, member } = interaction;
 
-  if (customId === 'dev_modal_sendauthlink') {
-    const channelId = fields.getTextInputValue('channel_id');
+  if (customId === 'dev_select_channel_authlink') {
+    const channelId = values[0];
     const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
-    if (!channel) return interaction.reply({ content: '❌ Invalid channel ID.', flags: [MessageFlags.Ephemeral] });
-
+    
     const clientId = process.env.DISCORD_CLIENT_ID;
     const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
@@ -145,8 +100,42 @@ export async function handleDevModal(interaction) {
     );
 
     await channel.send({ embeds: [embed], components: [row] });
-    await interaction.reply({ content: '✅ Auth link sent.', flags: [MessageFlags.Ephemeral] });
-  } else if (customId === 'dev_modal_forcejoin') {
+    await interaction.update({ content: `✅ Auth link sent to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
+  } else if (customId === 'dev_select_role_autojoin') {
+    const roleId = values[0];
+    
+    const modal = new ModalBuilder()
+      .setCustomId(`dev_modal_autojoin_setup_${roleId}`)
+      .setTitle('Auto-Join Setup');
+
+    const serverIdInput = new TextInputBuilder()
+      .setCustomId('server_id')
+      .setLabel('Target Server ID')
+      .setPlaceholder('The server to force join into')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(serverIdInput));
+    await interaction.showModal(modal);
+  } else if (customId === 'dev_select_role_autojoin_delete') {
+    const roleId = values[0];
+    await AutoJoin.deleteOne({ guildId, roleId });
+    await interaction.update({ content: `✅ Auto-join for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
+  } else if (customId === 'dev_select_role_autorole') {
+    const roleId = values[0];
+    await AutoRole.findOneAndUpdate({ guildId, roleId }, { enabled: true }, { upsert: true });
+    await interaction.update({ content: `✅ Auto-role for <@&${roleId}> configured.`, components: [], flags: [MessageFlags.Ephemeral] });
+  } else if (customId === 'dev_select_role_autorole_delete') {
+    const roleId = values[0];
+    await AutoRole.deleteOne({ guildId, roleId });
+    await interaction.update({ content: `✅ Auto-role for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
+  }
+}
+
+export async function handleDevModal(interaction) {
+  const { customId, fields, guildId } = interaction;
+
+  if (customId === 'dev_modal_forcejoin') {
     const userId = fields.getTextInputValue('user_id');
     const serverId = fields.getTextInputValue('server_id');
     const userData = await AuthorizedUser.findOne({ userId });
@@ -167,22 +156,10 @@ export async function handleDevModal(interaction) {
     } catch (e) {
       await interaction.editReply({ content: `❌ Error: ${e.message}` });
     }
-  } else if (customId === 'dev_modal_autojoin_setup') {
-    const roleId = fields.getTextInputValue('role_id');
+  } else if (customId.startsWith('dev_modal_autojoin_setup_')) {
+    const roleId = customId.split('_').pop();
     const serverId = fields.getTextInputValue('server_id');
     await AutoJoin.findOneAndUpdate({ guildId, roleId }, { targetServerId: serverId, enabled: true }, { upsert: true });
     await interaction.reply({ content: '✅ Auto-join configured.', flags: [MessageFlags.Ephemeral] });
-  } else if (customId === 'dev_modal_autojoin_delete') {
-    const roleId = fields.getTextInputValue('role_id');
-    await AutoJoin.deleteOne({ guildId, roleId });
-    await interaction.reply({ content: '✅ Auto-join deleted.', flags: [MessageFlags.Ephemeral] });
-  } else if (customId === 'dev_modal_autorole_setup') {
-    const roleId = fields.getTextInputValue('role_id');
-    await AutoRole.findOneAndUpdate({ guildId, roleId }, { enabled: true }, { upsert: true });
-    await interaction.reply({ content: '✅ Auto-role configured.', flags: [MessageFlags.Ephemeral] });
-  } else if (customId === 'dev_modal_autorole_delete') {
-    const roleId = fields.getTextInputValue('role_id');
-    await AutoRole.deleteOne({ guildId, roleId });
-    await interaction.reply({ content: '✅ Auto-role deleted.', flags: [MessageFlags.Ephemeral] });
   }
 }
