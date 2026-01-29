@@ -24,21 +24,19 @@ export async function handleDevMenu(interaction) {
       const row = new ActionRowBuilder().addComponents(channelSelect);
       await interaction.editReply({ content: 'Select the channel:', components: [row] });
     } else if (value === 'dev_forcejoin') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('dev_select_user_forcejoin')
         .setPlaceholder('Select the user to force join');
 
       const row = new ActionRowBuilder().addComponents(userSelect);
-      await interaction.editReply({ content: 'Select the user:', components: [row] });
+      await interaction.reply({ content: 'Select the user:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_voiceconnect') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('dev_select_user_voiceconnect')
         .setPlaceholder('Select the user to connect');
 
       const row = new ActionRowBuilder().addComponents(userSelect);
-      await interaction.editReply({ content: 'Select the user:', components: [row] });
+      await interaction.reply({ content: 'Select the user:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_autojoin_setup') {
       if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const roleSelect = new RoleSelectMenuBuilder()
