@@ -252,44 +252,66 @@ client.on('interactionCreate', async interaction => {
 
 connectDatabase().then(() => {
   // Status Heartbeat System
-  setInterval(async () => {
+  const startHeartbeat = async () => {
     try {
       const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
       const configs = await StatusHeartbeat.find({ enabled: true });
       
+      console.log(`[STATUS] Starting heartbeat for ${configs.length} guild(s)`);
+      
       for (const config of configs) {
-        const guild = client.guilds.cache.get(config.guildId);
-        if (!guild) continue;
+        try {
+          const guild = client.guilds.cache.get(config.guildId);
+          if (!guild) {
+            console.log(`[STATUS] Guild ${config.guildId} not found in cache`);
+            continue;
+          }
 
-        const channel = await guild.channels.fetch(config.heartbeatChannelId).catch(() => null);
-        if (!channel || !channel.isTextBased()) continue;
+          const channelId = config.heartbeatChannelId;
+          if (!channelId) {
+            console.log(`[STATUS] No heartbeat channel for guild ${config.guildId}`);
+            continue;
+          }
 
-        // Check if it's time to send heartbeat (based on lastHeartbeatMessageId or simple interval)
-        // For simplicity in this fix, we send a new one and delete the old one
-        const embed = new EmbedBuilder()
-          .setColor('#00ff00')
-          .setTitle('💓 SARP Core Status Heartbeat')
-          .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
-          .setFooter({ text: 'SARP Core' })
-          .setTimestamp();
+          const channel = await guild.channels.fetch(channelId).catch(() => null);
+          if (!channel || !channel.isTextBased()) {
+            console.log(`[STATUS] Heartbeat channel ${channelId} not found or invalid in guild ${config.guildId}`);
+            continue;
+          }
 
-        if (config.lastHeartbeatMessageId) {
-          const oldMsg = await channel.messages.fetch(config.lastHeartbeatMessageId).catch(() => null);
-          if (oldMsg) await oldMsg.delete().catch(() => {});
-        }
+          const embed = new EmbedBuilder()
+            .setColor('#00ff00')
+            .setTitle('💓 SARP Core Status Heartbeat')
+            .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
+            .setFooter({ text: 'SARP Core' })
+            .setTimestamp();
 
-        const newMsg = await channel.send({ embeds: [embed] });
-        config.lastHeartbeatMessageId = newMsg.id;
-        await config.save();
+          if (config.lastHeartbeatMessageId) {
+            const oldMsg = await channel.messages.fetch(config.lastHeartbeatMessageId).catch(() => null);
+            if (oldMsg) await oldMsg.delete().catch(() => {});
+          }
 
-        if (config.deleteAfterSeconds > 0) {
-          setTimeout(() => newMsg.delete().catch(() => {}), config.deleteAfterSeconds * 1000);
+          const newMsg = await channel.send({ embeds: [embed] });
+          config.lastHeartbeatMessageId = newMsg.id;
+          await config.save();
+
+          if (config.deleteAfterSeconds > 0) {
+            setTimeout(() => newMsg.delete().catch(() => {}), config.deleteAfterSeconds * 1000);
+          }
+          console.log(`[STATUS] Sent heartbeat to ${guild.name} (#${channel.name})`);
+        } catch (guildErr) {
+          console.error(`[STATUS] Error processing guild ${config.guildId}:`, guildErr);
         }
       }
     } catch (err) {
       console.error('[HEARTBEAT ERROR]:', err);
     }
-  }, 8 * 60 * 1000); // 8 minutes default
+  };
+
+  // Run immediately on startup (after a small delay to ensure cache is ready)
+  setTimeout(startHeartbeat, 15000);
+  // Then run on interval
+  setInterval(startHeartbeat, 8 * 60 * 1000);
 
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, '0.0.0.0', () => {
