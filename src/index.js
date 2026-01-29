@@ -31,8 +31,12 @@ app.get('/callback', async (req, res) => {
   if (!code) return res.send('No code provided');
 
   try {
-    const domain = process.env.DOMAIN || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
-    const cleanDomain = domain ? domain.toLowerCase().split(',')[0].trim().replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
+    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const cleanDomain = domain.toLowerCase()
+      .trim()
+      .replace(/^https?:\/\//, '')
+      .split('/')[0];
+      
     const redirectUri = `https://${cleanDomain}/callback`;
 
     console.log(`[OAUTH CALLBACK] Received code, attempting exchange...`);
