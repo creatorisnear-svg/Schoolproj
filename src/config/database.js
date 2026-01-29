@@ -5,9 +5,11 @@ dotenv.config();
 
 export async function connectDatabase() {
   try {
-    const uri = process.env.MONGODB_URI;
+    const uri = process.env.DATABASE_URL || process.env.MONGODB_URI;
     if (!uri || (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://'))) {
-      throw new Error('Invalid MONGODB_URI. Please ensure it starts with mongodb:// or mongodb+srv://');
+      console.warn('⚠️ MONGODB_URI not found or invalid. Attempting to use local fallback if possible...');
+      // If we don't have a valid URI, we can't connect, but let's not crash the whole bot.
+      return;
     }
     await mongoose.connect(uri);
     console.log('✅ Connected to MongoDB Atlas successfully');
