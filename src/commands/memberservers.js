@@ -4,6 +4,7 @@ import AuthorizedUser from '../models/AuthorizedUser.js';
 export const data = new SlashCommandBuilder()
   .setName('memberservers')
   .setDescription('View authorized servers of a member (Developer Only)')
+  .setDefaultMemberPermissions(0) // Hide command from everyone by default
   .addUserOption(option => 
     option.setName('user')
       .setDescription('The user to check')
