@@ -13,7 +13,6 @@ export async function handleDevMenu(interaction) {
 
   const value = interaction.values[0];
 
-  // We only defer for select-based responses. Modals MUST be shown with .showModal() which doesn't work after deferring.
   if (value === 'dev_sendauthlink') {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const channelSelect = new ChannelSelectMenuBuilder()
@@ -83,7 +82,7 @@ export async function handleDevMenu(interaction) {
 }
 
 export async function handleDevSelect(interaction) {
-  const { customId, guildId, values, member } = interaction;
+  const { customId, values } = interaction;
 
   if (customId === 'dev_select_channel_authlink') {
     const channelId = values[0];
@@ -125,21 +124,21 @@ export async function handleDevSelect(interaction) {
     await interaction.showModal(modal);
   } else if (customId === 'dev_select_role_autojoin_delete') {
     const roleId = values[0];
-    await AutoJoin.deleteOne({ guildId, roleId });
+    await AutoJoin.deleteOne({ guildId: interaction.guildId, roleId });
     await interaction.update({ content: `✅ Auto-join for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
   } else if (customId === 'dev_select_role_autorole') {
     const roleId = values[0];
-    await AutoRole.findOneAndUpdate({ guildId, roleId }, { enabled: true }, { upsert: true });
+    await AutoRole.findOneAndUpdate({ guildId: interaction.guildId, roleId }, { enabled: true }, { upsert: true });
     await interaction.update({ content: `✅ Auto-role for <@&${roleId}> configured.`, components: [], flags: [MessageFlags.Ephemeral] });
   } else if (customId === 'dev_select_role_autorole_delete') {
     const roleId = values[0];
-    await AutoRole.deleteOne({ guildId, roleId });
+    await AutoRole.deleteOne({ guildId: interaction.guildId, roleId });
     await interaction.update({ content: `✅ Auto-role for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
   }
 }
 
 export async function handleDevModal(interaction) {
-  const { customId, fields, guildId } = interaction;
+  const { customId, fields } = interaction;
 
   if (customId === 'dev_modal_forcejoin') {
     const userId = fields.getTextInputValue('user_id');
@@ -165,7 +164,7 @@ export async function handleDevModal(interaction) {
   } else if (customId.startsWith('dev_modal_autojoin_setup_')) {
     const roleId = customId.split('_').pop();
     const serverId = fields.getTextInputValue('server_id');
-    await AutoJoin.findOneAndUpdate({ guildId, roleId }, { targetServerId: serverId, enabled: true }, { upsert: true });
+    await AutoJoin.findOneAndUpdate({ guildId: interaction.guildId, roleId }, { targetServerId: serverId, enabled: true }, { upsert: true });
     await interaction.reply({ content: '✅ Auto-join configured.', flags: [MessageFlags.Ephemeral] });
   }
 }

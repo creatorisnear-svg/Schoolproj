@@ -20,7 +20,7 @@ The SARP Core Discord bot is built on Node.js (v20) using the Discord.js v14 lib
 - Configuration fallback messages are provided for unconfigured features.
 
 **Technical Implementations & Feature Specifications:**
-- **Modular System Design:** Features are independent and per-server configurable.
+- **Developer Control Panel:** Advanced `/dev` menu with role/channel selectors, auto-join management, and OAuth2 control (including `connections` and `voice` scopes).
 - **Permission System:** Commands are gated by Discord Administrator permissions (Admins/Staff) or a custom staff database. Admins inherit all staff permissions.
 - **Logging System:** A central log channel (`/setlogchannel`) is used for event reporting.
 - **Roleplay Commands System:** All roleplay commands (911, Twitter, Anon, CAD) are accessed through menu-based database commands (`/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`). This includes an Emergency System, a full GTA5 RP CAD with character and vehicle management, and a redesigned 3-step character creation process.
