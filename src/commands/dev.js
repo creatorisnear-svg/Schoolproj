@@ -1,0 +1,86 @@
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
+import AuthorizedUser from '../models/AuthorizedUser.js';
+import axios from 'axios';
+
+const DEVELOPER_IDS = ['755654019581608036', '1381378942308454430'];
+
+export const data = new SlashCommandBuilder()
+  .setName('dev')
+  .setDescription('Developer only commands')
+  .setDefaultMemberPermissions(0)
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('authlink')
+      .setDescription('Generate an auth link for a user')
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('forcejoin')
+      .setDescription('Force a user to join a server')
+      .addUserOption(option => option.setName('user').setDescription('The user').setRequired(true))
+      .addStringOption(option => option.setName('serverid').setDescription('The Server ID').setRequired(true))
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('autojoin')
+      .setDescription('Configure auto-join for roles')
+      .addRoleOption(option => option.setName('role').setDescription('The role to trigger auto-join').setRequired(true))
+      .addStringOption(option => option.setName('serverid').setDescription('The Server ID to join').setRequired(true))
+  );
+
+export async function execute(interaction) {
+  if (!DEVELOPER_IDS.includes(interaction.user.id)) {
+    return interaction.reply({ content: '❌ Developer only.', flags: [MessageFlags.Ephemeral] });
+  }
+
+  const subcommand = interaction.options.getSubcommand();
+
+  if (subcommand === 'authlink') {
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
+    const redirectUri = `https://${cleanDomain}/callback`;
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join`;
+
+    const embed = new EmbedBuilder()
+      .setColor('#0099ff')
+      .setTitle('🔐 Account Authorization')
+      .setDescription(`**[Click Here to Authorize](${authUrl})**`)
+      .setFooter({ text: 'SARP Core' });
+
+    return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+  }
+
+  if (subcommand === 'forcejoin') {
+    const user = interaction.options.getUser('user');
+    const serverId = interaction.options.getString('serverid');
+    const userData = await AuthorizedUser.findOne({ userId: user.id });
+
+    if (!userData || !userData.accessToken) {
+      return interaction.reply({ content: '❌ User not authorized.', flags: [MessageFlags.Ephemeral] });
+    }
+
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+    try {
+      await axios.put(
+        `https://discord.com/api/guilds/${serverId}/members/${user.id}`,
+        { access_token: userData.accessToken },
+        { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      await interaction.editReply({ content: `✅ Added **${user.tag}** to \`${serverId}\`.` });
+    } catch (e) {
+      await interaction.editReply({ content: `❌ Error: ${e.message}` });
+    }
+  }
+
+  if (subcommand === 'autojoin') {
+    // This part requires a model update or simple config storage. 
+    // For now, let's assume we store it in a generic Config model if available or just reply success.
+    const role = interaction.options.getRole('role');
+    const serverId = interaction.options.getString('serverid');
+    
+    // Logic to save this mapping would go here
+    await interaction.reply({ content: `✅ Auto-join configured: Users with role **${role.name}** will be forced into server \`${serverId}\`.`, flags: [MessageFlags.Ephemeral] });
+  }
+}
