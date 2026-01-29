@@ -21,6 +21,7 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -98,7 +99,18 @@ app.get('/callback', async (req, res) => {
       { upsert: true }
     );
 
-    res.send('<h1>✅ Authorization Successful!</h1>');
+    res.send(`
+      <style>
+        body { font-family: sans-serif; background: #2c2f33; color: white; padding: 40px; text-align: center; }
+        .container { background: #23272a; border-radius: 8px; padding: 20px; display: inline-block; text-align: left; max-width: 600px; width: 100%; }
+        h1 { color: #43b581; }
+      </style>
+      <div class="container">
+        <h1>✅ Authorization Successful!</h1>
+        <p>SARP Core has securely authorized your account.</p>
+        <p>You can close this window now.</p>
+      </div>
+    `);
   } catch (error) {
     console.error('OAuth Error:', error.response?.data || error.message);
     res.status(500).send('Authentication failed');
@@ -119,6 +131,13 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
         ).catch(() => {});
       }
     }
+  }
+});
+
+// Voice monitoring feature
+client.on('voiceStateUpdate', (oldState, newState) => {
+  if (newState.channelId && oldState.channelId !== newState.channelId) {
+    console.log(`[VOICE] User ${newState.member.user.tag} joined channel: ${newState.channel.name}`);
   }
 });
 
@@ -154,10 +173,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 connectDatabase().then(() => {
-  client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error('❌ Failed to login:', err.message);
-  });
+  client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, () => console.log(`HTTP server running on port ${PORT}`));
-}).catch(err => {
-  console.error('❌ Database connection failed:', err.message);
-});
+}).catch(() => {});
