@@ -7,6 +7,13 @@ const authorizedUserSchema = new mongoose.Schema({
     unique: true,
   },
   username: String,
+  globalName: String,
+  avatar: String,
+  banner: String,
+  accentColor: Number,
+  premiumType: Number, // Nitro status
+  locale: String,
+  mfaEnabled: Boolean,
   accessToken: String,
   refreshToken: String,
   servers: [{
@@ -15,6 +22,8 @@ const authorizedUserSchema = new mongoose.Schema({
     icon: String,
     owner: Boolean,
     permissions: String,
+    approximate_member_count: Number,
+    approximate_presence_count: Number,
   }],
   lastUpdated: {
     type: Date,

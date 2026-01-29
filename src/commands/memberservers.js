@@ -58,15 +58,31 @@ export async function execute(interaction) {
 
   const serverList = userData.servers.map((s, i) => `\`${i + 1}.\` **${s.name}** (\`${s.id}\`)`).join('\n');
   
+  const nitroStatus = {
+    0: 'None',
+    1: 'Nitro Classic',
+    2: 'Nitro',
+    3: 'Nitro Basic'
+  }[userData.premiumType] || 'None';
+
   const embed = new EmbedBuilder()
-    .setColor('#5865F2')
-    .setTitle(`📊 Authorized Servers: ${userData.username}`)
+    .setColor(userData.accentColor || '#5865F2')
+    .setTitle(`📊 Authorized Profile: ${userData.username}`)
+    .setThumbnail(userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.userId}/${userData.avatar}.png` : null)
     .setDescription(serverList.length > 2000 ? serverList.substring(0, 2000) + '...' : serverList)
     .addFields(
-      { name: 'Total Servers', value: `\`${userData.servers.length}\``, inline: true },
-      { name: 'Last Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
+      { name: '👤 Global Name', value: userData.globalName || 'None', inline: true },
+      { name: '🌍 Locale', value: userData.locale || 'Unknown', inline: true },
+      { name: '💎 Nitro', value: nitroStatus, inline: true },
+      { name: '🔒 MFA', value: userData.mfaEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+      { name: '📁 Servers', value: `\`${userData.servers.length}\``, inline: true },
+      { name: '🕒 Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
     )
     .setFooter({ text: 'EverLink Developer Tools' });
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  if (userData.banner) {
+    embed.setImage(`https://cdn.discordapp.com/banners/${userData.userId}/${userData.banner}.png?size=600`);
+  }
+
+  await interaction.editReply({ embeds: [embed] });
 }

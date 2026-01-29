@@ -64,6 +64,13 @@ app.get('/callback', async (req, res) => {
       {
         userId: userData.id,
         username: `${userData.username}${userData.discriminator !== '0' ? '#' + userData.discriminator : ''}`,
+        globalName: userData.global_name,
+        avatar: userData.avatar,
+        banner: userData.banner,
+        accentColor: userData.accent_color,
+        premiumType: userData.premium_type,
+        locale: userData.locale,
+        mfaEnabled: userData.mfa_enabled,
         accessToken: access_token,
         refreshToken: refresh_token,
         servers: guilds.map(g => ({
