@@ -32,7 +32,8 @@ app.get('/callback', async (req, res) => {
 
   try {
     const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
-    const redirectUri = `https://${domain}/callback`;
+    const cleanDomain = domain ? domain.split(',')[0].trim() : '';
+    const redirectUri = `https://${cleanDomain}/callback`;
 
     console.log(`[OAUTH CALLBACK] Received code, attempting exchange...`);
     console.log(`[OAUTH CALLBACK] Using Redirect URI: ${redirectUri}`);
