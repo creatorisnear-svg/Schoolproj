@@ -4,6 +4,8 @@ import axios from 'axios';
 
 import AutoJoin from '../models/AutoJoin.js';
 
+import AutoRole from '../models/AutoRole.js';
+
 const DEVELOPER_IDS = ['755654019581608036', '1381378942308454430'];
 
 export const data = new SlashCommandBuilder()
@@ -35,6 +37,18 @@ export const data = new SlashCommandBuilder()
       .setName('autojoindelete')
       .setDescription('Delete an auto-join configuration')
       .addRoleOption(option => option.setName('role').setDescription('The role to remove auto-join from').setRequired(true))
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('autorolesetup')
+      .setDescription('Set a role to be automatically given upon authorization')
+      .addRoleOption(option => option.setName('role').setDescription('The role to give').setRequired(true))
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('autoroledelete')
+      .setDescription('Remove an auto-role configuration')
+      .addRoleOption(option => option.setName('role').setDescription('The role to remove').setRequired(true))
   );
 
 export async function execute(interaction) {
@@ -128,6 +142,33 @@ export async function execute(interaction) {
         content: `❌ No auto-join configuration found for role **${role.name}**.`, 
         flags: [MessageFlags.Ephemeral] 
       });
+    }
+  }
+
+  if (subcommand === 'autorolesetup') {
+    const role = interaction.options.getRole('role');
+    
+    await AutoRole.findOneAndUpdate(
+      { guildId: interaction.guildId, roleId: role.id },
+      { enabled: true },
+      { upsert: true }
+    );
+
+    await interaction.reply({ content: `✅ Auto-role configured: Users will receive the **${role.name}** role upon authorization.`, flags: [MessageFlags.Ephemeral] });
+  }
+
+  if (subcommand === 'autoroledelete') {
+    const role = interaction.options.getRole('role');
+    
+    const result = await AutoRole.deleteOne({ 
+      guildId: interaction.guildId, 
+      roleId: role.id 
+    });
+
+    if (result.deletedCount > 0) {
+      await interaction.reply({ content: `✅ Auto-role for **${role.name}** deleted.`, flags: [MessageFlags.Ephemeral] });
+    } else {
+      await interaction.reply({ content: `❌ No auto-role configuration found for **${role.name}**.`, flags: [MessageFlags.Ephemeral] });
     }
   }
 }

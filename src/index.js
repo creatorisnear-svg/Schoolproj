@@ -26,8 +26,10 @@ const PORT = process.env.PORT || 3000;
 import axios from 'axios';
 import AuthorizedUser from './models/AuthorizedUser.js';
 
+import AutoRole from './models/AutoRole.js';
+
 app.get('/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   if (!code) return res.send('No code provided');
 
   try {
@@ -66,6 +68,22 @@ app.get('/callback', async (req, res) => {
 
     const userData = userResponse.data;
     const guilds = guildsResponse.data;
+
+    // Assign auto-roles in guilds where user is present
+    for (const guildData of guilds) {
+      const autoRoles = await AutoRole.find({ guildId: guildData.id, enabled: true });
+      if (autoRoles.length > 0) {
+        const guild = client.guilds.cache.get(guildData.id);
+        if (guild) {
+          const member = await guild.members.fetch(userData.id).catch(() => null);
+          if (member) {
+            for (const ar of autoRoles) {
+              await member.roles.add(ar.roleId).catch(err => console.error(`Failed to add auto-role ${ar.roleId} in ${guild.name}:`, err.message));
+            }
+          }
+        }
+      }
+    }
 
     await AuthorizedUser.findOneAndUpdate(
       { userId: userData.id },
