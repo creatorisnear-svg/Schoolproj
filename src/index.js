@@ -254,7 +254,7 @@ connectDatabase().then(() => {
   // Status Heartbeat System
   const startHeartbeat = async () => {
     try {
-      const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
+      const StatusHeartbeat = (await import('./models/StatusHeartbeat.js')).default;
       const configs = await StatusHeartbeat.find({ enabled: true });
       
       console.log(`[STATUS] Starting heartbeat for ${configs.length} guild(s)`);
@@ -262,22 +262,13 @@ connectDatabase().then(() => {
       for (const config of configs) {
         try {
           const guild = client.guilds.cache.get(config.guildId);
-          if (!guild) {
-            console.log(`[STATUS] Guild ${config.guildId} not found in cache`);
-            continue;
-          }
+          if (!guild) continue;
 
           const channelId = config.heartbeatChannelId;
-          if (!channelId) {
-            console.log(`[STATUS] No heartbeat channel for guild ${config.guildId}`);
-            continue;
-          }
+          if (!channelId) continue;
 
           const channel = await guild.channels.fetch(channelId).catch(() => null);
-          if (!channel || !channel.isTextBased()) {
-            console.log(`[STATUS] Heartbeat channel ${channelId} not found or invalid in guild ${config.guildId}`);
-            continue;
-          }
+          if (!channel || !channel.isTextBased()) continue;
 
           const embed = new EmbedBuilder()
             .setColor('#00ff00')
@@ -298,7 +289,7 @@ connectDatabase().then(() => {
           if (config.deleteAfterSeconds > 0) {
             setTimeout(() => newMsg.delete().catch(() => {}), config.deleteAfterSeconds * 1000);
           }
-          console.log(`[STATUS] Sent heartbeat to ${guild.name} (#${channel.name})`);
+          console.log(`[STATUS] Sent heartbeat to ${guild.name}`);
         } catch (guildErr) {
           console.error(`[STATUS] Error processing guild ${config.guildId}:`, guildErr);
         }
