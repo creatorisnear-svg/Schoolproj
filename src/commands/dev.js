@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from 'discord.js';
 import AuthorizedUser from '../models/AuthorizedUser.js';
 import axios from 'axios';
 
@@ -12,8 +12,9 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(0)
   .addSubcommand(subcommand =>
     subcommand
-      .setName('authlink')
-      .setDescription('Generate an auth link for a user')
+      .setName('sendauthlink')
+      .setDescription('Send an auth link with a button to a channel')
+      .addChannelOption(option => option.setName('channel').setDescription('The channel to send the link to').setRequired(true))
   )
   .addSubcommand(subcommand =>
     subcommand
@@ -43,7 +44,8 @@ export async function execute(interaction) {
 
   const subcommand = interaction.options.getSubcommand();
 
-  if (subcommand === 'authlink') {
+  if (subcommand === 'sendauthlink') {
+    const channel = interaction.options.getChannel('channel');
     const clientId = process.env.DISCORD_CLIENT_ID;
     const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
@@ -53,10 +55,23 @@ export async function execute(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#0099ff')
       .setTitle('🔐 Account Authorization')
-      .setDescription(`**[Click Here to Authorize](${authUrl})**`)
+      .setDescription('To securely authorize your account with SARP Core, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
       .setFooter({ text: 'SARP Core' });
 
-    return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel('Authorize Account')
+          .setURL(authUrl)
+          .setStyle(ButtonStyle.Link)
+      );
+
+    try {
+      await channel.send({ embeds: [embed], components: [row] });
+      return interaction.reply({ content: `✅ Authorization link sent to ${channel}.`, flags: [MessageFlags.Ephemeral] });
+    } catch (e) {
+      return interaction.reply({ content: `❌ Failed to send message: ${e.message}`, flags: [MessageFlags.Ephemeral] });
+    }
   }
 
   if (subcommand === 'forcejoin') {
