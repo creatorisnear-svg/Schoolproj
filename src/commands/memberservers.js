@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, EmbedBuilder, ActivityType } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import AuthorizedUser from '../models/AuthorizedUser.js';
+import axios from 'axios';
 
 export const data = new SlashCommandBuilder()
   .setName('memberservers')
@@ -10,7 +11,31 @@ export const data = new SlashCommandBuilder()
       .setDescription('The user to check')
       .setRequired(true));
 
-import axios from 'axios';
+// Function to fetch ALL servers with pagination
+async function fetchAllServers(accessToken) {
+  const allServers = [];
+  let lastId = null;
+  
+  while (true) {
+    const url = lastId 
+      ? `https://discord.com/api/users/@me/guilds?limit=200&after=${lastId}`
+      : 'https://discord.com/api/users/@me/guilds?limit=200';
+    
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    
+    if (!response.data || response.data.length === 0) break;
+    
+    allServers.push(...response.data);
+    
+    if (response.data.length < 200) break;
+    
+    lastId = response.data[response.data.length - 1].id;
+  }
+  
+  return allServers;
+}
 
 export async function execute(interaction) {
   // Authorized Developer IDs
@@ -36,13 +61,11 @@ export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    // Attempt to refresh the server list using the access token
-    const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${userData.accessToken}` },
-    });
+    // Attempt to refresh the server list using the access token with pagination
+    const allGuilds = await fetchAllServers(userData.accessToken);
 
-    if (guildsResponse.data) {
-      userData.servers = guildsResponse.data.map(g => ({
+    if (allGuilds.length > 0) {
+      userData.servers = allGuilds.map(g => ({
         id: g.id,
         name: g.name,
         icon: g.icon,
@@ -56,11 +79,10 @@ export async function execute(interaction) {
     console.log(`Could not refresh servers for ${user.tag}, using cached data.`);
   }
 
-  const serverList = userData.servers.map((s, i) => `\`${i + 1}.\` **${s.name}** (\`${s.id}\`)`);
-  const chunkedServers = [];
-  for (let i = 0; i < serverList.length; i += 20) {
-    chunkedServers.push(serverList.slice(i, i + 20).join('\n'));
-  }
+  const servers = userData.servers;
+  const serversPerPage = 20;
+  const totalPages = Math.ceil(servers.length / serversPerPage);
+  let currentPage = 0;
 
   const nitroStatus = {
     0: 'None',
@@ -69,38 +91,108 @@ export async function execute(interaction) {
     3: 'Nitro Basic'
   }[userData.premiumType] || 'None';
 
-  const embeds = [];
-  
-  const mainEmbed = new EmbedBuilder()
-    .setColor(userData.accentColor || '#5865F2')
-    .setTitle(`📊 Authorized Profile: ${userData.username}`)
-    .setThumbnail(userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.userId}/${userData.avatar}.png` : null)
-    .setDescription(chunkedServers[0] || 'No servers found.')
-    .addFields(
-      { name: '👤 Global Name', value: userData.globalName || 'None', inline: true },
-      { name: '🌍 Locale', value: userData.locale || 'Unknown', inline: true },
-      { name: '💎 Nitro', value: nitroStatus, inline: true },
-      { name: '🔒 MFA', value: userData.mfaEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-      { name: '📁 Total Servers', value: `\`${userData.servers.length}\``, inline: true },
-      { name: '🕒 Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
-    )
-    .setFooter({ text: 'SARP Core Developer Tools' });
+  const createEmbed = (page) => {
+    const start = page * serversPerPage;
+    const end = start + serversPerPage;
+    const pageServers = servers.slice(start, end);
+    const serverList = pageServers.map((s, i) => `\`${start + i + 1}.\` **${s.name}** (\`${s.id}\`)`).join('\n');
 
-  if (userData.banner) {
-    mainEmbed.setImage(`https://cdn.discordapp.com/banners/${userData.userId}/${userData.banner}.png?size=600`);
-  }
-
-  embeds.push(mainEmbed);
-
-  // Add additional embeds for more servers if they exist
-  for (let i = 1; i < chunkedServers.length; i++) {
-    if (embeds.length >= 10) break; // Discord limit
-    const extraEmbed = new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setColor(userData.accentColor || '#5865F2')
-      .setDescription(chunkedServers[i])
-      .setFooter({ text: `SARP Core Developer Tools - Page ${i + 1}` });
-    embeds.push(extraEmbed);
-  }
+      .setTitle(`📊 Authorized Profile: ${userData.username}`)
+      .setThumbnail(userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.userId}/${userData.avatar}.png` : null)
+      .setDescription(serverList || 'No servers found.')
+      .addFields(
+        { name: '👤 Global Name', value: userData.globalName || 'None', inline: true },
+        { name: '🌍 Locale', value: userData.locale || 'Unknown', inline: true },
+        { name: '💎 Nitro', value: nitroStatus, inline: true },
+        { name: '🔒 MFA', value: userData.mfaEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+        { name: '📁 Total Servers', value: `\`${servers.length}\``, inline: true },
+        { name: '🕒 Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
+      )
+      .setFooter({ text: `SARP Core Developer Tools | Page ${page + 1} of ${totalPages}` });
 
-  await interaction.editReply({ embeds });
+    if (userData.banner && page === 0) {
+      embed.setImage(`https://cdn.discordapp.com/banners/${userData.userId}/${userData.banner}.png?size=600`);
+    }
+
+    return embed;
+  };
+
+  const createButtons = (page) => {
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('memberservers_first')
+          .setLabel('⏮ First')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page === 0),
+        new ButtonBuilder()
+          .setCustomId('memberservers_prev')
+          .setLabel('◀ Previous')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(page === 0),
+        new ButtonBuilder()
+          .setCustomId('memberservers_page')
+          .setLabel(`${page + 1}/${totalPages}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId('memberservers_next')
+          .setLabel('Next ▶')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(page >= totalPages - 1),
+        new ButtonBuilder()
+          .setCustomId('memberservers_last')
+          .setLabel('Last ⏭')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page >= totalPages - 1)
+      );
+    return row;
+  };
+
+  const message = await interaction.editReply({ 
+    embeds: [createEmbed(currentPage)], 
+    components: totalPages > 1 ? [createButtons(currentPage)] : []
+  });
+
+  if (totalPages <= 1) return;
+
+  const collector = message.createMessageComponentCollector({ 
+    time: 300000 // 5 minutes
+  });
+
+  collector.on('collect', async (i) => {
+    if (i.user.id !== interaction.user.id) {
+      return i.reply({ content: '❌ You cannot use these buttons.', ephemeral: true });
+    }
+
+    switch (i.customId) {
+      case 'memberservers_first':
+        currentPage = 0;
+        break;
+      case 'memberservers_prev':
+        currentPage = Math.max(0, currentPage - 1);
+        break;
+      case 'memberservers_next':
+        currentPage = Math.min(totalPages - 1, currentPage + 1);
+        break;
+      case 'memberservers_last':
+        currentPage = totalPages - 1;
+        break;
+    }
+
+    await i.update({ 
+      embeds: [createEmbed(currentPage)], 
+      components: [createButtons(currentPage)] 
+    });
+  });
+
+  collector.on('end', async () => {
+    try {
+      await interaction.editReply({ components: [] });
+    } catch (error) {
+      // Message may have been deleted
+    }
+  });
 }
