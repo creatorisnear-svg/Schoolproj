@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, EmbedBuilder } from 'discord.js';
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -311,7 +311,7 @@ connectDatabase().then(() => {
   // Run immediately on startup (after a small delay to ensure cache is ready)
   setTimeout(startHeartbeat, 5000);
   // Then run on interval
-  setInterval(startHeartbeat, 1 * 60 * 1000); // Check every minute for more responsive testing
+  setInterval(startHeartbeat, 8 * 60 * 1000); // Back to 8 minutes as requested in model
 
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, '0.0.0.0', () => {
