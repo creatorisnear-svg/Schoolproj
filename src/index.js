@@ -37,7 +37,7 @@ const client = new Client({
 });
 
 const app = express();
-const PORT = process.env.PORT || 8000; // Updated to match user log
+const PORT = process.env.PORT || 8000;
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -171,7 +171,7 @@ for (const file of commandFiles) {
   }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log('Instance is healthy. All health checks are passing.');
   console.log(`✅ Connected to MongoDB Atlas successfully`);
   console.log(`✅ Bot logged in as ${client.user.tag}`);
@@ -220,19 +220,33 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    console.log(`⚡ Executing command: ${interaction.commandName}`);
-    const command = client.commands.get(interaction.commandName);
-    if (command) await command.execute(interaction).catch(() => {});
-  } else if (interaction.isStringSelectMenu() && interaction.customId === 'dev_menu') {
-    const { handleDevMenu } = await import('./handlers/devHandler.js');
-    await handleDevMenu(interaction);
-  } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
-    const { handleDevSelect } = await import('./handlers/devHandler.js');
-    await handleDevSelect(interaction);
-  } else if (interaction.isModalSubmit() && interaction.customId.startsWith('dev_modal_')) {
-    const { handleDevModal } = await import('./handlers/devHandler.js');
-    await handleDevModal(interaction);
+  try {
+    if (interaction.isChatInputCommand()) {
+      console.log(`⚡ Executing command: ${interaction.commandName}`);
+      const command = client.commands.get(interaction.commandName);
+      if (command) {
+        try {
+          await command.execute(interaction);
+        } catch (err) {
+          console.error(`[COMMAND ERROR] ${interaction.commandName}:`, err);
+        }
+      }
+    } else if (interaction.isStringSelectMenu() && interaction.customId === 'dev_menu') {
+      const { handleDevMenu } = await import('./handlers/devHandler.js');
+      await handleDevMenu(interaction);
+    } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
+      const { handleDevSelect } = await import('./handlers/devHandler.js');
+      await handleDevSelect(interaction);
+    } else if (interaction.isModalSubmit() && interaction.customId.startsWith('dev_modal_')) {
+      const { handleDevModal } = await import('./handlers/devHandler.js');
+      await handleDevModal(interaction);
+    }
+  } catch (error) {
+    if (error.code === 10062) {
+      console.log('⚠️ Interaction expired before response could be sent (Unknown Interaction).');
+    } else {
+      console.error('❌ Interaction Error:', error);
+    }
   }
 });
 

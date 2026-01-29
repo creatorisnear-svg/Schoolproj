@@ -20,6 +20,7 @@ The SARP Core Discord bot is built on Node.js (v20) using the Discord.js v14 lib
 - Configuration fallback messages are provided for unconfigured features.
 
 **Technical Implementations & Feature Specifications:**
+- **Logging & Stability**: Custom startup sequence mimicking Koyeb environment logs. All interaction handlers are wrapped in try-catch blocks with 10062 (Unknown Interaction) error handling to prevent bot crashes. Uses `clientReady` event for compatibility with latest Discord.js practices.
 - **Developer Control Panel:** Advanced `/dev` menu with role/channel selectors, auto-join management, and OAuth2 control (including `connections` and `voice` scopes).
 - **Permission System:** Commands are gated by Discord Administrator permissions (Admins/Staff) or a custom staff database. Admins inherit all staff permissions.
 - **Logging System:** A central log channel (`/setlogchannel`) is used for event reporting.
