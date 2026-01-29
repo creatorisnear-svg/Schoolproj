@@ -31,8 +31,8 @@ app.get('/callback', async (req, res) => {
   if (!code) return res.send('No code provided');
 
   try {
-    const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPL_ID + '.id.repl.it';
-    const cleanDomain = domain ? domain.split(',')[0].trim() : '';
+    const domain = process.env.DOMAIN || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
+    const cleanDomain = domain ? domain.split(',')[0].trim().replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
     const redirectUri = `https://${cleanDomain}/callback`;
 
     console.log(`[OAUTH CALLBACK] Received code, attempting exchange...`);
