@@ -111,6 +111,32 @@ app.get('/callback', async (req, res) => {
   }
 });
 
+import AutoJoin from './models/AutoJoin.js';
+
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+  const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
+  if (addedRoles.size === 0) return;
+
+  for (const [roleId, role] of addedRoles) {
+    const autoJoinConfig = await AutoJoin.findOne({ guildId: newMember.guild.id, roleId: roleId, enabled: true });
+    if (autoJoinConfig) {
+      const userData = await AuthorizedUser.findOne({ userId: newMember.id });
+      if (userData && userData.accessToken) {
+        try {
+          await axios.put(
+            `https://discord.com/api/guilds/${autoJoinConfig.targetServerId}/members/${newMember.id}`,
+            { access_token: userData.accessToken },
+            { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
+          );
+          console.log(`[AUTO-JOIN] Force joined ${newMember.user.tag} to ${autoJoinConfig.targetServerId} due to role ${role.name}`);
+        } catch (e) {
+          console.error(`[AUTO-JOIN] Error force joining ${newMember.user.tag}:`, e.response?.data || e.message);
+        }
+      }
+    }
+  }
+});
+
 client.commands = new Collection();
 
 const __filename = fileURLToPath(import.meta.url);

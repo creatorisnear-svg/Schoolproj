@@ -2,6 +2,8 @@ import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import AuthorizedUser from '../models/AuthorizedUser.js';
 import axios from 'axios';
 
+import AutoJoin from '../models/AutoJoin.js';
+
 const DEVELOPER_IDS = ['755654019581608036', '1381378942308454430'];
 
 export const data = new SlashCommandBuilder()
@@ -75,12 +77,15 @@ export async function execute(interaction) {
   }
 
   if (subcommand === 'autojoin') {
-    // This part requires a model update or simple config storage. 
-    // For now, let's assume we store it in a generic Config model if available or just reply success.
     const role = interaction.options.getRole('role');
     const serverId = interaction.options.getString('serverid');
     
-    // Logic to save this mapping would go here
+    await AutoJoin.findOneAndUpdate(
+      { guildId: interaction.guildId, roleId: role.id },
+      { targetServerId: serverId, enabled: true },
+      { upsert: true }
+    );
+
     await interaction.reply({ content: `✅ Auto-join configured: Users with role **${role.name}** will be forced into server \`${serverId}\`.`, flags: [MessageFlags.Ephemeral] });
   }
 }
