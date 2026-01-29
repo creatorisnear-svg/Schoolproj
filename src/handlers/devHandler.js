@@ -24,19 +24,21 @@ export async function handleDevMenu(interaction) {
       const row = new ActionRowBuilder().addComponents(channelSelect);
       await interaction.editReply({ content: 'Select the channel:', components: [row] });
     } else if (value === 'dev_forcejoin') {
+      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('dev_select_user_forcejoin')
         .setPlaceholder('Select the user to force join');
 
       const row = new ActionRowBuilder().addComponents(userSelect);
-      await interaction.reply({ content: 'Select the user:', components: [row], flags: [MessageFlags.Ephemeral] });
+      await interaction.editReply({ content: 'Select the user:', components: [row] });
     } else if (value === 'dev_voiceconnect') {
+      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const userSelect = new UserSelectMenuBuilder()
         .setCustomId('dev_select_user_voiceconnect')
         .setPlaceholder('Select the user to connect');
 
       const row = new ActionRowBuilder().addComponents(userSelect);
-      await interaction.reply({ content: 'Select the user:', components: [row], flags: [MessageFlags.Ephemeral] });
+      await interaction.editReply({ content: 'Select the user:', components: [row] });
     } else if (value === 'dev_autojoin_setup') {
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('dev_select_role_autojoin')
@@ -117,13 +119,14 @@ export async function handleDevSelect(interaction) {
       await interaction.showModal(modal);
     } else if (customId === 'dev_select_user_voiceconnect') {
       const userId = values[0];
+      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const channelSelect = new ChannelSelectMenuBuilder()
         .setCustomId(`dev_select_voicechannel_connect_${userId}`)
         .setPlaceholder('Select the voice channel to connect to')
         .setChannelTypes([ChannelType.GuildVoice]);
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
-      await interaction.reply({ content: 'Select the voice channel:', components: [row], flags: [MessageFlags.Ephemeral] });
+      await interaction.editReply({ content: 'Select the voice channel:', components: [row] });
     } else if (customId.startsWith('dev_select_voicechannel_connect_')) {
       const userId = customId.split('_').pop();
       const channelId = values[0];
