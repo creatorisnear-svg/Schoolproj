@@ -12,6 +12,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+import axios from 'axios';
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -21,6 +23,52 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
   ],
+});
+
+app.get('/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.send('No code provided');
+
+  try {
+    const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
+    const redirectUri = `https://${domain}/callback`;
+
+    const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+    }), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+    const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const guilds = guildsResponse.data;
+    const guildList = guilds.map(g => `• ${g.name} (${g.id})`).join('\n');
+
+    res.send(`
+      <style>
+        body { font-family: sans-serif; background: #2c2f33; color: white; padding: 40px; text-align: center; }
+        .container { background: #23272a; border-radius: 8px; padding: 20px; display: inline-block; text-align: left; max-width: 600px; width: 100%; }
+        h1 { color: #7289da; }
+        pre { background: #1e2124; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+      </style>
+      <div class="container">
+        <h1>✅ Authorization Successful!</h1>
+        <p>EverLink can now see your servers. Here is the list we retrieved:</p>
+        <pre>${guildList}</pre>
+        <p>You can close this window now.</p>
+      </div>
+    `);
+  } catch (error) {
+    console.error('OAuth Error:', error.response?.data || error.message);
+    res.status(500).send('Authentication failed');
+  }
 });
 
 client.commands = new Collection();
