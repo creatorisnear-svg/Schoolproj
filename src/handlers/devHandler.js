@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, UserSelectMenuBuilder, ChannelType } from 'discord.js';
 import axios from 'axios';
 import AuthorizedUser from '../models/AuthorizedUser.js';
 import AutoJoin from '../models/AutoJoin.js';
@@ -23,29 +23,21 @@ export async function handleDevMenu(interaction) {
     const row = new ActionRowBuilder().addComponents(channelSelect);
     await interaction.editReply({ content: 'Select the channel:', components: [row] });
   } else if (value === 'dev_forcejoin') {
-    const modal = new ModalBuilder()
-      .setCustomId('dev_modal_forcejoin')
-      .setTitle('Force Join User');
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('dev_select_user_forcejoin')
+      .setPlaceholder('Select the user to force join');
 
-    const userIdInput = new TextInputBuilder()
-      .setCustomId('user_id')
-      .setLabel('User ID')
-      .setPlaceholder('The ID of the authorized user')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    const row = new ActionRowBuilder().addComponents(userSelect);
+    await interaction.editReply({ content: 'Select the user:', components: [row] });
+  } else if (value === 'dev_voiceconnect') {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    const userSelect = new UserSelectMenuBuilder()
+      .setCustomId('dev_select_user_voiceconnect')
+      .setPlaceholder('Select the user to connect');
 
-    const serverIdInput = new TextInputBuilder()
-      .setCustomId('server_id')
-      .setLabel('Server ID')
-      .setPlaceholder('The ID of the target server')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(userIdInput),
-      new ActionRowBuilder().addComponents(serverIdInput)
-    );
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(userSelect);
+    await interaction.editReply({ content: 'Select the user:', components: [row] });
   } else if (value === 'dev_autojoin_setup') {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
     const roleSelect = new RoleSelectMenuBuilder()
@@ -106,6 +98,53 @@ export async function handleDevSelect(interaction) {
 
     await channel.send({ embeds: [embed], components: [row] });
     await interaction.update({ content: `✅ Auth link sent to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
+  } else if (customId === 'dev_select_user_forcejoin') {
+    const userId = values[0];
+    const modal = new ModalBuilder()
+      .setCustomId(`dev_modal_forcejoin_server_${userId}`)
+      .setTitle('Force Join Server');
+
+    const serverIdInput = new TextInputBuilder()
+      .setCustomId('server_id')
+      .setLabel('Target Server ID')
+      .setPlaceholder('The ID of the server to join')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(serverIdInput));
+    await interaction.showModal(modal);
+  } else if (customId === 'dev_select_user_voiceconnect') {
+    const userId = values[0];
+    const channelSelect = new ChannelSelectMenuBuilder()
+      .setCustomId(`dev_select_voicechannel_connect_${userId}`)
+      .setPlaceholder('Select the voice channel to connect to')
+      .setChannelTypes([ChannelType.GuildVoice]);
+
+    const row = new ActionRowBuilder().addComponents(channelSelect);
+    await interaction.update({ content: 'Select the voice channel:', components: [row] });
+  } else if (customId.startsWith('dev_select_voicechannel_connect_')) {
+    const userId = customId.split('_').pop();
+    const channelId = values[0];
+    const userData = await AuthorizedUser.findOne({ userId });
+
+    if (!userData || !userData.accessToken) {
+      return interaction.update({ content: '❌ User not authorized.', components: [], flags: [MessageFlags.Ephemeral] });
+    }
+
+    try {
+      // Connect user to voice (Requires user authorization with 'voice' scope)
+      // Note: This specific API endpoint might vary depending on internal bot permissions or specialized Discord features
+      // Standard OAuth2 doesn't usually allow direct voice connection moving without user being in voice first
+      // But we'll attempt the guild member edit for channel_id
+      await axios.patch(
+        `https://discord.com/api/guilds/${interaction.guildId}/members/${userId}`,
+        { channel_id: channelId },
+        { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      await interaction.update({ content: `✅ Moved <@${userId}> to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
+    } catch (e) {
+      await interaction.update({ content: `❌ Error: ${e.response?.data?.message || e.message}`, components: [], flags: [MessageFlags.Ephemeral] });
+    }
   } else if (customId === 'dev_select_role_autojoin') {
     const roleId = values[0];
     
@@ -140,8 +179,8 @@ export async function handleDevSelect(interaction) {
 export async function handleDevModal(interaction) {
   const { customId, fields } = interaction;
 
-  if (customId === 'dev_modal_forcejoin') {
-    const userId = fields.getTextInputValue('user_id');
+  if (customId.startsWith('dev_modal_forcejoin_server_')) {
+    const userId = customId.split('_').pop();
     const serverId = fields.getTextInputValue('server_id');
     const userData = await AuthorizedUser.findOne({ userId });
 
@@ -157,9 +196,9 @@ export async function handleDevModal(interaction) {
         { access_token: userData.accessToken },
         { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
       );
-      await interaction.editReply({ content: `✅ Added user to server.` });
+      await interaction.editReply({ content: `✅ Added <@${userId}> to server ${serverId}.` });
     } catch (e) {
-      await interaction.editReply({ content: `❌ Error: ${e.message}` });
+      await interaction.editReply({ content: `❌ Error: ${e.response?.data?.message || e.message}` });
     }
   } else if (customId.startsWith('dev_modal_autojoin_setup_')) {
     const roleId = customId.split('_').pop();

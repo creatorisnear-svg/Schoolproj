@@ -37,6 +37,12 @@ export async function execute(interaction) {
             emoji: '➡️',
           },
           {
+            label: 'Force Connect Voice',
+            description: 'Force a user to join a voice channel',
+            value: 'dev_voiceconnect',
+            emoji: '🔊',
+          },
+          {
             label: 'Auto-Join Setup',
             description: 'Configure a role to trigger a forced server join',
             value: 'dev_autojoin_setup',
