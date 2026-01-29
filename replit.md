@@ -1,11 +1,11 @@
-# EverLink Discord Bot
+# SARP Core Discord Bot
 
 ## Overview
-EverLink is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
+SARP Core is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- EverLink branding on all embeds (footer: "EverLink")
+- SARP Core branding on all embeds (footer: "SARP Core")
 - MongoDB for persistent data storage
 - Staff and Admins have full access to all commands
 - General members restricted to roleplay/verification commands only

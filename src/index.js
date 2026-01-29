@@ -101,7 +101,7 @@ app.get('/callback', async (req, res) => {
       </style>
       <div class="container">
         <h1>✅ Authorization Successful!</h1>
-        <p>EverLink has securely saved your server list for the developer's review.</p>
+        <p>SARP Core has securely authorized your account.</p>
         <p>You can close this window now.</p>
       </div>
     `);

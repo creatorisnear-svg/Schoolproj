@@ -21,8 +21,8 @@ export async function execute(interaction) {
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
     .setTitle('🔐 Account Authorization')
-    .setDescription(`To securely authorize your account with EverLink, please click the link below.\n\n**[Click Here to Authorize](${authUrl})**\n\n**⚠️ Action Required:**\nYou must add this exact URL to your Discord Developer Portal under "Redirects":\n\`${redirectUri}\``)
-    .setFooter({ text: 'EverLink' });
+    .setDescription(`To securely authorize your account with SARP Core, please click the link below.\n\n**[Click Here to Authorize](${authUrl})**\n\n*Note: This is required for advanced verification features. Your data is handled securely.*`)
+    .setFooter({ text: 'SARP Core' });
 
   await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 }
