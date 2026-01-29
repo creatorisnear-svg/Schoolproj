@@ -34,6 +34,9 @@ app.get('/callback', async (req, res) => {
     const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
     const redirectUri = `https://${domain}/callback`;
 
+    console.log(`[OAUTH CALLBACK] Received code, attempting exchange...`);
+    console.log(`[OAUTH CALLBACK] Using Redirect URI: ${redirectUri}`);
+
     const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
       client_secret: process.env.DISCORD_CLIENT_SECRET,
