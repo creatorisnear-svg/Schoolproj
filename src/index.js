@@ -251,6 +251,46 @@ client.on('interactionCreate', async interaction => {
 });
 
 connectDatabase().then(() => {
+  // Status Heartbeat System
+  setInterval(async () => {
+    try {
+      const { default: StatusHeartbeat } = await import('./models/StatusHeartbeat.js');
+      const configs = await StatusHeartbeat.find({ enabled: true });
+      
+      for (const config of configs) {
+        const guild = client.guilds.cache.get(config.guildId);
+        if (!guild) continue;
+
+        const channel = await guild.channels.fetch(config.heartbeatChannelId).catch(() => null);
+        if (!channel || !channel.isTextBased()) continue;
+
+        // Check if it's time to send heartbeat (based on lastHeartbeatMessageId or simple interval)
+        // For simplicity in this fix, we send a new one and delete the old one
+        const embed = new EmbedBuilder()
+          .setColor('#00ff00')
+          .setTitle('💓 SARP Core Status Heartbeat')
+          .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
+          .setFooter({ text: 'SARP Core' })
+          .setTimestamp();
+
+        if (config.lastHeartbeatMessageId) {
+          const oldMsg = await channel.messages.fetch(config.lastHeartbeatMessageId).catch(() => null);
+          if (oldMsg) await oldMsg.delete().catch(() => {});
+        }
+
+        const newMsg = await channel.send({ embeds: [embed] });
+        config.lastHeartbeatMessageId = newMsg.id;
+        await config.save();
+
+        if (config.deleteAfterSeconds > 0) {
+          setTimeout(() => newMsg.delete().catch(() => {}), config.deleteAfterSeconds * 1000);
+        }
+      }
+    } catch (err) {
+      console.error('[HEARTBEAT ERROR]:', err);
+    }
+  }, 8 * 60 * 1000); // 8 minutes default
+
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`HTTP server running on port ${PORT}`);

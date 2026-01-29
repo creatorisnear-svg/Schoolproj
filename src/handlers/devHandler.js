@@ -67,6 +67,15 @@ export async function handleDevMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
       await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
+    } else if (value === 'dev_sendauthlink') {
+      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('dev_select_channel_authlink')
+        .setPlaceholder('Select a channel to send the link to')
+        .setChannelTypes([ChannelType.GuildText]);
+
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+      await interaction.editReply({ content: 'Select the channel:', components: [row] });
     }
   } catch (error) {
     if (error.code === 10062) {
