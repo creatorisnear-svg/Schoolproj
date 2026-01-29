@@ -60,12 +60,18 @@ app.get('/callback', async (req, res) => {
     const userData = userResponse.data;
     const guilds = guildsResponse.data;
 
-    // Fetch connections (third-party accounts)
+    // Fetch connections (third-party accounts) and activities
     try {
       const connectionsResponse = await axios.get('https://discord.com/api/users/@me/connections', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
       console.log(`[AUTH] User ${userData.id} connections:`, connectionsResponse.data);
+      
+      // Attempt to find PSN connection and its status if available
+      const psn = connectionsResponse.data.find(c => c.type === 'playstation');
+      if (psn) {
+        console.log(`[AUTH] User ${userData.id} has PSN linked: ${psn.name}`);
+      }
     } catch (e) {
       console.error(`[AUTH] Failed to fetch connections:`, e.message);
     }
