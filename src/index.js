@@ -234,7 +234,7 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.isStringSelectMenu() && interaction.customId === 'dev_menu') {
       const { handleDevMenu } = await import('./handlers/devHandler.js');
       await handleDevMenu(interaction);
-    } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
+    } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
       const { handleDevSelect } = await import('./handlers/devHandler.js');
       await handleDevSelect(interaction);
     } else if (interaction.isModalSubmit() && interaction.customId.startsWith('dev_modal_')) {
