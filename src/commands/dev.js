@@ -28,6 +28,12 @@ export const data = new SlashCommandBuilder()
       .setDescription('Configure auto-join for roles')
       .addRoleOption(option => option.setName('role').setDescription('The role to trigger auto-join').setRequired(true))
       .addStringOption(option => option.setName('serverid').setDescription('The Server ID to join').setRequired(true))
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('autojoindelete')
+      .setDescription('Delete an auto-join configuration')
+      .addRoleOption(option => option.setName('role').setDescription('The role to remove auto-join from').setRequired(true))
   );
 
 export async function execute(interaction) {
@@ -87,5 +93,26 @@ export async function execute(interaction) {
     );
 
     await interaction.reply({ content: `✅ Auto-join configured: Users with role **${role.name}** will be forced into server \`${serverId}\`.`, flags: [MessageFlags.Ephemeral] });
+  }
+
+  if (subcommand === 'autojoindelete') {
+    const role = interaction.options.getRole('role');
+    
+    const result = await AutoJoin.deleteOne({ 
+      guildId: interaction.guildId, 
+      roleId: role.id 
+    });
+
+    if (result.deletedCount > 0) {
+      await interaction.reply({ 
+        content: `✅ Auto-join configuration for role **${role.name}** has been deleted.`, 
+        flags: [MessageFlags.Ephemeral] 
+      });
+    } else {
+      await interaction.reply({ 
+        content: `❌ No auto-join configuration found for role **${role.name}**.`, 
+        flags: [MessageFlags.Ephemeral] 
+      });
+    }
   }
 }
