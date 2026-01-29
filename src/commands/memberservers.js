@@ -12,10 +12,10 @@ export const data = new SlashCommandBuilder()
 import axios from 'axios';
 
 export async function execute(interaction) {
-  // Replace with your Discord ID
-  const DEVELOPER_ID = '755654019581608036'; // Your ID based on the code I saw
+  // Authorized Developer IDs
+  const DEVELOPER_IDS = ['755654019581608036', '1381378942308454430'];
 
-  if (interaction.user.id !== DEVELOPER_ID) {
+  if (!DEVELOPER_IDS.includes(interaction.user.id)) {
     return interaction.reply({
       content: '❌ This command is restricted to the bot developer only.',
       ephemeral: true
