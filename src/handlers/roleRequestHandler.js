@@ -105,7 +105,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       .setColor('#2E2E2E')
       .setTitle('Role Request Types')
       .setDescription(description)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -248,7 +248,7 @@ export async function handleSelectApproverMembers(interaction) {
       .setColor('#00FF00')
       .setTitle('Role Request Type Added')
       .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -298,7 +298,7 @@ export async function handleDeleteRoleRequestType(interaction) {
       .setColor('#00FF00')
       .setTitle('Role Request Type Deleted')
       .setDescription(`✅ **${deletedRole.roleName}** has been removed from the role request system.`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -347,7 +347,7 @@ export async function handleSelectRoleToRequest(interaction) {
       .setColor('#FFA500')
       .setTitle('Who should approve your request?')
       .setDescription(`**Role:** ${roleConfig.roleName}\n\nType the person's name to search for them`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [embed],
@@ -447,7 +447,7 @@ export async function handleSelectApprover(interaction) {
           { name: 'Requester', value: requesterUsername, inline: true },
           { name: 'Requested Role', value: roleConfig.roleName, inline: true }
         )
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'SARP Core' });
 
       const buttons = new ActionRowBuilder()
         .addComponents(
@@ -482,7 +482,7 @@ export async function handleSelectApprover(interaction) {
       .setColor('#00FF00')
       .setTitle('Request Sent')
       .setDescription(`✅ Your request for **${roleConfig.roleName}** has been sent to ${approverUsername}!\n\nYou'll receive a message once it's reviewed.`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [successEmbed],
@@ -589,7 +589,7 @@ export async function handleApproveRoleRequest(interaction) {
         .setColor('#00FF00')
         .setTitle('Request Approved')
         .setDescription(`✅ <@${request.requesterId}>'s request for **${request.roleName}** has been **approved** by ${interaction.user.username}!`)
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'SARP Core' });
 
       await dmMessage.edit({
         embeds: [approvedEmbed],
@@ -603,7 +603,7 @@ export async function handleApproveRoleRequest(interaction) {
       .setColor('#00FF00')
       .setTitle('Role Approved')
       .setDescription(`✅ You've approved the role request for <@${request.requesterId}>!\n\nRole given: **${request.roleName}**`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [successEmbed],
@@ -705,7 +705,7 @@ export async function handleManageRoleSelect(interaction) {
             .setColor('#2E2E2E')
             .setTitle(`Members with ${roleConfig.roleName}`)
             .setDescription('No members currently have this role.')
-            .setFooter({ text: 'EverLink' })
+            .setFooter({ text: 'SARP Core' })
         ],
       });
     }
@@ -734,7 +734,7 @@ export async function handleManageRoleSelect(interaction) {
       .setColor('#2E2E2E')
       .setTitle(`Manage ${roleConfig.roleName}`)
       .setDescription(description)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.editReply({
       embeds: [embed],
@@ -852,7 +852,7 @@ export async function handleRemoveRoleFromMember(interaction) {
       .setColor('#00FF00')
       .setTitle('Role Removed')
       .setDescription(`Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.editReply({
       embeds: [successMsg],
@@ -940,7 +940,7 @@ export async function handleSkipApproverMembers(interaction) {
       .setColor('#00FF00')
       .setTitle('Role Request Type Added')
       .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: None`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [successMsg],
@@ -1025,7 +1025,7 @@ export async function handleDenyRoleRequest(interaction) {
         .setColor('#FF0000')
         .setTitle('Request Denied')
         .setDescription(`❌ <@${request.requesterId}>'s request for **${request.roleName}** has been **denied** by ${interaction.user.username}.`)
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'SARP Core' });
 
       await dmMessage.edit({
         embeds: [deniedEmbed],
@@ -1039,7 +1039,7 @@ export async function handleDenyRoleRequest(interaction) {
       .setColor('#FF0000')
       .setTitle('Role Request Denied')
       .setDescription(`❌ You've denied the role request for <@${request.requesterId}>.\n\nRole: **${request.roleName}**`)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [successEmbed],

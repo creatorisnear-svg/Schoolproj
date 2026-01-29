@@ -50,7 +50,7 @@ export async function execute(interaction) {
       .setColor('#2E2E2E')
       .setTitle('Request a Role')
       .setDescription(rolesList)
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     await interaction.reply({
       embeds: [embed],

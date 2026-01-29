@@ -11,11 +11,11 @@ SARP Core is a Discord bot designed for multi-server roleplay and gaming communi
 - General members restricted to roleplay/verification commands only
 
 ## System Architecture
-The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
+The SARP Core Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded interface.
-- Embeds consistently feature "EverLink" branding in the footer.
+- Embeds consistently feature "SARP Core" branding in the footer.
 - Interactive elements utilize Discord dropdown selectors, modals, and buttons.
 - Configuration fallback messages are provided for unconfigured features.
 

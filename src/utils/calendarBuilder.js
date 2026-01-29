@@ -64,5 +64,5 @@ export function buildCalendarEmbed(calendar) {
     .setTitle('Roleplay Calendar')
     .setDescription(description)
     .setColor(0x00AA00)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'SARP Core' });
 }

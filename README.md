@@ -1,10 +1,10 @@
-# EverLink Discord Bot Setup Guide
+# SARP Core Discord Bot Setup Guide
 
 ## Quick Start
 
 ### 1. Get Your Discord Bot Token
 1. Go to https://discord.com/developers/applications
-2. Click "New Application" and name it "EverLink Bot"
+2. Click "New Application" and name it "SARP Core Bot"
 3. Go to the "Bot" section in the left sidebar
 4. Click "Reset Token" to generate your bot token
 5. **Important**: Enable these intents under "Privileged Gateway Intents":
@@ -37,7 +37,7 @@ Click the "Secrets" tab (lock icon) in Replit and add:
 Once secrets are added, the bot will automatically start. Check the console for:
 ```
 ✅ Connected to MongoDB Atlas successfully
-🤖 Bot logged in as EverLink Bot#1234
+🤖 Bot logged in as SARP Core Bot#1234
 ✅ Successfully reloaded application (/) commands globally.
 ```
 
@@ -60,4 +60,4 @@ Perfect for use with UptimeRobot to keep your bot alive 24/7!
 **Deploying to Koyeb?** Check out [DEPLOYMENT.md](./DEPLOYMENT.md) for a complete guide on deploying to Koyeb and setting up UptimeRobot monitoring.
 
 ## Support
-All commands respond with Discord embeds featuring EverLink branding.
+All commands respond with Discord embeds featuring SARP Core branding.

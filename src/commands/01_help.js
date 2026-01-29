@@ -2,12 +2,12 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('View all EverLink commands and features');
+  .setDescription('View all SARP Core commands and features');
 
 export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('📘 EverLink - Command Help')
+    .setTitle('📘 SARP Core - Command Help')
     .setDescription('Complete guide to all available commands')
     .addFields(
       {
@@ -56,7 +56,7 @@ export async function execute(interaction) {
         inline: false,
       }
     )
-    .setFooter({ text: 'EverLink | Type / to see command options' })
+    .setFooter({ text: 'SARP Core | Type / to see command options' })
     .setTimestamp();
 
   return interaction.reply({

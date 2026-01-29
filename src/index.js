@@ -578,12 +578,12 @@ async function startStatusHeartbeatSender() {
 
           // Send heartbeat message
           const heartbeatMsg = await channel.send({
-            content: '🟢 **EverLink Heartbeat** - Status: UP',
+            content: '🟢 **SARP Core Heartbeat** - Status: UP',
             embeds: [{
               color: 0x00FF00,
-              title: 'EverLink Status',
+              title: 'SARP Core Status',
               description: 'System is operational',
-              footer: { text: 'EverLink' },
+              footer: { text: 'SARP Core' },
               timestamp: new Date()
             }]
           });
@@ -1081,7 +1081,7 @@ client.on('guildMemberAdd', async member => {
           .setTitle(`Welcome to ${member.guild.name}!`)
           .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
           .setDescription(welcomeDM)
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'SARP Core' })
           .setTimestamp();
 
         await member.send({
@@ -1168,12 +1168,12 @@ client.on('guildCreate', async (guild) => {
       const owner = await guild.fetchOwner();
       console.log(`Attempting to send welcome DM to owner: ${owner.user.tag}`);
       
-      const welcomeMessage = `🎉 __**Welcome to EverLink**__ 🎉
+      const welcomeMessage = `🎉 __**Welcome to SARP Core**__ 🎉
 
-Hi ${owner.user.username}, thanks for adding __**EverLink**__ to your server! 
+Hi ${owner.user.username}, thanks for adding __**SARP Core**__ to your server! 
 
-__**What is EverLink?**__
-EverLink is a __**comprehensive Discord bot**__ designed for __**GTA5 RP**__ and roleplay communities. It helps streamline community management with powerful features for admins, staff, and members.
+__**What is SARP Core?**__
+SARP Core is a __**comprehensive Discord bot**__ designed for __**GTA5 RP**__ and roleplay communities. It helps streamline community management with powerful features for admins, staff, and members.
 
 __**Core Features**__
 🚨 __Emergency System__ - 911 calls with unit responses and auto-deletion
@@ -1204,7 +1204,7 @@ All commands are slash commands. Use \`/\` to see available options and descript
 
 Ready? Start with __/enablecommands__ to configure your server.
 
-__**EverLink**__ - Made for RP Communities 🎮`;
+__**SARP Core**__ - Made for RP Communities 🎮`;
 
       await owner.send(welcomeMessage);
       console.log(`Welcome DM sent successfully to ${owner.user.tag}`);
@@ -1219,7 +1219,7 @@ __**EverLink**__ - Made for RP Communities 🎮`;
         );
         
         if (generalChannel) {
-          const channelMessage = `👋 **Welcome to EverLink!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nFor detailed help: \`/help\`\nJoin support: https://discord.gg/cSdhfGPeV2`;
+          const channelMessage = `👋 **Welcome to SARP Core!**\n\nI tried to send you a setup guide via DM, but your DMs are disabled. Here's the quick start:\n\n1️⃣ Use \`/enablecommands\` to enable features\n2️⃣ Use \`/setlogchannel\` to set logging\n3️⃣ Configure each feature with setup commands\n4️⃣ Add staff with \`/addstaff\`\n\nFor detailed help: \`/help\`\nJoin support: https://discord.gg/cSdhfGPeV2`;
           await generalChannel.send(channelMessage);
           console.log(`Fallback welcome message sent to #general`);
         }
@@ -1252,7 +1252,7 @@ app.get('/health', (req, res) => {
 
 // Install/Invite link endpoint
 app.get('/install', (req, res) => {
-  const clientId = '1441306995641683978'; // EverLink Bot ID
+  const clientId = '1441306995641683978'; // SARP Core Bot ID
   const permissions = 1099511627775; // All permissions
   const scope = 'bot%20applications.commands';
   const redirectUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${scope}`;
@@ -1280,12 +1280,12 @@ app.post('/send-heartbeat-now', async (req, res) => {
     }
 
     const heartbeatMsg = await channel.send({
-      content: '🟢 **EverLink Heartbeat** - Status: UP',
+      content: '🟢 **SARP Core Heartbeat** - Status: UP',
       embeds: [{
         color: 0x00FF00,
-        title: 'EverLink Status',
+        title: 'SARP Core Status',
         description: 'System is operational',
-        footer: { text: 'EverLink' },
+        footer: { text: 'SARP Core' },
         timestamp: new Date()
       }]
     });
@@ -1312,7 +1312,7 @@ app.get('/terms', (req, res) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>EverLink - Terms of Service</title>
+      <title>SARP Core - Terms of Service</title>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
@@ -1328,11 +1328,11 @@ app.get('/terms', (req, res) => {
     </head>
     <body>
       <div class="container">
-        <h1>EverLink Discord Bot - Terms of Service</h1>
+        <h1>SARP Core Discord Bot - Terms of Service</h1>
         <p class="timestamp">Last Updated: December 22, 2025</p>
         
         <h2>1. Agreement to Terms</h2>
-        <p>By using the EverLink Discord Bot (the "Bot"), you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, you may not use the Bot.</p>
+        <p>By using the SARP Core Discord Bot (the "Bot"), you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, you may not use the Bot.</p>
         
         <h2>2. Use of the Bot</h2>
         <p>The Bot is provided on an "as-is" basis for managing roleplay communities on Discord. You agree to use the Bot only for lawful purposes and in a way that does not violate the rights of others or restrict their use and enjoyment of the Bot.</p>
@@ -1343,7 +1343,7 @@ app.get('/terms', (req, res) => {
         </ul>
         
         <h2>3. Compliance with Discord Terms</h2>
-        <p>As a Discord Bot, EverLink must comply with Discord's Developer Terms of Service and Community Guidelines. All users must also adhere to <a href="https://discord.com/terms" target="_blank">Discord's Terms of Service</a> and <a href="https://discord.com/guidelines" target="_blank">Community Guidelines</a>.</p>
+        <p>As a Discord Bot, SARP Core must comply with Discord's Developer Terms of Service and Community Guidelines. All users must also adhere to <a href="https://discord.com/terms" target="_blank">Discord's Terms of Service</a> and <a href="https://discord.com/guidelines" target="_blank">Community Guidelines</a>.</p>
         
         <h2>4. Data and Privacy</h2>
         <p>The Bot collects limited data necessary for operation, including:</p>
@@ -1370,11 +1370,11 @@ app.get('/terms', (req, res) => {
         <p>For support, questions, or to report abuse, please join our support server: <a href="https://discord.gg/cSdhfGPeV2" target="_blank">discord.gg/cSdhfGPeV2</a></p>
         
         <h2>9. Contact</h2>
-        <p>For legal inquiries, contact us through the EverLink Support Discord server.</p>
+        <p>For legal inquiries, contact us through the SARP Core Support Discord server.</p>
         
         <hr style="margin-top: 40px; margin-bottom: 20px;">
         <p style="color: #666; font-size: 12px; text-align: center;">
-          EverLink © 2025. All rights reserved. | 
+          SARP Core © 2025. All rights reserved. | 
           <a href="https://discord.gg/cSdhfGPeV2" target="_blank">Support Server</a>
         </p>
       </div>
@@ -1390,7 +1390,7 @@ app.get('/privacy', (req, res) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>EverLink - Privacy Policy</title>
+      <title>SARP Core - Privacy Policy</title>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
@@ -1406,11 +1406,11 @@ app.get('/privacy', (req, res) => {
     </head>
     <body>
       <div class="container">
-        <h1>EverLink Discord Bot - Privacy Policy</h1>
+        <h1>SARP Core Discord Bot - Privacy Policy</h1>
         <p class="timestamp">Last Updated: December 22, 2025</p>
         
         <h2>1. Introduction</h2>
-        <p>EverLink ("we", "us", "our", or the "Bot") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and otherwise process your personal information in connection with the Bot.</p>
+        <p>SARP Core ("we", "us", "our", or the "Bot") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and otherwise process your personal information in connection with the Bot.</p>
         
         <h2>2. Information We Collect</h2>
         <p>The Bot collects the following information to provide its services:</p>
@@ -1471,7 +1471,7 @@ app.get('/privacy', (req, res) => {
         <h2>10. Contact Us</h2>
         <p>For questions, concerns, or requests regarding your privacy, please contact us through our support server:</p>
         <div class="highlight">
-          <p><a href="https://discord.gg/cSdhfGPeV2" target="_blank">Join EverLink Support Server</a></p>
+          <p><a href="https://discord.gg/cSdhfGPeV2" target="_blank">Join SARP Core Support Server</a></p>
         </div>
         
         <h2>11. Legal Compliance</h2>
@@ -1479,7 +1479,7 @@ app.get('/privacy', (req, res) => {
         
         <hr style="margin-top: 40px; margin-bottom: 20px;">
         <p style="color: #666; font-size: 12px; text-align: center;">
-          EverLink © 2025. All rights reserved. | 
+          SARP Core © 2025. All rights reserved. | 
           <a href="https://discord.gg/cSdhfGPeV2" target="_blank">Support Server</a> | 
           <a href="/terms">Terms of Service</a>
         </p>

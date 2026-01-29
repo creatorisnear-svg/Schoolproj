@@ -1,7 +1,7 @@
 {
-  "name": "everlink-discord-bot",
+  "name": "SARP Core-discord-bot",
   "version": "1.0.0",
-  "description": "Discord bot for EverLink Community",
+  "description": "Discord bot for SARP Core Community",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

@@ -47,7 +47,7 @@ export async function execute(interaction) {
       .setColor('#2E2E2E')
       .setTitle('Sticky Messages')
       .setDescription(description)
-      .setFooter({ text: `EverLink | Total: ${stickies.length}` });
+      .setFooter({ text: `SARP Core | Total: ${stickies.length}` });
 
     // If more than one sticky, offer delete option
     if (stickies.length > 0) {

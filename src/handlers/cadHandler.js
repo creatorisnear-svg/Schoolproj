@@ -383,7 +383,7 @@ export async function handleCADCharacterMenu(interaction) {
           .setColor(c.status === 'wanted' ? '#ff0000' : '#00ff00')
           .setTitle(`${c.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'SARP Core' })
           .setTimestamp();
       });
 
@@ -564,7 +564,7 @@ export async function handleCADCharacterCreateModal(interaction) {
       .setColor('#0099ff')
       .setTitle('✅ Character Created - Step 1/3')
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'SARP Core' })
       .setTimestamp();
 
     // Show "Continue Character" button for Step 2
@@ -703,7 +703,7 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
       .setColor('#0099ff')
       .setTitle('✅ Character Setup - Step 2/3')
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'SARP Core' })
       .setTimestamp();
 
     // Show license and veteran status buttons for Step 3
@@ -739,7 +739,7 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
       .setColor('#0099ff')
       .setTitle('📋 Final Setup - Step 3/3')
       .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or click "✅ Done" to skip)')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     return interaction.reply({
       embeds: [embed, statusEmbed],

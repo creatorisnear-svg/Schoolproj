@@ -167,7 +167,7 @@ async function handleVerifyModal(interaction) {
             embed.addFields(questionFields);
           }
 
-          embed.setTimestamp().setFooter({ text: 'EverLink' });
+          embed.setTimestamp().setFooter({ text: 'SARP Core' });
 
           const msg = await approvalChannel.send({ embeds: [embed], components: [row] });
           pending.messageId = msg.id;
@@ -231,7 +231,7 @@ async function handleVerifyModal(interaction) {
           }));
           logEmbed.addFields(questionFields);
 
-          logEmbed.setTimestamp().setFooter({ text: 'EverLink' });
+          logEmbed.setTimestamp().setFooter({ text: 'SARP Core' });
 
           await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
@@ -244,7 +244,7 @@ async function handleVerifyModal(interaction) {
         .setColor('#00ff00')
         .setTitle('Verification Successful')
         .setDescription(dmMessage)
-        .setFooter({ text: 'EverLink' })
+        .setFooter({ text: 'SARP Core' })
       ]
     });
 
@@ -252,7 +252,7 @@ async function handleVerifyModal(interaction) {
       .setColor('#00ff00')
       .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'SARP Core' });
 
     console.log(`Member ${interaction.user.username} successfully verified (instant)`);
     return interaction.reply({

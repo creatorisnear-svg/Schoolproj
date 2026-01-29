@@ -34,7 +34,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
         { name: 'Scene Reason', value: sceneReason, inline: false },
         { name: 'Host Ping', value: `<@${host.id}>`, inline: false }
       )
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'SARP Core' })
       .setTimestamp();
 
     // Create approve/deny buttons
@@ -190,6 +190,6 @@ function buildPriorityEmbed(priority) {
     .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
     .setTitle('🚨 Priority Tracker')
     .setDescription(description)
-    .setFooter({ text: 'EverLink' })
+    .setFooter({ text: 'SARP Core' })
     .setTimestamp();
 }
