@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('auth')
@@ -6,7 +6,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
+  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPL_ID + '.id.repl.it';
   
   // Clean domain to ensure it's well-formed
   const cleanDomain = domain ? domain.split(',')[0].trim() : '';
@@ -23,5 +23,5 @@ export async function execute(interaction) {
     .setDescription(`To securely authorize your account with EverLink, please click the link below.\n\n**[Click Here to Authorize](${authUrl})**\n\n*Note: If the link shows an error, please ensure you are using the official URL: https://${cleanDomain}*`)
     .setFooter({ text: 'EverLink' });
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 }
