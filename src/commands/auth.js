@@ -16,7 +16,7 @@ export async function execute(interaction) {
     
   const redirectUri = `https://${cleanDomain}/callback`;
   
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds`;
+  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join`;
 
   const embed = new EmbedBuilder()
     .setColor('#0099ff')
