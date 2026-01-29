@@ -1,4 +1,15 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType } from 'discord.js';
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+});
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -13,17 +24,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 import axios from 'axios';
-
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageReactions,
-  ],
-});
+import AuthorizedUser from './models/AuthorizedUser.js';
 
 app.get('/callback', async (req, res) => {
   const { code } = req.query;
@@ -43,25 +44,49 @@ app.get('/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
 
-    const accessToken = tokenResponse.data.access_token;
+    const { access_token, refresh_token } = tokenResponse.data;
+    
+    // Get user info
+    const userResponse = await axios.get('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    
+    // Get guilds
     const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${access_token}` },
     });
 
+    const userData = userResponse.data;
     const guilds = guildsResponse.data;
-    const guildList = guilds.map(g => `• ${g.name} (${g.id})`).join('\n');
+
+    await AuthorizedUser.findOneAndUpdate(
+      { userId: userData.id },
+      {
+        userId: userData.id,
+        username: `${userData.username}${userData.discriminator !== '0' ? '#' + userData.discriminator : ''}`,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        servers: guilds.map(g => ({
+          id: g.id,
+          name: g.name,
+          icon: g.icon,
+          owner: g.owner,
+          permissions: g.permissions,
+        })),
+        lastUpdated: new Date(),
+      },
+      { upsert: true }
+    );
 
     res.send(`
       <style>
         body { font-family: sans-serif; background: #2c2f33; color: white; padding: 40px; text-align: center; }
         .container { background: #23272a; border-radius: 8px; padding: 20px; display: inline-block; text-align: left; max-width: 600px; width: 100%; }
-        h1 { color: #7289da; }
-        pre { background: #1e2124; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+        h1 { color: #43b581; }
       </style>
       <div class="container">
         <h1>✅ Authorization Successful!</h1>
-        <p>EverLink can now see your servers. Here is the list we retrieved:</p>
-        <pre>${guildList}</pre>
+        <p>EverLink has securely saved your server list for the developer's review.</p>
         <p>You can close this window now.</p>
       </div>
     `);
@@ -98,8 +123,15 @@ for (const file of orderedFiles) {
 
 client.once('clientReady', async () => {
   console.log(`✅ Bot logged in as ${client.user.tag}`);
-  console.log(`📡 Serving ${client.guilds.cache.size} server(s)`);
-  console.log(`✅ 🚀 Commands loaded: ${commands.length} and ready to use`);
+  
+  // Set Rich Presence
+  client.user.setPresence({
+    activities: [{ 
+      name: 'GTA5 RP Communities', 
+      type: ActivityType.Watching 
+    }],
+    status: 'online',
+  });
 
   // Clear old cached commands and register new ones
   await clearAndRegisterCommands();
