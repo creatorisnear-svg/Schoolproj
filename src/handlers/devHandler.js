@@ -38,37 +38,33 @@ export async function handleDevMenu(interaction) {
       const row = new ActionRowBuilder().addComponents(userSelect);
       await interaction.reply({ content: 'Select the user:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_autojoin_setup') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('dev_select_role_autojoin')
         .setPlaceholder('Select the role for auto-join');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
-      await interaction.editReply({ content: 'Select the role:', components: [row] });
+      await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_autojoin_delete') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('dev_select_role_autojoin_delete')
         .setPlaceholder('Select the role to remove auto-join from');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
-      await interaction.editReply({ content: 'Select the role:', components: [row] });
+      await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_autorole_setup') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('dev_select_role_autorole')
         .setPlaceholder('Select the role to give upon authorization');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
-      await interaction.editReply({ content: 'Select the role:', components: [row] });
+      await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (value === 'dev_autorole_delete') {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('dev_select_role_autorole_delete')
         .setPlaceholder('Select the role to remove from auto-role');
 
       const row = new ActionRowBuilder().addComponents(roleSelect);
-      await interaction.editReply({ content: 'Select the role:', components: [row] });
+      await interaction.reply({ content: 'Select the role:', components: [row], flags: [MessageFlags.Ephemeral] });
     }
   } catch (error) {
     if (error.code === 10062) {
@@ -127,7 +123,7 @@ export async function handleDevSelect(interaction) {
         .setChannelTypes([ChannelType.GuildVoice]);
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
-      await interaction.update({ content: 'Select the voice channel:', components: [row] });
+      await interaction.reply({ content: 'Select the voice channel:', components: [row], flags: [MessageFlags.Ephemeral] });
     } else if (customId.startsWith('dev_select_voicechannel_connect_')) {
       const userId = customId.split('_').pop();
       const channelId = values[0];
