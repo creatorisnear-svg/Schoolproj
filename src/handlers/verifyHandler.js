@@ -52,11 +52,17 @@ export async function handleVerifyModalSubmit(interaction) {
     customAnswer = interaction.fields.getTextInputValue('custom_question');
   } catch (e) {}
 
+  console.log(`[VERIFY] User ${interaction.user.tag} (${interaction.user.id}) submitted verification. PSN/XBOX: ${psnxbox}`);
+
   try {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
-    if (!verification || !verification.enabled) return;
+    if (!verification || !verification.enabled) {
+      console.warn(`[VERIFY] Verification attempt in guild ${interaction.guildId} but system is disabled/missing.`);
+      return;
+    }
 
     if (verification.approvalRequired) {
+      console.log(`[VERIFY] Approval required for ${interaction.user.tag}. Creating pending record.`);
       const pending = new PendingVerification({
         guildId: interaction.guildId,
         userId: interaction.user.id,
@@ -78,20 +84,32 @@ export async function handleVerifyModalSubmit(interaction) {
             )
             .setFooter({ text: 'EverLink' });
           await approvalChannel.send({ embeds: [embed] });
+          console.log(`[VERIFY] Sent pending request for ${interaction.user.tag} to channel ${verification.approvalChannelId}`);
+        } else {
+          console.warn(`[VERIFY] Could not find approval channel ${verification.approvalChannelId} for guild ${interaction.guildId}`);
         }
       }
 
       return interaction.reply({ embeds: [infoEmbed('Submitted', 'Awaiting approval.')], flags: 64 });
     }
 
+    console.log(`[VERIFY] Instant verification for ${interaction.user.tag}. Applying roles.`);
     const role = interaction.guild.roles.cache.get(verification.verifiedRoleId);
-    if (role) await interaction.member.roles.add(role);
+    if (role) {
+      await interaction.member.roles.add(role);
+      console.log(`[VERIFY] Added verified role ${verification.verifiedRoleId} to ${interaction.user.tag}`);
+    } else {
+      console.error(`[VERIFY] Verified role ${verification.verifiedRoleId} not found in guild ${interaction.guildId}`);
+    }
     
     const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
-    if (unverifiedRole) await interaction.member.roles.remove(unverifiedRole);
+    if (unverifiedRole) {
+      await interaction.member.roles.remove(unverifiedRole);
+      console.log(`[VERIFY] Removed unverified role ${verification.unverifiedRoleId} from ${interaction.user.tag}`);
+    }
 
     return interaction.reply({ embeds: [successEmbed('Verified', 'You are now verified!')], flags: 64 });
   } catch (error) {
-    console.error('Error in verification submit:', error);
+    console.error(`[VERIFY ERROR] Exception for ${interaction.user.tag}:`, error);
   }
 }
