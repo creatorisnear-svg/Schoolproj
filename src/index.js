@@ -237,9 +237,12 @@ client.on('interactionCreate', async interaction => {
     } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
       const { handleDevSelect } = await import('./handlers/devHandler.js');
       await handleDevSelect(interaction);
-    } else if (interaction.isModalSubmit() && interaction.customId.startsWith('dev_modal_')) {
-      const { handleDevModal } = await import('./handlers/devHandler.js');
-      await handleDevModal(interaction);
+    } else if (interaction.isButton() && interaction.customId === 'verify_button') {
+      const { handleVerifyModal } = await import('./handlers/verifyHandler.js');
+      await handleVerifyModal(interaction);
+    } else if (interaction.isModalSubmit() && interaction.customId === 'verify_modal') {
+      const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
+      await handleVerifyModalSubmit(interaction);
     }
   } catch (error) {
     if (error.code === 10062) {
