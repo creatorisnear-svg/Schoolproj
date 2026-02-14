@@ -4,7 +4,7 @@ export function createEmbed(options = {}) {
   const embed = new EmbedBuilder()
     .setColor(options.color || '#00ff00')
     .setTimestamp()
-    .setFooter({ text: 'SARP Core' });
+    .setFooter({ text: 'EverLink' });
 
   if (options.title) embed.setTitle(options.title);
   if (options.description) embed.setDescription(options.description);

@@ -77,7 +77,7 @@ export async function execute(interaction) {
         { name: 'New Level', value: `${newLevel}/4`, inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'SARP Core' });
+      .setFooter({ text: 'EverLink' });
 
     await targetUser.send({ embeds: [removeDM] }).catch(() => {});
 
@@ -98,7 +98,7 @@ export async function execute(interaction) {
             { name: 'Strikes Removed', value: `${removeAmount}`, inline: false }
           )
           .setTimestamp()
-          .setFooter({ text: 'SARP Core' });
+          .setFooter({ text: 'EverLink' });
 
         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
       }

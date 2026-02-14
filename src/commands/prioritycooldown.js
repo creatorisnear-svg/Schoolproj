@@ -117,6 +117,6 @@ function buildPriorityEmbed(priority) {
     title: 'Priority Tracker',
     description,
     color: priority.priorityActive ? 0xFF0000 : 0x808080,
-    footer: { text: 'SARP Core' },
+    footer: { text: 'EverLink' },
   };
 }

@@ -54,7 +54,7 @@ export async function handleAntiPromoting(message) {
         { name: 'Reason', value: 'Please do not share invite links to other servers.', inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'SARP Core' });
+      .setFooter({ text: 'EverLink' });
 
     await message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
@@ -70,7 +70,7 @@ export async function handleAntiPromoting(message) {
           { name: 'Invite Links Found', value: nonWhitelistedLinks.join('\n') || 'N/A', inline: false }
         )
         .setTimestamp()
-        .setFooter({ text: 'SARP Core' });
+        .setFooter({ text: 'EverLink' });
 
       await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
     }

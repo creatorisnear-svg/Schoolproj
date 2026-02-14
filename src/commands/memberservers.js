@@ -110,7 +110,7 @@ export async function execute(interaction) {
         { name: '📁 Total Servers', value: `\`${servers.length}\``, inline: true },
         { name: '🕒 Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
       )
-      .setFooter({ text: `SARP Core Developer Tools | Page ${page + 1} of ${totalPages}` });
+      .setFooter({ text: `EverLink Developer Tools | Page ${page + 1} of ${totalPages}` });
 
     if (userData.banner && page === 0) {
       embed.setImage(`https://cdn.discordapp.com/banners/${userData.userId}/${userData.banner}.png?size=600`);

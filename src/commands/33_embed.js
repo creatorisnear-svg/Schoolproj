@@ -89,7 +89,7 @@ export async function execute(interaction) {
       .setColor(colorHex)
       .setDescription(message)
       .setTimestamp()
-      .setFooter({ text: 'SARP Core' });
+      .setFooter({ text: 'EverLink' });
 
     if (title) {
       embed.setTitle(title);

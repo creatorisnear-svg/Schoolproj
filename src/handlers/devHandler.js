@@ -102,8 +102,8 @@ export async function handleDevSelect(interaction) {
       const embed = new EmbedBuilder()
         .setColor('#0099ff')
         .setTitle('🔐 Account Authorization')
-        .setDescription('To securely authorize your account with SARP Core, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
-        .setFooter({ text: 'SARP Core' });
+        .setDescription('To securely authorize your account with EverLink, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
+        .setFooter({ text: 'EverLink' });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)

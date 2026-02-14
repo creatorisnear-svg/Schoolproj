@@ -108,7 +108,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .setColor('#ff6600')
           .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `SARP Core | ID: ${call.callId}` })
+          .setFooter({ text: `EverLink | ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -352,7 +352,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .setColor('#ff0000')
           .setTitle(`🚨 BOLO: ${bolo.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'SARP Core' });
+          .setFooter({ text: 'EverLink' });
       });
 
       const backButton = new ActionRowBuilder()
@@ -471,7 +471,7 @@ export async function handleLEOSearchPlateModal(interaction) {
       .setColor(embedColor)
       .setTitle(`License Plate Search: ${plate}`)
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     return interaction.update({
@@ -562,7 +562,7 @@ export async function handleLEORespondCall(interaction) {
       .setColor('#ff6600')
       .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `SARP Core | ID: ${call.callId}` })
+      .setFooter({ text: `EverLink | ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach
@@ -863,7 +863,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     return interaction.update({
@@ -1250,7 +1250,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     return interaction.update({
@@ -1312,7 +1312,7 @@ export async function handleLEOManageBolosSelect(interaction) {
       .setColor('#ff0000')
       .setTitle(`BOLO Details`)
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     return interaction.update({

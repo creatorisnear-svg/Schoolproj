@@ -272,26 +272,6 @@ async function handleVerifySetupMenu(interaction) {
     }
 
 
-    if (choice === 'select_verified_role') {
-      const roleSelect = new RoleSelectMenuBuilder()
-        .setCustomId('select_verified_role_menu')
-        .setPlaceholder('Select the verified role');
-
-      const row = new ActionRowBuilder().addComponents(roleSelect);
-      const backButton = new ActionRowBuilder()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-      return interaction.update({
-        content: 'Select the role that verified members will receive:',
-        components: [row, backButton],
-      });
-    }
-
     if (choice === 'select_unverified_role') {
       const roleSelect = new RoleSelectMenuBuilder()
         .setCustomId('select_unverified_role_menu')
@@ -308,6 +288,26 @@ async function handleVerifySetupMenu(interaction) {
 
       return interaction.update({
         content: 'Select the role that unverified members will receive when they join:',
+        components: [row, backButton],
+      });
+    }
+
+    if (choice === 'select_verified_role') {
+      const roleSelect = new RoleSelectMenuBuilder()
+        .setCustomId('select_verified_role_menu')
+        .setPlaceholder('Select the verified role');
+
+      const row = new ActionRowBuilder().addComponents(roleSelect);
+      const backButton = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_verify_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      return interaction.update({
+        content: 'Select the role that verified members will receive:',
         components: [row, backButton],
       });
     }
@@ -497,7 +497,7 @@ export async function handleSetupModals(interaction) {
         .setColor('#0099ff')
         .setTitle('✅ Server Verification')
         .setDescription('Click the button below to verify and access all member channels!')
-        .setFooter({ text: 'SARP Core' });
+        .setFooter({ text: 'EverLink' });
 
       await channel.send({
         embeds: [verifyEmbed],
@@ -757,7 +757,7 @@ async function handleVerifyChannelSelect(interaction) {
       .setColor('#0099ff')
       .setTitle('✅ Server Verification')
       .setDescription('Click the button below to verify and access all member channels!')
-      .setFooter({ text: 'SARP Core' });
+      .setFooter({ text: 'EverLink' });
 
     await channel.send({
       embeds: [verifyEmbed],
@@ -1663,7 +1663,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor('#2E2E2E')
         .setTitle('Whitelisted Invite Links')
         .setDescription(linkList)
-        .setFooter({ text: 'SARP Core' });
+        .setFooter({ text: 'EverLink' });
 
       return interaction.update({
         embeds: [embed],
@@ -1693,7 +1693,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor(config.staffCanBypassLinks ? '#00AA00' : '#FF0000')
         .setTitle('Staff Bypass Updated')
         .setDescription(description)
-        .setFooter({ text: 'SARP Core' });
+        .setFooter({ text: 'EverLink' });
 
       return interaction.update({
         embeds: [embed],
@@ -1721,7 +1721,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor('#2E2E2E')
         .setTitle('Anti-Promoting Settings')
         .setDescription(description)
-        .setFooter({ text: 'SARP Core' });
+        .setFooter({ text: 'EverLink' });
 
       return interaction.update({
         embeds: [embed],
@@ -1895,7 +1895,7 @@ async function handleStatusMainMenu(interaction) {
             { name: 'Interval', value: `${statusConfig.intervalMinutes} minutes`, inline: true },
             { name: 'Auto-delete', value: `${statusConfig.deleteAfterSeconds} seconds`, inline: true }
           ],
-          footer: { text: 'SARP Core' }
+          footer: { text: 'EverLink' }
         }],
         flags: 64,
       });
@@ -2042,7 +2042,7 @@ async function handleVerificationApprove(interaction) {
           .setColor('#00ff00')
           .setTitle('Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
-          .setFooter({ text: 'SARP Core' })
+          .setFooter({ text: 'EverLink' })
         ]
       }).catch(() => {});
     }
@@ -2055,7 +2055,7 @@ async function handleVerificationApprove(interaction) {
         .setColor('#00ff00')
         .setTitle('Approved')
         .setDescription(`${pending.username} has been verified.`)
-        .setFooter({ text: 'SARP Core' })
+        .setFooter({ text: 'EverLink' })
       ],
       components: [],
     });
@@ -2108,7 +2108,7 @@ async function handleVerificationReject(interaction) {
           .setColor('#ff0000')
           .setTitle('Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
-          .setFooter({ text: 'SARP Core' })
+          .setFooter({ text: 'EverLink' })
         ]
       }).catch(() => {});
     }
@@ -2121,7 +2121,7 @@ async function handleVerificationReject(interaction) {
         .setColor('#ff0000')
         .setTitle('Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
-        .setFooter({ text: 'SARP Core' })
+        .setFooter({ text: 'EverLink' })
       ],
       components: [],
     });

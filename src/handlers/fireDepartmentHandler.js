@@ -77,7 +77,7 @@ export async function handleFireDepartmentMenu(interaction) {
           .setColor('#ff6600')
           .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `SARP Core | ID: ${call.callId}` })
+          .setFooter({ text: `EverLink | ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -255,7 +255,7 @@ export async function handleFDCharacterCreateModal(interaction) {
       .setColor('#0099ff')
       .setTitle('✅ FD Character Created Successfully')
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     return interaction.reply({
@@ -346,7 +346,7 @@ export async function handleFDRespondCall(interaction) {
       .setColor('#ff6600')
       .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `SARP Core | ID: ${call.callId}` })
+      .setFooter({ text: `EverLink | ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach

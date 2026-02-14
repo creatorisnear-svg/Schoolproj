@@ -1,21 +1,21 @@
-# SARP Core Discord Bot
+# EverLink Discord Bot
 
 ## Overview
-SARP Core is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
+EverLink is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- SARP Core branding on all embeds (footer: "SARP Core")
+- EverLink branding on all embeds (footer: "EverLink")
 - MongoDB for persistent data storage
 - Staff and Admins have full access to all commands
 - General members restricted to roleplay/verification commands only
 
 ## System Architecture
-The SARP Core Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
+The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded interface.
-- Embeds consistently feature "SARP Core" branding in the footer.
+- Embeds consistently feature "EverLink" branding in the footer.
 - Interactive elements utilize Discord dropdown selectors, modals, and buttons.
 - Configuration fallback messages are provided for unconfigured features.
 

@@ -644,7 +644,7 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
       .setColor('#0099ff')
       .setTitle(ticketConfig.panelTitle || 'Support Tickets')
       .setDescription(ticketConfig.panelDescription || 'Select a button below to create a support ticket.')
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     // Create buttons for each selected ticket type with their custom colors
@@ -849,7 +849,7 @@ export async function handleTicketCreationModal(interaction) {
         { name: 'Type', value: ticketType.label, inline: true },
         { name: 'Description', value: description, inline: false }
       )
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     await channel.send({
@@ -920,7 +920,7 @@ export async function handleTicketCloseButton(interaction) {
         { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true },
         { name: 'Description', value: ticket.description, inline: false }
       )
-      .setFooter({ text: 'SARP Core' })
+      .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
     // Show only delete button after closing

@@ -15,8 +15,8 @@ export async function execute(interaction) {
   const embed = new EmbedBuilder()
     .setColor('#5865F2')
     .setTitle('🛠️ Developer Control Panel')
-    .setDescription('Select an option from the menu below to manage SARP Core developer features.')
-    .setFooter({ text: 'SARP Core Developer Tools' });
+    .setDescription('Select an option from the menu below to manage EverLink developer features.')
+    .setFooter({ text: 'EverLink Developer Tools' });
 
   const row = new ActionRowBuilder()
     .addComponents(

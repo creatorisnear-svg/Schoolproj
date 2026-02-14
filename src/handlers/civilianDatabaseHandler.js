@@ -330,7 +330,7 @@ export async function handleCivilianManageCharacterSelect(interaction) {
       .setColor('#0099ff')
       .setTitle(`📋 ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'SARP Core' });
+      .setFooter({ text: 'EverLink' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(

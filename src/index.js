@@ -19,7 +19,7 @@ console.log('Starting download for registry01.prod.koyeb.com/k-c50a3147-75f3-45b
 console.log('Download progress: 100% |\x1b[32m++++++++\x1b[0m| (6.7 MiB/s)');
 console.log('Download complete for registry01.prod.koyeb.com/k-c50a3147-75f3-45b3-a7c1-ae005e5a3bc6/e633e6d9-dd03-49b1-b92f-feae455fbdfd:aa523b75-c0fc-45d5-ae2a-33466075c211');
 console.log('');
-console.log('> SARP Core-discord-bot@1.0.0 start');
+console.log('> EverLink-discord-bot@1.0.0 start');
 console.log('> node src/index.js');
 console.log('');
 console.log('Instance is starting... Waiting for health checks to pass.');
@@ -122,7 +122,7 @@ app.get('/callback', async (req, res) => {
       </style>
       <div class="container">
         <h1>✅ Authorization Successful!</h1>
-        <p>SARP Core has securely authorized your account.</p>
+        <p>EverLink has securely authorized your account.</p>
         <p>You can close this window now.</p>
       </div>
     `);
@@ -288,9 +288,9 @@ connectDatabase().then(() => {
 
           const embed = new EmbedBuilder()
             .setColor('#00ff00')
-            .setTitle('💓 SARP Core Status Heartbeat')
+            .setTitle('💓 EverLink Status Heartbeat')
             .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
-            .setFooter({ text: 'SARP Core' })
+            .setFooter({ text: 'EverLink' })
             .setTimestamp();
 
           if (config.lastHeartbeatMessageId) {

@@ -31,7 +31,7 @@ export async function execute(interaction) {
       return `${index + 1}. **${type}:** ${name} *(Added: ${addedDate})*`;
     }).join('\n');
 
-    const embed = infoEmbed('__**SARP Core Bot Staff List**__', staffList);
+    const embed = infoEmbed('__**EverLink Bot Staff List**__', staffList);
     embed.addFields({ name: 'Total Staff', value: `${staffMembers.length}`, inline: true });
 
     return interaction.reply({ embeds: [embed], flags: 64 });
