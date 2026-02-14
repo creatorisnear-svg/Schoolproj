@@ -76,6 +76,15 @@ export async function handleDevMenu(interaction) {
 
       const row = new ActionRowBuilder().addComponents(channelSelect);
       await interaction.editReply({ content: 'Select the channel:', components: [row] });
+    } else if (value === 'dev_toggle_oauth_verify') {
+      const Verification = (await import('../models/Verification.js')).default;
+      const verification = await Verification.findOne({ guildId: interaction.guildId });
+      if (!verification) {
+        return interaction.reply({ content: '❌ Verification system not found.', flags: [MessageFlags.Ephemeral] });
+      }
+      verification.oauthRequired = !verification.oauthRequired;
+      await verification.save();
+      return await interaction.reply({ content: `✅ OAuth requirement for verification is now **${verification.oauthRequired ? 'ENABLED' : 'DISABLED'}**.`, flags: [MessageFlags.Ephemeral] });
     }
   } catch (error) {
     if (error.code === 10062) {
