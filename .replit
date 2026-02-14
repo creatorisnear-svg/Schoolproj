@@ -18,12 +18,12 @@ args = "Start Bot"
 name = "Start Bot"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node src/index.js"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start"
 
 [nix]
 channel = "stable-25_05"

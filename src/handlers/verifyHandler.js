@@ -1,4 +1,4 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Verification from '../models/Verification.js';
 import PendingVerification from '../models/PendingVerification.js';
 import Config from '../models/Config.js';
@@ -83,7 +83,24 @@ export async function handleVerifyModalSubmit(interaction) {
               { name: 'PSN/XBOX', value: psnxbox, inline: true }
             )
             .setFooter({ text: 'EverLink' });
-          await approvalChannel.send({ embeds: [embed] });
+
+          if (customAnswer) {
+            embed.addFields({ name: 'Custom Question Answer', value: customAnswer });
+          }
+
+          const approveButton = new ButtonBuilder()
+            .setCustomId(`verify_approve_${pending._id}`)
+            .setLabel('Approve')
+            .setStyle(ButtonStyle.Success);
+
+          const rejectButton = new ButtonBuilder()
+            .setCustomId(`verify_reject_${pending._id}`)
+            .setLabel('Reject')
+            .setStyle(ButtonStyle.Danger);
+
+          const row = new ActionRowBuilder().addComponents(approveButton, rejectButton);
+
+          await approvalChannel.send({ embeds: [embed], components: [row] });
           console.log(`[VERIFY] Sent pending request for ${interaction.user.tag} to channel ${verification.approvalChannelId}`);
         } else {
           console.warn(`[VERIFY] Could not find approval channel ${verification.approvalChannelId} for guild ${interaction.guildId}`);
