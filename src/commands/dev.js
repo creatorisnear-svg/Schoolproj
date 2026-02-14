@@ -66,6 +66,12 @@ export async function execute(interaction) {
             value: 'dev_autorole_delete',
             emoji: '❌',
           },
+          {
+            label: 'Toggle OAuth Verification',
+            description: 'Require OAuth2 authorization before verification approval',
+            value: 'dev_toggle_oauth_verify',
+            emoji: '🔑',
+          },
         ]),
     );
 

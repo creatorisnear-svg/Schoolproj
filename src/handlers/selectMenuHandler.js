@@ -224,6 +224,11 @@ export async function handleSelectMenu(interaction) {
     await handleStatusChannelSelect(interaction);
   }
 
+  if (interaction.customId.startsWith('ticket_create_')) {
+    const { handleTicketCreation } = await import('./ticketHandler.js');
+    return await handleTicketCreation(interaction);
+  }
+
   if (interaction.customId === 'approval_toggle_yes') {
     await handleApprovalToggle(interaction, true);
   }

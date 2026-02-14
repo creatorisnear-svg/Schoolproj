@@ -61,6 +61,29 @@ export async function handleVerifyModalSubmit(interaction) {
       return;
     }
 
+    if (verification.oauthRequired) {
+      const userData = await AuthorizedUser.findOne({ userId: interaction.user.id });
+      if (!userData || !userData.accessToken) {
+        const clientId = process.env.DISCORD_CLIENT_ID;
+        const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+        const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
+        const redirectUri = `https://${cleanDomain}/callback`;
+        const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20voice`;
+
+        const authEmbed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle('🔐 Additional Authorization Required')
+          .setDescription('To complete your verification, you must authorize your Discord account with EverLink.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
+          .setFooter({ text: 'EverLink' });
+
+        const authRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
+        );
+
+        return interaction.reply({ embeds: [authEmbed], components: [authRow], flags: 64 });
+      }
+    }
+
     if (verification.approvalRequired) {
       console.log(`[VERIFY] Approval required for ${interaction.user.tag}. Creating pending record.`);
       const pending = new PendingVerification({

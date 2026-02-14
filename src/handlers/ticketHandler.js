@@ -745,6 +745,44 @@ export async function handleTicketButtonClick(interaction) {
   }
 }
 
+export async function handleTicketCreation(interaction) {
+  try {
+    const customId = interaction.customId;
+    const ticketTypeId = customId.replace('ticket_create_', '');
+    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+    
+    if (!ticketConfig) {
+      return interaction.reply({ embeds: [errorEmbed('Ticket system not configured.')], flags: 64 });
+    }
+
+    const ticketType = ticketConfig.ticketTypes.find(t => t.id === ticketTypeId);
+    if (!ticketType) {
+      return interaction.reply({ embeds: [errorEmbed('Ticket type not found.')], flags: 64 });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId(`ticket_modal_${ticketTypeId}`)
+      .setTitle(`Create ${ticketType.label} Ticket`)
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('ticket_description')
+            .setLabel('Problem Description')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Describe your issue in detail...')
+            .setRequired(true)
+        )
+      );
+
+    await interaction.showModal(modal);
+  } catch (error) {
+    console.error('Error in ticket creation:', error);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ embeds: [errorEmbed('An error occurred.')], flags: 64 }).catch(() => {});
+    }
+  }
+}
+
 export async function handleTicketCreationModal(interaction) {
   const customIdParts = interaction.customId.split('_');
   const tempId = customIdParts[customIdParts.length - 1];

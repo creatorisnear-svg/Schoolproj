@@ -38,6 +38,10 @@ const verificationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  oauthRequired: {
+    type: Boolean,
+    default: false,
+  },
   approvalChannelId: {
     type: String,
     default: null,
