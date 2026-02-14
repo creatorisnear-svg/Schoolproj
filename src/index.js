@@ -222,33 +222,57 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isChatInputCommand()) {
-      console.log(`⚡ Executing command: ${interaction.commandName}`);
+      console.log(`[COMMAND] ${interaction.user.tag} (${interaction.user.id}) used /${interaction.commandName} in ${interaction.guild?.name || 'DM'}`);
       const command = client.commands.get(interaction.commandName);
       if (command) {
         try {
           await command.execute(interaction);
         } catch (err) {
-          console.error(`[COMMAND ERROR] ${interaction.commandName}:`, err);
+          console.error(`[COMMAND ERROR] /${interaction.commandName}:`, err);
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: 'An error occurred while executing this command.', flags: 64 }).catch(() => {});
+          }
         }
       }
-    } else if (interaction.isStringSelectMenu() && interaction.customId === 'dev_menu') {
-      const { handleDevMenu } = await import('./handlers/devHandler.js');
-      await handleDevMenu(interaction);
-    } else if ((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) && interaction.customId.startsWith('dev_select_')) {
-      const { handleDevSelect } = await import('./handlers/devHandler.js');
-      await handleDevSelect(interaction);
-    } else if (interaction.isButton() && interaction.customId === 'verify_button') {
-      const { handleVerifyModal } = await import('./handlers/verifyHandler.js');
-      await handleVerifyModal(interaction);
-    } else if (interaction.isModalSubmit() && interaction.customId === 'verify_modal') {
-      const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
-      await handleVerifyModalSubmit(interaction);
+    } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
+      console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
+      if (interaction.customId === 'dev_menu') {
+        const { handleDevMenu } = await import('./handlers/devHandler.js');
+        await handleDevMenu(interaction);
+      } else if (interaction.customId.startsWith('dev_select_')) {
+        const { handleDevSelect } = await import('./handlers/devHandler.js');
+        await handleDevSelect(interaction);
+      } else {
+        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+        await handleSelectMenu(interaction);
+      }
+    } else if (interaction.isButton()) {
+      console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
+      if (interaction.customId === 'verify_button') {
+        const { handleVerifyModal } = await import('./handlers/verifyHandler.js');
+        await handleVerifyModal(interaction);
+      } else {
+        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+        await handleSelectMenu(interaction);
+      }
+    } else if (interaction.isModalSubmit()) {
+      console.log(`[MODAL] ${interaction.user.tag} submitted ${interaction.customId} in ${interaction.guild?.name}`);
+      if (interaction.customId === 'verify_modal') {
+        const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
+        await handleVerifyModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('dev_modal_')) {
+        const { handleDevModal } = await import('./handlers/devHandler.js');
+        await handleDevModal(interaction);
+      } else {
+        const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
+        await handleSetupModals(interaction);
+      }
     }
   } catch (error) {
     if (error.code === 10062) {
-      console.log('⚠️ Interaction expired before response could be sent (Unknown Interaction).');
+      console.log(`[INTERACTION] Expired: ${interaction.customId || 'Unknown'} for ${interaction.user.tag}`);
     } else {
-      console.error('❌ Interaction Error:', error);
+      console.error(`[INTERACTION ERROR] ${interaction.customId || 'Unknown'}:`, error);
     }
   }
 });
