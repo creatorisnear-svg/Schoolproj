@@ -236,16 +236,8 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'dev_menu') {
-        const { handleDevMenu } = await import('./handlers/devHandler.js');
-        await handleDevMenu(interaction);
-      } else if (interaction.customId.startsWith('dev_select_')) {
-        const { handleDevSelect } = await import('./handlers/devHandler.js');
-        await handleDevSelect(interaction);
-      } else {
-        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
-        await handleSelectMenu(interaction);
-      }
+      const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+      await handleSelectMenu(interaction);
     } else if (interaction.isButton()) {
       console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_button') {
@@ -260,9 +252,6 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'verify_modal') {
         const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
         await handleVerifyModalSubmit(interaction);
-      } else if (interaction.customId.startsWith('dev_modal_')) {
-        const { handleDevModal } = await import('./handlers/devHandler.js');
-        await handleDevModal(interaction);
       } else {
         const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
         await handleSetupModals(interaction);
