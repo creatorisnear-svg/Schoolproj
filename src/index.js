@@ -173,7 +173,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
         CADConfigModel.findOne({ guildId: guild.id }),
       ]);
       const leoRoleIds = dispatchCfg?.leoRoleIds?.length > 0 ? dispatchCfg.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
-      const isLeo = leoRoleIds.length > 0 &&
+      const isLeo = leoRoleIds.length === 0 ||
         newState.member?.roles.cache.some(r => leoRoleIds.includes(r.id));
 
       if (isLeo) {
