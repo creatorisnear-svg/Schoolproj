@@ -1,8 +1,9 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { writeFileSync, unlinkSync } from 'fs';
+import { writeFileSync, unlinkSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { createReadStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { createHash } from 'crypto';
 import OpenAI from 'openai';
 import DispatchConfig from '../models/DispatchConfig.js';
 import OfficerStatus from '../models/OfficerStatus.js';
@@ -378,26 +379,68 @@ async function transcribeAudio(wavBuffer) {
   }
 }
 
+const TTS_CACHE_DIR = join(tmpdir(), 'everlink_tts_cache');
+const ttsMemCache = new Map();
+const TTS_MEM_CACHE_MAX = 30;
+
+try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
+
+function ttsCacheKey(text) {
+  return createHash('md5').update(text.toLowerCase().trim()).digest('hex');
+}
+
 export async function generateDispatchTTSPublic(text) {
   return generateDispatchTTS(text);
 }
 
 async function generateDispatchTTS(text) {
+  const key = ttsCacheKey(text);
+
+  if (ttsMemCache.has(key)) {
+    console.log(`[TTS Cache] Memory hit for: "${text.slice(0, 40)}..."`);
+    return ttsMemCache.get(key);
+  }
+
+  const diskPath = join(TTS_CACHE_DIR, `${key}.bin`);
+  if (existsSync(diskPath)) {
+    const buf = readFileSync(diskPath);
+    ttsMemCache.set(key, buf);
+    console.log(`[TTS Cache] Disk hit for: "${text.slice(0, 40)}..."`);
+    return buf;
+  }
+
   const { client, provider } = getAIClient();
   const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
   const voice = provider === 'groq' ? 'daniel' : 'onyx';
+  console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
   const response = await client.audio.speech.create({
     model,
     voice,
     input: text,
     response_format: provider === 'groq' ? 'wav' : 'opus',
   });
-  return Buffer.from(await response.arrayBuffer());
+  const buf = Buffer.from(await response.arrayBuffer());
+
+  ttsMemCache.set(key, buf);
+  if (ttsMemCache.size > TTS_MEM_CACHE_MAX) {
+    const oldest = ttsMemCache.keys().next().value;
+    ttsMemCache.delete(oldest);
+  }
+  try { writeFileSync(diskPath, buf); } catch {}
+
+  return buf;
 }
 
+const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
+
 async function generateDispatchResponse(officerName, parsed) {
+  if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
+    const label = TEN_CODES[parsed.code]?.label || parsed.code;
+    return `10-4 ${officerName}, copy ${label}.`;
+  }
+
   const { client, provider } = getAIClient();
-  const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+  const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
 
   const response = await client.chat.completions.create({
@@ -405,21 +448,14 @@ async function generateDispatchResponse(officerName, parsed) {
     messages: [
       {
         role: 'system',
-        content: `You are a police radio dispatcher in a GTA 5 FiveM roleplay community. This is a video game — not real life.
-Respond to officer radio calls with short, realistic radio responses using 10-codes and proper radio etiquette.
-Keep responses to 1-2 sentences maximum.
-Only respond to what the officer actually said. Do not assume or add details about traffic conditions, weather, nearby units, backup status, or anything the officer did not mention.
-Stick to acknowledging the officer's status and repeating back the key details they gave you (who they're with, their location, their 10-code).
-Common codes: 10-4 (acknowledged), 10-8 (available), 10-11 (traffic stop/pullover), 10-7 (out of service), 10-80 (pursuit), 10-99 (officer down).
-Use "Los Santos" and "Blaine County" for locations. Do not use real-world city names.
-If the officer mentions running a plate, running a name, checking plates, or looking someone up, tell them "Copy, say again the plate number" or "Copy, say again the name" — ask them to repeat it clearly so you can run it.`,
+        content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name".`,
       },
       {
         role: 'user',
-        content: `Officer ${officerName} called in: "${callText}"`,
+        content: `Officer ${officerName}: "${callText}"`,
       },
     ],
-    max_tokens: 120,
+    max_tokens: 60,
     temperature: 0.7,
   });
 
@@ -668,8 +704,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
     }
 
-    // Speak the dispatcher response in the voice channel
-    if (dispatchResponse && config.aiEnabled && hasAIKey()) {
+    const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
+    if (dispatchResponse && config.aiEnabled && hasAIKey() && !isSimpleAck) {
       try {
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
         const ttsBuffer = await generateDispatchTTS(dispatchResponse);
@@ -677,6 +713,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       } catch (err) {
         console.error('[Dispatch TTS] Error generating or playing voice:', err.message);
       }
+    } else if (isSimpleAck) {
+      console.log(`[Dispatch] Skipping TTS for simple ${parsed.code} acknowledgment (saving tokens)`);
     }
 
     const voiceAction = parsed.codeInfo?.action;
