@@ -498,11 +498,27 @@ async function generateDispatchTTS(text) {
 
 const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 
-async function generateDispatchResponse(officerName, parsed) {
+async function generateDispatchResponse(officerName, parsed, guildId) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
     return `10-4 ${officerName}, copy ${label}.`;
   }
+
+  let callContext = '';
+  try {
+    const activeCalls = await EmergencyCall.find({ guildId, status: 'active' }).sort({ timestamp: -1 }).limit(5).lean();
+    if (activeCalls.length > 0) {
+      const callLines = activeCalls.map(c => {
+        const callNum = c.callId?.split('-').pop() || '???';
+        let line = `Call #${callNum}: ${c.issue || 'unknown'}`;
+        if (c.location) line += ` at ${c.location}`;
+        if (c.respondingLeoId) line += ` (unit responding)`;
+        else line += ` (NO units responding)`;
+        return line;
+      });
+      callContext = `\nActive 911 calls:\n${callLines.join('\n')}`;
+    }
+  } catch {}
 
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
   let lastErr;
@@ -516,7 +532,7 @@ async function generateDispatchResponse(officerName, parsed) {
         messages: [
           {
             role: 'system',
-            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name".`,
+            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name". Do NOT make up 911 calls or incidents — only reference the active calls listed below. If there are no active calls listed, do not mention any.${callContext}`,
           },
           {
             role: 'user',
@@ -744,12 +760,144 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End CAD lookup detection ---
 
+    // --- "Attach me to that call" / "respond to that call" voice detection ---
+    const attachPattern = /\b(?:attach(?:\s+me)?|respond(?:ing)?|show\s+me(?:\s+responding)?|i'?m\s+(?:responding|attaching|en\s*route))(?:\s+(?:to|on|for))?\s+(?:that\s+(?:call|911)|the\s+(?:call|911)|call\s*(?:#?\s*(\d+))?|911\s*(?:call)?(?:\s*#?\s*(\d+))?)/i;
+    const attachMatch = transcript.match(attachPattern);
+    if (attachMatch) {
+      const specifiedCallNum = attachMatch[1] || attachMatch[2];
+      console.log(`[Dispatch] Attach/respond voice command detected from ${officerName}${specifiedCallNum ? ` for call #${specifiedCallNum}` : ''}`);
+
+      try {
+        let call;
+        if (specifiedCallNum) {
+          call = await EmergencyCall.findOne({
+            guildId: guild.id,
+            status: 'active',
+            callId: { $regex: specifiedCallNum + '$' },
+          });
+        }
+        if (!call) {
+          call = await EmergencyCall.findOne({
+            guildId: guild.id,
+            status: 'active',
+          }).sort({ timestamp: -1 });
+        }
+
+        if (!call) {
+          console.log('[Dispatch] No active 911 calls to attach to');
+          if (config.aiEnabled && hasAIKey()) {
+            const ttsText = `Negative ${officerName}, there are no active 911 calls at this time.`;
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          }
+          return;
+        }
+
+        const callNum = call.callId?.split('-').pop() || '???';
+        const alreadyAttached = call.attachedLeoIds?.includes(userId);
+        const isPrimary = call.respondingLeoId === userId;
+
+        if (alreadyAttached || isPrimary) {
+          console.log(`[Dispatch] ${officerName} already on call #${callNum}`);
+          if (config.aiEnabled && hasAIKey()) {
+            const ttsText = `${officerName}, you are already ${isPrimary ? 'primary responder' : 'attached'} on call number ${callNum}.`;
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          }
+          return;
+        }
+
+        if (!call.respondingLeoId) {
+          call.respondingLeoId = userId;
+          call.respondingLeoUsername = officerName;
+        } else {
+          call.attachedLeoIds.push(userId);
+        }
+        await call.save();
+
+        const role = call.respondingLeoId === userId ? 'primary responder' : 'attached';
+        console.log(`[Dispatch] ${officerName} is now ${role} on call #${callNum}`);
+
+        const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
+          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+        if (dispatchChannel?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setColor('#23D160')
+            .setTitle(`🚔 Unit ${role === 'primary responder' ? 'Responding' : 'Attached'} — Call #${callNum}`)
+            .setDescription(
+              `**Officer:** <@${userId}>\n` +
+              `**Call:** #${callNum} — ${call.issue || 'Unknown'}\n` +
+              `**Location:** ${call.location || 'Unknown'}\n` +
+              `**Role:** ${role === 'primary responder' ? '🔴 Primary Responder' : '📎 Attached'}`
+            )
+            .setFooter({ text: 'EverLink' })
+            .setTimestamp();
+          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+        }
+
+        if (call.messageId && call.channelId) {
+          try {
+            const callChannel = guild.channels.cache.get(call.channelId) ||
+              await guild.channels.fetch(call.channelId).catch(() => null);
+            if (callChannel?.isTextBased()) {
+              const callMsg = await callChannel.messages.fetch(call.messageId).catch(() => null);
+              if (callMsg) {
+                const existingEmbed = callMsg.embeds[0];
+                if (existingEmbed) {
+                  let description = existingEmbed.description || '';
+                  let responderText = '';
+                  if (call.respondingLeoId) {
+                    responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername || 'Unknown'}`;
+                  }
+                  const attachedOthers = (call.attachedLeoIds || []).filter(id => id !== call.respondingLeoId);
+                  if (attachedOthers.length > 0) {
+                    if (responderText) responderText += '\n';
+                    responderText += `**📎 ATTACHED:** ${attachedOthers.map(id => `<@${id}>`).join(', ')}`;
+                  }
+                  const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+                  if (responderMatch && responderMatch.index > 0) {
+                    description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
+                  } else {
+                    description += '\n\n' + responderText;
+                  }
+                  const updatedEmbed = EmbedBuilder.from(existingEmbed).setDescription(description);
+                  await callMsg.edit({ embeds: [updatedEmbed] }).catch(() => {});
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[Dispatch] Failed to update 911 embed:', err.message);
+          }
+        }
+
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsText = `Copy ${officerName}, showing you as ${role} on call number ${callNum}. ${call.issue || ''} at ${call.location || 'unknown location'}.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) {
+            console.error('[Dispatch TTS] Attach voice error:', err.message);
+          }
+        }
+
+        await rebuildStatusBoard(guild, config);
+      } catch (err) {
+        console.error('[Dispatch] Attach to call error:', err.message);
+      }
+      return;
+    }
+    // --- End attach/respond detection ---
+
     const parsed = parseTranscript(transcript);
 
     let dispatchResponse = null;
     if (config.aiEnabled && hasAIKey()) {
       try {
-        dispatchResponse = await generateDispatchResponse(officerName, parsed);
+        dispatchResponse = await generateDispatchResponse(officerName, parsed, guild.id);
       } catch (err) {
         console.error('[Dispatch] AI response error:', err.message);
       }
