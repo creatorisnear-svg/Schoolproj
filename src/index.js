@@ -296,6 +296,27 @@ client.once('clientReady', async () => {
 
   const EmergencyCall = (await import('./models/EmergencyCall.js')).default;
   const BOLO = (await import('./models/BOLO.js')).default;
+  const PremiumKey = (await import('./models/PremiumKey.js')).default;
+
+  const envKeys = [];
+  if (process.env.PREMIUM_KEY) envKeys.push(process.env.PREMIUM_KEY);
+  for (let i = 1; i <= 50; i++) {
+    const val = process.env[`PREMIUM_KEY_${i}`];
+    if (val) envKeys.push(val);
+  }
+  if (envKeys.length > 0) {
+    let added = 0;
+    for (const k of envKeys) {
+      const exists = await PremiumKey.findOne({ key: k });
+      if (!exists) {
+        await PremiumKey.create({ key: k });
+        added++;
+      }
+    }
+    console.log(`🔑 Premium keys: ${envKeys.length} loaded from env (${added} new)`);
+  } else {
+    console.log('🔑 No premium keys found in environment variables');
+  }
 
   setInterval(async () => {
     try {
