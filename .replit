@@ -19,11 +19,12 @@ name = "Start Bot"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm start"
+waitForPort = 5000
 
 [nix]
 channel = "stable-25_05"
@@ -31,6 +32,10 @@ channel = "stable-25_05"
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
 
 [[ports]]
 localPort = 8000

@@ -45,6 +45,15 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
   - **911 Call Repeat Announcements:** A 60-second interval checks for active 911 calls older than 2 minutes with no responding or attached officers. Unresponded calls get a text reminder in the dispatch channel and a TTS announcement over the voice channel. Reminders repeat every 2 minutes until someone responds. Cleanup removes tracking for resolved calls.
   - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** — without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
 
+**Website & Dashboard:**
+- Landing page at `/` with live server/user stats, feature showcase, and invite button.
+- Admin dashboard at `/dashboard` with Discord OAuth2 login (`identify guilds` scope).
+- Dashboard shows server selector (admin-only servers where bot is present), module status overview, and per-module configuration/stats.
+- Dashboard auth uses `dash_token` cookie (7-day expiry), separate from the bot's existing `/callback` OAuth flow.
+- Dashboard OAuth redirect: `https://{DOMAIN}/dashboard/callback`.
+- Files: `src/website/views/` (HTML), `src/website/public/css/` (styles), `src/website/public/js/` (client JS), `src/website/routes/` (API + auth routers).
+- On Koyeb, `PORT` env var is `8000`; locally defaults to `5000` for Replit webview.
+
 **Premium System:** Premium keys lock to one guild. Servers without premium have limits: 100 characters, 200 vehicles, 100 firearms, 20 active BOLOs. AI Voice Dispatch requires premium. Use `/activatepremium` with a valid key. Keys stored in `PremiumKey` model; checks cached for 5 minutes via `src/utils/premiumCheck.js`.
 
 **Economy System:** A comprehensive economy with staff (`/economysetup`, `/storesetup`) and member (`/economy`) commands.
@@ -56,7 +65,8 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - **Discord.js v14:** Primary library for interacting with the Discord API.
 - **MongoDB Atlas:** Cloud-hosted NoSQL database for persistent data storage.
 - **Mongoose:** Object Data Modeling (ODM) library for MongoDB.
-- **Express:** Used for HTTP server functionality (e.g., health checks).
+- **Express:** Used for HTTP server, website landing page, and admin dashboard.
+- **cookie-parser:** Cookie management for dashboard authentication.
 - **Dotenv:** For managing environment variables.
 - **UUID:** For generating unique identifiers.
 - **@discordjs/voice 0.19.2:** Voice channel connection and audio pipeline for AI dispatch. **Critical:** Must be 0.19.2+ for DAVE (Discord Audio Video Encryption) protocol support; older versions get rejected with close code 4017.

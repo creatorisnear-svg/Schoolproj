@@ -1,12 +1,17 @@
 import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder } from 'discord.js';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDatabase } from './config/database.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import axios from 'axios';
+import { createApiRouter } from './website/routes/api.js';
+import { createAuthRouter } from './website/routes/auth.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -61,9 +66,27 @@ const client = new Client({
 });
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
+
+app.use(cookieParser());
+app.use('/css', express.static(resolve('src/website/public/css')));
+app.use('/js', express.static(resolve('src/website/public/js')));
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+app.get('/', (req, res) => {
+  res.send(readFileSync(resolve('src/website/views/landing.html'), 'utf8'));
+});
+
+app.get('/dashboard', (req, res) => {
+  const token = req.cookies?.dash_token;
+  if (!token) return res.redirect('/dashboard/login');
+  res.send(readFileSync(resolve('src/website/views/dashboard.html'), 'utf8'));
+});
+
+app.use('/dashboard', createAuthRouter());
+app.use('/api', createApiRouter(client));
 
 app.get('/callback', async (req, res) => {
   console.log('[OAUTH CALLBACK] Received code, attempting exchange...');

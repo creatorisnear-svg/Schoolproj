@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RolePlayManager — Discord RP Bot</title>
+  <meta name="description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="/" class="logo">Role<span>Play</span>Manager</a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="/dashboard" class="btn btn-sm btn-secondary">Dashboard</a></li>
+        <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Your RP community,<br><span>managed.</span></h1>
+      <p>The all-in-one Discord bot built for GTA 5 RP servers. AI-powered voice dispatch, CAD systems, emergency calls, verification, and everything your community needs.</p>
+      <div class="hero-buttons">
+        <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Discord</a>
+        <a href="/dashboard" class="btn btn-secondary">Open Dashboard</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-value" id="stat-servers">—</div>
+          <div class="stat-label">Servers</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="stat-users">—</div>
+          <div class="stat-label">Users</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">39</div>
+          <div class="stat-label">Commands</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-title">
+        <h2>Everything you need</h2>
+        <p>Built specifically for roleplay communities</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">AI</div>
+          <h3>AI Voice Dispatch <span class="premium-tag">Premium</span></h3>
+          <p>Officers speak in voice channels — the bot transcribes, generates realistic dispatcher responses, and updates the live status board.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">DB</div>
+          <h3>CAD Database</h3>
+          <p>Full character and vehicle database with license plates, firearms, warrants, and BOLO management for law enforcement.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">911</div>
+          <h3>Emergency System</h3>
+          <p>Civilians report 911 calls, officers respond and attach. Auto-cleanup and repeat announcements for unresponded calls.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">ID</div>
+          <h3>Verification</h3>
+          <p>Customizable member verification with PSN/Xbox tags, custom questions, approval workflows, and automatic role assignment.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">P</div>
+          <h3>Priority Tracker</h3>
+          <p>Real-time priority event tracking with cooldown timers, staff controls, and a live-updating embed in your channel.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">S</div>
+          <h3>Strike System</h3>
+          <p>Multi-level strike system with configurable actions — timeouts, kicks, bans — plus automatic DMs and log entries.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">T</div>
+          <h3>Ticket Support</h3>
+          <p>Custom ticket types with role-based access, automatic channel creation, and a clean close/delete workflow.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">RP</div>
+          <h3>RP Calendar</h3>
+          <p>Schedule weekly roleplay events with timezone conversion and a clean calendar view for your community.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">+</div>
+          <h3>And More</h3>
+          <p>Sticky messages, anti-promoting, reaction roles, role requests, staff management, and full per-server configuration.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <div class="cta-box">
+        <h2>Ready to level up your RP server?</h2>
+        <p>Add RolePlayManager in seconds. Free to use, with optional premium for AI dispatch.</p>
+        <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Discord</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>RolePlayManager &mdash; Built for RP communities</p>
+    </div>
+  </footer>
+
+  <script>
+    fetch('/api/stats').then(r => r.json()).then(data => {
+      document.getElementById('stat-servers').textContent = data.servers || '—';
+      document.getElementById('stat-users').textContent = data.users || '—';
+    }).catch(() => {});
+  </script>
+</body>
+</html>
