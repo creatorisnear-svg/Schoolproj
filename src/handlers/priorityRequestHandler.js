@@ -135,16 +135,26 @@ export async function handlePriorityRequestButton(interaction, client) {
         priority.priorityActive = true;
         priority.priorityIssuedBy = `Priority Scene - ${request.username}`;
         priority.activatedAt = new Date();
+        priority.requestedByUserId = request.userId;
+        const hostMatch = request.hostPing.match(/^<@!?(\d+)>$/);
+        priority.hostUserId = hostMatch ? hostMatch[1] : null;
         await priority.save();
 
-        // Update priority panel embed
+        // Update priority panel embed with Stop button
         if (priority.messageId && priority.channelId) {
           const panelChannel = await interaction.guild.channels.fetch(priority.channelId).catch(() => null);
           if (panelChannel && panelChannel.isTextBased()) {
             try {
               const panelMessage = await panelChannel.messages.fetch(priority.messageId);
               const panelEmbed = buildPriorityEmbed(priority);
-              await panelMessage.edit({ embeds: [panelEmbed] });
+              const stopRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                  .setCustomId('priority_stop')
+                  .setLabel('Stop Priority')
+                  .setStyle(ButtonStyle.Danger)
+                  .setEmoji('🛑')
+              );
+              await panelMessage.edit({ embeds: [panelEmbed], components: [stopRow] });
             } catch (err) {
               console.log('Could not update priority panel:', err.message);
             }
@@ -161,6 +171,68 @@ export async function handlePriorityRequestButton(interaction, client) {
     console.error('Error handling priority request button:', error);
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while processing this request.').setFooter({ text: 'EverLink' })],
+      flags: 64,
+    });
+  }
+}
+
+export async function handlePriorityStop(interaction) {
+  try {
+    const isAdminUser = await isAdmin(interaction.member);
+    const isStaffUser = await checkStaffPermission(interaction);
+    const priority = await Priority.findOne({ guildId: interaction.guildId });
+
+    if (!priority) {
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Priority tracker not found.').setFooter({ text: 'EverLink' })],
+        flags: 64,
+      });
+    }
+
+    const isHost = priority.hostUserId && interaction.user.id === priority.hostUserId;
+    const isRequester = priority.requestedByUserId && interaction.user.id === priority.requestedByUserId;
+
+    if (!isAdminUser && !isStaffUser && !isHost && !isRequester) {
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Only staff, admins, the host, or the requester can stop an active priority.').setFooter({ text: 'EverLink' })],
+        flags: 64,
+      });
+    }
+
+    if (!priority.priorityActive) {
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor('#FFDD57').setDescription('There is no active priority to stop.').setFooter({ text: 'EverLink' })],
+        flags: 64,
+      });
+    }
+
+    priority.priorityActive = false;
+    priority.priorityIssuedBy = null;
+    priority.hostUserId = null;
+    priority.requestedByUserId = null;
+    await priority.save();
+
+    if (priority.messageId && priority.channelId) {
+      const panelChannel = await interaction.guild.channels.fetch(priority.channelId).catch(() => null);
+      if (panelChannel && panelChannel.isTextBased()) {
+        try {
+          const panelMessage = await panelChannel.messages.fetch(priority.messageId);
+          const panelEmbed = buildPriorityEmbed(priority);
+          await panelMessage.edit({ embeds: [panelEmbed], components: [] });
+        } catch (err) {
+          console.log('Could not update priority panel on stop:', err.message);
+        }
+      }
+    }
+
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Priority has been stopped by <@${interaction.user.id}>.`).setFooter({ text: 'EverLink' })],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error handling priority stop:', error);
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while stopping the priority.').setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   }

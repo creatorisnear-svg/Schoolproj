@@ -62,9 +62,8 @@ async function updatePriorityMessage(interaction, priority) {
     if (priority.messageId) {
       try {
         const message = await channel.messages.fetch(priority.messageId);
-        await message.edit({ embeds: [embed] });
+        await message.edit({ embeds: [embed], components: [] });
       } catch (err) {
-        // Message not found, create new one
         const message = await channel.send({ embeds: [embed] });
         priority.messageId = message.id;
         await priority.save();

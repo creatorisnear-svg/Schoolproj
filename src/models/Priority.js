@@ -46,6 +46,14 @@ const prioritySchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  hostUserId: {
+    type: String,
+    default: null,
+  },
+  requestedByUserId: {
+    type: String,
+    default: null,
+  },
 });
 
 const Priority = mongoose.model('Priority', prioritySchema);

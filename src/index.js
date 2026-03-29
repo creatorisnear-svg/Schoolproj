@@ -246,6 +246,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'priority_approve' || interaction.customId === 'priority_deny') {
         const { handlePriorityRequestButton } = await import('./handlers/priorityRequestHandler.js');
         await handlePriorityRequestButton(interaction, client);
+      } else if (interaction.customId === 'priority_stop') {
+        const { handlePriorityStop } = await import('./handlers/priorityRequestHandler.js');
+        await handlePriorityStop(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
