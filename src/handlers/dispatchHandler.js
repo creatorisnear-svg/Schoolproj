@@ -241,12 +241,12 @@ async function transcribeAudio(wavBuffer) {
 async function generateDispatchTTS(text) {
   const { client, provider } = getAIClient();
   const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
-  const voice = provider === 'groq' ? 'tara' : 'onyx';
+  const voice = provider === 'groq' ? 'daniel' : 'onyx';
   const response = await client.audio.speech.create({
     model,
     voice,
     input: text,
-    response_format: 'mp3',
+    response_format: provider === 'groq' ? 'wav' : 'mp3',
   });
   return Buffer.from(await response.arrayBuffer());
 }
