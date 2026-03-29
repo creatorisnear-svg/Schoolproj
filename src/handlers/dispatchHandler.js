@@ -104,6 +104,17 @@ async function transcribeAudio(wavBuffer) {
   }
 }
 
+async function generateDispatchTTS(text) {
+  const openai = getOpenAI();
+  const response = await openai.audio.speech.create({
+    model: 'tts-1',
+    voice: 'onyx',
+    input: text,
+    response_format: 'opus',
+  });
+  return Buffer.from(await response.arrayBuffer());
+}
+
 async function generateDispatchResponse(officerName, parsed) {
   const openai = getOpenAI();
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
@@ -220,6 +231,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
         }
 
+        // Speak the confirmation in voice
+        if (config.aiEnabled && process.env.OPENAI_API_KEY) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const civName = civMember?.displayName || civMember?.user?.username || joinTargetName;
+            const ttsText = `Copy ${officerName}, showing you in on the traffic stop with ${civName}. Both parties have been moved.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) {
+            console.error('[Dispatch TTS] Join-stop voice error:', err.message);
+          }
+        }
+
         await rebuildStatusBoard(guild, config);
       }
       return;
@@ -261,6 +285,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
 
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+    }
+
+    // Speak the dispatcher response in the voice channel
+    if (dispatchResponse && config.aiEnabled && process.env.OPENAI_API_KEY) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsBuffer = await generateDispatchTTS(dispatchResponse);
+        playDispatchVoice(guild.id, ttsBuffer);
+      } catch (err) {
+        console.error('[Dispatch TTS] Error generating or playing voice:', err.message);
+      }
     }
 
     const voiceAction = parsed.codeInfo?.action;

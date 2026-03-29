@@ -1,4 +1,14 @@
-import { joinVoiceChannel, EndBehaviorType, VoiceConnectionStatus, entersState } from '@discordjs/voice';
+import {
+  joinVoiceChannel,
+  EndBehaviorType,
+  VoiceConnectionStatus,
+  entersState,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  StreamType,
+} from '@discordjs/voice';
+import { Readable } from 'stream';
 import prism from 'prism-media';
 
 /**
@@ -211,6 +221,42 @@ export function leaveDispatchChannel(guildId) {
     try { state.connection.destroy(); } catch {}
   }
   dispatchState.delete(guildId);
+}
+
+/**
+ * Play a TTS audio buffer (OGG Opus format) through the guild's active voice connection.
+ * Stops any currently playing audio first so the dispatcher never overlaps itself.
+ */
+export function playDispatchVoice(guildId, audioBuffer) {
+  const state = dispatchState.get(guildId);
+  if (!state?.connection) return;
+
+  try {
+    // Stop and clean up any previous player
+    if (state.audioPlayer) {
+      try { state.audioPlayer.stop(true); } catch {}
+    }
+
+    const player = createAudioPlayer();
+    state.audioPlayer = player;
+
+    const resource = createAudioResource(Readable.from(audioBuffer), {
+      inputType: StreamType.OggOpus,
+    });
+
+    state.connection.subscribe(player);
+    player.play(resource);
+
+    player.on('error', err => {
+      console.error('[Dispatch TTS] Audio player error:', err.message);
+    });
+
+    player.on(AudioPlayerStatus.Idle, () => {
+      if (state.audioPlayer === player) state.audioPlayer = null;
+    });
+  } catch (err) {
+    console.error('[Dispatch TTS] Failed to play voice:', err.message);
+  }
 }
 
 /** Returns the dispatch state object for a guild, or null if not configured. */
