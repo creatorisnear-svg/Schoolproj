@@ -8,7 +8,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const priority = await Priority.findOne({ guildId: interaction.guildId });
     if (!priority || !priority.channelId) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('The priority tracker hasn\'t been set up yet. Ask an admin to run `/prioritytrackersetup`.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor('#f04747').setDescription('The priority tracker hasn\'t been set up yet. Ask an admin to run `/prioritytrackersetup`.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -17,7 +17,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const channel = interaction.channel;
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Unable to send to this channel.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor('#f04747').setDescription('Unable to send to this channel.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -69,13 +69,13 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     });
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Priority request submitted — staff will review it shortly.').setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#43b581').setDescription('Priority request submitted — staff will review it shortly.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority request command:', error);
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('An error occurred while submitting your request.').setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#f04747').setDescription('An error occurred while submitting your request.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   }
@@ -88,7 +88,7 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!isAdminUser && !isStaffUser) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Only staff and admins can approve or deny priority requests.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor('#f04747').setDescription('Only staff and admins can approve or deny priority requests.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -98,7 +98,7 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!request) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Priority request not found.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor('#f04747').setDescription('Priority request not found.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -120,7 +120,7 @@ export async function handlePriorityRequestButton(interaction, client) {
     // Update embed
     const oldEmbed = interaction.message.embeds[0];
     const newEmbed = new EmbedBuilder(oldEmbed.data)
-      .setColor(0x2d2d2d)
+      .setColor(isApprove ? 0x43b581 : 0xf04747)
       .setDescription(isApprove ? '> Approved' : '> Denied')
       .addFields(
         { name: isApprove ? 'Approved By' : 'Denied By', value: `<@${interaction.user.id}>`, inline: true }
@@ -164,7 +164,7 @@ export async function handlePriorityRequestButton(interaction, client) {
     }
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor(isApprove ? '#43b581' : '#f04747').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {

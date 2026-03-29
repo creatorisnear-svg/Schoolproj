@@ -46,7 +46,7 @@ export async function handleAntiPromoting(message) {
 
     // Send DM to user
     const dmEmbed = new EmbedBuilder()
-      .setColor('#2d2d2d')
+      .setColor('#f04747')
       .setTitle('Invite Link Detected')
       .setDescription(`Your message was deleted in **${message.guild.name}** because it contained a Discord invite link.`)
       .addFields(
@@ -61,7 +61,7 @@ export async function handleAntiPromoting(message) {
     // Send to log channel
     if (logChannel && logChannel.isTextBased()) {
       const logEmbed = new EmbedBuilder()
-        .setColor('#2d2d2d')
+        .setColor('#f04747')
         .setTitle('Invite Link Detected')
         .addFields(
           { name: 'User', value: `${message.author.username} (${message.author})`, inline: false },

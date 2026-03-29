@@ -2667,7 +2667,7 @@ async function handleVerificationApprove(interaction) {
       // Send DM to user
       await member.user.send({
         embeds: [new EmbedBuilder()
-          .setColor('#2d2d2d')
+          .setColor('#43b581')
           .setTitle('Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
           .setFooter({ text: 'RPM' })
@@ -2680,7 +2680,7 @@ async function handleVerificationApprove(interaction) {
     console.log(`Verification approved for ${pending.username}`);
     await interaction.editReply({
       embeds: [new EmbedBuilder()
-        .setColor('#2d2d2d')
+        .setColor('#43b581')
         .setTitle('Approved')
         .setDescription(`${pending.username} has been verified.`)
         .setFooter({ text: 'RPM' })
@@ -2733,7 +2733,7 @@ async function handleVerificationReject(interaction) {
     if (member) {
       await member.user.send({
         embeds: [new EmbedBuilder()
-          .setColor('#2d2d2d')
+          .setColor('#f04747')
           .setTitle('Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
           .setFooter({ text: 'RPM' })
@@ -2746,7 +2746,7 @@ async function handleVerificationReject(interaction) {
     console.log(`Verification rejected for ${pending.username}`);
     await interaction.editReply({
       embeds: [new EmbedBuilder()
-        .setColor('#2d2d2d')
+        .setColor('#f04747')
         .setTitle('Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
         .setFooter({ text: 'RPM' })

@@ -173,7 +173,7 @@ async function handleVerifyModal(interaction) {
           const row = new ActionRowBuilder().addComponents(approveButton, rejectButton);
           
           const embed = new EmbedBuilder()
-            .setColor('#FFA500')
+            .setColor('#faa61a')
             .setTitle('Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
@@ -264,7 +264,7 @@ async function handleVerifyModal(interaction) {
     const dmMessage = verification.verifyDMMessage || 'Welcome to our community! You have been verified and can now access all member channels.';
     await interaction.user.send({
       embeds: [new EmbedBuilder()
-        .setColor('#2d2d2d')
+        .setColor('#43b581')
         .setTitle('Verification Successful')
         .setDescription(dmMessage)
         .setFooter({ text: 'RPM' })
@@ -272,7 +272,7 @@ async function handleVerifyModal(interaction) {
     });
 
     const successMsg = new EmbedBuilder()
-      .setColor('#2d2d2d')
+      .setColor('#43b581')
       .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
       .setFooter({ text: 'RPM' });

@@ -67,7 +67,7 @@ export async function execute(interaction) {
 
     // Send DM to member
     const removeDM = new EmbedBuilder()
-      .setColor('#2d2d2d')
+      .setColor('#43b581')
       .setTitle('Strikes Removed')
       .setDescription(
         `**Removed by:** ${interaction.user.username}\n` +
@@ -87,7 +87,7 @@ export async function execute(interaction) {
       const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
-          .setColor('#2d2d2d')
+          .setColor('#43b581')
           .setTitle('Strikes Removed')
           .setDescription(
             `**User:** ${targetUser.username} (${targetUser})\n` +

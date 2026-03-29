@@ -900,7 +900,7 @@ export async function handleTicketCreationModal(interaction) {
 
     // Reply to user
     await interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#43b581').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
@@ -949,7 +949,7 @@ export async function handleTicketCloseButton(interaction) {
 
     // Update embed to show ticket is closed
     const closedEmbed = new EmbedBuilder()
-      .setColor('#2d2d2d')
+      .setColor('#f04747')
       .setTitle(`${ticket.ticketType}  —  Closed`)
       .setDescription(`> This ticket has been locked. Use the button below to permanently delete it.`)
       .addFields(

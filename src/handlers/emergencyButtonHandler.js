@@ -62,7 +62,7 @@ export async function handle911RespondButton(interaction) {
     if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#43b581').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {

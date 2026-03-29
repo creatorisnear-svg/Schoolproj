@@ -89,7 +89,7 @@ export async function execute(interaction) {
       }
 
       const strikeDM = new EmbedBuilder()
-        .setColor('#2d2d2d')
+        .setColor('#f04747')
         .setTitle('Strike Received')
         .setDescription(
           `**Issued by:** ${interaction.user.username}\n` +
@@ -108,7 +108,7 @@ export async function execute(interaction) {
       const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
-          .setColor('#2d2d2d')
+          .setColor('#f04747')
           .setTitle(`Strike — Level ${strikeLevel}`)
           .setDescription(
             `**User:** ${targetUser.username} (${targetUser})\n` +

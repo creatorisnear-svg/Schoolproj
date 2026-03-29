@@ -1,10 +1,10 @@
 import { EmbedBuilder } from 'discord.js';
 
 const COLORS = {
-  success: '#2d2d2d',
-  error:   '#2d2d2d',
+  success: '#43b581',
+  error:   '#f04747',
   info:    '#2d2d2d',
-  warning: '#2d2d2d',
+  warning: '#faa61a',
   neutral: '#2d2d2d',
 };
 
@@ -27,12 +27,12 @@ export function successEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: '#2d2d2d',
+      color: COLORS.success,
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: '#2d2d2d',
+    color: COLORS.success,
   });
 }
 
@@ -41,12 +41,12 @@ export function errorEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: '#2d2d2d',
+      color: COLORS.error,
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: '#2d2d2d',
+    color: COLORS.error,
   });
 }
 
@@ -54,7 +54,7 @@ export function infoEmbed(title, description) {
   return createEmbed({
     title,
     description,
-    color: '#2d2d2d',
+    color: COLORS.info,
   });
 }
 
@@ -63,12 +63,12 @@ export function warningEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: '#2d2d2d',
+      color: COLORS.warning,
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: '#2d2d2d',
+    color: COLORS.warning,
   });
 }
 

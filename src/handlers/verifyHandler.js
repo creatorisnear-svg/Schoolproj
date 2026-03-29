@@ -99,7 +99,7 @@ export async function handleVerifyModalSubmit(interaction) {
         const approvalChannel = await interaction.guild.channels.fetch(verification.approvalChannelId).catch(() => null);
         if (approvalChannel) {
           const embed = new EmbedBuilder()
-            .setColor('#2d2d2d')
+            .setColor('#faa61a')
             .setTitle('Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user}`, inline: true },
