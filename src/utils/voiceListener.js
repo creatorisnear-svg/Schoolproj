@@ -35,21 +35,26 @@ const recordingUsers = new Set();
 /** Guild IDs currently in the process of joining a channel — prevents concurrent joins */
 const joiningGuilds = new Set();
 
+/** Tracks the last time a join was attempted per guild (ms timestamp) */
+const lastJoinTime = new Map();
+
 /**
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
  */
-export function setupDispatchForGuild(guildId, patrolChannelIds, options) {
+export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAudioBuffer = null) {
   const existing = dispatchState.get(guildId);
   if (existing) {
     existing.patrolChannelIds = new Set(patrolChannelIds);
     existing.options = options;
+    if (joinAudioBuffer) existing.joinAudioBuffer = joinAudioBuffer;
   } else {
     dispatchState.set(guildId, {
       connection: null,
       currentChannelId: null,
       patrolChannelIds: new Set(patrolChannelIds),
       options,
+      joinAudioBuffer,
     });
   }
 }
@@ -91,7 +96,14 @@ export async function moveToChannel(channel) {
 
   // Prevent concurrent joins for the same guild
   if (joiningGuilds.has(guildId)) return null;
+
+  // Cooldown: don't rejoin within 8 seconds of the last attempt
+  const now = Date.now();
+  const last = lastJoinTime.get(guildId) || 0;
+  if (now - last < 8000) return null;
+
   joiningGuilds.add(guildId);
+  lastJoinTime.set(guildId, now);
 
   if (state.connection) {
     try { state.connection.destroy(); } catch {}
@@ -101,12 +113,28 @@ export async function moveToChannel(channel) {
 
   let connection;
   try {
+    // Wrap the adapterCreator to log when voice events are forwarded to the connection
+    const wrappedAdapterCreator = (methods) => {
+      const origOnVoiceStateUpdate = methods.onVoiceStateUpdate;
+      const origOnVoiceServerUpdate = methods.onVoiceServerUpdate;
+      methods.onVoiceStateUpdate = (data) => {
+        console.log(`[Voice Adapter] onVoiceStateUpdate: session=${data.session_id}, channel=${data.channel_id}`);
+        return origOnVoiceStateUpdate(data);
+      };
+      methods.onVoiceServerUpdate = (data) => {
+        console.log(`[Voice Adapter] onVoiceServerUpdate: endpoint=${data.endpoint}`);
+        return origOnVoiceServerUpdate(data);
+      };
+      return channel.guild.voiceAdapterCreator(methods);
+    };
+
     connection = joinVoiceChannel({
       channelId: channel.id,
       guildId,
-      adapterCreator: channel.guild.voiceAdapterCreator,
+      adapterCreator: wrappedAdapterCreator,
       selfDeaf: false,
       selfMute: false,
+      debug: true,
     });
   } catch (err) {
     console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
@@ -118,19 +146,49 @@ export async function moveToChannel(channel) {
   state.currentChannelId = channel.id;
   joiningGuilds.delete(guildId);
 
+  connection.on('debug', msg => {
+    console.log(`[Voice Debug] ${msg.substring(0, 300)}`);
+  });
+
+  connection.on('stateChange', (oldState, newState) => {
+    console.log(`[Voice State] ${oldState.status} → ${newState.status}`);
+  });
+
   _setupReceiver(connection, channel.guild, state, guildId);
 
-  if (state.options?.onJoin) {
-    const onReady = () => {
-      setTimeout(() => {
-        if (state.connection === connection) {
-          state.options.onJoin(guildId).catch(err => {
-            console.error('[Dispatch] onJoin callback error:', err.message);
-          });
+  // Play the join audio once the connection is fully ready.
+  // If it's already in Ready state (session resumed), fire right away.
+  const onConnectionReady = () => {
+    console.log(`[Dispatch] Connection ready in "${channel.name}" — scheduling join audio`);
+    setTimeout(() => {
+      if (state.connection === connection && state.joinAudioBuffer) {
+        playDispatchVoice(guildId, state.joinAudioBuffer);
+      } else if (state.options?.onJoin) {
+        state.options.onJoin(guildId).catch(err => {
+          console.error('[Dispatch] onJoin callback error:', err.message);
+        });
+      }
+    }, 500);
+  };
+
+  console.log(`[Dispatch] Connection state after join: ${connection.state.status}`);
+  if (connection.state.status === VoiceConnectionStatus.Ready) {
+    onConnectionReady();
+  } else {
+    connection.once(VoiceConnectionStatus.Ready, onConnectionReady);
+
+    // Fallback: play audio after 3 seconds even if Ready hasn't fired yet —
+    // Discord sometimes skips the event when resuming an existing session.
+    setTimeout(() => {
+      const status = connection.state.status;
+      console.log(`[Dispatch] Connection state after 3s: ${status}`);
+      if (status !== VoiceConnectionStatus.Destroyed && state.connection === connection) {
+        if (state.joinAudioBuffer) {
+          console.log('[Dispatch] Fallback: playing join audio without waiting for Ready');
+          playDispatchVoice(guildId, state.joinAudioBuffer);
         }
-      }, 1000);
-    };
-    connection.once(VoiceConnectionStatus.Ready, onReady);
+      }
+    }, 3000);
   }
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -279,7 +337,8 @@ export async function playDispatchVoice(guildId, audioBuffer) {
     state.connection.subscribe(player);
     player.play(resource);
 
-    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+    const connState = state.connection.state?.status ?? 'unknown';
+    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId} — connection: ${connState}`);
 
     player.on('error', err => {
       console.error('[Dispatch TTS] Audio player error:', err.message);

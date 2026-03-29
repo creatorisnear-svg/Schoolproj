@@ -663,19 +663,19 @@ export async function initDispatchForGuild(guild, client) {
         const member = await guild.members.fetch(userId).catch(() => null);
         return member?.roles.cache.some(r => leoRoleIds.includes(r.id)) ?? false;
       },
-      onJoin: async (guildId) => {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsBuffer = await generateDispatchTTS('Dispatch online, ready to serve.');
-          playDispatchVoice(guildId, ttsBuffer);
-          console.log(`[Dispatch] Played join announcement in ${guild.name}`);
-        } catch (err) {
-          console.error('[Dispatch] Join announcement error:', err.message);
-        }
-      },
     };
 
-    setupDispatchForGuild(guild.id, config.patrolChannelIds, options);
+    // Pre-generate the join announcement TTS so it's ready the moment the
+    // voice connection becomes Ready — no async work needed at that point.
+    let joinAudioBuffer = null;
+    try {
+      joinAudioBuffer = await generateDispatchTTS('Dispatch online, ready to serve.');
+      console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
+    } catch (err) {
+      console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
+    }
+
+    setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer);
 
     // On startup, only join a patrol channel if it currently has LEO members.
     // (Discord allows only one voice connection per guild; the bot dynamically

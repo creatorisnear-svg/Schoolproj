@@ -292,6 +292,16 @@ client.once('clientReady', async () => {
     // DB not connected or no cooldowns — safe to ignore
   }
 
+  // Log raw voice gateway events to diagnose connection issues
+  client.ws.on('VOICE_STATE_UPDATE', (data) => {
+    if (data.user_id === client.user.id) {
+      console.log(`[WS] VOICE_STATE_UPDATE (bot): channel=${data.channel_id}, session=${data.session_id}, guild=${data.guild_id}`);
+    }
+  });
+  client.ws.on('VOICE_SERVER_UPDATE', (data) => {
+    console.log(`[WS] VOICE_SERVER_UPDATE: guild=${data.guild_id}, endpoint=${data.endpoint}`);
+  });
+
   // Initialize AI Voice Dispatch for all configured guilds
   try {
     const { initDispatchForGuild } = await import('./handlers/dispatchHandler.js');
