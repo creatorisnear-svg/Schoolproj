@@ -240,8 +240,8 @@ async function transcribeAudio(wavBuffer) {
 
 async function generateDispatchTTS(text) {
   const { client, provider } = getAIClient();
-  const model = provider === 'groq' ? 'playai-tts' : 'tts-1';
-  const voice = provider === 'groq' ? 'Fritz-PlayAI' : 'onyx';
+  const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
+  const voice = provider === 'groq' ? 'tara' : 'onyx';
   const response = await client.audio.speech.create({
     model,
     voice,
