@@ -61,6 +61,7 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
       guild: null,
       options,
       joinAudioBuffer,
+      joinAudioPlayed: false,
     });
   }
 }
@@ -279,9 +280,14 @@ export async function moveToChannel(channel) {
     console.log(`[Dispatch] Connection ready in "${channel.name}"`);
     setTimeout(async () => {
       if (state.connection !== connection) return;
+      if (state.joinAudioPlayed) {
+        console.log('[Dispatch] Skipping join audio — already played this session');
+        return;
+      }
       if (state.joinAudioBuffer) {
         console.log('[Dispatch] Playing cached join audio');
         playDispatchVoice(guildId, state.joinAudioBuffer);
+        state.joinAudioPlayed = true;
       } else {
         console.log('[Dispatch] No join audio cached — generating now...');
         try {
@@ -290,6 +296,7 @@ export async function moveToChannel(channel) {
           state.joinAudioBuffer = buf;
           if (state.connection === connection) {
             playDispatchVoice(guildId, buf);
+            state.joinAudioPlayed = true;
           }
         } catch (err) {
           console.error('[Dispatch] Join TTS retry failed:', err.message);
@@ -413,15 +420,29 @@ function _setupReceiver(connection, guild, state, guildId) {
   const receiver = connection.receiver;
 
   receiver.speaking.on('start', async (userId) => {
+    if (userId === guild.client?.user?.id) return;
     const key = `${guildId}:${userId}`;
     if (recordingUsers.has(key)) return;
 
     if (userFilter) {
       const allowed = await userFilter(userId).catch(() => false);
-      if (!allowed) return;
+      if (!allowed) {
+        console.log(`[Dispatch] User ${userId} not allowed by filter (no LEO role)`);
+        return;
+      }
     }
 
     recordingUsers.add(key);
+    console.log(`[Dispatch] Recording started for user ${userId} in guild ${guildId}`);
+
+    const safetyTimeout = setTimeout(() => {
+      if (recordingUsers.has(key)) {
+        console.warn(`[Dispatch] Safety timeout — clearing stuck recording for user ${userId}`);
+        recordingUsers.delete(key);
+        try { stream?.destroy(); } catch {}
+        try { decoder?.destroy(); } catch {}
+      }
+    }, 30000);
 
     let stream;
     try {
@@ -429,6 +450,7 @@ function _setupReceiver(connection, guild, state, guildId) {
         end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 },
       });
     } catch (err) {
+      clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       return;
     }
@@ -438,6 +460,7 @@ function _setupReceiver(connection, guild, state, guildId) {
       decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
     } catch (err) {
       console.error('[Dispatch] Failed to create Opus decoder:', err.message);
+      clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       stream.destroy();
       return;
@@ -449,7 +472,9 @@ function _setupReceiver(connection, guild, state, guildId) {
     decoder.on('data', chunk => pcmChunks.push(chunk));
 
     decoder.on('end', async () => {
+      clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
+      console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
       if (pcmChunks.length < 8) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
@@ -459,11 +484,13 @@ function _setupReceiver(connection, guild, state, guildId) {
     });
 
     decoder.on('error', (err) => {
+      clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.error('[Dispatch] Decoder error:', err.message);
     });
 
     stream.on('error', (err) => {
+      clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.error('[Dispatch] Stream error:', err.message);
     });

@@ -337,8 +337,8 @@ client.once('clientReady', async () => {
 
   setInterval(async () => {
     try {
-      const cutoff = new Date(Date.now() - 60 * 60 * 1000);
-      const result = await BOLO.deleteMany({ createdAt: { $lt: cutoff } });
+      const now = new Date();
+      const result = await BOLO.deleteMany({ expiresAt: { $lt: now } });
       if (result.deletedCount > 0) {
         console.log(`[BOLO Cleanup] Deleted ${result.deletedCount} expired BOLO(s)`);
       }
