@@ -611,6 +611,156 @@ export async function handleSelectMenu(interaction) {
     return interaction.update({ content: 'Character deletion cancelled.', components: [], embeds: [] });
   }
 
+  // Dev panel select menus (dev_select_*)
+  if (customId.startsWith('dev_select_')) {
+    const { handleDevSelect } = await import('./devHandler.js');
+    return handleDevSelect(interaction);
+  }
+
+  // Priority tracker setup menu (shown via back_to_priority_menu)
+  if (customId === 'priority_setup_menu') {
+    return handlePrioritySetupMenu(interaction);
+  }
+
+  // Roleplay calendar setup menu (shown via back_to_calendar_menu)
+  if (customId === 'roleplay_calendar_setup_menu') {
+    return handleRoleplayCalendarSetupMenu(interaction);
+  }
+
+}
+
+async function handlePrioritySetupMenu(interaction) {
+  const choice = interaction.values[0];
+  try {
+    if (choice === 'set_channel') {
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('prioritytrackersetup_channel')
+        .setPlaceholder('Select the priority tracker channel...')
+        .setChannelTypes(ChannelType.GuildText);
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+      );
+      return interaction.update({
+        embeds: [infoEmbed('Priority Tracker — Channel', 'Select the channel where the priority tracker panel will be posted.')],
+        content: '',
+        components: [row, backButton],
+      });
+    }
+    if (choice === 'set_cooldown') {
+      return interaction.update({
+        embeds: [infoEmbed('Set Cooldown', 'Use the `/prioritycooldown` command to set and manage the priority cooldown directly.')],
+        content: '',
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        )],
+      });
+    }
+    if (choice === 'setup_done') {
+      return interaction.update({
+        embeds: [infoEmbed('Priority Tracker Setup', 'Setup complete. Use `/activepriority` and `/deactivatepriority` to manage the tracker.')],
+        content: '',
+        components: [],
+      });
+    }
+    return interaction.deferUpdate().catch(() => {});
+  } catch (error) {
+    console.error('Error in priority setup menu:', error);
+  }
+}
+
+async function handleRoleplayCalendarSetupMenu(interaction) {
+  const choice = interaction.values[0];
+  try {
+    const RoleplayCalendar = (await import('../models/RoleplayCalendar.js')).default;
+    const calendar = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
+
+    if (choice === 'set_channel') {
+      const channelSelect = new ChannelSelectMenuBuilder()
+        .setCustomId('roleplaycalendarsetup_channel')
+        .setPlaceholder('Select the calendar channel...')
+        .setChannelTypes(ChannelType.GuildText);
+      const row = new ActionRowBuilder().addComponents(channelSelect);
+      const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+      );
+      return interaction.update({
+        embeds: [infoEmbed('Roleplay Calendar — Channel', 'Select the channel where the calendar will be posted and kept up to date.')],
+        content: '',
+        components: [row, backButton],
+      });
+    }
+    if (choice === 'add_event') {
+      return interaction.update({
+        embeds: [infoEmbed('Add Event', 'Use the `/setrp` command to add a new weekly event to the roleplay calendar.')],
+        content: '',
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        )],
+      });
+    }
+    if (choice === 'remove_event') {
+      if (!calendar || calendar.events.length === 0) {
+        return interaction.update({
+          embeds: [infoEmbed('No Events', 'There are no scheduled events to remove.')],
+          content: '',
+          components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+          )],
+        });
+      }
+      const options = calendar.events.map((event, index) => ({
+        label: `${event.day} — ${event.person} (${event.time})`,
+        value: `event_${index}`,
+        description: (event.description || '').substring(0, 100),
+      }));
+      const selectRow = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('unsetrp_select')
+          .setPlaceholder('Select an event to remove...')
+          .addOptions(options)
+      );
+      const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+      );
+      return interaction.update({
+        embeds: [infoEmbed('Remove Event', 'Select the event you want to remove from the calendar.')],
+        content: '',
+        components: [selectRow, backButton],
+      });
+    }
+    if (choice === 'view_events') {
+      if (!calendar || calendar.events.length === 0) {
+        return interaction.update({
+          embeds: [infoEmbed('Roleplay Calendar', 'No events are currently scheduled.')],
+          content: '',
+          components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+          )],
+        });
+      }
+      const eventList = calendar.events.map(e =>
+        `**${e.day}** — ${e.person} at ${e.time} (${e.timezone})`
+      ).join('\n');
+      return interaction.update({
+        embeds: [infoEmbed('Scheduled Events', eventList)],
+        content: '',
+        components: [new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        )],
+      });
+    }
+    if (choice === 'setup_done') {
+      return interaction.update({
+        embeds: [infoEmbed('Calendar Setup', 'Setup complete. Use `/setrp` and `/unsetrp` to manage events.')],
+        content: '',
+        components: [],
+      });
+    }
+    return interaction.deferUpdate().catch(() => {});
+  } catch (error) {
+    console.error('Error in roleplay calendar setup menu:', error);
+  }
 }
 
 async function handleVerifySetupMenu(interaction) {
@@ -1152,6 +1302,12 @@ export async function handleSetupModals(interaction) {
     if (customId === 'fd_character_create_modal') {
       const { handleFDCharacterCreateModal } = await import('./fireDepartmentHandler.js');
       return handleFDCharacterCreateModal(interaction);
+    }
+
+    // FD vehicle add modal
+    if (customId.startsWith('fd_vehicle_add_modal_')) {
+      const { handleFDVehicleAddModal } = await import('./fireDepartmentHandler.js');
+      return handleFDVehicleAddModal(interaction);
     }
 
     // LEO database modals

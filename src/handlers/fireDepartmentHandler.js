@@ -574,3 +574,33 @@ export async function handleFDVehicleCharacterSelect(interaction) {
     });
   }
 }
+
+export async function handleFDVehicleAddModal(interaction) {
+  const characterId = interaction.customId.replace('fd_vehicle_add_modal_', '');
+  const make = interaction.fields.getTextInputValue('vehicle_make');
+  const model = interaction.fields.getTextInputValue('vehicle_model');
+  const color = interaction.fields.getTextInputValue('vehicle_color');
+  const plate = interaction.fields.getTextInputValue('vehicle_plate').toUpperCase();
+  const condition = interaction.fields.getTextInputValue('vehicle_condition') || null;
+
+  try {
+    await CADCharacter.updateOne(
+      { _id: characterId },
+      { $push: { vehicles: { make, model, color, licensePlate: plate, condition } } }
+    );
+
+    let successMsg = `**${make} ${model}**\n🎨 Color: ${color}\n📍 Plate: ${plate}`;
+    if (condition) successMsg += `\n⚙️ Condition: ${condition}`;
+
+    return interaction.reply({
+      embeds: [successEmbed('Vehicle Registered', successMsg)],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error adding FD vehicle:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred while registering the vehicle.')],
+      flags: 64,
+    });
+  }
+}
