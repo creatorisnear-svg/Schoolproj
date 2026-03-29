@@ -275,16 +275,30 @@ export async function moveToChannel(channel) {
 
   _setupReceiver(connection, channel.guild, state, guildId);
 
-  // Play the join audio the moment the connection reaches Ready.
   const onConnectionReady = () => {
-    console.log(`[Dispatch] Connection ready in "${channel.name}" — playing join audio`);
-    setTimeout(() => {
-      if (state.connection === connection && state.joinAudioBuffer) {
+    console.log(`[Dispatch] Connection ready in "${channel.name}"`);
+    setTimeout(async () => {
+      if (state.connection !== connection) return;
+      if (state.joinAudioBuffer) {
+        console.log('[Dispatch] Playing cached join audio');
         playDispatchVoice(guildId, state.joinAudioBuffer);
-      } else if (state.options?.onJoin) {
-        state.options.onJoin(guildId).catch(err => {
-          console.error('[Dispatch] onJoin callback error:', err.message);
-        });
+      } else {
+        console.log('[Dispatch] No join audio cached — generating now...');
+        try {
+          const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
+          const buf = await generateDispatchTTSPublic('Dispatch online, ready to serve.');
+          state.joinAudioBuffer = buf;
+          if (state.connection === connection) {
+            playDispatchVoice(guildId, buf);
+          }
+        } catch (err) {
+          console.error('[Dispatch] Join TTS retry failed:', err.message);
+          if (state.options?.onJoin) {
+            state.options.onJoin(guildId).catch(e => {
+              console.error('[Dispatch] onJoin callback error:', e.message);
+            });
+          }
+        }
       }
     }, 500);
   };
