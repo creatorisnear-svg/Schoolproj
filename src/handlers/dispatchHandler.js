@@ -29,6 +29,34 @@ function getOpenAI() {
   return new OpenAI({ apiKey: key });
 }
 
+/**
+ * Detects "show me in/on [10-11] with [name]" style phrases.
+ * Returns the name of the person being pulled over, or null if not detected.
+ */
+function detectJoinStop(text) {
+  const lower = text.toLowerCase();
+  if (!lower.includes('show me')) return null;
+  if (!lower.includes('with')) return null;
+  const nameMatch = text.match(/\bwith\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i);
+  return nameMatch ? nameMatch[1].trim() : null;
+}
+
+/** Finds a guild member by partial display name or username (case-insensitive). */
+async function findMemberByName(guild, name) {
+  const lower = name.toLowerCase();
+  const cached = guild.members.cache.find(m =>
+    m.displayName.toLowerCase().includes(lower) ||
+    m.user.username.toLowerCase().includes(lower)
+  );
+  if (cached) return cached;
+  try {
+    const fetched = await guild.members.fetch({ query: name, limit: 5 });
+    return fetched.first() || null;
+  } catch {
+    return null;
+  }
+}
+
 function parseTranscript(text) {
   const lower = text.toLowerCase();
 
@@ -130,6 +158,73 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (!transcript || transcript.trim().length < 3) return;
     console.log(`[Dispatch] Transcript: "${transcript}"`);
+
+    // --- "Show me in / show me on" join-stop detection ---
+    const joinTargetName = detectJoinStop(transcript);
+    if (joinTargetName && config.trafficStopChannelIds?.length > 0) {
+      const civMember = await findMemberByName(guild, joinTargetName);
+
+      // Pick least occupied traffic stop channel
+      let bestChannelId = null;
+      let bestCount = Infinity;
+      for (const id of config.trafficStopChannelIds) {
+        if (id === member.voice?.channelId) continue;
+        const ch = guild.channels.cache.get(id) ||
+          await guild.channels.fetch(id).catch(() => null);
+        if (!ch) continue;
+        const count = ch.members.filter(m => !m.user.bot).size;
+        if (count < bestCount) { bestCount = count; bestChannelId = id; }
+      }
+
+      if (bestChannelId) {
+        // Move officer
+        if (member.voice?.channelId) {
+          await member.voice.setChannel(bestChannelId).catch(() => {});
+        }
+        // Move civilian if they are in any voice channel
+        if (civMember?.voice?.channelId && civMember.voice.channelId !== bestChannelId) {
+          await civMember.voice.setChannel(bestChannelId).catch(() => {});
+        }
+
+        await updateOfficerStatus(guild.id, userId, officerName, '10-11',
+          { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
+          null);
+
+        const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+        if (dispatchCh?.isTextBased()) {
+          const civLine = civMember
+            ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})`
+            : `**${joinTargetName}**`;
+
+          const stopEmbed = new EmbedBuilder()
+            .setColor('#FFDD57')
+            .setTitle('🚗 Traffic Stop Active')
+            .setDescription(
+              `**Officer:** <@${userId}>\n` +
+              `**With:** ${civLine}\n` +
+              `**Moved to:** <#${bestChannelId}>\n\n` +
+              `Both parties have been moved to the traffic stop channel.\n` +
+              `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
+            )
+            .addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
+            .setFooter({ text: 'EverLink' })
+            .setTimestamp();
+
+          const clearBtn = new ButtonBuilder()
+            .setCustomId(`dispatch_stop_clear_${userId}`)
+            .setLabel('✅ 10-8 — Stop Clear')
+            .setStyle(ButtonStyle.Success);
+
+          await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
+        }
+
+        await rebuildStatusBoard(guild, config);
+      }
+      return;
+    }
+    // --- End join-stop detection ---
 
     const parsed = parseTranscript(transcript);
 
