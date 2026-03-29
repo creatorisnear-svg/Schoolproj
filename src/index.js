@@ -69,8 +69,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
+app.use(express.json());
 app.use('/css', express.static(resolve('src/website/public/css')));
 app.use('/js', express.static(resolve('src/website/public/js')));
+app.use('/img', express.static(resolve('src/website/public/img')));
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/favicon.ico', (req, res) => res.status(204).end());

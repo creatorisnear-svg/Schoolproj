@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RolePlayManager — Discord RP Bot</title>
+  <title>RolePlayManager</title>
   <meta name="description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
+  <link rel="icon" type="image/png" href="/img/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +14,10 @@
 <body>
   <nav>
     <div class="container">
-      <a href="/" class="logo">Role<span>Play</span>Manager</a>
+      <a href="/" class="logo">
+        <img src="/img/logo.png" alt="RM">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
       <ul class="nav-links">
         <li><a href="#features">Features</a></li>
         <li><a href="/dashboard" class="btn btn-sm btn-secondary">Dashboard</a></li>
@@ -24,6 +28,7 @@
 
   <section class="hero">
     <div class="container">
+      <img src="/img/logo.png" alt="RolePlayManager" class="hero-logo">
       <h1>Your RP community,<br><span>managed.</span></h1>
       <p>The all-in-one Discord bot built for GTA 5 RP servers. AI-powered voice dispatch, CAD systems, emergency calls, verification, and everything your community needs.</p>
       <div class="hero-buttons">
@@ -32,11 +37,11 @@
       </div>
       <div class="hero-stats">
         <div class="stat">
-          <div class="stat-value" id="stat-servers">—</div>
+          <div class="stat-value" id="stat-servers">&mdash;</div>
           <div class="stat-label">Servers</div>
         </div>
         <div class="stat">
-          <div class="stat-value" id="stat-users">—</div>
+          <div class="stat-value" id="stat-users">&mdash;</div>
           <div class="stat-label">Users</div>
         </div>
         <div class="stat">
@@ -57,7 +62,7 @@
         <div class="feature-card">
           <div class="feature-icon">AI</div>
           <h3>AI Voice Dispatch <span class="premium-tag">Premium</span></h3>
-          <p>Officers speak in voice channels — the bot transcribes, generates realistic dispatcher responses, and updates the live status board.</p>
+          <p>Officers speak in voice channels -- the bot transcribes, generates realistic dispatcher responses, and updates the live status board.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">DB</div>
@@ -82,7 +87,7 @@
         <div class="feature-card">
           <div class="feature-icon">S</div>
           <h3>Strike System</h3>
-          <p>Multi-level strike system with configurable actions — timeouts, kicks, bans — plus automatic DMs and log entries.</p>
+          <p>Multi-level strike system with configurable actions -- timeouts, kicks, bans -- plus automatic DMs and log entries.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">T</div>
@@ -115,14 +120,18 @@
 
   <footer>
     <div class="container">
-      <p>RolePlayManager &mdash; Built for RP communities</p>
+      <p>RolePlayManager</p>
+      <ul class="footer-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="#features">Features</a></li>
+      </ul>
     </div>
   </footer>
 
   <script>
     fetch('/api/stats').then(r => r.json()).then(data => {
-      document.getElementById('stat-servers').textContent = data.servers || '—';
-      document.getElementById('stat-users').textContent = data.users || '—';
+      document.getElementById('stat-servers').textContent = data.servers || '\u2014';
+      document.getElementById('stat-users').textContent = data.users || '\u2014';
     }).catch(() => {});
   </script>
 </body>

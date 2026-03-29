@@ -4,6 +4,7 @@ const toastEl = document.getElementById('toast');
 let currentUser = null;
 let currentGuild = null;
 let guilds = [];
+let pendingChanges = {};
 
 function toast(msg, type = 'success') {
   toastEl.textContent = msg;
@@ -20,6 +21,11 @@ async function api(path, opts = {}) {
     window.location.href = '/dashboard/login';
     return null;
   }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    toast(err.error || 'Something went wrong', 'error');
+    return null;
+  }
   return res.json();
 }
 
@@ -33,8 +39,15 @@ async function init() {
     currentUser = data.user;
     guilds = data.guilds || [];
 
+    const avatar = currentUser.avatar
+      ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=32`
+      : null;
+
     document.getElementById('nav-user').innerHTML = `
-      <span style="color: var(--text-muted); font-size: 14px;">${currentUser.username}</span>
+      <a href="/dashboard/logout" style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:13px;">
+        ${avatar ? `<img src="${avatar}" style="width:24px;height:24px;border-radius:50%;">` : ''}
+        ${escapeHtml(currentUser.username)}
+      </a>
     `;
 
     renderServerSelect();
@@ -44,22 +57,24 @@ async function init() {
 }
 
 function renderServerSelect() {
+  currentGuild = null;
+  pendingChanges = {};
   app.innerHTML = `
     <div style="padding-top: 96px; max-width: 900px; margin: 0 auto; padding-left: 24px; padding-right: 24px;">
       <div class="dash-header">
         <h1>Select a Server</h1>
-        <p>Choose a server to manage. You can only configure servers where you have admin permissions and where the bot is present.</p>
+        <p>Choose a server to manage. Only servers where you have admin permissions and the bot is present are shown.</p>
       </div>
       <div class="server-list">
-        ${guilds.length === 0 ? '<p style="color: var(--text-muted);">No servers found. Make sure the bot is in your server and you have admin permissions.</p>' : ''}
+        ${guilds.length === 0 ? '<p style="color: var(--text-muted);">No servers found.</p>' : ''}
         ${guilds.map(g => `
           <div class="server-card" onclick="selectServer('${g.id}')">
             <div class="server-icon">
-              ${g.icon ? `<img src="https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64" alt="">` : g.name.charAt(0)}
+              ${g.icon ? `<img src="https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64" alt="">` : escapeHtml(g.name.charAt(0))}
             </div>
             <div>
               <div class="server-name">${escapeHtml(g.name)}</div>
-              <div class="server-members">${g.memberCount || '—'} members</div>
+              <div class="server-members">${g.memberCount || '\u2014'} members</div>
             </div>
           </div>
         `).join('')}
@@ -72,6 +87,7 @@ async function selectServer(guildId) {
   const data = await api(`/guild/${guildId}`);
   if (!data) return;
   currentGuild = data;
+  pendingChanges = {};
   renderDashboard();
 }
 
@@ -81,22 +97,7 @@ function renderDashboard() {
 
   app.innerHTML = `
     <div class="dashboard-layout">
-      <div class="sidebar">
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">Server</div>
-          <div class="sidebar-item active" onclick="renderDashboard()">Overview</div>
-          <div class="sidebar-item" onclick="renderServerSelect()">Switch Server</div>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">Modules</div>
-          <div class="sidebar-item" onclick="renderModule('verification')">Verification</div>
-          <div class="sidebar-item" onclick="renderModule('strikes')">Strike System</div>
-          <div class="sidebar-item" onclick="renderModule('tickets')">Tickets</div>
-          <div class="sidebar-item" onclick="renderModule('dispatch')">Voice Dispatch</div>
-          <div class="sidebar-item" onclick="renderModule('priority')">Priority Tracker</div>
-          <div class="sidebar-item" onclick="renderModule('antipromo')">Anti-Promoting</div>
-        </div>
-      </div>
+      ${renderSidebar('overview')}
       <div class="dashboard-content">
         <div class="dash-header">
           <h1>${escapeHtml(g.name)}</h1>
@@ -105,19 +106,19 @@ function renderDashboard() {
         <div class="dash-grid">
           <div class="dash-card">
             <div class="dash-label">Members</div>
-            <div class="dash-value">${g.memberCount || '—'}</div>
+            <div class="dash-value">${g.memberCount || '\u2014'}</div>
           </div>
           <div class="dash-card">
             <div class="dash-label">Premium</div>
-            <div class="dash-value">${g.premium ? 'Active' : 'Inactive'}</div>
+            <div class="dash-value" style="color: ${g.premium ? 'var(--green)' : 'var(--text-muted)'}">${g.premium ? 'Active' : 'Inactive'}</div>
           </div>
           <div class="dash-card">
             <div class="dash-label">Log Channel</div>
-            <div class="dash-value" style="font-size: 16px;">${config.logChannelId ? '#' + (config.logChannelName || config.logChannelId) : 'Not Set'}</div>
+            <div class="dash-value" style="font-size: 15px;">${config.logChannelName ? '#' + escapeHtml(config.logChannelName) : 'Not Set'}</div>
           </div>
         </div>
 
-        <div style="margin-top: 24px;">
+        <div style="margin-top: 20px;">
           <div class="config-section">
             <h3>Module Status</h3>
             ${moduleRow('Verification System', config.verifyEnabled)}
@@ -135,6 +136,36 @@ function renderDashboard() {
   `;
 }
 
+function renderSidebar(active) {
+  const items = [
+    { id: 'overview', label: 'Overview', action: 'renderDashboard()' },
+    { id: 'switch', label: 'Switch Server', action: 'renderServerSelect()' },
+  ];
+  const modules = [
+    { id: 'general', label: 'General Settings', action: "renderSettings('general')" },
+    { id: 'verification', label: 'Verification', action: "renderSettings('verification')" },
+    { id: 'strikes', label: 'Strike System', action: "renderSettings('strikes')" },
+    { id: 'tickets', label: 'Tickets', action: "renderSettings('tickets')" },
+    { id: 'dispatch', label: 'Voice Dispatch', action: "renderSettings('dispatch')" },
+    { id: 'priority', label: 'Priority Tracker', action: "renderSettings('priority')" },
+    { id: 'antipromo', label: 'Anti-Promoting', action: "renderSettings('antipromo')" },
+    { id: 'welcome', label: 'Welcome System', action: "renderSettings('welcome')" },
+  ];
+
+  return `
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Server</div>
+        ${items.map(i => `<div class="sidebar-item ${active === i.id ? 'active' : ''}" onclick="${i.action}">${i.label}</div>`).join('')}
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Settings</div>
+        ${modules.map(i => `<div class="sidebar-item ${active === i.id ? 'active' : ''}" onclick="${i.action}">${i.label}</div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function moduleRow(name, enabled) {
   return `
     <div class="config-row">
@@ -147,54 +178,119 @@ function moduleRow(name, enabled) {
   `;
 }
 
-async function renderModule(mod) {
-  const data = await api(`/guild/${currentGuild.id}/module/${mod}`);
+async function renderSettings(mod) {
+  const data = await api(`/guild/${currentGuild.id}/settings/${mod}`);
   if (!data) return;
+  pendingChanges = {};
 
-  const content = document.querySelector('.dashboard-content');
-  if (!content) return;
-
-  let html = `
-    <div class="dash-header">
-      <h1>${data.name}</h1>
-      <p>${data.description}</p>
+  app.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderSidebar(mod)}
+      <div class="dashboard-content" id="settings-content">
+        <div class="dash-header">
+          <h1>${escapeHtml(data.name)}</h1>
+          <p>${escapeHtml(data.description)}</p>
+        </div>
+        ${renderSettingsFields(data, mod)}
+        ${data.stats && data.stats.length > 0 ? `
+          <div class="dash-grid" style="margin-top: 16px;">
+            ${data.stats.map(s => `
+              <div class="dash-card">
+                <div class="dash-label">${escapeHtml(s.label)}</div>
+                <div class="dash-value">${escapeHtml(String(s.value))}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
     </div>
   `;
+}
 
-  if (data.settings && data.settings.length > 0) {
-    html += `<div class="config-section"><h3>Configuration</h3>`;
-    for (const s of data.settings) {
-      html += `
-        <div class="config-row">
-          <span class="config-label">${s.label}</span>
-          <span class="config-value">${escapeHtml(String(s.value ?? 'Not Set'))}</span>
-        </div>
-      `;
+function renderSettingsFields(data, mod) {
+  if (!data.fields || data.fields.length === 0) {
+    return `<div class="config-section"><h3>Configuration</h3><p style="color:var(--text-muted);font-size:14px;">No configurable settings available. Use Discord commands to set up this module.</p></div>`;
+  }
+
+  let html = `<div class="config-section"><h3>Configuration</h3>`;
+
+  for (const field of data.fields) {
+    html += `<div class="config-row"><div><span class="config-label">${escapeHtml(field.label)}</span>`;
+    if (field.description) html += `<div class="config-sublabel">${escapeHtml(field.description)}</div>`;
+    html += `</div>`;
+
+    if (field.type === 'toggle') {
+      const active = field.value ? 'active' : '';
+      html += `<div class="toggle ${active}" onclick="toggleField(this, '${mod}', '${field.key}')" data-key="${field.key}"></div>`;
+    } else if (field.type === 'select') {
+      html += `<select class="config-select" onchange="changeField('${mod}', '${field.key}', this.value)" data-key="${field.key}">`;
+      html += `<option value="">Not Set</option>`;
+      for (const opt of (field.options || [])) {
+        const selected = opt.value === field.value ? 'selected' : '';
+        html += `<option value="${escapeHtml(opt.value)}" ${selected}>${escapeHtml(opt.label)}</option>`;
+      }
+      html += `</select>`;
+    } else if (field.type === 'number') {
+      html += `<input type="number" class="config-input" style="width:100px;" value="${field.value || ''}" onchange="changeField('${mod}', '${field.key}', this.value)" data-key="${field.key}" min="${field.min || 0}" max="${field.max || 999}">`;
+    } else if (field.type === 'text') {
+      html += `<input type="text" class="config-input" value="${escapeHtml(String(field.value || ''))}" onchange="changeField('${mod}', '${field.key}', this.value)" data-key="${field.key}" placeholder="${escapeHtml(field.placeholder || '')}">`;
+    } else {
+      html += `<span class="config-value">${escapeHtml(String(field.value ?? 'Not Set'))}</span>`;
     }
+
     html += `</div>`;
   }
 
-  if (data.stats && data.stats.length > 0) {
-    html += `<div class="dash-grid" style="margin-top: 16px;">`;
-    for (const s of data.stats) {
-      html += `
-        <div class="dash-card">
-          <div class="dash-label">${s.label}</div>
-          <div class="dash-value">${s.value}</div>
-        </div>
-      `;
-    }
-    html += `</div>`;
+  html += `</div>`;
+  html += `<div id="save-bar-container"></div>`;
+  return html;
+}
+
+function toggleField(el, mod, key) {
+  el.classList.toggle('active');
+  const val = el.classList.contains('active');
+  pendingChanges[key] = val;
+  showSaveBar(mod);
+}
+
+function changeField(mod, key, value) {
+  pendingChanges[key] = value;
+  showSaveBar(mod);
+}
+
+function showSaveBar(mod) {
+  const container = document.getElementById('save-bar-container');
+  if (!container) return;
+
+  if (Object.keys(pendingChanges).length === 0) {
+    container.innerHTML = '';
+    return;
   }
 
-  content.innerHTML = html;
+  container.innerHTML = `
+    <div class="save-bar">
+      <span style="color:var(--text-muted);font-size:13px;margin-right:auto;">You have unsaved changes</span>
+      <button class="btn btn-secondary btn-sm" onclick="renderSettings('${mod}')">Discard</button>
+      <button class="btn btn-success btn-sm" onclick="saveSettings('${mod}')">Save Changes</button>
+    </div>
+  `;
+}
 
-  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(el => {
-    if (el.textContent.trim().toLowerCase().includes(mod.substring(0, 5))) {
-      el.classList.add('active');
-    }
+async function saveSettings(mod) {
+  if (Object.keys(pendingChanges).length === 0) return;
+
+  const result = await api(`/guild/${currentGuild.id}/settings/${mod}`, {
+    method: 'POST',
+    body: JSON.stringify(pendingChanges),
   });
+
+  if (result && result.success) {
+    toast('Settings saved');
+    pendingChanges = {};
+    const refreshed = await api(`/guild/${currentGuild.id}`);
+    if (refreshed) currentGuild = refreshed;
+    renderSettings(mod);
+  }
 }
 
 function escapeHtml(str) {
