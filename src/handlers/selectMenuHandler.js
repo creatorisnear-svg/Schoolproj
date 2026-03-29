@@ -2883,6 +2883,9 @@ async function handleDispatchSetupMenu(interaction) {
       if (!config.enabled) {
         const { leaveDispatchChannel } = await import('../utils/voiceListener.js');
         leaveDispatchChannel(interaction.guildId);
+      } else {
+        const { initDispatchForGuild } = await import('./dispatchHandler.js');
+        await initDispatchForGuild(interaction.guild, null);
       }
 
       const status = config.enabled ? '✅ **Enabled**' : '❌ **Disabled**';
@@ -3091,22 +3094,29 @@ async function handleDispatchRemovePatrolSelect(interaction) {
     await config.save();
 
     // Remove from in-memory state
-    const { getDispatchState, moveToChannel, leaveDispatchChannel } = await import('../utils/voiceListener.js');
+    const { getDispatchState, moveToChannel, disconnectDispatchChannel, leaveDispatchChannel } = await import('../utils/voiceListener.js');
     const state = getDispatchState(interaction.guildId);
     if (state) {
       state.patrolChannelIds.delete(channelId);
 
-      // If the bot is currently in the removed channel, move to another or disconnect
+      // If the bot is currently in the removed channel, move to another or idle-disconnect
       if (state.currentChannelId === channelId) {
         if (config.patrolChannelIds.length > 0) {
-          const nextId = config.patrolChannelIds[0];
-          const nextCh = interaction.guild.channels.cache.get(nextId);
-          if (nextCh) {
-            await moveToChannel(nextCh);
-          } else {
-            leaveDispatchChannel(interaction.guildId);
+          // Try each remaining channel until we can connect to one
+          let moved = false;
+          for (const nextId of config.patrolChannelIds) {
+            const nextCh = interaction.guild.channels.cache.get(nextId) ||
+              await interaction.guild.channels.fetch(nextId).catch(() => null);
+            if (nextCh) {
+              await moveToChannel(nextCh);
+              moved = true;
+              break;
+            }
           }
+          // If none are fetchable right now, idle-disconnect so state is preserved
+          if (!moved) disconnectDispatchChannel(interaction.guildId);
         } else {
+          // No patrol channels left — full teardown
           leaveDispatchChannel(interaction.guildId);
         }
       }
