@@ -355,7 +355,8 @@ export async function handle911ReportModal(interaction) {
     const mention = mentions.length > 0 ? mentions.join(' ') : '@here Emergency report incoming!';
 
     // Create emergency call record
-    const callId = `${interaction.guildId}-${Date.now()}`;
+    const shortId = Math.floor(Math.random() * 9000 + 1000);
+    const callId = `${interaction.guildId}-${shortId}`;
     const emergencyCall = new EmergencyCall({
       guildId: interaction.guildId,
       callId,
