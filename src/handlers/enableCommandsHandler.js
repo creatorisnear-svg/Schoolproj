@@ -18,10 +18,10 @@ export async function handleEnableChoiceButton(interaction) {
 
     if (!isAdminOrMgr && !isStaffUser) {
       const embed = new EmbedBuilder()
-        .setColor('#FF0000')
+        .setColor('#2d2d2d')
         .setTitle('Permission Denied')
         .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
       
       return interaction.reply({
         embeds: [embed],
@@ -42,10 +42,10 @@ export async function handleEnableChoiceButton(interaction) {
     if (isEnable) {
       // Show enable options
       const embed = new EmbedBuilder()
-        .setColor('#00AA00')
+        .setColor('#2d2d2d')
         .setTitle('Enable Features')
         .setDescription('Select which features you want to enable:')
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       const enableRow1 = new ActionRowBuilder()
         .addComponents(
@@ -102,10 +102,10 @@ export async function handleEnableChoiceButton(interaction) {
     } else {
       // Show disable options
       const embed = new EmbedBuilder()
-        .setColor('#FF0000')
+        .setColor('#2d2d2d')
         .setTitle('Disable Features')
         .setDescription('Select which features you want to disable:')
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       const disableRow1 = new ActionRowBuilder()
         .addComponents(
@@ -179,10 +179,10 @@ export async function handleEnableCommandButton(interaction) {
 
     if (!isAdminOrMgr && !isStaffUser) {
       const embed = new EmbedBuilder()
-        .setColor('#FF0000')
+        .setColor('#2d2d2d')
         .setTitle('Permission Denied')
         .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
       
       return interaction.reply({
         embeds: [embed],
@@ -319,7 +319,7 @@ export async function handleDisableCommandButton(interaction) {
       }
     }
 
-    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\n✅ All channel permissions have been reverted to default.`);
+    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\nAll channel permissions have been reverted to default.`);
     await interaction.update({
       embeds: [embed],
     });
@@ -347,16 +347,16 @@ export async function handleDisableCommandButton(interaction) {
 
 function createSuccessEmbed(title, description) {
   return new EmbedBuilder()
-    .setColor('#00AA00')
+    .setColor('#2d2d2d')
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'RolePlayManager' });
+    .setFooter({ text: 'RPM' });
 }
 
 function createErrorEmbed(description) {
   return new EmbedBuilder()
-    .setColor('#FF0000')
+    .setColor('#2d2d2d')
     .setTitle('Error')
     .setDescription(description)
-    .setFooter({ text: 'RolePlayManager' });
+    .setFooter({ text: 'RPM' });
 }

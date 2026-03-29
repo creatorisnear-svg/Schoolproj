@@ -29,7 +29,7 @@ export async function execute(interaction) {
   
   if (!verification || !verification.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('⚙️ Verification System Not Enabled', 'Use `/enablecommands` → Enable Features → Verification System')],
+      embeds: [errorEmbed('Verification System Not Enabled', 'Use `/enablecommands` → Enable Features → Verification System')],
       flags: 64,
     });
   }
@@ -60,7 +60,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Verification System Setup**\n\nVerification is simple: Set the verify channel, verified role, which categories verified members can see, and the unverified role. The bot will automatically configure all channel permissions!\n\n✅ **Verified Members** will see: All channels in selected categories + welcome channel\n❌ **Unverified Members** will see: Verify channel + welcome channel',
+    content: '**Verification System Setup**\n\nVerification is simple: Set the verify channel, verified role, which categories verified members can see, and the unverified role. The bot will automatically configure all channel permissions!\n\n**Verified Members** will see: All channels in selected categories + welcome channel\n**Unverified Members** will see: Verify channel + welcome channel',
     components: [menu],
     flags: 64,
   });

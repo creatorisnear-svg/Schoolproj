@@ -24,13 +24,13 @@ export async function execute(interaction) {
           .setCustomId('civiliandatabase_menu')
           .setPlaceholder('Choose an action...')
           .addOptions(
-            { label: '🚨 Report 911 Emergency', value: 'report_911' },
-            { label: '🐦 Post to Twitter', value: 'post_twitter' },
-            { label: '🤫 Post Anonymously', value: 'post_anon' },
-            { label: '👤 Create Character', value: 'create_character' },
-            { label: '🚗 Add Vehicle', value: 'add_vehicle' },
-            { label: '🔫 Add Firearm', value: 'add_firearm' },
-            { label: '📋 Manage Character', value: 'manage_character' }
+            { label: 'Report 911 Emergency', value: 'report_911' },
+            { label: 'Post to Twitter', value: 'post_twitter' },
+            { label: 'Post Anonymously', value: 'post_anon' },
+            { label: 'Create Character', value: 'create_character' },
+            { label: 'Add Vehicle', value: 'add_vehicle' },
+            { label: 'Add Firearm', value: 'add_firearm' },
+            { label: 'Manage Character', value: 'manage_character' }
           )
       );
 

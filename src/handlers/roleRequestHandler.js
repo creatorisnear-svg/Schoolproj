@@ -102,10 +102,10 @@ export async function handleRoleRequestSetupMenu(interaction) {
     }
 
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
+      .setColor('#2d2d2d')
       .setTitle('Role Request Types')
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -121,7 +121,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
     });
   } else if (value === 'setup_done') {
     await interaction.update({
-      content: '✅ Role request setup closed.',
+      content: 'Role request setup closed.',
       flags: 64,
     });
   }
@@ -245,10 +245,10 @@ export async function handleSelectApproverMembers(interaction) {
     await config.save();
 
     const successMsg = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Role Request Type Added')
-      .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`**${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: ${selectedApproverMemberIds.map(id => `<@${id}>`).join(', ') || 'None'}`)
+      .setFooter({ text: 'RPM' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -295,10 +295,10 @@ export async function handleDeleteRoleRequestType(interaction) {
     await config.save();
 
     const successMsg = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Role Request Type Deleted')
-      .setDescription(`✅ **${deletedRole.roleName}** has been removed from the role request system.`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`**${deletedRole.roleName}** has been removed from the role request system.`)
+      .setFooter({ text: 'RPM' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -344,10 +344,10 @@ export async function handleSelectRoleToRequest(interaction) {
       );
 
     const embed = new EmbedBuilder()
-      .setColor('#FFA500')
+      .setColor('#2d2d2d')
       .setTitle('Who should approve your request?')
       .setDescription(`**Role:** ${roleConfig.roleName}\n\nType the person's name to search for them`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [embed],
@@ -440,14 +440,14 @@ export async function handleSelectApprover(interaction) {
     // Send DM to the selected approver
     try {
       const dmEmbed = new EmbedBuilder()
-        .setColor('#FFA500')
+        .setColor('#2d2d2d')
         .setTitle('Role Request Approval')
         .setDescription(`<@${requesterId}> has requested the role **${roleConfig.roleName}**`)
         .addFields(
           { name: 'Requester', value: requesterUsername, inline: true },
           { name: 'Requested Role', value: roleConfig.roleName, inline: true }
         )
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       const buttons = new ActionRowBuilder()
         .addComponents(
@@ -479,10 +479,10 @@ export async function handleSelectApprover(interaction) {
     await newRequest.save();
 
     const successEmbed = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Request Sent')
-      .setDescription(`✅ Your request for **${roleConfig.roleName}** has been sent to ${approverUsername}!\n\nYou'll receive a message once it's reviewed.`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`Your request for **${roleConfig.roleName}** has been sent to ${approverUsername}!\n\nYou'll receive a message once it's reviewed.`)
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [successEmbed],
@@ -586,10 +586,10 @@ export async function handleApproveRoleRequest(interaction) {
       const dmMessage = await dmChannel.messages.fetch(request.messageId);
       
       const approvedEmbed = new EmbedBuilder()
-        .setColor('#00FF00')
+        .setColor('#2d2d2d')
         .setTitle('Request Approved')
-        .setDescription(`✅ <@${request.requesterId}>'s request for **${request.roleName}** has been **approved** by ${interaction.user.username}!`)
-        .setFooter({ text: 'RolePlayManager' });
+        .setDescription(`<@${request.requesterId}>'s request for **${request.roleName}** has been **approved** by ${interaction.user.username}!`)
+        .setFooter({ text: 'RPM' });
 
       await dmMessage.edit({
         embeds: [approvedEmbed],
@@ -600,10 +600,10 @@ export async function handleApproveRoleRequest(interaction) {
     }
 
     const successEmbed = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Role Approved')
-      .setDescription(`✅ You've approved the role request for <@${request.requesterId}>!\n\nRole given: **${request.roleName}**`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`You've approved the role request for <@${request.requesterId}>!\n\nRole given: **${request.roleName}**`)
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [successEmbed],
@@ -695,10 +695,10 @@ export async function handleManageRoleSelect(interaction) {
       return await interaction.editReply({
         embeds: [
           new EmbedBuilder()
-            .setColor('#2E2E2E')
+            .setColor('#2d2d2d')
             .setTitle(`Members with ${roleConfig.roleName}`)
             .setDescription('No members currently have this role.')
-            .setFooter({ text: 'RolePlayManager' })
+            .setFooter({ text: 'RPM' })
         ],
       });
     }
@@ -724,10 +724,10 @@ export async function handleManageRoleSelect(interaction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
+      .setColor('#2d2d2d')
       .setTitle(`Manage ${roleConfig.roleName}`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await interaction.editReply({
       embeds: [embed],
@@ -842,10 +842,10 @@ export async function handleRemoveRoleFromMember(interaction) {
     }
 
     const successMsg = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Role Removed')
       .setDescription(`Removed <@&${roleConfig.roleId}> from ${member.user.username}`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await interaction.editReply({
       embeds: [successMsg],
@@ -930,10 +930,10 @@ export async function handleSkipApproverMembers(interaction) {
     await config.save();
 
     const successMsg = new EmbedBuilder()
-      .setColor('#00FF00')
+      .setColor('#2d2d2d')
       .setTitle('Role Request Type Added')
-      .setDescription(`✅ **${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: None`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`**${role.name}** has been added to the role request system.\n\n**Approvers:**\n• Roles: ${approverRoleIds.map(id => `<@&${id}>`).join(', ') || 'None'}\n• Members: None`)
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [successMsg],
@@ -1015,10 +1015,10 @@ export async function handleDenyRoleRequest(interaction) {
       const dmMessage = await dmChannel.messages.fetch(request.messageId);
       
       const deniedEmbed = new EmbedBuilder()
-        .setColor('#FF0000')
+        .setColor('#2d2d2d')
         .setTitle('Request Denied')
-        .setDescription(`❌ <@${request.requesterId}>'s request for **${request.roleName}** has been **denied** by ${interaction.user.username}.`)
-        .setFooter({ text: 'RolePlayManager' });
+        .setDescription(`<@${request.requesterId}>'s request for **${request.roleName}** has been **denied** by ${interaction.user.username}.`)
+        .setFooter({ text: 'RPM' });
 
       await dmMessage.edit({
         embeds: [deniedEmbed],
@@ -1029,10 +1029,10 @@ export async function handleDenyRoleRequest(interaction) {
     }
 
     const successEmbed = new EmbedBuilder()
-      .setColor('#FF0000')
+      .setColor('#2d2d2d')
       .setTitle('Role Request Denied')
-      .setDescription(`❌ You've denied the role request for <@${request.requesterId}>.\n\nRole: **${request.roleName}**`)
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription(`You've denied the role request for <@${request.requesterId}>.\n\nRole: **${request.roleName}**`)
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [successEmbed],

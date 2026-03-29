@@ -17,7 +17,7 @@ export async function handleVerifyModal(interaction) {
 
     const modal = new ModalBuilder()
       .setCustomId('verify_modal')
-      .setTitle('RolePlayManager Verification');
+      .setTitle('Verification');
 
     const psnXboxInput = new TextInputBuilder()
       .setCustomId('psnxbox')
@@ -71,10 +71,10 @@ export async function handleVerifyModalSubmit(interaction) {
         const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20voice`;
 
         const authEmbed = new EmbedBuilder()
-          .setColor('#5865F2')
-          .setTitle('🔐 Additional Authorization Required')
-          .setDescription('To complete your verification, you must authorize your Discord account with RolePlayManager.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
-          .setFooter({ text: 'RolePlayManager' });
+          .setColor('#2d2d2d')
+          .setTitle('Authorization Required')
+          .setDescription('To complete your verification, you must authorize your Discord account with RPM.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
+          .setFooter({ text: 'RPM' });
 
         const authRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
@@ -99,13 +99,13 @@ export async function handleVerifyModalSubmit(interaction) {
         const approvalChannel = await interaction.guild.channels.fetch(verification.approvalChannelId).catch(() => null);
         if (approvalChannel) {
           const embed = new EmbedBuilder()
-            .setColor('#FFA500')
-            .setTitle('RolePlayManager Verification Pending')
+            .setColor('#2d2d2d')
+            .setTitle('Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user}`, inline: true },
               { name: 'PSN/XBOX', value: psnxbox, inline: true }
             )
-            .setFooter({ text: 'RolePlayManager' });
+            .setFooter({ text: 'RPM' });
 
           if (customAnswer) {
             embed.addFields({ name: 'Custom Question Answer', value: customAnswer });

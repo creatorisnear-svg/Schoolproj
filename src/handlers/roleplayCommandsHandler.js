@@ -11,10 +11,10 @@ async function showSetupMenu(interaction) {
         .setCustomId('roleplaycommands_setup_menu')
         .setPlaceholder('Choose a command to configure...')
         .addOptions(
-          { label: '🚨 911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
-          { label: '🐦 Twitter - Public Messages', value: 'setup_twitter' },
-          { label: '🤫 Anon - Anonymous Messages', value: 'setup_anon' },
-          { label: '✅ Done - Close Setup', value: 'setup_done' }
+          { label: '911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
+          { label: 'Twitter — Public Messages', value: 'setup_twitter' },
+          { label: 'Anon — Anonymous Messages', value: 'setup_anon' },
+          { label: 'Done - Close Setup', value: 'setup_done' }
         )
     );
 
@@ -36,7 +36,7 @@ async function showCADSetupMenu(interaction) {
           { label: 'Set LEO Roles', value: 'set_leo_roles' },
           { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
           { label: 'Set Staff Roles', value: 'set_staff_roles' },
-          { label: '✅ Done - Back to Main Menu', value: 'cad_done' }
+          { label: 'Done - Back to Main Menu', value: 'cad_done' }
         )
     );
 
@@ -55,16 +55,16 @@ async function showEmergencySetupMenu(interaction) {
         .setCustomId('roleplaycommands_emergency_setup_menu')
         .setPlaceholder('Choose emergency/dispatch option...')
         .addOptions(
-          { label: '🚑 Select 911 Channel', value: 'setup_911' },
-          { label: '🚔 Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
-          { label: '🚒 Set Fire Department Roles (Pinged on 911)', value: 'set_fd_roles' },
-          { label: '👮 Set Staff Roles', value: 'set_staff_roles' },
-          { label: '✅ Done - Back to Main Menu', value: 'emergency_done' }
+          { label: 'Select 911 Channel', value: 'setup_911' },
+          { label: 'Set LEO Roles (Pinged on 911)', value: 'set_leo_roles' },
+          { label: 'Set Fire Department Roles (Pinged on 911)', value: 'set_fd_roles' },
+          { label: 'Set Staff Roles', value: 'set_staff_roles' },
+          { label: 'Done - Back to Main Menu', value: 'emergency_done' }
         )
     );
 
   return {
-    content: '**🚨 Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
+    content: '**Emergency & Dispatch Setup**\n\nConfigure 911 reports with LEO and Fire Department response:',
     components: [emergencyMenu],
     flags: 64,
   };
@@ -231,13 +231,13 @@ export async function handleTwitterPostModal(interaction) {
       .setTitle('Twitter Post')
       .setDescription(message)
       .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     await channel.send({ embeds: [twitterEmbed] });
 
     return interaction.reply({
-      content: '✅ Tweet posted!',
+      content: 'Tweet posted!',
       flags: 64,
     });
   } catch (error) {
@@ -275,13 +275,13 @@ export async function handleAnonPostModal(interaction) {
       .setColor('#808080')
       .setTitle('Anonymous Message')
       .setDescription(message)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     await channel.send({ embeds: [anonEmbed] });
 
     return interaction.reply({
-      content: '✅ Anonymous message posted!',
+      content: 'Anonymous message posted!',
       flags: 64,
     });
   } catch (error) {
@@ -298,11 +298,11 @@ const recent911Submissions = new Map();
 
 export async function handle911ReportModal(interaction) {
   try {
-    console.log(`🚨 911 REPORT STARTED - User: ${interaction.user.id}, Guild: ${interaction.guildId}`);
+    console.log(`911 REPORT STARTED - User: ${interaction.user.id}, Guild: ${interaction.guildId}`);
     
     // Immediately defer the reply to prevent interaction timeout
     await interaction.deferReply({ flags: 64 });
-    console.log(`✓ Deferred reply for user ${interaction.user.id}`);
+    console.log(`Deferred reply for user ${interaction.user.id}`);
 
     // Anti-duplicate check: if this user submitted a 911 in the last 2 seconds, ignore
     const submissionKey = `${interaction.guildId}-${interaction.user.id}`;
@@ -314,7 +314,7 @@ export async function handle911ReportModal(interaction) {
     }
     recent911Submissions.set(submissionKey, true);
     setTimeout(() => recent911Submissions.delete(submissionKey), 2000);
-    console.log(`✓ Set duplicate cooldown for user ${interaction.user.id}`);
+    console.log(`Set duplicate cooldown for user ${interaction.user.id}`);
 
     const issue = interaction.fields.getTextInputValue('issue');
     const location = interaction.fields.getTextInputValue('location');
@@ -373,7 +373,7 @@ export async function handle911ReportModal(interaction) {
 
     const emergencyEmbed = new EmbedBuilder()
       .setColor('#ff0000')
-      .setTitle('🚨 911 Emergency Report')
+      .setTitle('911 Emergency Report')
       .addFields(
         { name: 'Issue', value: issue, inline: false },
         { name: 'Location', value: location, inline: true },
@@ -382,7 +382,7 @@ export async function handle911ReportModal(interaction) {
         { name: 'Last Seen', value: lastSeen, inline: false },
         { name: 'Contact Info', value: contact, inline: false }
       )
-      .setFooter({ text: `RolePlayManager | Call ID: ${callId}` })
+      .setFooter({ text: `RPM | Call ID: ${callId}` })
       .setTimestamp();
 
     const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
@@ -390,29 +390,29 @@ export async function handle911ReportModal(interaction) {
     // Create buttons for 911 response
     const respondButton = new ButtonBuilder()
       .setCustomId(`911_respond_${callId}`)
-      .setLabel('🚨 Respond')
+      .setLabel('Respond')
       .setStyle(ButtonStyle.Danger);
 
     const attachButton = new ButtonBuilder()
       .setCustomId(`911_attach_${callId}`)
-      .setLabel('📎 Attach')
+      .setLabel('Attach')
       .setStyle(ButtonStyle.Primary);
 
     const dismissButton = new ButtonBuilder()
       .setCustomId(`911_dismiss_${callId}`)
-      .setLabel('❌ Dismiss')
+      .setLabel('Dismiss')
       .setStyle(ButtonStyle.Secondary);
 
     const buttonRow = new ActionRowBuilder()
       .addComponents(respondButton, attachButton, dismissButton);
 
-    console.log(`📢 Sending 911 message to channel ${roleplayConfig.use911Channel}`);
+    console.log(`Sending 911 message to channel ${roleplayConfig.use911Channel}`);
     const sentMessage = await channel.send({ 
       content: mention,
       embeds: [emergencyEmbed],
       components: [buttonRow]
     });
-    console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}, Call ID: ${callId}`);
+    console.log(`911 message sent successfully - Message ID: ${sentMessage.id}, Call ID: ${callId}`);
 
     emergencyCall.messageId = sentMessage.id;
     emergencyCall.channelId = roleplayConfig.use911Channel;
@@ -440,7 +440,7 @@ export async function handle911ReportModal(interaction) {
     }
 
     return interaction.editReply({
-      content: '✅ 911 report submitted!',
+      content: '911 report submitted!',
     });
   } catch (error) {
     console.error('Error handling 911 report:', error);

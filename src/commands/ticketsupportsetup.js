@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!ticketConfig || !ticketConfig.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('⚙️ Ticket Support Not Enabled', 'Use `/enablecommands` → Enable Features → Ticket Support')],
+        embeds: [errorEmbed('Ticket Support Not Enabled', 'Use `/enablecommands` → Enable Features → Ticket Support')],
         flags: 64,
       });
     }
@@ -35,7 +35,7 @@ export async function execute(interaction) {
             { label: 'Add Ticket Type', value: 'add_type' },
             { label: 'View Ticket Types', value: 'view_types' },
             { label: 'Send Panel', value: 'send_panel' },
-            { label: '✅ Done - Close Setup', value: 'setup_done' }
+            { label: 'Done - Close Setup', value: 'setup_done' }
           )
       );
 

@@ -8,7 +8,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const priority = await Priority.findOne({ guildId: interaction.guildId });
     if (!priority || !priority.channelId) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('The priority tracker hasn\'t been set up yet. Ask an admin to run `/prioritytrackersetup`.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('The priority tracker hasn\'t been set up yet. Ask an admin to run `/prioritytrackersetup`.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -17,14 +17,14 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const channel = interaction.channel;
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Unable to send to this channel.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Unable to send to this channel.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
 
     // Create priority request embed
     const embed = new EmbedBuilder()
-      .setColor('#FEE75C')
+      .setColor('#2d2d2d')
       .setTitle('Priority Request')
       .setDescription('> Awaiting staff approval')
       .addFields(
@@ -34,7 +34,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
         { name: 'Scene Type', value: sceneType, inline: true },
         { name: 'Reason', value: sceneReason, inline: false }
       )
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     // Create approve/deny buttons
@@ -44,12 +44,12 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
           .setCustomId('priority_approve')
           .setLabel('Approve')
           .setStyle(ButtonStyle.Success)
-          .setEmoji('✅'),
+          ,
         new ButtonBuilder()
           .setCustomId('priority_deny')
           .setLabel('Deny')
           .setStyle(ButtonStyle.Danger)
-          .setEmoji('❌')
+          
       );
 
     // Send to the channel where user submitted the command
@@ -69,13 +69,13 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     });
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription('Priority request submitted — staff will review it shortly.').setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Priority request submitted — staff will review it shortly.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority request command:', error);
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while submitting your request.').setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('An error occurred while submitting your request.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   }
@@ -88,7 +88,7 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!isAdminUser && !isStaffUser) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Only staff and admins can approve or deny priority requests.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Only staff and admins can approve or deny priority requests.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -98,14 +98,14 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!request) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Priority request not found.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Priority request not found.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
 
     if (request.status !== 'pending') {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FFDD57').setDescription(`This request has already been **${request.status}**.`).setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`This request has already been **${request.status}**.`).setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -120,8 +120,8 @@ export async function handlePriorityRequestButton(interaction, client) {
     // Update embed
     const oldEmbed = interaction.message.embeds[0];
     const newEmbed = new EmbedBuilder(oldEmbed.data)
-      .setColor(isApprove ? 0x23D160 : 0xFF3860)
-      .setDescription(isApprove ? '> ✅ Approved' : '> ❌ Denied')
+      .setColor(0x2d2d2d)
+      .setDescription(isApprove ? '> Approved' : '> Denied')
       .addFields(
         { name: isApprove ? 'Approved By' : 'Denied By', value: `<@${interaction.user.id}>`, inline: true }
       );
@@ -152,7 +152,7 @@ export async function handlePriorityRequestButton(interaction, client) {
                   .setCustomId('priority_stop')
                   .setLabel('Stop Priority')
                   .setStyle(ButtonStyle.Danger)
-                  .setEmoji('🛑')
+                  .setEmoji('')
               );
               await panelMessage.edit({ embeds: [panelEmbed], components: [stopRow] });
             } catch (err) {
@@ -164,13 +164,13 @@ export async function handlePriorityRequestButton(interaction, client) {
     }
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor(isApprove ? '#23D160' : '#FF3860').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority request button:', error);
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while processing this request.').setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('An error occurred while processing this request.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   }
@@ -184,7 +184,7 @@ export async function handlePriorityStop(interaction) {
 
     if (!priority) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Priority tracker not found.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Priority tracker not found.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -194,14 +194,14 @@ export async function handlePriorityStop(interaction) {
 
     if (!isAdminUser && !isStaffUser && !isHost && !isRequester) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Only staff, admins, the host, or the requester can stop an active priority.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Only staff, admins, the host, or the requester can stop an active priority.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
 
     if (!priority.priorityActive) {
       return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#FFDD57').setDescription('There is no active priority to stop.').setFooter({ text: 'RolePlayManager' })],
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('There is no active priority to stop.').setFooter({ text: 'RPM' })],
         flags: 64,
       });
     }
@@ -226,13 +226,13 @@ export async function handlePriorityStop(interaction) {
     }
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Priority has been stopped by <@${interaction.user.id}>.`).setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`Priority has been stopped by <@${interaction.user.id}>.`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority stop:', error);
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while stopping the priority.').setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('An error occurred while stopping the priority.').setFooter({ text: 'RPM' })],
       flags: 64,
     });
   }
@@ -251,7 +251,7 @@ function buildPriorityEmbed(priority) {
   }
 
   const isActive = priority.priorityActive;
-  const statusLine = isActive ? '🔴  **Priority is ACTIVE**' : '⚫  Priority is inactive';
+  const statusLine = isActive ? ' **Priority is ACTIVE**' : 'Priority is inactive';
 
   let description = `${statusLine}\n\n`;
   description += `**Issued By:** ${priority.priorityIssuedBy || 'N/A'}\n`;
@@ -263,9 +263,9 @@ function buildPriorityEmbed(priority) {
   }
 
   return new EmbedBuilder()
-    .setColor(isActive ? 0xFF3860 : 0x36393F)
+    .setColor(0x2d2d2d)
     .setTitle('Priority Tracker')
     .setDescription(description)
-    .setFooter({ text: 'RolePlayManager' })
+    .setFooter({ text: 'RPM' })
     .setTimestamp();
 }

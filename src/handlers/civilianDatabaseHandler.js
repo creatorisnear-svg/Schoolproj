@@ -327,10 +327,10 @@ export async function handleCivilianManageCharacterSelect(interaction) {
     description += `**Weapons:** ${character.guns?.length || 0}`;
 
     const embed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle(`📋 ${character.characterName}`)
+      .setColor('#2d2d2d')
+      .setTitle(`${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
@@ -344,11 +344,11 @@ export async function handleCivilianManageCharacterSelect(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`char_edit_${characterId}`)
-          .setLabel('✏️ Edit')
+          .setLabel('Edit')
           .setStyle('Primary'),
         new ButtonBuilder()
           .setCustomId(`char_delete_${characterId}`)
-          .setLabel('🗑️ Delete')
+          .setLabel('Delete')
           .setStyle('Danger')
       );
 
@@ -551,13 +551,13 @@ export async function handleCharacterDeleteConfirm(interaction, characterId) {
           .setCustomId('civilian_database_menu')
           .setPlaceholder('Select an action...')
           .addOptions(
-            { label: '🚨 Report 911 Emergency', value: 'report_911', emoji: '🚨' },
-            { label: '🐦 Post to Twitter', value: 'post_twitter', emoji: '🐦' },
-            { label: '🤫 Post Anonymously', value: 'post_anon', emoji: '🤫' },
-            { label: '👤 Create Character', value: 'create_character', emoji: '👤' },
-            { label: '🚗 Add Vehicle', value: 'add_vehicle', emoji: '🚗' },
-            { label: '🔫 Add Firearm', value: 'add_firearm', emoji: '🔫' },
-            { label: '📋 Manage Character', value: 'manage_character', emoji: '📋' }
+            { label: 'Report 911 Emergency', value: 'report_911' },
+            { label: 'Post to Twitter', value: 'post_twitter' },
+            { label: 'Post Anonymously', value: 'post_anon' },
+            { label: 'Create Character', value: 'create_character' },
+            { label: 'Add Vehicle', value: 'add_vehicle' },
+            { label: 'Add Firearm', value: 'add_firearm' },
+            { label: 'Manage Character', value: 'manage_character' }
           )
       );
 

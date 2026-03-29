@@ -14,7 +14,7 @@ async function showSetupMenu(interaction) {
           { label: 'Set LEO Roles', value: 'set_leo_roles' },
           { label: 'Set Fire Department Roles', value: 'set_fd_roles' },
           { label: 'Set Staff Roles', value: 'set_staff_roles' },
-          { label: '✅ Done - Close Setup', value: 'setup_done' }
+          { label: 'Done - Close Setup', value: 'setup_done' }
         )
     );
 
@@ -335,12 +335,12 @@ export async function handleCADCharacterMenu(interaction) {
       }
 
       const embeds = characters.map(c => {
-        let description = `**📋 PERSONAL INFORMATION**\n`;
+        let description = `**PERSONAL INFORMATION**\n`;
         if (c.age) description += `Age: ${c.age} | `;
         if (c.gender) description += `Gender: ${c.gender}`;
         if (c.age || c.gender) description += `\n`;
         
-        description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
+        description += `\n**PHYSICAL DESCRIPTION**\n`;
         if (c.hairColor) description += `Hair: ${c.hairColor} | `;
         if (c.eyeColor) description += `Eyes: ${c.eyeColor}`;
         if (c.hairColor || c.eyeColor) description += `\n`;
@@ -349,42 +349,42 @@ export async function handleCADCharacterMenu(interaction) {
         if (c.distinguishingFeatures) description += `Distinguishing Features: ${c.distinguishingFeatures}\n`;
         if (c.scarsAndTattoos) description += `Scars/Tattoos: ${c.scarsAndTattoos}\n`;
         
-        description += `\n**🪪 IDENTIFICATION**\n`;
+        description += `\n**IDENTIFICATION**\n`;
         description += `SSN: ${c.socialSecurityNumber}\n`;
         description += `Driver's License: ${c.driversLicense}\n`;
-        description += `License Status: ${c.driverLicenseStatus === 'valid' ? '✅ Valid' : c.driverLicenseStatus === 'suspended' ? '⚠️ Suspended' : '❌ Revoked'}\n`;
+        description += `License Status: ${c.driverLicenseStatus === 'valid' ? 'Valid' : c.driverLicenseStatus === 'suspended' ? 'Suspended' : 'Revoked'}\n`;
         
-        description += `\n**📍 CONTACT & ADDRESS**\n`;
+        description += `\n**CONTACT & ADDRESS**\n`;
         if (c.address) description += `Address: ${c.address}\n`;
         if (c.phoneNumber) description += `Phone: ${c.phoneNumber}\n`;
         if (c.occupation) description += `Occupation: ${c.occupation}\n`;
         if (c.emergencyContact) description += `Emergency Contact: ${c.emergencyContact}\n`;
         
-        description += `\n**🚗 INVENTORY**\n`;
+        description += `\n**INVENTORY**\n`;
         description += `Vehicles: ${c.vehicles.length} | Guns: ${c.guns.length}\n`;
         
-        description += `\n**⚖️ STATUS**\n`;
+        description += `\n**STATUS**\n`;
         if (c.status === 'wanted') {
-          description += `🚨 **WANTED**${c.wantedReason ? ` - ${c.wantedReason}` : ''}\n`;
+          description += `**WANTED**${c.wantedReason ? ` - ${c.wantedReason}` : ''}\n`;
         } else {
-          description += `✅ **CLEAN**\n`;
+          description += `**CLEAN**\n`;
         }
         
         if (c.arrestHistory && c.arrestHistory.length > 0) {
-          description += `\n**👮 ARREST HISTORY**\n`;
+          description += `\n**ARREST HISTORY**\n`;
           c.arrestHistory.slice(0, 3).forEach(arrest => {
             description += `• ${arrest.charge} (${arrest.outcome})\n`;
           });
           if (c.arrestHistory.length > 3) description += `• +${c.arrestHistory.length - 3} more arrests\n`;
         }
         
-        if (c.medicalInfo) description += `\n**🏥 MEDICAL INFO**\n${c.medicalInfo}\n`;
+        if (c.medicalInfo) description += `\n**MEDICAL INFO**\n${c.medicalInfo}\n`;
 
         return new EmbedBuilder()
           .setColor(c.status === 'wanted' ? '#ff0000' : '#00ff00')
           .setTitle(`${c.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'RolePlayManager' })
+          .setFooter({ text: 'RPM' })
           .setTimestamp();
       });
 
@@ -419,7 +419,7 @@ export async function handleCharacterLicenseValid(interaction, characterId) {
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
-      content: `✅ **${character.characterName}** - License set to **Valid**\n\nYou can now select a special status below or just close this if done.`,
+      content: `**${character.characterName}** - License set to **Valid**\n\nYou can now select a special status below or just close this if done.`,
       flags: 64,
     });
   } catch (error) {
@@ -448,7 +448,7 @@ export async function handleCharacterLicenseInvalid(interaction, characterId) {
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
-      content: `❌ **${character.characterName}** - License set to **Invalid**\n\nYou can now select a special status below or just close this if done.`,
+      content: `**${character.characterName}** - License set to **Invalid**\n\nYou can now select a special status below or just close this if done.`,
       flags: 64,
     });
   } catch (error) {
@@ -477,7 +477,7 @@ export async function handleCharacterVeteran(interaction, characterId) {
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
-      content: `🎖️ **${character.characterName}** - Special Status set to **Veteran**`,
+      content: `**${character.characterName}** - Special Status set to **Veteran**`,
       flags: 64,
     });
   } catch (error) {
@@ -506,7 +506,7 @@ export async function handleCharacterOrganDonor(interaction, characterId) {
 
     // Keep buttons visible - just acknowledge the selection
     return interaction.reply({
-      content: `❤️ **${character.characterName}** - Special Status set to **Organ Donor**`,
+      content: `**${character.characterName}** - Special Status set to **Organ Donor**`,
       flags: 64,
     });
   } catch (error) {
@@ -562,18 +562,18 @@ export async function handleCADCharacterCreateModal(interaction) {
 
     await character.save();
 
-    let description = `**📋 Personal Information**\n`;
+    let description = `**Personal Information**\n`;
     description += `**Name:** ${characterName}\n`;
     if (age) description += `**Age:** ${age}\n`;
     if (gender) description += `**Gender:** ${gender}\n`;
-    description += `\n**🪪 Identification**\n`;
+    description += `\n**Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
 
     const embed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle('✅ Character Created - Step 1/3')
+      .setColor('#2d2d2d')
+      .setTitle('Character Created - Step 1/3')
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     // Show "Continue Character" button for Step 2
@@ -581,7 +581,7 @@ export async function handleCADCharacterCreateModal(interaction) {
     const continueButton = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_continue_${character._id}`)
-        .setLabel('📝 Continue Character Setup')
+        .setLabel('Continue Character Setup')
         .setStyle('Primary')
     );
 
@@ -695,24 +695,24 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
       });
     }
 
-    let description = `**📋 Personal Information**\n`;
+    let description = `**Personal Information**\n`;
     description += `**Name:** ${character.characterName}\n`;
     if (character.age) description += `**Age:** ${character.age}\n`;
     if (character.gender) description += `**Gender:** ${character.gender}\n`;
-    description += `\n**🪪 Identification**\n`;
+    description += `\n**Identification**\n`;
     description += `**SSN:** ${character.socialSecurityNumber}\n`;
     
     if (height || race) {
-      description += `\n**👤 Physical Description**\n`;
+      description += `\n**Physical Description**\n`;
       if (height) description += `**Height:** ${height}\n`;
       if (race) description += `**Race:** ${race}\n`;
     }
 
     const embed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle('✅ Character Setup - Step 2/3')
+      .setColor('#2d2d2d')
+      .setTitle('Character Setup - Step 2/3')
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     // Show license and veteran status buttons for Step 3
@@ -721,34 +721,34 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
     const licenseButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_license_valid_${character._id}`)
-        .setLabel('✅ Valid License')
+        .setLabel('Valid License')
         .setStyle('Success'),
       new ButtonBuilder()
         .setCustomId(`char_license_invalid_${character._id}`)
-        .setLabel('❌ Invalid License')
+        .setLabel('Invalid License')
         .setStyle('Danger')
     );
 
     const specialButtons = new ARB().addComponents(
       new ButtonBuilder()
         .setCustomId(`char_veteran_${character._id}`)
-        .setLabel('🎖️ Veteran')
+        .setLabel('Veteran')
         .setStyle('Primary'),
       new ButtonBuilder()
         .setCustomId(`char_organ_donor_${character._id}`)
-        .setLabel('❤️ Organ Donor')
+        .setLabel('Organ Donor')
         .setStyle('Secondary'),
       new ButtonBuilder()
         .setCustomId(`char_status_none_${character._id}`)
-        .setLabel('✅ Done')
+        .setLabel('Done')
         .setStyle('Success')
     );
 
     const statusEmbed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle('📋 Final Setup - Step 3/3')
-      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or click "✅ Done" to skip)')
-      .setFooter({ text: 'RolePlayManager' });
+      .setColor('#2d2d2d')
+      .setTitle('Final Setup - Step 3/3')
+      .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or click "Done" to skip)')
+      .setFooter({ text: 'RPM' });
 
     return interaction.reply({
       embeds: [embed, statusEmbed],
@@ -787,18 +787,18 @@ export async function handleCharacterStatusNone(interaction, characterId) {
           .setCustomId('civilian_database_menu')
           .setPlaceholder('Select an action...')
           .addOptions(
-            { label: '🚨 Report 911 Emergency', value: 'report_911', emoji: '🚨' },
-            { label: '🐦 Post to Twitter', value: 'post_twitter', emoji: '🐦' },
-            { label: '🤫 Post Anonymously', value: 'post_anon', emoji: '🤫' },
-            { label: '👤 Create Character', value: 'create_character', emoji: '👤' },
-            { label: '🚗 Add Vehicle', value: 'add_vehicle', emoji: '🚗' },
-            { label: '🔫 Add Firearm', value: 'add_firearm', emoji: '🔫' },
-            { label: '📋 Manage Character', value: 'manage_character', emoji: '📋' }
+            { label: 'Report 911 Emergency', value: 'report_911' },
+            { label: 'Post to Twitter', value: 'post_twitter' },
+            { label: 'Post Anonymously', value: 'post_anon' },
+            { label: 'Create Character', value: 'create_character' },
+            { label: 'Add Vehicle', value: 'add_vehicle' },
+            { label: 'Add Firearm', value: 'add_firearm' },
+            { label: 'Manage Character', value: 'manage_character' }
           )
       );
 
     return interaction.reply({
-      embeds: [successEmbed('✅ Character Complete', `**${character.characterName}** has been created successfully! You can now add vehicles or weapons.`)],
+      embeds: [successEmbed('Character Complete', `**${character.characterName}** has been created successfully! You can now add vehicles or weapons.`)],
       components: [menu],
       flags: 64,
     });
@@ -895,8 +895,8 @@ export async function handleCADVehicleAddModal(interaction) {
       { $push: { vehicles: { make, model, color, licensePlate: plate, condition } } }
     );
 
-    let successMsg = `**${make} ${model}**\n🎨 Color: ${color}\n📍 Plate: ${plate}`;
-    if (condition) successMsg += `\n⚙️ Condition: ${condition}`;
+    let successMsg = `**${make} ${model}**\nColor: ${color}\nPlate: ${plate}`;
+    if (condition) successMsg += `\nCondition: ${condition}`;
 
     return interaction.reply({
       embeds: [successEmbed('Vehicle Registered', successMsg)],
@@ -969,7 +969,7 @@ export async function handleCADGunAddModal(interaction) {
     );
 
     let successMsg = `**${gunName}**`;
-    if (serialNumber) successMsg += `\n🔢 Serial: ${serialNumber}`;
+    if (serialNumber) successMsg += `\nSerial: ${serialNumber}`;
 
     return interaction.reply({
       embeds: [successEmbed('Weapon Registered', successMsg)],

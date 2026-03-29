@@ -116,7 +116,7 @@ async function handleVerifyModal(interaction) {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
 
     if (!verification || !verification.enabled) {
-      console.warn(`⚠️ Verification system not enabled for guild ${interaction.guildId}`);
+      console.warn(`Verification system not enabled for guild ${interaction.guildId}`);
       return interaction.reply({
         embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
         flags: 64,
@@ -124,7 +124,7 @@ async function handleVerifyModal(interaction) {
     }
 
     if (!verification.verifiedRoleId) {
-      console.warn(`⚠️ Verification system not fully configured for guild ${interaction.guildId}`);
+      console.warn(`Verification system not fully configured for guild ${interaction.guildId}`);
       return interaction.reply({
         embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
         flags: 64,
@@ -174,7 +174,7 @@ async function handleVerifyModal(interaction) {
           
           const embed = new EmbedBuilder()
             .setColor('#FFA500')
-            .setTitle('RolePlayManager Verification Pending')
+            .setTitle('Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
               { name: 'PSN / XBOX', value: psnxbox, inline: false }
@@ -190,7 +190,7 @@ async function handleVerifyModal(interaction) {
             embed.addFields(questionFields);
           }
 
-          embed.setTimestamp().setFooter({ text: 'RolePlayManager' });
+          embed.setTimestamp().setFooter({ text: 'RPM' });
 
           const msg = await approvalChannel.send({ embeds: [embed], components: [row] });
           pending.messageId = msg.id;
@@ -241,7 +241,7 @@ async function handleVerifyModal(interaction) {
         const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
         if (logChannel && logChannel.isTextBased()) {
           const logEmbed = new EmbedBuilder()
-            .setColor('#0099ff')
+            .setColor('#2d2d2d')
             .setTitle('Member Verified with Questions')
             .addFields(
               { name: 'Member', value: `${interaction.user.username} (${interaction.user})`, inline: false }
@@ -254,7 +254,7 @@ async function handleVerifyModal(interaction) {
           }));
           logEmbed.addFields(questionFields);
 
-          logEmbed.setTimestamp().setFooter({ text: 'RolePlayManager' });
+          logEmbed.setTimestamp().setFooter({ text: 'RPM' });
 
           await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
@@ -264,18 +264,18 @@ async function handleVerifyModal(interaction) {
     const dmMessage = verification.verifyDMMessage || 'Welcome to our community! You have been verified and can now access all member channels.';
     await interaction.user.send({
       embeds: [new EmbedBuilder()
-        .setColor('#00ff00')
+        .setColor('#2d2d2d')
         .setTitle('Verification Successful')
         .setDescription(dmMessage)
-        .setFooter({ text: 'RolePlayManager' })
+        .setFooter({ text: 'RPM' })
       ]
     });
 
     const successMsg = new EmbedBuilder()
-      .setColor('#00ff00')
+      .setColor('#2d2d2d')
       .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     console.log(`Member ${interaction.user.username} successfully verified (instant)`);
     return interaction.reply({
@@ -313,7 +313,7 @@ async function handleReactionRoleSendMessageModal(interaction) {
       flags: 64,
     });
   } catch (error) {
-    console.error('❌ Error in reaction role modal:', error);
+    console.error('Error in reaction role modal:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
       flags: 64,
@@ -407,14 +407,14 @@ async function handleReactionRoleAddEmojiModal(interaction) {
 }
 
 async function handleAntiPromotingAddLinkModal(interaction) {
-  console.log('🔗 handleAntiPromotingAddLinkModal called');
+  console.log('handleAntiPromotingAddLinkModal called');
   
   let link;
   try {
     link = interaction.fields.getTextInputValue('link_input').trim();
     console.log(' Link received:', link);
   } catch (fieldError) {
-    console.error('❌ Error getting link input:', fieldError);
+    console.error('Error getting link input:', fieldError);
     return interaction.reply({
       embeds: [errorEmbed('Could not read the link input. Please try again.')],
       flags: 64,
@@ -449,7 +449,7 @@ async function handleAntiPromotingAddLinkModal(interaction) {
       });
     }
 
-    console.log('💾 Adding link and saving...');
+    console.log('Adding link and saving...');
     config.whitelistedInviteLinks.push(link);
     const saved = await config.save();
     console.log(' Saved successfully:', saved._id);
@@ -459,7 +459,7 @@ async function handleAntiPromotingAddLinkModal(interaction) {
       flags: 64,
     });
   } catch (error) {
-    console.error('❌ Error adding whitelisted link:', error.message);
+    console.error('Error adding whitelisted link:', error.message);
     console.error('Stack:', error.stack);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while adding the link.')],

@@ -74,10 +74,10 @@ export async function handleFireDepartmentMenu(interaction) {
         if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
 
         return new EmbedBuilder()
-          .setColor('#ff6600')
-          .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
+          .setColor('#2d2d2d')
+          .setTitle(`Call #${index + 1}: ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
+          .setFooter({ text: `RPM | ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -239,23 +239,23 @@ export async function handleFDCharacterCreateModal(interaction) {
 
     await character.save();
 
-    let description = `**📋 Personal Information**\n`;
+    let description = `**Personal Information**\n`;
     description += `**Name:** ${characterName}\n`;
     if (age) description += `**Age:** ${age}\n`;
     if (gender) description += `**Gender:** ${gender}\n`;
-    description += `\n**🪪 Identification**\n`;
+    description += `\n**Identification**\n`;
     description += `**SSN:** ${ssn}\n`;
     description += `**Driver's License:** ${driversLicense}\n`;
     description += `**License Status:** Valid\n`;
-    if (hairColor || eyeColor) description += `\n**👤 Physical Description**\n`;
+    if (hairColor || eyeColor) description += `\n**Physical Description**\n`;
     if (hairColor) description += `**Hair:** ${hairColor}\n`;
     if (eyeColor) description += `**Eyes:** ${eyeColor}\n`;
 
     const embed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle('✅ FD Character Created Successfully')
+      .setColor('#2d2d2d')
+      .setTitle('FD Character Created Successfully')
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.reply({
@@ -343,10 +343,10 @@ export async function handleFDRespondCall(interaction) {
     if (call.contact) description += `**Contact:** ${call.contact}\n`;
 
     const callEmbed = new EmbedBuilder()
-      .setColor('#ff6600')
-      .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
+      .setColor('#2d2d2d')
+      .setTitle(`Call #${call.callId}: ${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
+      .setFooter({ text: `RPM | ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach
@@ -413,11 +413,11 @@ export async function handleFDPrimaryResponse(interaction) {
         const updatedEmbed = message.embeds[0].toJSON();
         
         let description = updatedEmbed.description || '';
-        const respondingLine = `\n\n**🚨 PRIMARY:** ${interaction.user.username}`;
+        const respondingLine = `\n\n**PRIMARY:** ${interaction.user.username}`;
         if (!description.includes('PRIMARY')) {
           updatedEmbed.description = (description || '') + respondingLine;
         } else {
-          updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY:.*/, `**🚨 PRIMARY:** ${interaction.user.username}`);
+          updatedEmbed.description = description.replace(/\*\*PRIMARY:.*/, `**PRIMARY:** ${interaction.user.username}`);
         }
 
         await message.edit({
@@ -474,11 +474,11 @@ export async function handleFDAttachResponse(interaction) {
         // Build responder list
         let responderText = '';
         if (call.respondingLeoId) {
-          responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername}`;
+          responderText += `**PRIMARY:** ${call.respondingLeoUsername}`;
         }
         if (call.attachedLeoIds.length > 0) {
           if (responderText) responderText += '\n';
-          responderText += `**📎 ATTACHED:** ${call.attachedLeoIds.map(id => {
+          responderText += `**ATTACHED:** ${call.attachedLeoIds.map(id => {
             const member = interaction.guild.members.cache.get(id);
             return member?.user.username || `<@${id}>`;
           }).join(', ')}`;
@@ -486,7 +486,7 @@ export async function handleFDAttachResponse(interaction) {
 
         // Update description
         let description = updatedEmbed.description || '';
-        const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+        const responderMatch = description.match(/(\n\n\*\*PRIMARY:.*)?(\n\*\*ATTACHED:.*)?$/);
         if (responderMatch) {
           description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
         } else {
@@ -589,8 +589,8 @@ export async function handleFDVehicleAddModal(interaction) {
       { $push: { vehicles: { make, model, color, licensePlate: plate, condition } } }
     );
 
-    let successMsg = `**${make} ${model}**\n🎨 Color: ${color}\n📍 Plate: ${plate}`;
-    if (condition) successMsg += `\n⚙️ Condition: ${condition}`;
+    let successMsg = `**${make} ${model}**\nColor: ${color}\nPlate: ${plate}`;
+    if (condition) successMsg += `\nCondition: ${condition}`;
 
     return interaction.reply({
       embeds: [successEmbed('Vehicle Registered', successMsg)],

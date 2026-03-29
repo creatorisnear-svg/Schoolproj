@@ -31,7 +31,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -67,17 +67,17 @@ export async function execute(interaction) {
 
     // Send DM to member
     const removeDM = new EmbedBuilder()
-      .setColor('#00ff00')
-      .setTitle('✅ Strikes Removed')
-      .addFields(
-        { name: 'Removed By', value: interaction.user.username, inline: false },
-        { name: 'Reason', value: reason, inline: false },
-        { name: 'Strikes Removed', value: `${removeAmount}`, inline: false },
-        { name: 'Previous Level', value: `${previousLevel}/4`, inline: false },
-        { name: 'New Level', value: `${newLevel}/4`, inline: false }
+      .setColor('#2d2d2d')
+      .setTitle('Strikes Removed')
+      .setDescription(
+        `**Removed by:** ${interaction.user.username}\n` +
+        `**Reason:** ${reason}\n` +
+        `**Removed:** ${removeAmount}\n` +
+        `**Previous:** ${previousLevel}/4\n` +
+        `**Current:** ${newLevel}/4`
       )
       .setTimestamp()
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await targetUser.send({ embeds: [removeDM] }).catch(() => {});
 
@@ -87,25 +87,24 @@ export async function execute(interaction) {
       const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
-          .setColor('#00ff00')
-          .setTitle('✅ Strikes Removed')
-          .addFields(
-            { name: 'Member', value: `${targetUser.username} (${targetUser})`, inline: false },
-            { name: 'Removed By', value: `${interaction.user.username}`, inline: false },
-            { name: 'Reason', value: reason, inline: false },
-            { name: 'Previous Level', value: `${previousLevel}/4`, inline: false },
-            { name: 'New Level', value: `${newLevel}/4`, inline: false },
-            { name: 'Strikes Removed', value: `${removeAmount}`, inline: false }
+          .setColor('#2d2d2d')
+          .setTitle('Strikes Removed')
+          .setDescription(
+            `**User:** ${targetUser.username} (${targetUser})\n` +
+            `**Removed by:** ${interaction.user.username}\n` +
+            `**Reason:** ${reason}\n` +
+            `**Removed:** ${removeAmount}\n` +
+            `**Level:** ${previousLevel}/4 → ${newLevel}/4`
           )
           .setTimestamp()
-          .setFooter({ text: 'RolePlayManager' });
+          .setFooter({ text: 'RPM' });
 
         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
       }
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`${targetUser.username} Strikes Removed`, `${targetUser.username} is now at strike level ${newLevel}/4\n\nStrikes removed: ${removeAmount}`)],
+      embeds: [successEmbed(`Strikes Removed — ${targetUser.username}`, `Now at level **${newLevel}/4** (removed ${removeAmount})`)],
       flags: 64,
     });
   } catch (error) {

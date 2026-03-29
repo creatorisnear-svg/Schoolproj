@@ -634,22 +634,22 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
             : `**${joinTargetName}**`;
 
           const stopEmbed = new EmbedBuilder()
-            .setColor('#FFDD57')
-            .setTitle('🚗 Traffic Stop Active')
+            .setColor('#2d2d2d')
+            .setTitle('Traffic Stop Active')
             .setDescription(
               `**Officer:** <@${userId}>\n` +
               `**With:** ${civLine}\n` +
               `**Moved to:** <#${bestChannelId}>\n\n` +
               `Both parties have been moved to the traffic stop channel.\n` +
-              `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
+              `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
             )
-            .addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
-            .setFooter({ text: 'RolePlayManager' })
+            .addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
+            .setFooter({ text: 'RPM' })
             .setTimestamp();
 
           const clearBtn = new ButtonBuilder()
             .setCustomId(`dispatch_stop_clear_${userId}`)
-            .setLabel('✅ 10-8 — Stop Clear')
+            .setLabel('10-8 — Stop Clear')
             .setStyle(ButtonStyle.Success);
 
           await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
@@ -686,58 +686,58 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       if (dispatchChannel?.isTextBased()) {
         if (cadLookup.type === 'plate') {
           const embed = new EmbedBuilder()
-            .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
-            .setTitle('🔍 Plate Lookup')
-            .setFooter({ text: 'RolePlayManager' })
+            .setColor('#2d2d2d')
+            .setTitle('Plate Lookup')
+            .setFooter({ text: 'RPM' })
             .setTimestamp()
             .addFields(
-              { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
-              { name: '🔢 Plate', value: cadLookup.query, inline: true },
+              { name: 'Requested By', value: `<@${userId}>`, inline: true },
+              { name: 'Plate', value: cadLookup.query, inline: true },
             );
           if (result.found) {
             embed.addFields(
-              { name: '👤 Owner', value: result.embed.owner, inline: true },
-              { name: '🚗 Vehicle', value: result.embed.vehicleDesc || 'N/A', inline: true },
-              { name: '📋 Status', value: result.embed.status, inline: true },
-              { name: '🪪 License', value: result.embed.license, inline: true },
+              { name: 'Owner', value: result.embed.owner, inline: true },
+              { name: 'Vehicle', value: result.embed.vehicleDesc || 'N/A', inline: true },
+              { name: 'Status', value: result.embed.status, inline: true },
+              { name: 'License', value: result.embed.license, inline: true },
             );
             if (result.embed.hasBolo) {
-              embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
+              embed.addFields({ name: 'BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: '📋 Result', value: '❌ No records found — plate is not registered in the system', inline: false });
+            embed.addFields({ name: 'Result', value: 'No records found — plate is not registered in the system', inline: false });
           }
-          embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+          embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
           await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send plate embed:', e.message));
         } else {
           const embed = new EmbedBuilder()
-            .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
-            .setTitle('🔍 Name Lookup')
-            .setFooter({ text: 'RolePlayManager' })
+            .setColor('#2d2d2d')
+            .setTitle('Name Lookup')
+            .setFooter({ text: 'RPM' })
             .setTimestamp()
             .addFields(
-              { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
-              { name: '🔎 Name', value: cadLookup.query, inline: true },
+              { name: 'Requested By', value: `<@${userId}>`, inline: true },
+              { name: 'Name', value: cadLookup.query, inline: true },
             );
           if (result.found) {
             embed.addFields(
-              { name: '👤 Name', value: result.embed.name, inline: true },
-              { name: '📋 Status', value: result.embed.status, inline: true },
-              { name: '🪪 License', value: result.embed.license, inline: true },
+              { name: 'Name', value: result.embed.name, inline: true },
+              { name: 'Status', value: result.embed.status, inline: true },
+              { name: 'License', value: result.embed.license, inline: true },
             );
-            if (result.embed.age) embed.addFields({ name: '🎂 Age', value: `${result.embed.age}`, inline: true });
-            if (result.embed.gender) embed.addFields({ name: '⚧ Gender', value: result.embed.gender, inline: true });
+            if (result.embed.age) embed.addFields({ name: 'Age', value: `${result.embed.age}`, inline: true });
+            if (result.embed.gender) embed.addFields({ name: 'Gender', value: result.embed.gender, inline: true });
             if (result.embed.vehicles?.length > 0) {
               const vList = result.embed.vehicles.map(v => `${v.color || ''} ${v.year || ''} ${v.make || ''} ${v.model || ''} — ${v.licensePlate || 'No Plate'}`.trim()).join('\n');
-              embed.addFields({ name: '🚗 Vehicles', value: vList, inline: false });
+              embed.addFields({ name: 'Vehicles', value: vList, inline: false });
             }
             if (result.embed.hasBolo) {
-              embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
+              embed.addFields({ name: 'BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: '📋 Result', value: '❌ No records found — name is not in the system', inline: false });
+            embed.addFields({ name: 'Result', value: 'No records found — name is not in the system', inline: false });
           }
-          embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+          embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
           await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send name embed:', e.message));
         }
       } else {
@@ -826,15 +826,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         if (dispatchChannel?.isTextBased()) {
           const embed = new EmbedBuilder()
-            .setColor('#23D160')
-            .setTitle(`🚔 Unit ${role === 'primary responder' ? 'Responding' : 'Attached'} — Call #${callNum}`)
+            .setColor('#2d2d2d')
+            .setTitle(`Unit ${role === 'primary responder' ? 'Responding' : 'Attached'} — Call #${callNum}`)
             .setDescription(
               `**Officer:** <@${userId}>\n` +
               `**Call:** #${callNum} — ${call.issue || 'Unknown'}\n` +
               `**Location:** ${call.location || 'Unknown'}\n` +
-              `**Role:** ${role === 'primary responder' ? '🔴 Primary Responder' : '📎 Attached'}`
+              `**Role:** ${role === 'primary responder' ? 'Primary Responder' : 'Attached'}`
             )
-            .setFooter({ text: 'RolePlayManager' })
+            .setFooter({ text: 'RPM' })
             .setTimestamp();
           await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
         }
@@ -851,14 +851,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
                   let description = existingEmbed.description || '';
                   let responderText = '';
                   if (call.respondingLeoId) {
-                    responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername || 'Unknown'}`;
+                    responderText += `**PRIMARY:** ${call.respondingLeoUsername || 'Unknown'}`;
                   }
                   const attachedOthers = (call.attachedLeoIds || []).filter(id => id !== call.respondingLeoId);
                   if (attachedOthers.length > 0) {
                     if (responderText) responderText += '\n';
-                    responderText += `**📎 ATTACHED:** ${attachedOthers.map(id => `<@${id}>`).join(', ')}`;
+                    responderText += `**ATTACHED:** ${attachedOthers.map(id => `<@${id}>`).join(', ')}`;
                   }
-                  const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+                  const responderMatch = description.match(/(\n\n\*\*PRIMARY.*)?(\n\*\*ATTACHED:.*)?$/);
                   if (responderMatch && responderMatch.index > 0) {
                     description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
                   } else {
@@ -909,22 +909,22 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (dispatchChannel?.isTextBased()) {
       const embed = new EmbedBuilder()
-        .setColor('#5865F2')
-        .setTitle('📻 Dispatch Radio')
-        .setFooter({ text: 'RolePlayManager' })
+        .setColor('#2d2d2d')
+        .setTitle('Dispatch Radio')
+        .setFooter({ text: 'RPM' })
         .setTimestamp()
         .addFields(
-          { name: '👮 Officer', value: `<@${userId}>`, inline: true },
-          { name: '📟 Code', value: parsed.code ? `**${parsed.code}** — ${TEN_CODES[parsed.code]?.label}` : 'Unknown', inline: true },
+          { name: 'Officer', value: `<@${userId}>`, inline: true },
+          { name: 'Code', value: parsed.code ? `**${parsed.code}** — ${TEN_CODES[parsed.code]?.label}` : 'Unknown', inline: true },
         );
 
-      if (parsed.subject) embed.addFields({ name: '🧍 With', value: parsed.subject, inline: true });
-      if (parsed.location) embed.addFields({ name: '📍 Location', value: parsed.location, inline: true });
+      if (parsed.subject) embed.addFields({ name: 'With', value: parsed.subject, inline: true });
+      if (parsed.location) embed.addFields({ name: 'Location', value: parsed.location, inline: true });
 
-      embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+      embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
 
       if (dispatchResponse) {
-        embed.addFields({ name: '📡 Dispatch Response', value: `*"${dispatchResponse}"*`, inline: false });
+        embed.addFields({ name: 'Dispatch Response', value: `*"${dispatchResponse}"*`, inline: false });
       }
 
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
@@ -967,19 +967,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
             await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
           if (dispatchCh?.isTextBased()) {
             const stopEmbed = new EmbedBuilder()
-              .setColor('#FFDD57')
-              .setTitle('🚗 Traffic Stop Active')
+              .setColor('#2d2d2d')
+              .setTitle('Traffic Stop Active')
               .setDescription(
                 `**Officer:** <@${userId}>\n` +
                 `**Moved to:** <#${bestChannelId}>\n\n` +
                 `Officer **${officerName}** is on a **10-11**. They must return to patrol on their own.\n\n` +
-                `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
+                `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
               )
-              .setFooter({ text: 'RolePlayManager' })
+              .setFooter({ text: 'RPM' })
               .setTimestamp();
             const clearBtn = new ButtonBuilder()
               .setCustomId(`dispatch_stop_clear_${userId}`)
-              .setLabel('✅ 10-8 — Stop Clear')
+              .setLabel('10-8 — Stop Clear')
               .setStyle(ButtonStyle.Success);
             await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
           }
@@ -1042,9 +1042,9 @@ export async function rebuildStatusBoard(guild, config) {
   const embeds = [];
 
   const officerEmbed = new EmbedBuilder()
-    .setColor('#23D160')
-    .setTitle('🚔 Officer Status Board')
-    .setFooter({ text: 'RolePlayManager' })
+    .setColor('#2d2d2d')
+    .setTitle('Officer Status Board')
+    .setFooter({ text: 'RPM' })
     .setTimestamp();
 
   if (officers.length === 0) {
@@ -1062,7 +1062,7 @@ export async function rebuildStatusBoard(guild, config) {
         c.respondingLeoId === o.userId || c.attachedLeoIds?.includes(o.userId)
       );
       if (attachedCall) {
-        line += ` · [${attachedCall.respondingLeoId === o.userId ? '🔴 PRIMARY' : '📎 ATTACHED'} — Call #${attachedCall.callId?.split('-').pop() || '???'}]`;
+        line += ` · [${attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED'} — Call #${attachedCall.callId?.split('-').pop() || '???'}]`;
       }
 
       return line;
@@ -1073,8 +1073,8 @@ export async function rebuildStatusBoard(guild, config) {
 
   if (activeCalls.length > 0) {
     const callEmbed = new EmbedBuilder()
-      .setColor('#FF6B6B')
-      .setTitle('📞 Active 911 Calls')
+      .setColor('#2d2d2d')
+      .setTitle('Active 911 Calls')
       .setTimestamp();
 
     const callRows = activeCalls.map(c => {
@@ -1085,16 +1085,16 @@ export async function rebuildStatusBoard(guild, config) {
       if (c.location) line += ` @ ${c.location}`;
 
       if (c.respondingLeoId) {
-        line += `\n┗ 🔴 Primary: <@${c.respondingLeoId}>`;
+        line += `\n┗ Primary: <@${c.respondingLeoId}>`;
       }
       if (c.attachedLeoIds?.length > 0) {
         const attached = c.attachedLeoIds.filter(id => id !== c.respondingLeoId);
         if (attached.length > 0) {
-          line += `\n┗ 📎 Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
+          line += `\n┗ Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
         }
       }
       if (!c.respondingLeoId && c.attachedLeoIds?.length === 0) {
-        line += `\n┗ ⚠️ **NO UNITS RESPONDING**`;
+        line += `\n┗ **NO UNITS RESPONDING**`;
       }
 
       return line;
@@ -1108,7 +1108,7 @@ export async function rebuildStatusBoard(guild, config) {
       .setCustomId(`dispatch_clear_status_${o.userId}`)
       .setLabel(o.username.slice(0, 20))
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🗑️')
+      
   );
 
   const components = [];
@@ -1155,7 +1155,7 @@ export async function handleClearStatusButton(interaction) {
 
     const targetMention = targetUserId === interaction.user.id ? 'Your' : `<@${targetUserId}>'s`;
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`${targetMention} status has been cleared from the board.`).setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`${targetMention} status has been cleared from the board.`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (err) {
@@ -1190,10 +1190,10 @@ export async function handleStopClearButton(interaction) {
     await rebuildStatusBoard(interaction.guild, config);
 
     const clearEmbed = new EmbedBuilder()
-      .setColor('#23D160')
-      .setTitle('✅ Traffic Stop Cleared')
+      .setColor('#2d2d2d')
+      .setTitle('Traffic Stop Cleared')
       .setDescription(`<@${targetUserId}> is **10-8 — Available**. The traffic stop has been cleared.`)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.update({ embeds: [clearEmbed], components: [] });
@@ -1234,8 +1234,8 @@ async function checkUnrespondedCalls(guild, client) {
         await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
       if (dispatchChannel?.isTextBased()) {
         const embed = new EmbedBuilder()
-          .setColor('#FF0000')
-          .setTitle('🚨 911 Call Reminder — No Units Responding')
+          .setColor('#2d2d2d')
+          .setTitle('911 Call Reminder — No Units Responding')
           .setDescription(
             `**Call #${callNum}** has had no response for over 2 minutes.\n\n` +
             (call.issue ? `**Issue:** ${call.issue}\n` : '') +
@@ -1243,7 +1243,7 @@ async function checkUnrespondedCalls(guild, client) {
             (call.suspectsDescription ? `**Suspects:** ${call.suspectsDescription}\n` : '') +
             `\n**Any available unit, please respond.**`
           )
-          .setFooter({ text: 'RolePlayManager' })
+          .setFooter({ text: 'RPM' })
           .setTimestamp();
         await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
       }

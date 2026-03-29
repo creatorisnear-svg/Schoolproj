@@ -167,7 +167,7 @@ async function updateCalendarMessage(interaction, calendar) {
     console.log(`📌 updateCalendarMessage called for guild ${interaction.guildId}`);
     const channel = await interaction.guild.channels.fetch(calendar.channelId);
     if (!channel) {
-      console.error('❌ Channel not found:', calendar.channelId);
+      console.error('Channel not found:', calendar.channelId);
       return;
     }
 
@@ -189,7 +189,7 @@ async function updateCalendarMessage(interaction, calendar) {
         await message.edit({ embeds: [embed] });
         console.log(`Message edited successfully`);
       } catch (err) {
-        console.warn(`⚠️ Could not fetch existing message (${err.message}), sending new one...`);
+        console.warn(`Could not fetch existing message (${err.message}), sending new one...`);
         const message = await channel.send({ embeds: [embed] });
         calendar.messageId = message.id;
         await calendar.save();
@@ -203,7 +203,7 @@ async function updateCalendarMessage(interaction, calendar) {
       console.log(`New message sent and saved with ID: ${message.id}`);
     }
   } catch (error) {
-    console.error('❌ Error updating calendar message:', error);
+    console.error('Error updating calendar message:', error);
     throw error;
   }
 }

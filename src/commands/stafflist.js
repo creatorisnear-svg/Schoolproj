@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (staffMembers.length === 0) {
       return interaction.reply({
-        embeds: [infoEmbed('__**Staff List**__', 'No staff members have been added yet for this server.')],
+        embeds: [infoEmbed('Staff List', 'No staff members have been added yet.')],
       });
     }
 
@@ -28,17 +28,17 @@ export async function execute(interaction) {
       const type = staff.type === 'role' ? 'Role' : 'User';
       const name = staff.type === 'role' ? staff.roleName : staff.username;
       const addedDate = new Date(staff.addedAt).toLocaleDateString();
-      return `${index + 1}. **${type}:** ${name} *(Added: ${addedDate})*`;
+      return `\`${index + 1}.\` **${name}** — ${type} · Added ${addedDate}`;
     }).join('\n');
 
-    const embed = infoEmbed('__**RolePlayManager Bot Staff List**__', staffList);
-    embed.addFields({ name: 'Total Staff', value: `${staffMembers.length}`, inline: true });
+    const embed = infoEmbed('Staff List', staffList);
+    embed.addFields({ name: 'Total', value: `${staffMembers.length}`, inline: true });
 
     return interaction.reply({ embeds: [embed], flags: 64 });
   } catch (error) {
     console.error('Error fetching staff list:', error);
     return interaction.reply({
-      embeds: [errorEmbed('An error occurred while fetching the staff list. Please try again.')],
+      embeds: [errorEmbed('An error occurred while fetching the staff list.')],
       flags: 64,
     });
   }

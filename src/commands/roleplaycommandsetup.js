@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!roleplayConfig || !roleplayConfig.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('⚙️ Roleplay Commands Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Commands')],
+        embeds: [errorEmbed('Roleplay Commands Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Commands')],
         flags: 64,
       });
     }
@@ -31,10 +31,10 @@ export async function execute(interaction) {
           .setCustomId('roleplaycommands_setup_menu')
           .setPlaceholder('Choose a command to configure...')
           .addOptions(
-            { label: '🚨 911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
-            { label: '🐦 Twitter - Public Messages', value: 'setup_twitter' },
-            { label: '🤫 Anon - Anonymous Messages', value: 'setup_anon' },
-            { label: '✅ Done - Close Setup', value: 'setup_done' }
+            { label: '911 & CAD — Emergency/Dispatch', value: 'setup_emergency' },
+            { label: 'Twitter — Public Messages', value: 'setup_twitter' },
+            { label: 'Anon — Anonymous Messages', value: 'setup_anon' },
+            { label: 'Done - Close Setup', value: 'setup_done' }
           )
       );
 

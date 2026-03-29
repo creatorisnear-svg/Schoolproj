@@ -2,67 +2,35 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('View all RolePlayManager commands and features');
+  .setDescription('View all commands and features');
 
 export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
-    .setColor('#0099ff')
-    .setTitle('📘 RolePlayManager - Command Help')
-    .setDescription('Complete guide to all available commands')
-    .addFields(
-      {
-        name: '👥 Staff Management',
-        value: '/addstaff - Add a staff member\n/removestaff - Remove a staff member\n/stafflist - View all staff',
-        inline: false,
-      },
-      {
-        name: '✅ Verification System',
-        value: '/verifysystemsetup - Configure member verification\n/verify - Members verify themselves',
-        inline: false,
-      },
-      {
-        name: '⚠️ Strike System',
-        value: '/strikesystemsetup - Configure strike system\n/strike - Give a member a strike\n/removestrike - Remove a strike',
-        inline: false,
-      },
-      {
-        name: '⏱️ Priority Tracker',
-        value: '/prioritytrackersetup - Configure priority system\n/activepriority - Activate an event\n/deactivatepriority - Deactivate event\n/prioritycooldown - Set cooldown',
-        inline: false,
-      },
-      {
-        name: '🎭 Roleplay Systems',
-        value: '/roleplaycommandsetup - Enable RP features\n/civiliandatabase - Civilian database\n/leodatabase - Police database\n/firedepartmentdatabase - Fire department database',
-        inline: false,
-      },
-      {
-        name: '📅 Roleplay Events',
-        value: '/setrp - Create RP event\n/unsetrp - Delete RP event\n/roleplaycalendersetup - Configure calendar',
-        inline: false,
-      },
-      {
-        name: '🎫 Ticket & Role Request',
-        value: '/ticketsupportsetup - Configure tickets\n/rolerequestadd - Add requestable roles\n/rolerequest - Request a role\n/manageroles - Approve/deny requests',
-        inline: false,
-      },
-      {
-        name: '🛠️ Community Tools',
-        value: '/reactionrolemessage - Reaction roles\n/sticky - Sticky message\n/stickylist - View stickies\n/antipromotingsetup - Block invites\n/setlogchannel - Logging channel',
-        inline: false,
-      },
-      {
-        name: '🎙️ AI Dispatch (Premium)',
-        value: '/dispatchsetup - Configure AI voice dispatch\n/activatepremium - Activate a premium key',
-        inline: false,
-      },
-      {
-        name: '⚙️ Utility Commands',
-        value: '/enablecommands - Enable/disable features\n/reloadconfig - Reload config\n/clear - Delete messages\n/embed - Send embed\n/help - Show this help',
-        inline: false,
-      }
+    .setColor('#2d2d2d')
+    .setTitle('RolePlayManager')
+    .setDescription(
+      '### Staff\n' +
+      '`/addstaff` `/removestaff` `/stafflist`\n\n' +
+      '### Verification\n' +
+      '`/verifysystemsetup` `/verify`\n\n' +
+      '### Strikes\n' +
+      '`/strikesystemsetup` `/strike` `/removestrike`\n\n' +
+      '### Priority Tracker\n' +
+      '`/prioritytrackersetup` `/activepriority` `/deactivatepriority` `/prioritycooldown`\n\n' +
+      '### Roleplay\n' +
+      '`/roleplaycommandsetup` `/civiliandatabase` `/leodatabase` `/firedepartmentdatabase`\n\n' +
+      '### RP Events\n' +
+      '`/setrp` `/unsetrp` `/roleplaycalendersetup`\n\n' +
+      '### Tickets & Roles\n' +
+      '`/ticketsupportsetup` `/rolerequestadd` `/rolerequest` `/manageroles`\n\n' +
+      '### Community\n' +
+      '`/reactionrolemessage` `/sticky` `/stickylist` `/antipromotingsetup` `/setlogchannel`\n\n' +
+      '### AI Dispatch — *Premium*\n' +
+      '`/dispatchsetup` `/activatepremium`\n\n' +
+      '### Utility\n' +
+      '`/enablecommands` `/reloadconfig` `/clear` `/embed` `/help`'
     )
-    .setFooter({ text: 'RolePlayManager | Type / to see command options' })
-    .setTimestamp();
+    .setFooter({ text: 'RPM' });
 
   return interaction.reply({
     embeds: [helpEmbed],

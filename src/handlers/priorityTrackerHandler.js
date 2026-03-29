@@ -137,9 +137,9 @@ export async function buildPriorityEmbed(priority) {
   }
 
   return new EmbedBuilder()
-    .setTitle('🚨 Priority Tracker')
+    .setTitle('Priority Tracker')
     .setDescription(description)
-    .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
-    .setFooter({ text: 'RolePlayManager' })
+    .setColor(priority.priorityActive ? 0xFF0000 : 0x2d2d2d)
+    .setFooter({ text: 'RPM' })
     .setTimestamp();
 }

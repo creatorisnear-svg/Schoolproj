@@ -57,7 +57,7 @@ export async function execute(interaction) {
 
     if (!isAdmin && !isStaff) {
       return interaction.reply({
-        embeds: [errorEmbed('❌ Only admins and staff can use this command.')],
+        embeds: [errorEmbed('Only admins and staff can use this command.')],
         flags: 64,
       });
     }
@@ -65,7 +65,7 @@ export async function execute(interaction) {
     if (action === 'create') {
       if (!messageContent) {
         return interaction.reply({
-          embeds: [errorEmbed('❌ Please provide a message to make sticky.')],
+          embeds: [errorEmbed('Please provide a message to make sticky.')],
           flags: 64,
         });
       }
@@ -117,7 +117,7 @@ export async function execute(interaction) {
       console.log(`📌 Sticky saved to database with ID: ${savedSticky._id}`);
 
       return interaction.reply({
-        embeds: [successEmbed(`✅ Sticky Message Created`, `Sticky message created in ${channel}`)],
+        embeds: [successEmbed(`Sticky Message Created`, `Sticky message created in ${channel}`)],
         flags: 64,
       });
     }
@@ -128,7 +128,7 @@ export async function execute(interaction) {
 
       if (!existingSticky) {
         return interaction.reply({
-          embeds: [errorEmbed(`❌ No sticky message found in ${channel}`)],
+          embeds: [errorEmbed(`No sticky message found in ${channel}`)],
           flags: 64,
         });
       }
@@ -149,14 +149,14 @@ export async function execute(interaction) {
       console.log(`📌 Sticky removed from database for channel ${channel.id}`);
 
       return interaction.reply({
-        embeds: [successEmbed(`✅ Sticky Message Deleted`, `Sticky message removed from ${channel}`)],
+        embeds: [successEmbed(`Sticky Message Deleted`, `Sticky message removed from ${channel}`)],
         flags: 64,
       });
     }
   } catch (error) {
     console.error('Error managing sticky message:', error);
     return interaction.reply({
-      embeds: [errorEmbed('❌ An error occurred while managing the sticky message.')],
+      embeds: [errorEmbed('An error occurred while managing the sticky message.')],
       flags: 64,
     });
   }

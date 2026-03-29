@@ -21,7 +21,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -108,17 +108,17 @@ function buildPriorityEmbed(priority) {
   if (priority.cooldownEndsAt) {
     const remaining = Math.floor((new Date(priority.cooldownEndsAt) - Date.now()) / 1000 / 60);
     if (remaining > 0) {
-      cooldownText = `${remaining}m (counting down)`;
+      cooldownText = `${remaining}m remaining`;
       cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
     }
   }
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
 
-  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
-  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
-  description += `**Priority cooldown:** ${cooldownText}\n`;
-  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
+  let description = `**Status:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
+  description += `**Issued by:** ${priorityIssuedBy}\n`;
+  description += `**Cooldown:** ${cooldownText}\n`;
+  description += `**Cooldown by:** ${cooldownIssuedBy}`;
 
   if (priority.customMessage) {
     description += `\n\n${priority.customMessage}`;
@@ -127,7 +127,7 @@ function buildPriorityEmbed(priority) {
   return {
     title: 'Priority Tracker',
     description,
-    color: priority.priorityActive ? 0xFF0000 : 0x808080,
-    footer: { text: 'RolePlayManager' },
+    color: priority.priorityActive ? 0xFF0000 : 0x2d2d2d,
+    footer: { text: 'RPM' },
   };
 }

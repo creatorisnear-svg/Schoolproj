@@ -48,9 +48,9 @@ export async function execute(interaction) {
           .setCustomId('firedepartmentdatabase_menu')
           .setPlaceholder('Choose an action...')
           .addOptions(
-            { label: '🚨 View Active 911 Calls', value: 'active_calls' },
-            { label: '👤 Create FD Character', value: 'create_character' },
-            { label: '🚗 Add Vehicle', value: 'add_vehicle' }
+            { label: 'View Active 911 Calls', value: 'active_calls' },
+            { label: 'Create FD Character', value: 'create_character' },
+            { label: 'Add Vehicle', value: 'add_vehicle' }
           )
       );
 

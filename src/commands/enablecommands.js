@@ -13,10 +13,9 @@ export async function execute(interaction) {
 
   if (!isAdminUser && !isStaffUser) {
     const embed = new EmbedBuilder()
-      .setColor('#FF0000')
-      .setTitle('Permission Denied')
-      .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-      .setFooter({ text: 'RolePlayManager' });
+      .setColor('#2d2d2d')
+      .setDescription('You do not have permission to use this command.')
+      .setFooter({ text: 'RPM' });
     
     return interaction.reply({
       embeds: [embed],
@@ -25,15 +24,19 @@ export async function execute(interaction) {
   }
 
   try {
-    // Check if log channel is configured first
     const config = await Config.findOne({ guildId: interaction.guildId });
     
     if (!config || !config.logChannelId) {
       const embed = new EmbedBuilder()
-        .setColor('#FF6600')
+        .setColor('#2d2d2d')
         .setTitle('Setup Required')
-        .setDescription('Before you can manage bot features, you need to set up the system first.\n\n**Here\'s what to do:**\n1. Have an admin run `/setlogchannel` to designate a channel for bot logs\n2. Have an admin run `/addstaff` to add bot staff members\n3. Return here and you\'ll be able to enable or disable features')
-        .setFooter({ text: 'RolePlayManager' });
+        .setDescription(
+          'Before managing features, you need to complete initial setup.\n\n' +
+          '`1.` Run `/setlogchannel` to set a log channel\n' +
+          '`2.` Run `/addstaff` to add bot staff\n' +
+          '`3.` Return here to manage features'
+        )
+        .setFooter({ text: 'RPM' });
       
       return interaction.reply({
         embeds: [embed],
@@ -41,12 +44,11 @@ export async function execute(interaction) {
       });
     }
 
-    // Show initial choice: Enable or Disable?
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
+      .setColor('#2d2d2d')
       .setTitle('Feature Management')
-      .setDescription('What would you like to do?')
-      .setFooter({ text: 'RolePlayManager' });
+      .setDescription('Select an action below.')
+      .setFooter({ text: 'RPM' });
 
     const choiceRow = new ActionRowBuilder()
       .addComponents(
@@ -69,10 +71,9 @@ export async function execute(interaction) {
   } catch (error) {
     console.error('Error in enablecommands:', error);
     const embed = new EmbedBuilder()
-      .setColor('#FF0000')
-      .setTitle('Error')
+      .setColor('#2d2d2d')
       .setDescription('An error occurred.')
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
     
     return interaction.reply({
       embeds: [embed],

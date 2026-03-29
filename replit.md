@@ -5,7 +5,8 @@ RolePlayManager is a Discord bot designed for multi-server roleplay and gaming c
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- RolePlayManager branding on all embeds (footer: "RolePlayManager")
+- Minimalist UI: all embeds use `#2d2d2d` color, footer `RPM`, no emojis
+- Discord markdown formatting (### headers, `-#` subtext, `code blocks`) preferred
 - MongoDB for persistent data storage
 - Staff and Admins have full access to all commands
 - General members restricted to roleplay/verification commands only
@@ -14,10 +15,12 @@ RolePlayManager is a Discord bot designed for multi-server roleplay and gaming c
 The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **UI/UX Decisions:**
-- All bot responses leverage Discord embeds for a clean, professional, and branded interface.
-- Embeds consistently feature "RolePlayManager" branding in the footer.
+- Minimalist design: all embeds use uniform `#2d2d2d` dark color, `RPM` footer, zero emojis.
+- Help command uses Discord `###` headers and inline code for commands.
+- Embed descriptions use clean **bold** key-value pairs instead of field-heavy layouts.
 - Interactive elements utilize Discord dropdown selectors, modals, and buttons.
 - Configuration fallback messages are provided for unconfigured features.
+- Only exception: Priority Tracker uses red (`0xFF0000`) when active for visual urgency.
 
 **Technical Implementations & Feature Specifications:**
 - **Logging & Stability**: Custom startup sequence mimicking Koyeb environment logs. All interaction handlers are wrapped in try-catch blocks with 10062 (Unknown Interaction) error handling to prevent bot crashes. Uses `clientReady` event for compatibility with latest Discord.js practices.

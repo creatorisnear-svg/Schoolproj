@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -20,7 +20,7 @@ export async function execute(interaction) {
 
     if (!config || !config.antiPromotingEnabled) {
       return interaction.reply({
-        embeds: [errorEmbed('⚙️ Anti-Promoting Not Enabled', 'Use `/enablecommands` → Enable Features → Anti-Promoting')],
+        embeds: [errorEmbed('Anti-Promoting Not Enabled', 'Use `/enablecommands` to enable it first.')],
         flags: 64,
       });
     }
@@ -36,15 +36,15 @@ export async function execute(interaction) {
             { label: 'View Whitelisted Links', value: 'view_links' },
             { label: 'Toggle Staff Bypass', value: 'toggle_staff_bypass' },
             { label: 'View Settings', value: 'view_settings' },
-            { label: '✅ Done - Close Setup', value: 'setup_done' }
+            { label: 'Done', value: 'setup_done' }
           )
       );
 
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
-      .setTitle('Anti-Promoting System Setup')
-      .setDescription('Manage whitelisted invite links and staff bypass settings')
-      .setFooter({ text: 'RolePlayManager' });
+      .setColor('#2d2d2d')
+      .setTitle('Anti-Promoting Setup')
+      .setDescription('Manage whitelisted invite links and staff bypass settings.')
+      .setFooter({ text: 'RPM' });
 
     return interaction.reply({
       embeds: [embed],

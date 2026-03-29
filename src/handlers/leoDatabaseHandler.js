@@ -106,10 +106,10 @@ export async function handleLEODatabaseMenu(interaction) {
         if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
 
         return new EmbedBuilder()
-          .setColor('#ff6600')
-          .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
+          .setColor('#2d2d2d')
+          .setTitle(`Call #${index + 1}: ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
+          .setFooter({ text: `RPM | ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -350,10 +350,10 @@ export async function handleLEODatabaseMenu(interaction) {
         description += `**Created:** <t:${Math.floor(bolo.createdAt.getTime() / 1000)}:R>`;
 
         return new EmbedBuilder()
-          .setColor('#ff0000')
-          .setTitle(`🚨 BOLO: ${bolo.characterName}`)
+          .setColor('#2d2d2d')
+          .setTitle(`BOLO: ${bolo.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'RolePlayManager' });
+          .setFooter({ text: 'RPM' });
       });
 
       const backButton = new ActionRowBuilder()
@@ -429,7 +429,7 @@ export async function handleLEOSearchPlateModal(interaction) {
     let description = `**Owner:** ${character.characterName}\n`;
     
     if (vehicle) {
-      description += `\n**🚗 VEHICLE INFORMATION**\n`;
+      description += `\n**VEHICLE INFORMATION**\n`;
       description += `Make/Model: ${vehicle.make} ${vehicle.model}\n`;
       description += `Color: ${vehicle.color}\n`;
       if (vehicle.condition) description += `Condition: ${vehicle.condition}\n`;
@@ -443,23 +443,23 @@ export async function handleLEOSearchPlateModal(interaction) {
       active: true
     });
 
-    description += `\n**⚖️ STATUS**\n`;
+    description += `\n**STATUS**\n`;
     if (vehicleBolos.length > 0) {
-      description += `🚨 **VEHICLE BOLO ALERT**\n`;
+      description += `**VEHICLE BOLO ALERT**\n`;
       vehicleBolos.forEach(bolo => {
         description += `• ${bolo.boloId} - ${bolo.reason}\n`;
       });
     } else if (character.status === 'wanted') {
-      description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+      description += `**WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
     } else {
-      description += `✅ **CLEAN**`;
+      description += `**CLEAN**`;
     }
 
     const buttons = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`view_char_profile_${character._id.toString()}`)
-          .setLabel('👤 View Character Profile')
+          .setLabel('View Character Profile')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
@@ -469,10 +469,10 @@ export async function handleLEOSearchPlateModal(interaction) {
 
     const embedColor = vehicleBolos.length > 0 || character.status === 'wanted' ? '#ff0000' : '#00ff00';
     const embed = new EmbedBuilder()
-      .setColor(embedColor)
+      .setColor('#2d2d2d')
       .setTitle(`License Plate Search: ${plate}`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.update({
@@ -560,10 +560,10 @@ export async function handleLEORespondCall(interaction) {
     if (call.contact) description += `**Contact:** ${call.contact}\n`;
 
     const callEmbed = new EmbedBuilder()
-      .setColor('#ff6600')
-      .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
+      .setColor('#2d2d2d')
+      .setTitle(`Call #${call.callId}: ${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
+      .setFooter({ text: `RPM | ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach
@@ -630,11 +630,11 @@ export async function handleLEOPrimaryResponse(interaction) {
         const updatedEmbed = message.embeds[0].toJSON();
         
         let description = updatedEmbed.description || '';
-        const respondingLine = `\n\n**🚨 PRIMARY:** ${interaction.user.username}`;
+        const respondingLine = `\n\n**PRIMARY:** ${interaction.user.username}`;
         if (!description.includes('PRIMARY')) {
           updatedEmbed.description = (description || '') + respondingLine;
         } else {
-          updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY:.*/, `**🚨 PRIMARY:** ${interaction.user.username}`);
+          updatedEmbed.description = description.replace(/\*\*PRIMARY:.*/, `**PRIMARY:** ${interaction.user.username}`);
         }
 
         await message.edit({
@@ -691,11 +691,11 @@ export async function handleLEOAttachResponse(interaction) {
         // Build responder list
         let responderText = '';
         if (call.respondingLeoId) {
-          responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername}`;
+          responderText += `**PRIMARY:** ${call.respondingLeoUsername}`;
         }
         if (call.attachedLeoIds.length > 0) {
           if (responderText) responderText += '\n';
-          responderText += `**📎 ATTACHED:** ${call.attachedLeoIds.map(id => {
+          responderText += `**ATTACHED:** ${call.attachedLeoIds.map(id => {
             const member = interaction.guild.members.cache.get(id);
             return member?.user.username || `<@${id}>`;
           }).join(', ')}`;
@@ -703,7 +703,7 @@ export async function handleLEOAttachResponse(interaction) {
 
         // Update description
         let description = updatedEmbed.description || '';
-        const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+        const responderMatch = description.match(/(\n\n\*\*PRIMARY:.*)?(\n\*\*ATTACHED:.*)?$/);
         if (responderMatch) {
           description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
         } else {
@@ -776,12 +776,12 @@ export async function handleLEOSearchCharacterModal(interaction) {
       });
     }
 
-    let description = `**📋 PERSONAL INFORMATION**\n`;
+    let description = `**PERSONAL INFORMATION**\n`;
     if (character.age) description += `Age: ${character.age} | `;
     if (character.gender) description += `Gender: ${character.gender}`;
     if (character.age || character.gender) description += `\n`;
 
-    description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
+    description += `\n**PHYSICAL DESCRIPTION**\n`;
     if (character.height) description += `Height: ${character.height} | `;
     if (character.distinguishingFeatures) description += `Race: ${character.distinguishingFeatures}`;
     if (character.height || character.distinguishingFeatures) description += `\n`;
@@ -790,14 +790,14 @@ export async function handleLEOSearchCharacterModal(interaction) {
     if (character.hairColor || character.eyeColor) description += `\n`;
     if (character.build) description += `Build: ${character.build}\n`;
 
-    description += `\n**🪪 IDENTIFICATION**\n`;
+    description += `\n**IDENTIFICATION**\n`;
     description += `SSN: ${character.socialSecurityNumber}\n`;
-    description += `License Status: ${character.driverLicenseStatus === 'valid' ? '✅ Valid' : '❌ Invalid'}\n`;
+    description += `License Status: ${character.driverLicenseStatus === 'valid' ? 'Valid' : 'Invalid'}\n`;
     if (character.veteranStatus && character.veteranStatus !== 'none') {
-      description += `Status: ${character.veteranStatus === 'veteran' ? '🎖️ Veteran' : '❤️ Organ Donor'}\n`;
+      description += `Status: ${character.veteranStatus === 'veteran' ? 'Veteran' : 'Organ Donor'}\n`;
     }
 
-    description += `\n**🚗 VEHICLES**\n`;
+    description += `\n**VEHICLES**\n`;
     if (character.vehicles.length > 0) {
       character.vehicles.forEach(v => {
         description += `• ${v.make} ${v.model} (${v.color}) - Plate: **${v.licensePlate}**${v.condition ? ` [${v.condition}]` : ''}\n`;
@@ -806,7 +806,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
       description += `None registered\n`;
     }
 
-    description += `\n**💥 WEAPONS**\n`;
+    description += `\n**WEAPONS**\n`;
     if (character.guns.length > 0) {
       character.guns.forEach(g => {
         description += `• ${g.name}${g.serialNumber ? ` (SN: ${g.serialNumber})` : ''}\n`;
@@ -820,7 +820,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     const bolos = await BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true });
     
     if (bolos.length > 0) {
-      description += `\n**🚨 BOLO ALERTS**\n`;
+      description += `\n**BOLO ALERTS**\n`;
       bolos.forEach(bolo => {
         description += `• **${bolo.boloId}** - ${bolo.reason}\n`;
         description += `  Issued: ${bolo.createdAt.toLocaleDateString()} by <@${bolo.issuedBy}>\n`;
@@ -832,7 +832,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
     const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
     
-    description += `\n**🎫 TRAFFIC TICKETS**\n`;
+    description += `\n**TRAFFIC TICKETS**\n`;
     if (tickets.length > 0) {
       const ticketSummary = tickets.slice(0, 5).map(t => {
         return `• **${t.ticketId}** - ${t.violation}${t.fine ? ` ($${t.fine})` : ''}`;
@@ -843,13 +843,13 @@ export async function handleLEOSearchCharacterModal(interaction) {
       description += `None on record\n`;
     }
 
-    description += `\n**⚖️ STATUS**\n`;
+    description += `\n**STATUS**\n`;
     if (bolos.length > 0) {
-      description += `🚨 **BOLO ALERT**`;
+      description += `**BOLO ALERT**`;
     } else if (character.status === 'wanted') {
-      description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+      description += `**WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
     } else {
-      description += `✅ **CLEAN**`;
+      description += `**CLEAN**`;
     }
 
     const backButton = new ActionRowBuilder()
@@ -864,7 +864,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.update({
@@ -950,7 +950,7 @@ export async function handleLEORevokeWeaponModal(interaction) {
 }
 
 export async function handleLEOIssueTicketModal(interaction) {
-  console.log('🎫 Ticket modal submitted by:', interaction.user.tag);
+  console.log('Ticket modal submitted by:', interaction.user.tag);
   
   try {
     const characterName = capitalizeName(interaction.fields.getTextInputValue('ticket_character_name')) || '';
@@ -1009,7 +1009,7 @@ export async function handleLEOIssueTicketModal(interaction) {
       fine: fineAmount,
     });
 
-    console.log(`💾 Saving ticket: ${ticketId}`);
+    console.log(`Saving ticket: ${ticketId}`);
     await ticket.save();
     console.log(`Ticket saved successfully`);
 
@@ -1025,7 +1025,7 @@ export async function handleLEOIssueTicketModal(interaction) {
       flags: 64,
     });
   } catch (error) {
-    console.error('❌ Error issuing ticket:', error);
+    console.error('Error issuing ticket:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.', error.message || 'Unknown error')],
       flags: 64,
@@ -1122,7 +1122,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     let responseDesc = `**BOLO ID:** ${boloId}\n`;
     responseDesc += `**Character:** ${character.characterName}\n`;
     responseDesc += `**Reason:** ${reason}\n`;
-    responseDesc += `**Status:** 🟢 ACTIVE (Expires in 1 hour)\n`;
+    responseDesc += `**Status:** ACTIVE (Expires in 1 hour)\n`;
     responseDesc += `**Issued By:** <@${interaction.user.id}>\n`;
     if (description) responseDesc += `**Details:** ${description}\n`;
     if (vehicles.length > 0) {
@@ -1130,7 +1130,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     }
 
     return interaction.reply({
-      embeds: [successEmbed('🚨 BOLO ALERT CREATED', responseDesc)],
+      embeds: [successEmbed('BOLO ALERT CREATED', responseDesc)],
       flags: 64,
     });
   } catch (error) {
@@ -1176,23 +1176,23 @@ export async function handleLEOViewCharacterProfile(interaction) {
     }
 
     // Build full character profile description (same as character search)
-    let description = `**📋 PERSONAL INFORMATION**\n`;
+    let description = `**PERSONAL INFORMATION**\n`;
     if (character.age) description += `Age: ${character.age} | `;
     if (character.gender) description += `Gender: ${character.gender}`;
     if (character.age || character.gender) description += `\n`;
 
-    description += `\n**👤 PHYSICAL DESCRIPTION**\n`;
+    description += `\n**PHYSICAL DESCRIPTION**\n`;
     if (character.hairColor) description += `Hair: ${character.hairColor} | `;
     if (character.eyeColor) description += `Eyes: ${character.eyeColor}`;
     if (character.hairColor || character.eyeColor) description += `\n`;
     if (character.height) description += `Height: ${character.height} | `;
     if (character.build) description += `Build: ${character.build}\n`;
     
-    description += `\n**🪪 IDENTIFICATION**\n`;
+    description += `\n**IDENTIFICATION**\n`;
     description += `SSN: ${character.socialSecurityNumber}\n`;
     description += `Driver's License: ${character.driversLicense}\n`;
     
-    description += `\n**🚗 VEHICLES**\n`;
+    description += `\n**VEHICLES**\n`;
     if (character.vehicles.length > 0) {
       character.vehicles.forEach(v => {
         description += `• ${v.make} ${v.model} (${v.color}) - Plate: **${v.licensePlate}**${v.condition ? ` [${v.condition}]` : ''}\n`;
@@ -1201,7 +1201,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
       description += `None registered\n`;
     }
 
-    description += `\n**💥 WEAPONS**\n`;
+    description += `\n**WEAPONS**\n`;
     if (character.guns.length > 0) {
       character.guns.forEach(g => {
         description += `• ${g.name}${g.serialNumber ? ` (SN: ${g.serialNumber})` : ''}\n`;
@@ -1215,7 +1215,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     const bolos = await BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true });
     
     if (bolos.length > 0) {
-      description += `\n**🚨 BOLO ALERTS**\n`;
+      description += `\n**BOLO ALERTS**\n`;
       bolos.forEach(bolo => {
         description += `• **${bolo.boloId}** - ${bolo.reason}\n`;
         description += `  Issued: ${bolo.createdAt.toLocaleDateString()} by <@${bolo.issuedBy}>\n`;
@@ -1227,7 +1227,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
     const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
     const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
     
-    description += `\n**🎫 TRAFFIC TICKETS**\n`;
+    description += `\n**TRAFFIC TICKETS**\n`;
     if (tickets.length > 0) {
       const ticketSummary = tickets.slice(0, 5).map(t => {
         return `• **${t.ticketId}** - ${t.violation}${t.fine ? ` ($${t.fine})` : ''}`;
@@ -1238,13 +1238,13 @@ export async function handleLEOViewCharacterProfile(interaction) {
       description += `None on record\n`;
     }
 
-    description += `\n**⚖️ STATUS**\n`;
+    description += `\n**STATUS**\n`;
     if (bolos.length > 0) {
-      description += `🚨 **BOLO ALERT**`;
+      description += `**BOLO ALERT**`;
     } else if (character.status === 'wanted') {
-      description += `🚨 **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+      description += `**WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
     } else {
-      description += `✅ **CLEAN**`;
+      description += `**CLEAN**`;
     }
 
     const backButton = new ActionRowBuilder()
@@ -1259,7 +1259,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.update({
@@ -1309,7 +1309,7 @@ export async function handleLEOManageBolosSelect(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`leo_delete_bolo_${bolo.boloId}`)
-          .setLabel('🗑️ Delete BOLO')
+          .setLabel('Delete BOLO')
           .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
@@ -1318,10 +1318,10 @@ export async function handleLEOManageBolosSelect(interaction) {
       );
 
     const embed = new EmbedBuilder()
-      .setColor('#ff0000')
+      .setColor('#2d2d2d')
       .setTitle(`BOLO Details`)
       .setDescription(description)
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     return interaction.update({

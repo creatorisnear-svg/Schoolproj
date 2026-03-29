@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
-      embeds: [errorEmbed('Only server administrators can configure the AI dispatch system.')],
+      embeds: [errorEmbed('Only server administrators can configure the dispatch system.')],
       flags: 64,
     });
   }
@@ -18,7 +18,7 @@ export async function execute(interaction) {
   const premium = await isPremiumGuild(interaction.guildId);
   if (!premium) {
     return interaction.reply({
-      embeds: [errorEmbed('🌟 Premium Required', 'AI Voice Dispatch is a **Premium** feature. Use `/activatepremium` with a valid key to unlock it.')],
+      embeds: [errorEmbed('Premium Required', 'AI Voice Dispatch is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
       flags: 64,
     });
   }
@@ -26,32 +26,32 @@ export async function execute(interaction) {
   const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
   const warning = hasApiKey
     ? ''
-    : '\n\n⚠️ **No AI key set.** Set `GROQ_API_KEY` (free at console.groq.com) or `OPENAI_API_KEY` to enable AI transcription, responses, and TTS.';
+    : '\n\n-# No AI key configured. Set `GROQ_API_KEY` or `OPENAI_API_KEY` to enable transcription and TTS.';
 
   const menu = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('dispatch_setup_menu')
       .setPlaceholder('Select an option...')
       .addOptions(
-        { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
-        { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
-        { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
-        { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
-        { label: '🔌 Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
-        { label: '🤖 Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
-        { label: '🗑️ Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
-        { label: '📋 View Settings', value: 'view_settings', description: 'See current configuration' },
-        { label: '✓ Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
+        { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for dispatch logs' },
+        { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for officer status' },
+        { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel to monitor' },
+        { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel for 10-11 moves' },
+        { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn dispatch on or off' },
+        { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI responses' },
+        { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a channel' },
+        { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
+        { label: 'Done', value: 'setup_done', description: 'Close setup' }
       )
   );
 
   return interaction.reply({
     embeds: [
       new EmbedBuilder()
-        .setColor('#5865F2')
-        .setTitle('AI Dispatch Setup')
-        .setDescription(`Configure the AI-powered voice dispatch system. Officers speak in monitored voice channels — the bot transcribes their call, generates a realistic dispatcher response, and updates the live status board.${warning}`)
-        .setFooter({ text: 'RolePlayManager' }),
+        .setColor('#2d2d2d')
+        .setTitle('Dispatch Setup')
+        .setDescription(`Configure the AI voice dispatch system. Officers speak in monitored voice channels — the bot transcribes, responds, and updates the status board.${warning}`)
+        .setFooter({ text: 'RPM' }),
     ],
     components: [menu],
     flags: 64,

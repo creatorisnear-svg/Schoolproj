@@ -41,16 +41,13 @@ export async function execute(interaction) {
           .addOptions(roleOptions)
       );
 
-    let rolesList = '**Available Roles:**\n\n';
-    roleRequestConfig.roles.forEach(r => {
-      rolesList += `• **${r.roleName}**\n`;
-    });
+    let rolesList = roleRequestConfig.roles.map(r => `> **${r.roleName}**`).join('\n');
 
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
-      .setTitle('Request a Role')
+      .setColor('#2d2d2d')
+      .setTitle('Role Request')
       .setDescription(rolesList)
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await interaction.reply({
       embeds: [embed],

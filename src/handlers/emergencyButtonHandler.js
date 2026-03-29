@@ -5,7 +5,7 @@ import DispatchConfig from '../models/DispatchConfig.js';
 import { rebuildStatusBoard } from './dispatchHandler.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
-const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'RolePlayManager' });
+const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'RPM' });
 
 export async function handle911RespondButton(interaction) {
   try {
@@ -47,11 +47,11 @@ export async function handle911RespondButton(interaction) {
     
     // Update description to show responder
     let description = updatedEmbed.description || '';
-    const respondingLine = `\n\n**🚨 PRIMARY RESPONDER:** ${interaction.user.username}`;
+    const respondingLine = `\n\n**PRIMARY RESPONDER:** ${interaction.user.username}`;
     if (!description.includes('PRIMARY RESPONDER')) {
       updatedEmbed.description = (description || '') + respondingLine;
     } else {
-      updatedEmbed.description = description.replace(/\*\*🚨 PRIMARY RESPONDER:.*/, `**🚨 PRIMARY RESPONDER:** ${interaction.user.username}`);
+      updatedEmbed.description = description.replace(/\*\*PRIMARY RESPONDER:.*/, `**PRIMARY RESPONDER:** ${interaction.user.username}`);
     }
 
     await originalMessage.edit({
@@ -62,7 +62,7 @@ export async function handle911RespondButton(interaction) {
     if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
@@ -114,11 +114,11 @@ export async function handle911AttachButton(interaction) {
     // Build responder list
     let responderText = '';
     if (call.respondingLeoId) {
-      responderText += `**🚨 PRIMARY:** ${call.respondingLeoUsername}`;
+      responderText += `**PRIMARY:** ${call.respondingLeoUsername}`;
     }
     if (call.attachedLeoIds.length > 0) {
       if (responderText) responderText += '\n';
-      responderText += `**📎 ATTACHED:** ${call.attachedLeoIds.map(id => {
+      responderText += `**ATTACHED:** ${call.attachedLeoIds.map(id => {
         const name = interaction.guild.members.cache.get(id)?.user.username || `<@${id}>`;
         return name;
       }).join(', ')}`;
@@ -126,7 +126,7 @@ export async function handle911AttachButton(interaction) {
 
     // Update description
     let description = updatedEmbed.description || '';
-    const responderMatch = description.match(/(\n\n\*\*🚨 PRIMARY RESPONDER:.*)?(\n\*\*📎 ATTACHED:.*)?$/);
+    const responderMatch = description.match(/(\n\n\*\*PRIMARY RESPONDER:.*)?(\n\*\*ATTACHED:.*)?$/);
     if (responderMatch) {
       description = description.substring(0, responderMatch.index) + '\n\n' + responderText;
     } else {
@@ -183,7 +183,7 @@ export async function handle911DismissButton(interaction) {
     // Update original message to show dismissed
     const originalMessage = await interaction.message;
     const updatedEmbed = originalMessage.embeds[0].toJSON();
-    updatedEmbed.description = (updatedEmbed.description || '') + '\n\n❌ **CALL DISMISSED** - No longer need assistance';
+    updatedEmbed.description = (updatedEmbed.description || '') + '\n\n**CALL DISMISSED** - No longer need assistance';
     updatedEmbed.color = 0x808080;
 
     await originalMessage.edit({

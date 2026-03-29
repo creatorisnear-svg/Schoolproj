@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import PremiumKey from '../models/PremiumKey.js';
 import { clearPremiumCache, isPremiumGuild } from '../utils/premiumCheck.js';
-import { createEmbed, successEmbed, errorEmbed } from '../utils/embedBuilder.js';
+import { createEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
   .setName('activatepremium')
@@ -52,17 +52,16 @@ export async function execute(interaction) {
   return interaction.editReply({
     embeds: [
       createEmbed({
-        title: '🌟 Premium Activated!',
+        title: 'Premium Activated',
         description:
-          'This server now has **Premium** access!\n\n' +
-          '**Unlocked Features:**\n' +
-          '> 🎙️ AI Voice Dispatch\n' +
-          '> 👥 Unlimited Characters\n' +
-          '> 🚗 Unlimited Vehicles\n' +
-          '> 🔫 Unlimited Firearms\n' +
-          '> 📋 Unlimited BOLOs\n\n' +
-          'Thank you for supporting RolePlayManager!',
-        color: '#FFD700',
+          'This server now has **Premium** access.\n\n' +
+          '**Unlocked:**\n' +
+          '> AI Voice Dispatch\n' +
+          '> Unlimited Characters\n' +
+          '> Unlimited Vehicles\n' +
+          '> Unlimited Firearms\n' +
+          '> Unlimited BOLOs\n' +
+          '> Unlimited Stickies',
         timestamp: true,
       }),
     ],

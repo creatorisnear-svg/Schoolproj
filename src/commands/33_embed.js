@@ -89,7 +89,7 @@ export async function execute(interaction) {
       .setColor(colorHex)
       .setDescription(message)
       .setTimestamp()
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     if (title) {
       embed.setTitle(title);

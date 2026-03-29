@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
 import Sticky from '../models/Sticky.js';
 import { errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -20,41 +20,36 @@ export async function execute(interaction) {
 
     if (stickies.length === 0) {
       return interaction.reply({
-        embeds: [infoEmbed('Sticky Messages', 'No sticky messages found on this server.')],
+        embeds: [infoEmbed('Sticky Messages', 'No sticky messages found.')],
         flags: 64,
       });
     }
 
-    // Create embed with all stickies
-    let description = '**Active Sticky Messages:**\n\n';
+    let description = '';
     
     for (let i = 0; i < stickies.length; i++) {
       const sticky = stickies[i];
       const channel = await interaction.guild.channels.fetch(sticky.channelId).catch(() => null);
       const channelName = channel ? `<#${sticky.channelId}>` : 'Unknown Channel';
       
-      const preview = sticky.messageContent.substring(0, 80);
-      const truncated = sticky.messageContent.length > 80 ? '...' : '';
+      const preview = sticky.messageContent.substring(0, 60);
+      const truncated = sticky.messageContent.length > 60 ? '...' : '';
       
-      description += `**${i + 1}. ${channelName}**\n`;
-      description += `   📝 Message: "${preview}${truncated}"\n`;
-      description += `   🆔 Message ID: ${sticky.messageId}\n`;
-      description += `   👤 Created by: <@${sticky.createdBy}>\n`;
-      description += `   📊 Posts: ${sticky.messageCount}\n\n`;
+      description += `\`${i + 1}.\` ${channelName}\n`;
+      description += `-# "${preview}${truncated}" · ${sticky.messageCount} posts\n\n`;
     }
 
     const embed = new EmbedBuilder()
-      .setColor('#2E2E2E')
+      .setColor('#2d2d2d')
       .setTitle('Sticky Messages')
       .setDescription(description)
-      .setFooter({ text: `RolePlayManager | Total: ${stickies.length}` });
+      .setFooter({ text: `RPM · ${stickies.length} total` });
 
-    // If more than one sticky, offer delete option
     if (stickies.length > 0) {
       const options = stickies.map((sticky, index) => ({
         label: `${index + 1}. ${sticky.messageContent.substring(0, 50)}...`,
         value: `delete_${index}`,
-        description: `Delete this sticky message`
+        description: 'Delete this sticky message'
       }));
 
       const menu = new StringSelectMenuBuilder()

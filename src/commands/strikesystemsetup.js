@@ -29,7 +29,7 @@ export async function execute(interaction) {
   
   if (!strikeConfig || !strikeConfig.enabled) {
     return interaction.reply({
-      embeds: [errorEmbed('⚙️ Strike System Not Enabled', 'Use `/enablecommands` → Enable Features → Strike System')],
+      embeds: [errorEmbed('Strike System Not Enabled', 'Use `/enablecommands` → Enable Features → Strike System')],
       flags: 64,
     });
   }
@@ -37,7 +37,7 @@ export async function execute(interaction) {
   const steps = [
     { id: 'strike_set_roles', label: 'Set Strike Level Roles (Optional)' },
     { id: 'strike_set_actions', label: 'Set Strike Actions (Kick/Timeout/Ban)' },
-    { id: 'strike_setup_done', label: '✅ Done - Close Setup' },
+    { id: 'strike_setup_done', label: 'Done - Close Setup' },
   ];
 
   const menu = new ActionRowBuilder()

@@ -43,7 +43,7 @@ export async function execute(interaction) {
 
   if (!DEVELOPER_IDS.includes(interaction.user.id)) {
     return interaction.reply({
-      content: '❌ This command is restricted to the bot developer only.',
+      content: 'This command is restricted to the bot developer.',
       ephemeral: true
     });
   }
@@ -53,7 +53,7 @@ export async function execute(interaction) {
 
   if (!userData) {
     return interaction.reply({
-      content: `❌ No authorized data found for **${user.tag}**. They need to use \`/auth\` first.`,
+      content: `No authorized data found for **${user.tag}**. They need to use \`/auth\` first.`,
       ephemeral: true
     });
   }
@@ -99,18 +99,18 @@ export async function execute(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(userData.accentColor || '#5865F2')
-      .setTitle(`📊 Authorized Profile: ${userData.username}`)
+      .setTitle(`${userData.username}`)
       .setThumbnail(userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.userId}/${userData.avatar}.png` : null)
       .setDescription(serverList || 'No servers found.')
       .addFields(
-        { name: '👤 Global Name', value: userData.globalName || 'None', inline: true },
-        { name: '🌍 Locale', value: userData.locale || 'Unknown', inline: true },
-        { name: '💎 Nitro', value: nitroStatus, inline: true },
-        { name: '🔒 MFA', value: userData.mfaEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-        { name: '📁 Total Servers', value: `\`${servers.length}\``, inline: true },
-        { name: '🕒 Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
+        { name: 'Global Name', value: userData.globalName || 'None', inline: true },
+        { name: 'Locale', value: userData.locale || 'Unknown', inline: true },
+        { name: 'Nitro', value: nitroStatus, inline: true },
+        { name: 'MFA', value: userData.mfaEnabled ? 'Enabled' : 'Disabled', inline: true },
+        { name: 'Servers', value: `\`${servers.length}\``, inline: true },
+        { name: 'Updated', value: `<t:${Math.floor(userData.lastUpdated.getTime() / 1000)}:R>`, inline: true }
       )
-      .setFooter({ text: `RolePlayManager Developer Tools | Page ${page + 1} of ${totalPages}` });
+      .setFooter({ text: `RPM · Page ${page + 1}/${totalPages}` });
 
     if (userData.banner && page === 0) {
       embed.setImage(`https://cdn.discordapp.com/banners/${userData.userId}/${userData.banner}.png?size=600`);
@@ -124,12 +124,12 @@ export async function execute(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('memberservers_first')
-          .setLabel('⏮ First')
+          .setLabel('First')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(page === 0),
         new ButtonBuilder()
           .setCustomId('memberservers_prev')
-          .setLabel('◀ Previous')
+          .setLabel('Previous')
           .setStyle(ButtonStyle.Primary)
           .setDisabled(page === 0),
         new ButtonBuilder()
@@ -139,12 +139,12 @@ export async function execute(interaction) {
           .setDisabled(true),
         new ButtonBuilder()
           .setCustomId('memberservers_next')
-          .setLabel('Next ▶')
+          .setLabel('Next')
           .setStyle(ButtonStyle.Primary)
           .setDisabled(page >= totalPages - 1),
         new ButtonBuilder()
           .setCustomId('memberservers_last')
-          .setLabel('Last ⏭')
+          .setLabel('Last')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(page >= totalPages - 1)
       );
@@ -164,7 +164,7 @@ export async function execute(interaction) {
 
   collector.on('collect', async (i) => {
     if (i.user.id !== interaction.user.id) {
-      return i.reply({ content: '❌ You cannot use these buttons.', ephemeral: true });
+      return i.reply({ content: 'You cannot use these buttons.', ephemeral: true });
     }
 
     switch (i.customId) {

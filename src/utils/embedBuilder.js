@@ -1,17 +1,17 @@
 import { EmbedBuilder } from 'discord.js';
 
 const COLORS = {
-  success: '#23D160',
-  error:   '#FF3860',
-  info:    '#5865F2',
-  warning: '#FFDD57',
-  neutral: '#36393F',
+  success: '#2d2d2d',
+  error:   '#2d2d2d',
+  info:    '#2d2d2d',
+  warning: '#2d2d2d',
+  neutral: '#2d2d2d',
 };
 
 export function createEmbed(options = {}) {
   const embed = new EmbedBuilder()
     .setColor(options.color || COLORS.info)
-    .setFooter({ text: 'RolePlayManager' });
+    .setFooter({ text: 'RPM' });
 
   if (options.title) embed.setTitle(options.title);
   if (options.description) embed.setDescription(options.description);
@@ -27,12 +27,12 @@ export function successEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: COLORS.success,
+      color: '#2d2d2d',
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: COLORS.success,
+    color: '#2d2d2d',
   });
 }
 
@@ -41,12 +41,12 @@ export function errorEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: COLORS.error,
+      color: '#2d2d2d',
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: COLORS.error,
+    color: '#2d2d2d',
   });
 }
 
@@ -54,7 +54,7 @@ export function infoEmbed(title, description) {
   return createEmbed({
     title,
     description,
-    color: COLORS.info,
+    color: '#2d2d2d',
   });
 }
 
@@ -63,12 +63,12 @@ export function warningEmbed(titleOrDescription, description = null) {
     return createEmbed({
       title: titleOrDescription,
       description,
-      color: COLORS.warning,
+      color: '#2d2d2d',
     });
   }
   return createEmbed({
     description: titleOrDescription,
-    color: COLORS.warning,
+    color: '#2d2d2d',
   });
 }
 

@@ -26,7 +26,7 @@ export async function handleAntiPromoting(message) {
       return;
     }
 
-    console.log(`🚫 Detected ${inviteLinks.length} invite link(s) in message from ${message.author.username}`);
+    console.log(`Detected ${inviteLinks.length} invite link(s) in message from ${message.author.username}`);
 
     // Check if any of the detected links are whitelisted
     const whitelistedLinks = Array.isArray(config.whitelistedInviteLinks) ? config.whitelistedInviteLinks : [];
@@ -36,7 +36,7 @@ export async function handleAntiPromoting(message) {
       return;
     }
 
-    console.log(`🚫 Found ${nonWhitelistedLinks.length} non-whitelisted link(s), deleting message`);
+    console.log(`Found ${nonWhitelistedLinks.length} non-whitelisted link(s), deleting message`);
 
     // Delete the message
     await message.delete().catch(() => {});
@@ -46,22 +46,22 @@ export async function handleAntiPromoting(message) {
 
     // Send DM to user
     const dmEmbed = new EmbedBuilder()
-      .setColor('#ff0000')
-      .setTitle('🚫 Invite Link Detected')
+      .setColor('#2d2d2d')
+      .setTitle('Invite Link Detected')
       .setDescription(`Your message was deleted in **${message.guild.name}** because it contained a Discord invite link.`)
       .addFields(
         { name: 'Your Message', value: message.content || 'N/A', inline: false },
         { name: 'Reason', value: 'Please do not share invite links to other servers.', inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await message.author.send({ embeds: [dmEmbed] }).catch(() => {});
 
     // Send to log channel
     if (logChannel && logChannel.isTextBased()) {
       const logEmbed = new EmbedBuilder()
-        .setColor('#ff0000')
+        .setColor('#2d2d2d')
         .setTitle('Invite Link Detected')
         .addFields(
           { name: 'User', value: `${message.author.username} (${message.author})`, inline: false },
@@ -70,7 +70,7 @@ export async function handleAntiPromoting(message) {
           { name: 'Invite Links Found', value: nonWhitelistedLinks.join('\n') || 'N/A', inline: false }
         )
         .setTimestamp()
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
     }

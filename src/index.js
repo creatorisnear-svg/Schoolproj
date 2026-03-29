@@ -506,7 +506,7 @@ connectDatabase().then(() => {
             .setColor('#00ff00')
             .setTitle('💓 RolePlayManager Status Heartbeat')
             .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
-            .setFooter({ text: 'RolePlayManager' })
+            .setFooter({ text: 'RPM' })
             .setTimestamp();
 
           if (config.lastHeartbeatMessageId) {

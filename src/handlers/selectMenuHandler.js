@@ -8,10 +8,10 @@ import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function menuEmbed(title, description) {
   return new EmbedBuilder()
-    .setColor('#5865F2')
+    .setColor('#2d2d2d')
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'RolePlayManager' });
+    .setFooter({ text: 'RPM' });
 }
 
 function createSetupMenu() {
@@ -24,7 +24,7 @@ function createSetupMenu() {
     { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional — clear the custom question' },
     { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: 'Optional — require staff to approve' },
     { id: 'set_rp_tag', label: 'RP Tag', description: 'Optional — tag added to verified nicknames' },
-    { id: 'verify_setup_done', label: '✓ Finish Setup', description: 'Close the setup menu' },
+    { id: 'verify_setup_done', label: 'Finish Setup', description: 'Close the setup menu' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -48,7 +48,7 @@ function createWelcomeSetupMenu() {
     { id: 'select_welcome_channel_setup', label: 'Welcome Channel', description: 'Channel where welcome messages are posted' },
     { id: 'set_welcome_message_setup', label: 'Welcome Message', description: 'Message posted when a member joins' },
     { id: 'set_welcome_dm_setup', label: 'Welcome DM', description: 'DM sent directly to the new member' },
-    { id: 'welcome_setup_done', label: '✓ Finish Setup', description: 'Close the setup menu' },
+    { id: 'welcome_setup_done', label: 'Finish Setup', description: 'Close the setup menu' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -71,7 +71,7 @@ function createStrikeSetupMenu() {
   const steps = [
     { id: 'strike_set_roles', label: 'Set Strike Level Roles (Optional)' },
     { id: 'strike_set_actions', label: 'Set Strike Actions (Kick/Timeout/Ban)' },
-    { id: 'strike_setup_done', label: '✓ Finish Setup' },
+    { id: 'strike_setup_done', label: 'Finish Setup' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -946,12 +946,12 @@ async function handleVerifySetupMenu(interaction) {
     if (choice === 'toggle_approval_required') {
       const approveButton = new ButtonBuilder()
         .setCustomId('approval_toggle_yes')
-        .setLabel('✅ Enable Approval')
+        .setLabel('Enable Approval')
         .setStyle(ButtonStyle.Success);
 
       const rejectButton = new ButtonBuilder()
         .setCustomId('approval_toggle_no')
-        .setLabel('❌ Disable Approval')
+        .setLabel('Disable Approval')
         .setStyle(ButtonStyle.Danger);
 
       const backButton = new ButtonBuilder()
@@ -963,7 +963,7 @@ async function handleVerifySetupMenu(interaction) {
       const row2 = new ActionRowBuilder().addComponents(backButton);
 
       return interaction.update({
-        content: 'Do you want to require staff approval for verification?\n\n✅ **Enable**: Users submit verification, staff reviews and approves/rejects\n❌ **Disable**: Users are instantly verified',
+        content: 'Do you want to require staff approval for verification?\n\n**Enable**: Users submit verification, staff reviews and approves/rejects\n**Disable**: Users are instantly verified',
         components: [row1, row2],
       });
     }
@@ -990,7 +990,7 @@ async function handleVerifySetupMenu(interaction) {
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
-        embeds: [successEmbed('✅ Verification system setup is complete!\n\n⏳ Automatically configuring channel permissions...\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\n✨ All channel permissions have been automatically configured based on your settings!')],
+        embeds: [successEmbed('Verification system setup is complete!\n\nAutomatically configuring channel permissions...\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\nAll channel permissions have been configured based on your settings.')],
       });
 
       // Apply permissions in background (non-blocking)
@@ -1038,10 +1038,10 @@ export async function handleSetupModals(interaction) {
         .setStyle(1);
 
       const verifyEmbed = new EmbedBuilder()
-        .setColor('#0099ff')
-        .setTitle('✅ Server Verification')
+        .setColor('#2d2d2d')
+        .setTitle('Server Verification')
         .setDescription('Click the button below to verify and access all member channels!')
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       await channel.send({
         embeds: [verifyEmbed],
@@ -1382,10 +1382,10 @@ async function handleVerifyChannelSelect(interaction) {
       .setStyle(1);
 
     const verifyEmbed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle('✅ Server Verification')
+      .setColor('#2d2d2d')
+      .setTitle('Server Verification')
       .setDescription('Click the button below to verify and access all member channels!')
-      .setFooter({ text: 'RolePlayManager' });
+      .setFooter({ text: 'RPM' });
 
     await channel.send({
       embeds: [verifyEmbed],
@@ -1424,7 +1424,7 @@ async function handleWelcomeChannelSelect(interaction) {
 
     const menuOptions = createSetupMenu();
     return interaction.update({
-      content: `✅ Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
+      content: `Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
       components: menuOptions.components,
       embeds: [],
     });
@@ -1676,7 +1676,7 @@ async function handleVerifiedChannelsSelect(interaction) {
 
     const categoryMentions = selectedCategoryIds.map(id => {
       const channel = interaction.guild.channels.cache.get(id);
-      return channel ? `📁 ${channel.name}` : 'Unknown';
+      return channel ? `${channel.name}` : 'Unknown';
     }).join('\n');
     
     const menuOptions = createSetupMenu();
@@ -1720,7 +1720,7 @@ async function handleWelcomeSystemChannelSelect(interaction) {
 
     const embed = infoEmbed(
       '__**Welcome System**__',
-      `✅ Welcome channel set to ${channel}!\n\n**Current Welcome Message:**\n${welcome?.welcomeMessage || 'Welcome to the server, {user}! We\'re glad to have you here.'}\n\n**Current Welcome DM:**\n${welcome?.welcomeDM || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.'}\n\nUse \`/setwelcomemessage\` and \`/setwelcomedm\` to customize these messages.\n\n✨ New members will now see a profile picture embed with their welcome message!`
+      `Welcome channel set to ${channel}!\n\n**Current Welcome Message:**\n${welcome?.welcomeMessage || 'Welcome to the server, {user}! We\'re glad to have you here.'}\n\n**Current Welcome DM:**\n${welcome?.welcomeDM || 'Welcome to {server}! Thanks for joining us. If you have any questions, feel free to ask the staff team.'}\n\nUse \`/setwelcomemessage\` and \`/setwelcomedm\` to customize these messages.\n\nNew members will see a profile picture embed with their welcome message.`
     );
 
     return interaction.update({
@@ -2130,7 +2130,7 @@ async function handleReactionRoleSendChannel(interaction) {
     });
 
     return interaction.update({
-      content: `✅ Message sent to <#${channel}>\n\n**Channel ID:** \`${channel}\`\n**Message ID:** \`${sentMessage.id}\`\n\nRun \`/reactionrolemessage\` again and pick "Add Emoji" to add emoji-role pairs.`,
+      content: `Message sent to <#${channel}>\n\n**Channel ID:** \`${channel}\`\n**Message ID:** \`${sentMessage.id}\`\n\nRun \`/reactionrolemessage\` again and pick "Add Emoji" to add emoji-role pairs.`,
       components: [],
     });
   } catch (error) {
@@ -2190,7 +2190,7 @@ async function handleReactionRoleSelect(interaction) {
     pendingEmojiRoles.delete(tempKey);
     
     return interaction.update({
-      content: `✅ ${emoji} → ${role.name}`,
+      content: `${emoji} → ${role.name}`,
       components: [],
     });
   } catch (error) {
@@ -2205,7 +2205,7 @@ async function handleReactionRoleSelect(interaction) {
 
 async function handleAntiPromotingSetupMenu(interaction) {
   const choice = interaction.values[0];
-  console.log('⚙️ antiPromotingSetupMenu choice:', choice);
+  console.log('antiPromotingSetupMenu choice:', choice);
   const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
 
   try {
@@ -2225,7 +2225,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
       const row = new ActionRowBuilder().addComponents(linkInput);
       modal.addComponents(row);
 
-      console.log('🎯 Showing modal...');
+      console.log('Showing modal...');
       return await interaction.showModal(modal);
     }
 
@@ -2288,10 +2288,10 @@ async function handleAntiPromotingSetupMenu(interaction) {
         );
 
       const embed = new EmbedBuilder()
-        .setColor('#2E2E2E')
+        .setColor('#2d2d2d')
         .setTitle('Whitelisted Invite Links')
         .setDescription(linkList)
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       return interaction.update({
         embeds: [embed],
@@ -2306,8 +2306,8 @@ async function handleAntiPromotingSetupMenu(interaction) {
 
       const status = config.staffCanBypassLinks ? 'enabled' : 'disabled';
       const description = config.staffCanBypassLinks 
-        ? '✅ Staff and Admins can now send invite links without deletion.'
-        : '🔒 Staff and Admins can no longer send invite links without deletion. All staff are subject to anti-promoting rules.';
+        ? 'Staff and Admins can now send invite links without deletion.'
+        : 'Staff and Admins can no longer send invite links without deletion. All staff are subject to anti-promoting rules.';
 
       const backButton = new ActionRowBuilder()
         .addComponents(
@@ -2318,10 +2318,10 @@ async function handleAntiPromotingSetupMenu(interaction) {
         );
 
       const embed = new EmbedBuilder()
-        .setColor(config.staffCanBypassLinks ? '#00AA00' : '#FF0000')
+        .setColor('#2d2d2d')
         .setTitle('Staff Bypass Updated')
         .setDescription(description)
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       return interaction.update({
         embeds: [embed],
@@ -2333,7 +2333,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
       const config = await Config.findOne({ guildId: interaction.guildId });
       
       const linkCount = config?.whitelistedInviteLinks?.length || 0;
-      const staffBypass = config?.staffCanBypassLinks ? '✅ Enabled' : '🔒 Disabled';
+      const staffBypass = config?.staffCanBypassLinks ? 'Enabled' : 'Disabled';
 
       const description = `**Whitelisted Links:** ${linkCount}\n**Staff Bypass:** ${staffBypass}`;
 
@@ -2346,10 +2346,10 @@ async function handleAntiPromotingSetupMenu(interaction) {
         );
 
       const embed = new EmbedBuilder()
-        .setColor('#2E2E2E')
+        .setColor('#2d2d2d')
         .setTitle('Anti-Promoting Settings')
         .setDescription(description)
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       return interaction.update({
         embeds: [embed],
@@ -2359,7 +2359,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
 
     if (choice === 'setup_done') {
       return interaction.update({
-        content: '✅ Anti-Promoting setup closed.',
+        content: 'Anti-Promoting setup closed.',
         components: [],
       });
     }
@@ -2511,7 +2511,7 @@ async function handleStatusMainMenu(interaction) {
 
     if (choice === 'view_config') {
       const channelText = statusConfig.heartbeatChannelId ? `<#${statusConfig.heartbeatChannelId}>` : 'Not set';
-      const statusText = statusConfig.enabled ? '✅ Enabled' : '❌ Disabled';
+      const statusText = statusConfig.enabled ? 'Enabled' : 'Disabled';
 
       return interaction.reply({
         embeds: [{
@@ -2523,7 +2523,7 @@ async function handleStatusMainMenu(interaction) {
             { name: 'Interval', value: `${statusConfig.intervalMinutes} minutes`, inline: true },
             { name: 'Auto-delete', value: `${statusConfig.deleteAfterSeconds} seconds`, inline: true }
           ],
-          footer: { text: 'RolePlayManager' }
+          footer: { text: 'RPM' }
         }],
         flags: 64,
       });
@@ -2667,10 +2667,10 @@ async function handleVerificationApprove(interaction) {
       // Send DM to user
       await member.user.send({
         embeds: [new EmbedBuilder()
-          .setColor('#00ff00')
+          .setColor('#2d2d2d')
           .setTitle('Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
-          .setFooter({ text: 'RolePlayManager' })
+          .setFooter({ text: 'RPM' })
         ]
       }).catch(() => {});
     }
@@ -2680,10 +2680,10 @@ async function handleVerificationApprove(interaction) {
     console.log(`Verification approved for ${pending.username}`);
     await interaction.editReply({
       embeds: [new EmbedBuilder()
-        .setColor('#00ff00')
+        .setColor('#2d2d2d')
         .setTitle('Approved')
         .setDescription(`${pending.username} has been verified.`)
-        .setFooter({ text: 'RolePlayManager' })
+        .setFooter({ text: 'RPM' })
       ],
       components: [],
     });
@@ -2733,10 +2733,10 @@ async function handleVerificationReject(interaction) {
     if (member) {
       await member.user.send({
         embeds: [new EmbedBuilder()
-          .setColor('#ff0000')
+          .setColor('#2d2d2d')
           .setTitle('Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
-          .setFooter({ text: 'RolePlayManager' })
+          .setFooter({ text: 'RPM' })
         ]
       }).catch(() => {});
     }
@@ -2746,10 +2746,10 @@ async function handleVerificationReject(interaction) {
     console.log(`Verification rejected for ${pending.username}`);
     await interaction.editReply({
       embeds: [new EmbedBuilder()
-        .setColor('#ff0000')
+        .setColor('#2d2d2d')
         .setTitle('Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
-        .setFooter({ text: 'RolePlayManager' })
+        .setFooter({ text: 'RPM' })
       ],
       components: [],
     });
@@ -2785,7 +2785,7 @@ async function handleDeleteCustomQuestion(interaction) {
       components: menuOptions.components,
     });
   } catch (error) {
-    console.error('❌ Error deleting custom question:', error);
+    console.error('Error deleting custom question:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while deleting the question.')],
       flags: 64,
@@ -2823,15 +2823,15 @@ function buildDispatchSetupMenu() {
       .addOptions(
         { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
-        { label: '🎖️ Set LEO Role(s)', value: 'set_leo_roles', description: 'Roles the bot will listen to in patrol channels' },
+        { label: 'Set LEO Role(s)', value: 'set_leo_roles', description: 'Roles the bot will listen to in patrol channels' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
-        { label: '➕ Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
-        { label: '🗑️ Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
-        { label: '🔌 Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
-        { label: '🤖 Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
-        { label: '🗑️ Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
-        { label: '📋 View Settings', value: 'view_settings', description: 'See current configuration' },
-        { label: '✓ Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
+        { label: 'Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
+        { label: 'Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
+        { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
+        { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
+        { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
+        { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
+        { label: 'Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
       )
   );
 }
@@ -2929,7 +2929,7 @@ async function handleDispatchSetupMenu(interaction) {
         await initDispatchForGuild(interaction.guild, null);
       }
 
-      const status = config.enabled ? '✅ **Enabled**' : '❌ **Disabled**';
+      const status = config.enabled ? '**Enabled**' : '**Disabled**';
       return interaction.update({
         embeds: [successEmbed('Dispatch System Toggle', `The AI dispatch system is now ${status}.\n\nSelect your next option below.`)],
         components: [buildDispatchSetupMenu()],
@@ -2940,7 +2940,7 @@ async function handleDispatchSetupMenu(interaction) {
       const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
       config.aiEnabled = !config.aiEnabled;
       await config.save();
-      const status = config.aiEnabled ? '✅ **Enabled**' : '❌ **Disabled**';
+      const status = config.aiEnabled ? '**Enabled**' : '**Disabled**';
       return interaction.update({
         embeds: [successEmbed('AI Responses Toggle', `AI-generated dispatcher responses are now ${status}.\n\nSelect your next option below.`)],
         components: [buildDispatchSetupMenu()],
@@ -2990,19 +2990,19 @@ async function handleDispatchSetupMenu(interaction) {
         ? config.leoRoleIds.map(id => `<@&${id}>`).join(', ')
         : '*Not set (using CAD config)*';
       const embed = new EmbedBuilder()
-        .setColor('#5865F2')
-        .setTitle('📋 AI Dispatch Settings')
+        .setColor('#2d2d2d')
+        .setTitle('AI Dispatch Settings')
         .addFields(
-          { name: '📻 Dispatch Channel', value: dispatchCh, inline: true },
-          { name: '🚔 Status Board', value: statusCh, inline: true },
-          { name: '🎖️ LEO Roles', value: leoRoles, inline: false },
-          { name: '🎙️ Patrol Channels', value: patrol, inline: false },
-          { name: '🚗 Traffic Stop Channels', value: stopCh, inline: false },
-          { name: '🤖 AI Responses', value: config.aiEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-          { name: '🔌 System', value: config.enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-          { name: 'ℹ️ Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
+          { name: 'Dispatch Channel', value: dispatchCh, inline: true },
+          { name: 'Status Board', value: statusCh, inline: true },
+          { name: 'LEO Roles', value: leoRoles, inline: false },
+          { name: 'Patrol Channels', value: patrol, inline: false },
+          { name: 'Traffic Stop Channels', value: stopCh, inline: false },
+          { name: 'AI Responses', value: config.aiEnabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'System', value: config.enabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
         )
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
       return interaction.update({
         embeds: [embed],
         components: [buildDispatchSetupMenu()],

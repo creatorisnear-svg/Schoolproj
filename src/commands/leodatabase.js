@@ -48,14 +48,14 @@ export async function execute(interaction) {
           .setCustomId('leodatabase_menu')
           .setPlaceholder('Choose an action...')
           .addOptions(
-            { label: '🚨 View Active 911 Calls', value: 'active_calls' },
-            { label: '🔍 Search License Plate', value: 'search_plate' },
-            { label: '👤 Search Character Name', value: 'search_character' },
-            { label: '🚨 View Active BOLOs', value: 'active_bolos' },
-            { label: '🚨 Manage BOLOs', value: 'manage_bolos' },
-            { label: '🔫 Revoke Weapon', value: 'revoke_weapon' },
-            { label: '🎫 Issue Traffic Ticket', value: 'issue_ticket' },
-            { label: '🚨 Create BOLO', value: 'create_bolo' }
+            { label: 'View Active 911 Calls', value: 'active_calls' },
+            { label: 'Search License Plate', value: 'search_plate' },
+            { label: 'Search Character Name', value: 'search_character' },
+            { label: 'View Active BOLOs', value: 'active_bolos' },
+            { label: 'Manage BOLOs', value: 'manage_bolos' },
+            { label: 'Revoke Weapon', value: 'revoke_weapon' },
+            { label: 'Issue Traffic Ticket', value: 'issue_ticket' },
+            { label: 'Create BOLO', value: 'create_bolo' }
           )
       );
 

@@ -6,10 +6,10 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   const embed = new EmbedBuilder()
-    .setColor('#2E2E2E')
-    .setTitle('🤖 Invite RolePlayManager')
-    .setDescription('[Click here to invite RolePlayManager to your server](https://top.gg/bot/1441306995641683978)')
-    .setFooter({ text: 'RolePlayManager' });
+    .setColor('#2d2d2d')
+    .setTitle('Invite')
+    .setDescription('[Add RolePlayManager to your server](https://top.gg/bot/1441306995641683978)')
+    .setFooter({ text: 'RPM' });
 
   return interaction.reply({
     embeds: [embed],

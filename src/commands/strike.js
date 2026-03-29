@@ -23,7 +23,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      embeds: [errorEmbed('You do not have permission to use this command.')],
       flags: 64,
     });
   }
@@ -36,7 +36,7 @@ export async function execute(interaction) {
 
     if (!strikeConfig || !strikeConfig.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('The strike system is not enabled. Please contact an administrator.')],
+        embeds: [errorEmbed('The strike system is not enabled. Run `/strikesystemsetup` first.')],
         flags: 64,
       });
     }
@@ -59,7 +59,7 @@ export async function execute(interaction) {
     await strikeUser.save();
 
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-    let actionTaken = 'No action taken';
+    let actionTaken = 'None';
 
     if (targetMember) {
       const strikeKey = `strike${strikeLevel}`;
@@ -70,14 +70,14 @@ export async function execute(interaction) {
 
         if (action === 'kick') {
           await targetMember.kick(`Strike ${strikeLevel}: ${reason}`).catch(() => {});
-          actionTaken = '👢 Kicked from server';
+          actionTaken = 'Kicked';
         } else if (action === 'timeout') {
           const durationMs = strikeConfig_data.duration * 60 * 1000;
           await targetMember.timeout(durationMs, `Strike ${strikeLevel}: ${reason}`).catch(() => {});
-          actionTaken = `⏱️ Timed out for ${strikeConfig_data.duration} minutes`;
+          actionTaken = `Timed out for ${strikeConfig_data.duration}m`;
         } else if (action === 'ban') {
           await targetMember.ban({ reason: `Strike ${strikeLevel}: ${reason}` }).catch(() => {});
-          actionTaken = '🚫 Banned from server';
+          actionTaken = 'Banned';
         }
       }
 
@@ -88,18 +88,17 @@ export async function execute(interaction) {
         }
       }
 
-      // Send DM to struck member
       const strikeDM = new EmbedBuilder()
-        .setColor('#ff6b6b')
-        .setTitle('⚠️ You Have Been Striked')
-        .addFields(
-          { name: 'Issued By', value: interaction.user.username, inline: false },
-          { name: 'Reason', value: reason, inline: false },
-          { name: 'Strike Level', value: `${strikeLevel}/4`, inline: false },
-          { name: 'Action Taken', value: actionTaken, inline: false }
+        .setColor('#2d2d2d')
+        .setTitle('Strike Received')
+        .setDescription(
+          `**Issued by:** ${interaction.user.username}\n` +
+          `**Reason:** ${reason}\n` +
+          `**Level:** ${strikeLevel}/4\n` +
+          `**Action:** ${actionTaken}`
         )
         .setTimestamp()
-        .setFooter({ text: 'RolePlayManager' });
+        .setFooter({ text: 'RPM' });
 
       await targetUser.send({ embeds: [strikeDM] }).catch(() => {});
     }
@@ -109,24 +108,23 @@ export async function execute(interaction) {
       const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
-          .setColor('#ff9900')
-          .setTitle(`⚠️ Member Striked - Strike Level ${strikeLevel}`)
-          .addFields(
-            { name: 'Struck User', value: `${targetUser.username} (${targetUser})`, inline: false },
-            { name: 'Issued By', value: `${interaction.user.username}`, inline: false },
-            { name: 'Reason', value: reason, inline: false },
-            { name: 'Strike Level', value: `${strikeLevel}/4`, inline: false },
-            { name: 'Action Taken', value: actionTaken, inline: false }
+          .setColor('#2d2d2d')
+          .setTitle(`Strike — Level ${strikeLevel}`)
+          .setDescription(
+            `**User:** ${targetUser.username} (${targetUser})\n` +
+            `**Issued by:** ${interaction.user.username}\n` +
+            `**Reason:** ${reason}\n` +
+            `**Action:** ${actionTaken}`
           )
           .setTimestamp()
-          .setFooter({ text: 'RolePlayManager' });
+          .setFooter({ text: 'RPM' });
 
         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
       }
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`${targetUser.username} Striked Successfully`, `${targetUser.username} is now at strike level ${strikeLevel}/4\n\nAction Taken: ${actionTaken}`)],
+      embeds: [successEmbed(`Strike — ${targetUser.username}`, `Now at level **${strikeLevel}/4**\nAction: ${actionTaken}`)],
       flags: 64,
     });
   } catch (error) {

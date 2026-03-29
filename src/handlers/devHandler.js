@@ -9,7 +9,7 @@ const DEVELOPER_IDS = ['755654019581608036', '1381378942308454430'];
 export async function handleDevMenu(interaction) {
   try {
     if (!DEVELOPER_IDS.includes(interaction.user.id)) {
-      return interaction.reply({ content: '❌ Developer only.', flags: [MessageFlags.Ephemeral] });
+      return interaction.reply({ content: 'Developer only.', flags: [MessageFlags.Ephemeral] });
     }
 
     const value = interaction.values[0];
@@ -80,17 +80,17 @@ export async function handleDevMenu(interaction) {
       const Verification = (await import('../models/Verification.js')).default;
       const verification = await Verification.findOne({ guildId: interaction.guildId });
       if (!verification) {
-        return interaction.reply({ content: '❌ Verification system not found.', flags: [MessageFlags.Ephemeral] });
+        return interaction.reply({ content: 'Verification system not found.', flags: [MessageFlags.Ephemeral] });
       }
       verification.oauthRequired = !verification.oauthRequired;
       await verification.save();
-      return await interaction.reply({ content: `✅ OAuth requirement for verification is now **${verification.oauthRequired ? 'ENABLED' : 'DISABLED'}**.`, flags: [MessageFlags.Ephemeral] });
+      return await interaction.reply({ content: `OAuth requirement for verification is now **${verification.oauthRequired ? 'ENABLED' : 'DISABLED'}**.`, flags: [MessageFlags.Ephemeral] });
     }
   } catch (error) {
     if (error.code === 10062) {
-      console.log('⚠️ Interaction expired in handleDevMenu.');
+      console.log('Interaction expired in handleDevMenu.');
     } else {
-      console.error('❌ Error in handleDevMenu:', error);
+      console.error('Error in handleDevMenu:', error);
     }
   }
 }
@@ -109,17 +109,17 @@ export async function handleDevSelect(interaction) {
       const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20voice`;
 
       const embed = new EmbedBuilder()
-        .setColor('#0099ff')
-        .setTitle('🔐 Account Authorization')
-        .setDescription('To securely authorize your account with RolePlayManager, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
-        .setFooter({ text: 'RolePlayManager' });
+        .setColor('#2d2d2d')
+        .setTitle('Account Authorization')
+        .setDescription('To securely authorize your account with RPM, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
+        .setFooter({ text: 'RPM' });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
       );
 
       await channel.send({ embeds: [embed], components: [row] });
-      await interaction.update({ content: `✅ Auth link sent to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
+      await interaction.update({ content: `Auth link sent to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
     } else if (customId === 'dev_select_user_forcejoin') {
       const userId = values[0];
       const modal = new ModalBuilder()
@@ -151,7 +151,7 @@ export async function handleDevSelect(interaction) {
       const userData = await AuthorizedUser.findOne({ userId });
 
       if (!userData || !userData.accessToken) {
-        return interaction.update({ content: '❌ User not authorized.', components: [], flags: [MessageFlags.Ephemeral] });
+        return interaction.update({ content: 'User not authorized.', components: [], flags: [MessageFlags.Ephemeral] });
       }
 
       try {
@@ -160,9 +160,9 @@ export async function handleDevSelect(interaction) {
           { channel_id: channelId },
           { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
         );
-        await interaction.update({ content: `✅ Moved <@${userId}> to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
+        await interaction.update({ content: `Moved <@${userId}> to <#${channelId}>.`, components: [], flags: [MessageFlags.Ephemeral] });
       } catch (e) {
-        await interaction.update({ content: `❌ Error: ${e.response?.data?.message || e.message}`, components: [], flags: [MessageFlags.Ephemeral] });
+        await interaction.update({ content: `Error: ${e.response?.data?.message || e.message}`, components: [], flags: [MessageFlags.Ephemeral] });
       }
     } else if (customId === 'dev_select_role_autojoin') {
       const roleId = values[0];
@@ -183,21 +183,21 @@ export async function handleDevSelect(interaction) {
     } else if (customId === 'dev_select_role_autojoin_delete') {
       const roleId = values[0];
       await AutoJoin.deleteOne({ guildId: interaction.guildId, roleId });
-      await interaction.update({ content: `✅ Auto-join for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
+      await interaction.update({ content: `Auto-join for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
     } else if (customId === 'dev_select_role_autorole') {
       const roleId = values[0];
       await AutoRole.findOneAndUpdate({ guildId: interaction.guildId, roleId }, { enabled: true }, { upsert: true });
-      await interaction.update({ content: `✅ Auto-role for <@&${roleId}> configured.`, components: [], flags: [MessageFlags.Ephemeral] });
+      await interaction.update({ content: `Auto-role for <@&${roleId}> configured.`, components: [], flags: [MessageFlags.Ephemeral] });
     } else if (customId === 'dev_select_role_autorole_delete') {
       const roleId = values[0];
       await AutoRole.deleteOne({ guildId: interaction.guildId, roleId });
-      await interaction.update({ content: `✅ Auto-role for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
+      await interaction.update({ content: `Auto-role for <@&${roleId}> deleted.`, components: [], flags: [MessageFlags.Ephemeral] });
     }
   } catch (error) {
     if (error.code === 10062) {
-      console.log('⚠️ Interaction expired in handleDevSelect.');
+      console.log('Interaction expired in handleDevSelect.');
     } else {
-      console.error('❌ Error in handleDevSelect:', error);
+      console.error('Error in handleDevSelect:', error);
     }
   }
 }
@@ -211,7 +211,7 @@ export async function handleDevModal(interaction) {
       const userData = await AuthorizedUser.findOne({ userId });
 
       if (!userData || !userData.accessToken) {
-        return interaction.reply({ content: '❌ User not authorized.', flags: [MessageFlags.Ephemeral] });
+        return interaction.reply({ content: 'User not authorized.', flags: [MessageFlags.Ephemeral] });
       }
 
       await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
@@ -222,21 +222,21 @@ export async function handleDevModal(interaction) {
           { access_token: userData.accessToken },
           { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
         );
-        await interaction.editReply({ content: `✅ Added <@${userId}> to server ${serverId}.` });
+        await interaction.editReply({ content: `Added <@${userId}> to server ${serverId}.` });
       } catch (e) {
-        await interaction.editReply({ content: `❌ Error: ${e.response?.data?.message || e.message}` });
+        await interaction.editReply({ content: `Error: ${e.response?.data?.message || e.message}` });
       }
     } else if (customId.startsWith('dev_modal_autojoin_setup_')) {
       const roleId = customId.split('_').pop();
       const serverId = fields.getTextInputValue('server_id');
       await AutoJoin.findOneAndUpdate({ guildId: interaction.guildId, roleId }, { targetServerId: serverId, enabled: true }, { upsert: true });
-      await interaction.reply({ content: '✅ Auto-join configured.', flags: [MessageFlags.Ephemeral] });
+      await interaction.reply({ content: 'Auto-join configured.', flags: [MessageFlags.Ephemeral] });
     }
   } catch (error) {
     if (error.code === 10062) {
-      console.log('⚠️ Interaction expired in handleDevModal.');
+      console.log('Interaction expired in handleDevModal.');
     } else {
-      console.error('❌ Error in handleDevModal:', error);
+      console.error('Error in handleDevModal:', error);
     }
   }
 }

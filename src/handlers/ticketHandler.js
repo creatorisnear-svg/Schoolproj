@@ -23,7 +23,7 @@ async function showSetupMenu(interaction) {
           { label: 'View Ticket Types', value: 'view_types' },
           { label: 'Remove Ticket Type', value: 'remove_type' },
           { label: 'Send Panel', value: 'send_panel' },
-          { label: '✅ Done - Close Setup', value: 'setup_done' }
+          { label: 'Done - Close Setup', value: 'setup_done' }
         )
     );
 
@@ -382,10 +382,10 @@ export async function handleTicketSetupModal(interaction) {
           .setCustomId(`ticketsupport_type_button_color_${tempId}`)
           .setPlaceholder('Choose a button color...')
           .addOptions(
-            { label: '🔵 Primary (Blue)', value: 'Primary' },
-            { label: '⚪ Secondary (Gray)', value: 'Secondary' },
-            { label: '🟢 Success (Green)', value: 'Success' },
-            { label: '🔴 Danger (Red)', value: 'Danger' }
+            { label: 'Primary (Blue)', value: 'Primary' },
+            { label: 'Secondary (Gray)', value: 'Secondary' },
+            { label: 'Success (Green)', value: 'Success' },
+            { label: 'Danger (Red)', value: 'Danger' }
           )
       );
 
@@ -430,7 +430,7 @@ export async function handleTicketTypeButtonColor(interaction) {
 
     const botStaffButton = new ButtonBuilder()
       .setCustomId(`ticketsupport_add_botstaff_${tempId}`)
-      .setLabel('✓ Include Bot Staff')
+      .setLabel('Include Bot Staff')
       .setStyle(ButtonStyle.Success);
 
     const doneButton = new ButtonBuilder()
@@ -442,7 +442,7 @@ export async function handleTicketTypeButtonColor(interaction) {
     const buttonsRow = new ActionRowBuilder().addComponents(botStaffButton, doneButton);
 
     return interaction.update({
-      content: `Select which roles can view **${pending.label}** tickets (optional):\n\nClick "✓ Include Bot Staff" to add all bot staff members to this ticket type.`,
+      content: `Select which roles can view **${pending.label}** tickets (optional):\n\nClick "Include Bot Staff" to add all bot staff members to this ticket type.`,
       components: [rolesRow, buttonsRow],
     });
   } catch (error) {
@@ -471,13 +471,13 @@ export async function handleAddBotStaffButton(interaction) {
     if (!pending.includeStaff) {
       pending.includeStaff = true;
       return interaction.reply({
-        content: '✅ Bot staff will be added to this ticket type. Now click "Done" when ready.',
+        content: 'Bot staff will be added to this ticket type. Now click "Done" when ready.',
         flags: 64,
       });
     } else {
       pending.includeStaff = false;
       return interaction.reply({
-        content: '❌ Bot staff removal cancelled. Now click "Done" when ready.',
+        content: 'Bot staff removal cancelled. Now click "Done" when ready.',
         flags: 64,
       });
     }
@@ -560,7 +560,7 @@ export async function handleTicketRoleSelect(interaction) {
     pending.selectedRoleIds = selectedRoleIds;
 
     return interaction.reply({
-      content: `✅ ${selectedRoleIds.length} role(s) selected. Click "Done" to finish.`,
+      content: `${selectedRoleIds.length} role(s) selected. Click "Done" to finish.`,
       flags: 64,
     });
   } catch (error) {
@@ -641,10 +641,10 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
 
     // Create the panel embed with custom title and description
     const panelEmbed = new EmbedBuilder()
-      .setColor('#5865F2')
+      .setColor('#2d2d2d')
       .setTitle(ticketConfig.panelTitle || 'Support Tickets')
       .setDescription(ticketConfig.panelDescription || 'Select a category below to open a support ticket. A private channel will be created for you.')
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     // Create buttons for each selected ticket type with their custom colors
@@ -675,7 +675,7 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
     const menuData = await showSetupMenu(interaction);
     return interaction.update({
       ...menuData,
-      embeds: [successEmbed('Panel Sent & Ready', `✅ Panel sent successfully!\n\n📝 Channel reset - you can now select another channel and send a new panel with different ticket types!`)],
+      embeds: [successEmbed('Panel Sent & Ready', `Panel sent successfully!\n\nChannel reset - you can now select another channel and send a new panel with different ticket types!`)],
     });
   } catch (error) {
     console.error('Error sending ticket panel:', error);
@@ -701,7 +701,7 @@ export async function handleTicketButtonClick(interaction) {
 
     if (!ticketConfig) {
       return interaction.reply({
-        content: '❌ Ticket system is not configured.',
+        content: 'Ticket system is not configured.',
         flags: 64,
       });
     }
@@ -710,7 +710,7 @@ export async function handleTicketButtonClick(interaction) {
 
     if (!ticketType) {
       return interaction.reply({
-        content: '❌ Ticket type not found.',
+        content: 'Ticket type not found.',
         flags: 64,
       });
     }
@@ -739,7 +739,7 @@ export async function handleTicketButtonClick(interaction) {
   } catch (error) {
     console.error('Error handling ticket button:', error);
     await interaction.reply({
-      content: '❌ An error occurred while creating the ticket.',
+      content: 'An error occurred while creating the ticket.',
       flags: 64,
     });
   }
@@ -793,7 +793,7 @@ export async function handleTicketCreationModal(interaction) {
 
     if (!pending) {
       return interaction.reply({
-        content: '❌ Session expired. Please try again.',
+        content: 'Session expired. Please try again.',
         flags: 64,
       });
     }
@@ -869,25 +869,25 @@ export async function handleTicketCreationModal(interaction) {
       .setCustomId(`ticket_close_${ticketId}`)
       .setLabel('Close Ticket')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('✅');
+      ;
 
     const deleteButton = new ButtonBuilder()
       .setCustomId(`ticket_delete_${ticketId}`)
       .setLabel('Delete Ticket')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('🗑️');
+      ;
 
     const buttonRow = new ActionRowBuilder().addComponents(closeButton, deleteButton);
 
     const welcomeEmbed = new EmbedBuilder()
-      .setColor('#5865F2')
+      .setColor('#2d2d2d')
       .setTitle(ticketType.label)
       .setDescription(`${user} — a staff member will be with you shortly.\n\n**Your message:**\n> ${description}`)
       .addFields(
         { name: 'Ticket', value: ticketId, inline: true },
         { name: 'Category', value: ticketType.label, inline: true }
       )
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     await channel.send({
@@ -900,13 +900,13 @@ export async function handleTicketCreationModal(interaction) {
 
     // Reply to user
     await interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RolePlayManager' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error creating ticket:', error);
     await interaction.reply({
-      content: '❌ An error occurred while creating the ticket.',
+      content: 'An error occurred while creating the ticket.',
       flags: 64,
     });
   }
@@ -949,14 +949,14 @@ export async function handleTicketCloseButton(interaction) {
 
     // Update embed to show ticket is closed
     const closedEmbed = new EmbedBuilder()
-      .setColor('#ED4245')
+      .setColor('#2d2d2d')
       .setTitle(`${ticket.ticketType}  —  Closed`)
       .setDescription(`> This ticket has been locked. Use the button below to permanently delete it.`)
       .addFields(
         { name: 'Ticket', value: ticketId, inline: true },
         { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true }
       )
-      .setFooter({ text: 'RolePlayManager' })
+      .setFooter({ text: 'RPM' })
       .setTimestamp();
 
     // Show only delete button after closing
@@ -964,7 +964,7 @@ export async function handleTicketCloseButton(interaction) {
       .setCustomId(`ticket_delete_${ticketId}`)
       .setLabel('Delete Ticket')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('🗑️');
+      ;
 
     const buttonRow = new ActionRowBuilder().addComponents(deleteButton);
 
