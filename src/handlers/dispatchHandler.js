@@ -50,15 +50,45 @@ function hasAIKey() {
 }
 
 /**
- * Detects "show me in/on [10-11] with [name]" style phrases.
- * Returns the name of the person being pulled over, or null if not detected.
+ * Detects traffic stop phrases and returns the civilian name, or null if not found.
+ * Supports many natural ways officers call a traffic stop.
+ *
+ * Patterns handled:
+ *   "show me in/on/as [a] [10-11] with [name]"
+ *   "show me with [name]"
+ *   "pulling over [name]"  /  "pulling [name] over"
+ *   "I'm stopping [name]"  /  "stopping [name]"
+ *   "I got [name] / got [name] pulled over"
+ *   "traffic stop with [name]"
+ *   "I have [name] stopped"
  */
 function detectJoinStop(text) {
   const lower = text.toLowerCase();
-  if (!lower.includes('show me')) return null;
-  if (!lower.includes('with')) return null;
-  const nameMatch = text.match(/\bwith\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i);
-  return nameMatch ? nameMatch[1].trim() : null;
+
+  // All patterns return the captured civilian name
+  const patterns = [
+    // "show me [in/on/as] [a] [code] with NAME"
+    /show\s+me\s+(?:(?:in|on|as)\s+)?(?:a\s+)?(?:10[-\s]?\d{1,2}\s+)?with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    // "show me with NAME"
+    /show\s+me\s+with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    // "pulling over NAME" / "pulling NAME over"
+    /pulling\s+over\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    /pulling\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+over/i,
+    // "stopping NAME" / "I'm stopping NAME"
+    /(?:i(?:'m|m)\s+)?stopping\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    // "traffic stop with NAME"
+    /traffic\s+stop\s+with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    // "got NAME pulled over" / "I got NAME stopped"
+    /(?:i\s+)?got\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+(?:pulled\s+over|stopped)/i,
+    // "I have NAME stopped" / "have NAME pulled over"
+    /(?:i\s+)?have\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+(?:stopped|pulled\s+over)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
 }
 
 /** Finds a guild member by partial display name or username (case-insensitive). */
@@ -89,8 +119,52 @@ const WORD_TO_NUM = {
   sixty: 60, seventy: 70, eighty: 80, ninety: 90,
 };
 const NUM_WORDS = Object.keys(WORD_TO_NUM).join('|');
+
+/**
+ * Common spoken phrases that map directly to a 10-code.
+ * Checked before digit/word-number parsing so natural phrases take priority.
+ * Each entry: [regex, '10-code']
+ */
+const PHRASE_ALIASES = [
+  // 10-4 — Copy / Acknowledged
+  [/\b(?:copy\s+that|copy|roger\s+that|roger|acknowledged|affirmative)\b/i, '10-4'],
+  // 10-6 — Busy
+  [/\b(?:i(?:'m|m)\s+)?busy\b/i, '10-6'],
+  // 10-7 — Out of Service
+  [/\b(?:going\s+)?(?:out\s+of\s+service|logging\s+off|signing\s+off|going\s+off(?:\s+duty)?)\b/i, '10-7'],
+  // 10-8 — Available / In Service
+  [/\b(?:i(?:'m|m)\s+)?(?:back\s+(?:in\s+service|available|on\s+patrol)|going\s+available|available|back\s+in\s+service|in\s+service|back\s+on\s+patrol)\b/i, '10-8'],
+  [/\bi(?:'m|m)\s+back\b/i, '10-8'],
+  // 10-11 — Traffic Stop (no name, just announcing a stop)
+  [/\b(?:out\s+with\s+a\s+(?:vehicle|car|truck)|traffic\s+stop|got\s+a\s+stop|making\s+a\s+stop|initiating\s+a\s+stop)\b/i, '10-11'],
+  // 10-12 — Stand By
+  [/\b(?:stand\s+by|standby)\b/i, '10-12'],
+  // 10-17 — En Route / Meet
+  [/\b(?:en\s+route\s+to|heading\s+to|on\s+my\s+way\s+to|rolling\s+to)\b/i, '10-17'],
+  // 10-20 — Location
+  [/\b(?:my\s+location\s+is|i(?:'m|m)\s+(?:at|on|near)|current\s+location)\b/i, '10-20'],
+  // 10-76 — En Route (general)
+  [/\b(?:en\s+route|on\s+my\s+way|responding)\b/i, '10-76'],
+  // 10-80 — Pursuit
+  [/\b(?:in\s+pursuit|pursuing|vehicle\s+pursuit|foot\s+pursuit|in\s+a\s+(?:chase|pursuit)|high[\s-]speed\s+chase|chasing)\b/i, '10-80'],
+  // 10-97 — On Scene / Arrived
+  [/\b(?:on\s+scene|arrived?\s+(?:on\s+)?(?:scene|location)|i(?:'m|m)\s+(?:on\s+scene|at\s+the\s+scene|on\s+location))\b/i, '10-97'],
+  // 10-99 — Officer Down / Emergency
+  [/\b(?:officer\s+down|shots?\s+fired|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|mayday|emergency)\b/i, '10-99'],
+];
+
 function normalizeSpokenCodes(text) {
-  return text.replace(
+  let result = text;
+
+  // Apply phrase aliases first (before number-word normalization)
+  for (const [pattern, code] of PHRASE_ALIASES) {
+    if (pattern.test(result)) {
+      result = result.replace(pattern, code);
+    }
+  }
+
+  // Then convert "ten [word]" → "10-[digit]"
+  result = result.replace(
     new RegExp(
       `\\bten[-\\s]?(${NUM_WORDS})(?:[-\\s](${NUM_WORDS}))?\\b`,
       'gi'
@@ -101,6 +175,8 @@ function normalizeSpokenCodes(text) {
       return `10-${val}`;
     }
   );
+
+  return result;
 }
 
 function parseTranscript(text) {
@@ -116,26 +192,31 @@ function parseTranscript(text) {
     }
   }
 
-  const withMatch = lower.match(/\bwith\s+([a-z][a-z\s]{1,30}?)(?:\s+at|\s+on|\s*$)/i);
-  const atMatch = lower.match(/\bat\s+(.{2,40}?)(?:\s+with|\s*$)/i);
-  // Also handle spoken "show me a ten eleven" after normalization
-  const showMeMatch = lower.match(/show\s+me\s+(?:a\s+)?(\d{2}[\-\s]?\d{1,2})/i);
+  // Subject: "with NAME", "stopping NAME", "pulling over NAME"
+  const withMatch = lower.match(/\bwith\s+([a-z][a-z0-9\s]{1,30}?)(?:\s+at|\s+on|\s+near|\s*$)/i);
 
+  // Location: "at PLACE", "on STREET", "near AREA", "by PLACE", "off STREET"
+  const locationMatch = lower.match(/\b(?:at|on|near|by|off)\s+(.{2,40}?)(?:\s+with|\s*$)/i);
+
+  // Fallback: "show me [code]" pattern (after normalization handles the number)
+  const showMeMatch = lower.match(/show\s+me\s+(?:(?:in|on|as|a)\s+)?(\d{2}[-\s]\d{1,2})/i);
   if (!detectedCode && showMeMatch) {
     const raw = showMeMatch[1].replace(/\s/, '-');
-    const normalized2 = `10-${raw.split('-')[1] || raw}`;
-    if (TEN_CODES[normalized2]) detectedCode = normalized2;
+    const candidate = `10-${raw.split('-')[1] || raw}`;
+    if (TEN_CODES[candidate]) detectedCode = candidate;
   }
 
   if (detectedCode) {
-    console.log(`[Dispatch] Detected code: ${detectedCode} (normalized: "${normalized.trim()}")`);
+    console.log(`[Dispatch] Detected code: ${detectedCode} from: "${text.trim()}" → normalized: "${normalized.trim()}"`);
+  } else {
+    console.log(`[Dispatch] No code detected in: "${text.trim()}"`);
   }
 
   return {
     code: detectedCode,
     codeInfo: detectedCode ? TEN_CODES[detectedCode] : null,
     subject: withMatch ? withMatch[1].trim() : null,
-    location: atMatch ? atMatch[1].trim() : null,
+    location: locationMatch ? locationMatch[1].trim() : null,
     rawText: text.trim(),
   };
 }
