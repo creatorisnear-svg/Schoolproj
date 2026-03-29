@@ -24,6 +24,7 @@ import prism from 'prism-media';
  *   connection:       VoiceConnection | null,
  *   currentChannelId: string | null,
  *   patrolChannelIds: Set<string>,
+ *   guild:            Guild | null,
  *   options:          { onTranscription, userFilter }
  * }>
  */
@@ -34,9 +35,6 @@ const recordingUsers = new Set();
 
 /** Guild IDs currently in the process of joining a channel — prevents concurrent joins */
 const joiningGuilds = new Set();
-
-/** Tracks the last time a join was attempted per guild (ms timestamp) */
-const lastJoinTime = new Map();
 
 /**
  * Store patrol config for a guild without joining any channel yet.
@@ -53,6 +51,7 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
       connection: null,
       currentChannelId: null,
       patrolChannelIds: new Set(patrolChannelIds),
+      guild: null,
       options,
       joinAudioBuffer,
     });
@@ -73,9 +72,24 @@ export function addPatrolChannel(guildId, channelId, options) {
       connection: null,
       currentChannelId: null,
       patrolChannelIds: new Set([channelId]),
+      guild: null,
       options: options || {},
     });
   }
+}
+
+/**
+ * Find the first patrol channel in the guild that currently has human members.
+ * Used to decide where to reconnect after a connection failure.
+ */
+function _findActivePatrolChannel(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state?.guild) return null;
+  for (const channelId of state.patrolChannelIds) {
+    const channel = state.guild.channels.cache.get(channelId);
+    if (channel?.members?.size > 0) return channel;
+  }
+  return null;
 }
 
 /**
@@ -90,51 +104,36 @@ export async function moveToChannel(channel) {
 
   if (!state.patrolChannelIds.has(channel.id)) return null;
 
-  if (state.currentChannelId === channel.id && state.connection) {
+  if (state.currentChannelId === channel.id &&
+      state.connection?.state.status === VoiceConnectionStatus.Ready) {
     return state.connection;
   }
 
   // Prevent concurrent joins for the same guild
   if (joiningGuilds.has(guildId)) return null;
-
-  // Cooldown: don't rejoin within 8 seconds of the last attempt
-  const now = Date.now();
-  const last = lastJoinTime.get(guildId) || 0;
-  if (now - last < 8000) return null;
-
   joiningGuilds.add(guildId);
-  lastJoinTime.set(guildId, now);
+
+  // Store the guild reference so watchdog/reconnect can find active channels later
+  state.guild = channel.guild;
 
   if (state.connection) {
     try { state.connection.destroy(); } catch {}
     state.connection = null;
     state.currentChannelId = null;
+    // Let Discord process the leave before we request to rejoin — this forces a fresh
+    // VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE on the next join, avoiding stale tokens.
+    await new Promise(r => setTimeout(r, 1500));
   }
 
   let connection;
   try {
-    // Wrap the adapterCreator to log when voice events are forwarded to the connection
-    const wrappedAdapterCreator = (methods) => {
-      const origOnVoiceStateUpdate = methods.onVoiceStateUpdate;
-      const origOnVoiceServerUpdate = methods.onVoiceServerUpdate;
-      methods.onVoiceStateUpdate = (data) => {
-        console.log(`[Voice Adapter] onVoiceStateUpdate: session=${data.session_id}, channel=${data.channel_id}`);
-        return origOnVoiceStateUpdate(data);
-      };
-      methods.onVoiceServerUpdate = (data) => {
-        console.log(`[Voice Adapter] onVoiceServerUpdate: endpoint=${data.endpoint}`);
-        return origOnVoiceServerUpdate(data);
-      };
-      return channel.guild.voiceAdapterCreator(methods);
-    };
-
     connection = joinVoiceChannel({
       channelId: channel.id,
       guildId,
-      adapterCreator: wrappedAdapterCreator,
+      adapterCreator: channel.guild.voiceAdapterCreator,
       selfDeaf: false,
       selfMute: false,
-      debug: true,
+      debug: false,
     });
   } catch (err) {
     console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
@@ -146,20 +145,15 @@ export async function moveToChannel(channel) {
   state.currentChannelId = channel.id;
   joiningGuilds.delete(guildId);
 
-  connection.on('debug', msg => {
-    console.log(`[Voice Debug] ${msg.substring(0, 300)}`);
-  });
-
   connection.on('stateChange', (oldState, newState) => {
-    console.log(`[Voice State] ${oldState.status} → ${newState.status}`);
+    console.log(`[Voice] ${oldState.status} → ${newState.status}`);
   });
 
   _setupReceiver(connection, channel.guild, state, guildId);
 
-  // Play the join audio once the connection is fully ready.
-  // If it's already in Ready state (session resumed), fire right away.
+  // Play the join audio the moment the connection reaches Ready.
   const onConnectionReady = () => {
-    console.log(`[Dispatch] Connection ready in "${channel.name}" — scheduling join audio`);
+    console.log(`[Dispatch] Connection ready in "${channel.name}" — playing join audio`);
     setTimeout(() => {
       if (state.connection === connection && state.joinAudioBuffer) {
         playDispatchVoice(guildId, state.joinAudioBuffer);
@@ -171,45 +165,70 @@ export async function moveToChannel(channel) {
     }, 500);
   };
 
-  console.log(`[Dispatch] Connection state after join: ${connection.state.status}`);
   if (connection.state.status === VoiceConnectionStatus.Ready) {
     onConnectionReady();
   } else {
     connection.once(VoiceConnectionStatus.Ready, onConnectionReady);
-
-    // Fallback: play audio after 3 seconds even if Ready hasn't fired yet —
-    // Discord sometimes skips the event when resuming an existing session.
-    setTimeout(() => {
-      const status = connection.state.status;
-      console.log(`[Dispatch] Connection state after 3s: ${status}`);
-      if (status !== VoiceConnectionStatus.Destroyed && state.connection === connection) {
-        if (state.joinAudioBuffer) {
-          console.log('[Dispatch] Fallback: playing join audio without waiting for Ready');
-          playDispatchVoice(guildId, state.joinAudioBuffer);
-        }
-      }
-    }, 3000);
   }
 
+  // Watchdog: Discord voice sessions can be rejected with 4006 (session no longer valid)
+  // on the very first attempt. The internal retry loop reuses the same stale token, so it
+  // never recovers on its own. After 20 seconds, we fully leave and re-join to get fresh
+  // credentials from Discord (new VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE).
+  let watchdogTriggered = false;
+  const watchdog = setTimeout(async () => {
+    if (state.connection !== connection) return;
+    const status = connection.state.status;
+    if (status === VoiceConnectionStatus.Ready) return;
+
+    watchdogTriggered = true;
+    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" for 20s — forcing full reconnect`);
+    try { connection.destroy(); } catch {}
+
+    // Wait 3 seconds for Discord to process the leave (gives us a fresh session on rejoin)
+    await new Promise(r => setTimeout(r, 3000));
+    if (state.connection) return; // something else already reconnected
+
+    const targetChannel = _findActivePatrolChannel(guildId);
+    if (targetChannel) {
+      console.log(`[Dispatch] Watchdog: rejoining "${targetChannel.name}"`);
+      moveToChannel(targetChannel);
+    }
+  }, 20000);
+
+  // Clean up watchdog when connection succeeds or is destroyed
+  connection.once(VoiceConnectionStatus.Ready, () => clearTimeout(watchdog));
+
+  connection.once(VoiceConnectionStatus.Destroyed, () => {
+    clearTimeout(watchdog);
+    if (state.connection === connection) {
+      state.connection = null;
+      state.currentChannelId = null;
+    }
+
+    // If this wasn't triggered by our watchdog (e.g. an external disconnect), auto-reconnect
+    if (!watchdogTriggered) {
+      setTimeout(async () => {
+        if (state.connection) return;
+        const targetChannel = _findActivePatrolChannel(guildId);
+        if (targetChannel) {
+          console.log(`[Dispatch] Auto-reconnecting to "${targetChannel.name}" after disconnect`);
+          moveToChannel(targetChannel);
+        }
+      }, 4000);
+    }
+  });
+
+  // If Discord explicitly disconnects the bot (4014 kick), destroy and schedule re-join
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
     try {
-      await Promise.race([
-        entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-        entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
-      ]);
+      await entersState(connection, VoiceConnectionStatus.Connecting, 5_000);
     } catch {
       if (state.connection === connection) {
         state.connection = null;
         state.currentChannelId = null;
       }
       try { connection.destroy(); } catch {}
-    }
-  });
-
-  connection.on(VoiceConnectionStatus.Destroyed, () => {
-    if (state.connection === connection) {
-      state.connection = null;
-      state.currentChannelId = null;
     }
   });
 
@@ -308,14 +327,28 @@ export function leaveDispatchChannel(guildId) {
 }
 
 /**
- * Play a TTS audio buffer (OGG Opus format) through the guild's active voice connection.
+ * Play a TTS audio buffer through the guild's active voice connection.
  * Stops any currently playing audio first so the dispatcher never overlaps itself.
+ * Only plays if the connection is in the Ready state.
  */
 export async function playDispatchVoice(guildId, audioBuffer) {
   const state = dispatchState.get(guildId);
-  if (!state?.connection) {
+  const conn = state?.connection;
+  if (!conn) {
     console.error('[Dispatch TTS] No active connection for guild:', guildId);
     return;
+  }
+
+  const connStatus = conn.state?.status;
+  if (connStatus !== VoiceConnectionStatus.Ready) {
+    console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) — waiting for Ready state`);
+    try {
+      await entersState(conn, VoiceConnectionStatus.Ready, 30_000);
+    } catch {
+      console.error('[Dispatch TTS] Connection never reached Ready — skipping audio');
+      return;
+    }
+    if (state.connection !== conn) return;
   }
 
   const tempPath = join(tmpdir(), `tts_${guildId}_${Date.now()}.wav`);
@@ -334,11 +367,10 @@ export async function playDispatchVoice(guildId, audioBuffer) {
       inputType: StreamType.Arbitrary,
     });
 
-    state.connection.subscribe(player);
+    conn.subscribe(player);
     player.play(resource);
 
-    const connState = state.connection.state?.status ?? 'unknown';
-    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId} — connection: ${connState}`);
+    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
 
     player.on('error', err => {
       console.error('[Dispatch TTS] Audio player error:', err.message);
