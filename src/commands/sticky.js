@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.j
 import Sticky from '../models/Sticky.js';
 import Staff from '../models/Staff.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
+import { getGuildLimits } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('sticky')
@@ -61,7 +62,6 @@ export async function execute(interaction) {
       });
     }
 
-    // Handle CREATE action
     if (action === 'create') {
       if (!messageContent) {
         return interaction.reply({
@@ -70,7 +70,19 @@ export async function execute(interaction) {
         });
       }
 
-      // Delete any existing sticky message in this channel
+      const existingInChannel = await Sticky.findOne({ guildId, channelId: channel.id });
+      if (!existingInChannel) {
+        const limits = await getGuildLimits(guildId);
+        const stickyLimit = limits.characters === Infinity ? Infinity : 5;
+        const stickyCount = await Sticky.countDocuments({ guildId });
+        if (stickyCount >= stickyLimit) {
+          return interaction.reply({
+            embeds: [errorEmbed('Sticky Limit Reached', `This server has reached the maximum of **${stickyLimit} sticky messages**. Upgrade to **Premium** with \`/activatepremium\` for unlimited stickies.`)],
+            flags: 64,
+          });
+        }
+      }
+
       const existingSticky = await Sticky.findOne({ guildId, channelId: channel.id });
       if (existingSticky) {
         try {
