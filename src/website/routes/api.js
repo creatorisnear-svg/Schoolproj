@@ -10,6 +10,12 @@ async function verifyAdminAccess(token, guildId) {
   return (BigInt(userGuild.permissions) & BigInt(0x8)) === BigInt(0x8);
 }
 
+function getToken(req) {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) return auth.slice(7);
+  return req.cookies?.dash_token || null;
+}
+
 export function createApiRouter(client) {
   const router = Router();
 
@@ -20,7 +26,7 @@ export function createApiRouter(client) {
   });
 
   router.get('/me', async (req, res) => {
-    const token = req.cookies?.dash_token;
+    const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
@@ -56,7 +62,7 @@ export function createApiRouter(client) {
   });
 
   router.get('/guild/:id', async (req, res) => {
-    const token = req.cookies?.dash_token;
+    const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
@@ -170,7 +176,7 @@ export function createApiRouter(client) {
   }
 
   router.get('/guild/:id/settings/:mod', async (req, res) => {
-    const token = req.cookies?.dash_token;
+    const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
@@ -325,7 +331,7 @@ export function createApiRouter(client) {
   });
 
   router.post('/guild/:id/settings/:mod', async (req, res) => {
-    const token = req.cookies?.dash_token;
+    const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     try {

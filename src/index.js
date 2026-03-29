@@ -70,6 +70,19 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
 app.use(express.json());
+
+const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://roleplaymanager.xyz';
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin === SITE_ORIGIN) {
+    res.setHeader('Access-Control-Allow-Origin', SITE_ORIGIN);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use('/css', express.static(resolve('src/website/public/css')));
 app.use('/js', express.static(resolve('src/website/public/js')));
 app.use('/img', express.static(resolve('src/website/public/img')));
@@ -88,6 +101,36 @@ app.get('/dashboard', (req, res) => {
 });
 
 app.use('/dashboard', createAuthRouter());
+
+app.get('/auth/site/callback', async (req, res) => {
+  const { code, state } = req.query;
+  const siteRedirect = state || 'https://roleplaymanager.xyz/dashboard/';
+
+  if (!code) return res.redirect(siteRedirect);
+
+  try {
+    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
+    const redirectUri = `https://${cleanDomain}/auth/site/callback`;
+
+    const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+    }), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    const { access_token } = tokenRes.data;
+    res.redirect(siteRedirect + '#token=' + access_token);
+  } catch (err) {
+    console.error('[SITE AUTH]', err.response?.data || err.message);
+    res.redirect(siteRedirect + '#error=auth_failed');
+  }
+});
+
 app.use('/api', createApiRouter(client));
 
 app.get('/callback', async (req, res) => {

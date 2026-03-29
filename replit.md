@@ -49,9 +49,13 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - Landing page at `/` with live server/user stats, feature showcase, and invite button.
 - Admin dashboard at `/dashboard` with Discord OAuth2 login (`identify guilds` scope).
 - Dashboard shows server selector (admin-only servers where bot is present), module status overview, and per-module configuration/stats.
-- Dashboard auth uses `dash_token` cookie (7-day expiry), separate from the bot's existing `/callback` OAuth flow.
-- Dashboard OAuth redirect: `https://{DOMAIN}/dashboard/callback`.
+- Dashboard auth uses `dash_token` cookie (7-day expiry) on Koyeb, or Bearer token via localStorage on the static site.
+- Dashboard OAuth redirect (Koyeb): `https://{DOMAIN}/dashboard/callback`.
+- Dashboard OAuth redirect (static site): `https://{DOMAIN}/auth/site/callback` → redirects to `roleplaymanager.xyz/dashboard/#token=<token>`.
 - Files: `src/website/views/` (HTML), `src/website/public/css/` (styles), `src/website/public/js/` (client JS), `src/website/routes/` (API + auth routers).
+- Static site for Cloudflare Pages: `site/` directory (landing page + dashboard, calls Koyeb API cross-origin).
+- API supports both cookie-based and Bearer token auth (`getToken()` helper in `api.js`).
+- CORS enabled for `SITE_ORIGIN` env var (default: `https://roleplaymanager.xyz`).
 - On Koyeb, `PORT` env var is `8000`; locally defaults to `5000` for Replit webview.
 
 **Premium System:** Premium keys lock to one guild. Servers without premium have limits: 100 characters, 200 vehicles, 100 firearms, 20 active BOLOs. AI Voice Dispatch requires premium. Use `/activatepremium` with a valid key. Keys stored in `PremiumKey` model; checks cached for 5 minutes via `src/utils/premiumCheck.js`.
