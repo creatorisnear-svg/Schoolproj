@@ -816,6 +816,14 @@ input.config-input:focus {
   to { transform: translateY(0); }
 }
 
+.mobile-modules {
+  display: none;
+}
+
+.mobile-back {
+  display: none;
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .hero h1 {
@@ -854,5 +862,24 @@ input.config-input:focus {
   footer .container {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .mobile-modules {
+    display: block;
+  }
+
+  .mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    padding: 6px 0;
+  }
+
+  .mobile-back:hover {
+    color: var(--text);
   }
 }

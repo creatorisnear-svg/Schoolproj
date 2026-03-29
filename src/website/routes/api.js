@@ -122,7 +122,7 @@ export function createApiRouter(client) {
       let premium = false;
       try {
         const { default: PremiumKey } = await import('../../models/PremiumKey.js');
-        const key = await PremiumKey.findOne({ guildId: guild.id, active: true });
+        const key = await PremiumKey.findOne({ guildId: guild.id });
         premium = !!key;
       } catch (err) {
         console.error('[DASHBOARD] Premium check error:', err.message);

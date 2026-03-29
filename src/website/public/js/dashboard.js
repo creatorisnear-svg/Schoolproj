@@ -95,6 +95,17 @@ function renderDashboard() {
   const g = currentGuild;
   const config = g.config || {};
 
+  const modules = [
+    { id: 'general', label: 'General Settings' },
+    { id: 'verification', label: 'Verification', enabled: config.verifyEnabled },
+    { id: 'strikes', label: 'Strike System', enabled: config.strikeEnabled },
+    { id: 'tickets', label: 'Ticket Support', enabled: config.ticketEnabled },
+    { id: 'dispatch', label: 'Voice Dispatch', enabled: config.dispatchEnabled },
+    { id: 'priority', label: 'Priority Tracker', enabled: config.priorityEnabled },
+    { id: 'antipromo', label: 'Anti-Promoting', enabled: config.antiPromotingEnabled },
+    { id: 'welcome', label: 'Welcome System', enabled: config.welcomeEnabled },
+  ];
+
   app.innerHTML = `
     <div class="dashboard-layout">
       ${renderSidebar('overview')}
@@ -129,6 +140,18 @@ function renderDashboard() {
             ${moduleRow('Anti-Promoting', config.antiPromotingEnabled)}
             ${moduleRow('Welcome System', config.welcomeEnabled)}
             ${moduleRow('RP Calendar', config.calendarEnabled)}
+          </div>
+        </div>
+
+        <div class="mobile-modules" style="margin-top: 20px;">
+          <div class="config-section">
+            <h3>Configure Modules</h3>
+            ${modules.map(m => `
+              <div class="config-row" style="cursor:pointer;" onclick="renderSettings('${m.id}')">
+                <span class="config-label">${m.label}</span>
+                <span style="color:var(--text-muted);font-size:20px;">&#8250;</span>
+              </div>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -187,6 +210,7 @@ async function renderSettings(mod) {
     <div class="dashboard-layout">
       ${renderSidebar(mod)}
       <div class="dashboard-content" id="settings-content">
+        <div class="mobile-back" onclick="renderDashboard()">&#8249; Back to Overview</div>
         <div class="dash-header">
           <h1>${escapeHtml(data.name)}</h1>
           <p>${escapeHtml(data.description)}</p>
