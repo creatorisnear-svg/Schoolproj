@@ -31,12 +31,42 @@ const TEN_CODES = {
  * Returns an AI client + provider info.
  * Prefers GROQ_API_KEY (free). Falls back to OPENAI_API_KEY (paid).
  */
+let groqKeys = [];
+let currentGroqKeyIndex = 0;
+let groqKeysLoaded = false;
+
+function loadGroqKeys() {
+  const keys = [];
+  const primary = process.env.GROQ_API_KEY;
+  if (primary) keys.push(primary);
+  for (let i = 1; i <= 10; i++) {
+    const k = process.env[`GROQ_API_KEY_${i}`];
+    if (k) keys.push(k);
+  }
+  const unique = [...new Set(keys)];
+  if (unique.length !== groqKeys.length || unique.some((k, i) => k !== groqKeys[i])) {
+    groqKeys = unique;
+    if (currentGroqKeyIndex >= groqKeys.length) currentGroqKeyIndex = 0;
+  }
+  groqKeysLoaded = true;
+  return groqKeys;
+}
+
+function rotateGroqKey() {
+  if (groqKeys.length <= 1) return false;
+  const prev = currentGroqKeyIndex;
+  currentGroqKeyIndex = (currentGroqKeyIndex + 1) % groqKeys.length;
+  console.log(`[AI] Rotated Groq key: slot ${prev + 1} → slot ${currentGroqKeyIndex + 1} (of ${groqKeys.length})`);
+  return true;
+}
+
 function getAIClient() {
-  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKeysLoaded) loadGroqKeys();
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (groqKey) {
+  if (groqKeys.length > 0) {
+    const key = groqKeys[currentGroqKeyIndex];
     return {
-      client: new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1' }),
+      client: new OpenAI({ apiKey: key, baseURL: 'https://api.groq.com/openai/v1' }),
       provider: 'groq',
     };
   }
@@ -50,7 +80,8 @@ function getAIClient() {
 }
 
 function hasAIKey() {
-  return !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
+  if (!groqKeysLoaded) loadGroqKeys();
+  return !!(groqKeys.length > 0 || process.env.OPENAI_API_KEY);
 }
 
 /**
@@ -363,17 +394,31 @@ function parseTranscript(text) {
 }
 
 async function transcribeAudio(wavBuffer) {
-  const { client, provider } = getAIClient();
-  const model = provider === 'groq' ? 'whisper-large-v3' : 'whisper-1';
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
   writeFileSync(tempPath, wavBuffer);
   try {
-    const result = await client.audio.transcriptions.create({
-      file: createReadStream(tempPath),
-      model,
-      language: 'en',
-    });
-    return result.text || '';
+    let lastErr;
+    const maxTries = Math.max(1, groqKeys.length);
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const { client, provider } = getAIClient();
+      const model = provider === 'groq' ? 'whisper-large-v3' : 'whisper-1';
+      try {
+        const result = await client.audio.transcriptions.create({
+          file: createReadStream(tempPath),
+          model,
+          language: 'en',
+        });
+        return result.text || '';
+      } catch (err) {
+        lastErr = err;
+        if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
+          console.log(`[Transcribe] Rate limited on key ${attempt + 1}, trying next key...`);
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
   } finally {
     try { unlinkSync(tempPath); } catch {}
   }
@@ -413,17 +458,33 @@ async function generateDispatchTTS(text) {
     return buf;
   }
 
-  const { client, provider } = getAIClient();
-  const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
-  const voice = provider === 'groq' ? 'daniel' : 'onyx';
-  console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
-  const response = await client.audio.speech.create({
-    model,
-    voice,
-    input: text,
-    response_format: provider === 'groq' ? 'wav' : 'opus',
-  });
-  const buf = Buffer.from(await response.arrayBuffer());
+  let buf;
+  let lastErr;
+  const maxTries = Math.max(1, groqKeys.length);
+  for (let attempt = 0; attempt < maxTries; attempt++) {
+    const { client, provider } = getAIClient();
+    const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
+    const voice = provider === 'groq' ? 'daniel' : 'onyx';
+    try {
+      if (attempt === 0) console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
+      const response = await client.audio.speech.create({
+        model,
+        voice,
+        input: text,
+        response_format: provider === 'groq' ? 'wav' : 'opus',
+      });
+      buf = Buffer.from(await response.arrayBuffer());
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
+        console.log(`[TTS] Rate limited on key ${attempt + 1}, trying next key...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  if (!buf) throw lastErr;
 
   ttsMemCache.set(key, buf);
   if (ttsMemCache.size > TTS_MEM_CACHE_MAX) {
@@ -443,27 +504,39 @@ async function generateDispatchResponse(officerName, parsed) {
     return `10-4 ${officerName}, copy ${label}.`;
   }
 
-  const { client, provider } = getAIClient();
-  const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
-
-  const response = await client.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: 'system',
-        content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name".`,
-      },
-      {
-        role: 'user',
-        content: `Officer ${officerName}: "${callText}"`,
-      },
-    ],
-    max_tokens: 60,
-    temperature: 0.7,
-  });
-
-  return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
+  let lastErr;
+  const maxTries = Math.max(1, groqKeys.length);
+  for (let attempt = 0; attempt < maxTries; attempt++) {
+    const { client, provider } = getAIClient();
+    const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name".`,
+          },
+          {
+            role: 'user',
+            content: `Officer ${officerName}: "${callText}"`,
+          },
+        ],
+        max_tokens: 60,
+        temperature: 0.7,
+      });
+      return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
+    } catch (err) {
+      lastErr = err;
+      if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
+        console.log(`[AI Response] Rate limited on key ${attempt + 1}, trying next key...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
 export async function processVoiceCall(wavBuffer, userId, guild, client) {

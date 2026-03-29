@@ -327,7 +327,8 @@ client.once('clientReady', async () => {
       }
     }
     if (dispatchCount > 0) {
-      console.log(`🎙️ AI Dispatch initialized for ${dispatchCount} guild(s)`);
+      const keyCount = [process.env.GROQ_API_KEY, ...Array.from({length: 10}, (_, i) => process.env[`GROQ_API_KEY_${i+1}`])].filter(Boolean).length;
+      console.log(`🎙️ AI Dispatch initialized for ${dispatchCount} guild(s) — ${keyCount} Groq key(s) loaded`);
     }
   } catch (err) {
     console.error('[Dispatch] Startup initialization error:', err.message);
