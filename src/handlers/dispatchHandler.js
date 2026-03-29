@@ -169,12 +169,22 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
 
     const voiceAction = parsed.codeInfo?.action;
-    if (voiceAction === 'traffic_stop' && config.trafficStopChannelId) {
+    if (voiceAction === 'traffic_stop' && config.trafficStopChannelIds?.length > 0) {
       try {
-        const stopChannel = guild.channels.cache.get(config.trafficStopChannelId);
-        if (member.voice?.channelId && member.voice.channelId !== config.trafficStopChannelId) {
+        // Pick the traffic stop channel with the fewest non-bot members (load balance)
+        let bestChannelId = null;
+        let bestCount = Infinity;
+        for (const id of config.trafficStopChannelIds) {
+          if (id === member.voice?.channelId) continue; // skip if already there
+          const ch = guild.channels.cache.get(id) ||
+            await guild.channels.fetch(id).catch(() => null);
+          if (!ch) continue;
+          const count = ch.members.filter(m => !m.user.bot).size;
+          if (count < bestCount) { bestCount = count; bestChannelId = id; }
+        }
+        if (bestChannelId && member.voice?.channelId) {
           const lastPatrolChannelId = member.voice.channelId;
-          await member.voice.setChannel(config.trafficStopChannelId);
+          await member.voice.setChannel(bestChannelId);
           await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, lastPatrolChannelId);
         }
       } catch (err) {

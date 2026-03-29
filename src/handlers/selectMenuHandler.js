@@ -647,6 +647,9 @@ export async function handleSelectMenu(interaction) {
   if (customId === 'dispatch_remove_patrol_select') {
     return handleDispatchRemovePatrolSelect(interaction);
   }
+  if (customId === 'dispatch_remove_stop_select') {
+    return handleDispatchRemoveStopSelect(interaction);
+  }
 
 }
 
@@ -2818,7 +2821,8 @@ function buildDispatchSetupMenu() {
         { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
-        { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
+        { label: '➕ Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
+        { label: '🗑️ Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
         { label: '🔌 Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
         { label: '🤖 Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
         { label: '🗑️ Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
@@ -2864,13 +2868,34 @@ async function handleDispatchSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'set_stop_channel') {
+    if (choice === 'add_stop_channel') {
       const selector = new ChannelSelectMenuBuilder()
         .setCustomId('dispatch_stop_channel_select')
-        .setPlaceholder('Select the traffic stop voice channel...')
+        .setPlaceholder('Select a traffic stop voice channel to add...')
         .setChannelTypes(ChannelType.GuildVoice);
       return interaction.update({
         embeds: [menuEmbed('AI Dispatch Setup', 'Select the **voice channel** officers will be moved to when they call a **10-11** (traffic stop).')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'remove_stop_channel') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+      if (!config?.trafficStopChannelIds?.length) {
+        return interaction.update({
+          embeds: [errorEmbed('No traffic stop channels are configured yet.')],
+          components: [buildDispatchSetupMenu()],
+        });
+      }
+      const selector = new StringSelectMenuBuilder()
+        .setCustomId('dispatch_remove_stop_select')
+        .setPlaceholder('Select a channel to remove...')
+        .addOptions(config.trafficStopChannelIds.map(id => ({
+          label: `#${interaction.guild.channels.cache.get(id)?.name ?? id}`,
+          value: id,
+        })));
+      return interaction.update({
+        embeds: [menuEmbed('Remove Traffic Stop Channel', 'Select the traffic stop channel you want to remove.')],
         components: [new ActionRowBuilder().addComponents(selector)],
       });
     }
@@ -2942,7 +2967,9 @@ async function handleDispatchSetupMenu(interaction) {
       const patrol = config.patrolChannelIds.length > 0
         ? config.patrolChannelIds.map(id => `<#${id}>`).join(', ')
         : '*None*';
-      const stopCh = config.trafficStopChannelId ? `<#${config.trafficStopChannelId}>` : '*Not set*';
+      const stopCh = config.trafficStopChannelIds?.length > 0
+        ? config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ')
+        : '*None*';
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
         .setTitle('📋 AI Dispatch Settings')
@@ -2950,7 +2977,7 @@ async function handleDispatchSetupMenu(interaction) {
           { name: '📻 Dispatch Channel', value: dispatchCh, inline: true },
           { name: '🚔 Status Board', value: statusCh, inline: true },
           { name: '🎙️ Patrol Channels', value: patrol, inline: false },
-          { name: '🚗 Traffic Stop Channel', value: stopCh, inline: true },
+          { name: '🚗 Traffic Stop Channels', value: stopCh, inline: false },
           { name: '🤖 AI Responses', value: config.aiEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
           { name: '🔌 System', value: config.enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
           { name: 'ℹ️ Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
@@ -3066,14 +3093,41 @@ async function handleDispatchStopChannelSelect(interaction) {
   try {
     const channelId = interaction.values[0];
     const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
-    config.trafficStopChannelId = channelId;
-    await config.save();
+    if (!config.trafficStopChannelIds.includes(channelId)) {
+      config.trafficStopChannelIds.push(channelId);
+      config.markModified('trafficStopChannelIds');
+      await config.save();
+    }
+    const list = config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ');
     return interaction.update({
-      embeds: [successEmbed('Traffic Stop Channel Set', `Officers will be moved to <#${channelId}> when they call **10-11**.\n\nSelect your next option below.`)],
+      embeds: [successEmbed('Traffic Stop Channel Added', `<#${channelId}> added as a traffic stop channel.\n\n**Current traffic stop channels:** ${list}\n\nSelect your next option below.`)],
       components: [buildDispatchSetupMenu()],
     });
   } catch (err) {
     console.error('[Dispatch] Stop channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchRemoveStopSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    if (!config) return interaction.update({ embeds: [errorEmbed('No dispatch config found.')], components: [buildDispatchSetupMenu()] });
+
+    config.trafficStopChannelIds = config.trafficStopChannelIds.filter(id => id !== channelId);
+    config.markModified('trafficStopChannelIds');
+    await config.save();
+
+    const remaining = config.trafficStopChannelIds.length > 0
+      ? config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ')
+      : '*None*';
+    return interaction.update({
+      embeds: [successEmbed('Traffic Stop Channel Removed', `<#${channelId}> has been removed.\n\n**Remaining traffic stop channels:** ${remaining}\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Remove stop channel error:', err.message);
     return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
   }
 }

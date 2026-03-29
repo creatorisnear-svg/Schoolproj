@@ -8,7 +8,7 @@ const dispatchConfigSchema = new mongoose.Schema({
   statusBoardChannelId: { type: String, default: null },
   statusBoardMessageId: { type: String, default: null },
   patrolChannelIds: { type: [String], default: [] },
-  trafficStopChannelId: { type: String, default: null },
+  trafficStopChannelIds: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 
