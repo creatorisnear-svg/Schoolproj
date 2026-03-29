@@ -663,6 +663,16 @@ export async function initDispatchForGuild(guild, client) {
         const member = await guild.members.fetch(userId).catch(() => null);
         return member?.roles.cache.some(r => leoRoleIds.includes(r.id)) ?? false;
       },
+      onJoin: async (guildId) => {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS('Dispatch online, ready to serve.');
+          playDispatchVoice(guildId, ttsBuffer);
+          console.log(`[Dispatch] Played join announcement in ${guild.name}`);
+        } catch (err) {
+          console.error('[Dispatch] Join announcement error:', err.message);
+        }
+      },
     };
 
     setupDispatchForGuild(guild.id, config.patrolChannelIds, options);

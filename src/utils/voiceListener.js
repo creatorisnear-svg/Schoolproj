@@ -102,7 +102,7 @@ export async function moveToChannel(channel) {
       guildId,
       adapterCreator: channel.guild.voiceAdapterCreator,
       selfDeaf: false,
-      selfMute: true,
+      selfMute: false,
     });
   } catch (err) {
     console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
@@ -115,6 +115,16 @@ export async function moveToChannel(channel) {
   joiningGuilds.delete(guildId);
 
   _setupReceiver(connection, channel.guild, state, guildId);
+
+  if (state.options?.onJoin) {
+    entersState(connection, VoiceConnectionStatus.Ready, 10_000)
+      .then(() => {
+        setTimeout(() => {
+          try { state.options.onJoin(guildId); } catch {}
+        }, 500);
+      })
+      .catch(() => {});
+  }
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
     try {
