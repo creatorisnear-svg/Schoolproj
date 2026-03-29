@@ -405,6 +405,10 @@ async function generateDispatchTTS(text) {
   if (existsSync(diskPath)) {
     const buf = readFileSync(diskPath);
     ttsMemCache.set(key, buf);
+    if (ttsMemCache.size > TTS_MEM_CACHE_MAX) {
+      const oldest = ttsMemCache.keys().next().value;
+      ttsMemCache.delete(oldest);
+    }
     console.log(`[TTS Cache] Disk hit for: "${text.slice(0, 40)}..."`);
     return buf;
   }

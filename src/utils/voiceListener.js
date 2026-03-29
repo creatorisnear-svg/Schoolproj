@@ -33,6 +33,16 @@ const recordingUsers = new Set();
 /** Guild IDs currently in the process of joining a channel — prevents concurrent joins */
 const joiningGuilds = new Set();
 
+/** Per-guild reconnect tracking for exponential backoff */
+const reconnectAttempts = new Map();
+const MAX_RECONNECT_ATTEMPTS = 5;
+const BASE_BACKOFF_MS = 5000;
+const MAX_BACKOFF_MS = 300000;
+
+/** Per-guild log throttling — suppress repetitive voice state logs */
+const lastLoggedState = new Map();
+const logThrottleCounts = new Map();
+
 /**
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
@@ -143,34 +153,82 @@ export async function moveToChannel(channel) {
   joiningGuilds.delete(guildId);
 
   connection.on('error', (err) => {
-    console.error(`[Voice] Connection error in guild ${guildId}:`, err.message);
+    const errKey = `err:${guildId}`;
+    const cnt = (logThrottleCounts.get(errKey) || 0) + 1;
+    logThrottleCounts.set(errKey, cnt);
+    if (cnt <= 3 || cnt % 10 === 0) {
+      console.error(`[Voice] Connection error in guild ${guildId}: ${err.message} (x${cnt})`);
+    }
   });
 
   connection.on('stateChange', (oldState, newState) => {
-    console.log(`[Voice] ${oldState.status} → ${newState.status}`);
+    const transition = `${oldState.status}→${newState.status}`;
+    const stateKey = `state:${guildId}`;
+    const last = lastLoggedState.get(stateKey);
+    if (last === transition) {
+      const cnt = (logThrottleCounts.get(stateKey) || 0) + 1;
+      logThrottleCounts.set(stateKey, cnt);
+      if (cnt % 20 === 0) {
+        console.log(`[Voice] ${transition} (repeated ${cnt} times, suppressing)`);
+      }
+    } else {
+      lastLoggedState.set(stateKey, transition);
+      logThrottleCounts.set(stateKey, 0);
+      console.log(`[Voice] ${oldState.status} → ${newState.status}`);
+    }
     const net = newState.networking;
     if (net && net !== oldState.networking) {
       net.once('close', (code) => {
-        console.log(`[Voice Networking] closed code: ${code}`);
+        const netKey = `net:${guildId}`;
+        const cnt = (logThrottleCounts.get(netKey) || 0) + 1;
+        logThrottleCounts.set(netKey, cnt);
+        if (cnt <= 3 || cnt % 20 === 0) {
+          console.log(`[Voice Networking] closed code: ${code} (x${cnt})`);
+        }
+        if (code === 4006) {
+          connectionFailCount++;
+          if (connectionFailCount >= CONNECTION_FAIL_LIMIT && !watchdogTriggered && state.connection === connection) {
+            console.log(`[Voice] ${CONNECTION_FAIL_LIMIT} consecutive 4006 closes — destroying connection early (watchdog will reconnect)`);
+            watchdogTriggered = true;
+            clearTimeout(watchdog);
+            try { connection.destroy(); } catch {}
+            const attempts = (reconnectAttempts.get(guildId) || 0) + 1;
+            reconnectAttempts.set(guildId, attempts);
+            const backoff = attempts > MAX_RECONNECT_ATTEMPTS
+              ? Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, attempts - MAX_RECONNECT_ATTEMPTS))
+              : Math.min(30000, BASE_BACKOFF_MS * attempts);
+            console.log(`[Dispatch] Reconnect attempt ${attempts}, waiting ${Math.round(backoff / 1000)}s...`);
+            setTimeout(async () => {
+              if (state.connection) return;
+              if (attempts > MAX_RECONNECT_ATTEMPTS) reconnectAttempts.set(guildId, 0);
+              const targetChannel = _findActivePatrolChannel(guildId);
+              if (targetChannel) {
+                console.log(`[Dispatch] Reconnecting to "${targetChannel.name}"`);
+                moveToChannel(targetChannel);
+              }
+            }, backoff);
+          }
+        }
       });
-      // Intercept UDP handshake phase to bypass IP discovery if needed.
-      // Many container hosts (Replit, Koyeb, etc.) block inbound UDP from
-      // Discord's voice servers. We wait 3 seconds for real UDP to work; if
-      // the connection is still stuck, we fake the discovery response.
       let udpBypassFired = false;
+      let udpBypassAttempts = 0;
       net.on('stateChange', (_oNS, nNS) => {
         if (nNS.code === 2 && nNS.udp && !udpBypassFired) {
           udpBypassFired = true;
+          udpBypassAttempts++;
           const udp = nNS.udp;
           const ssrc = nNS.connectionData?.ssrc || 0;
-          console.log(`[UDP Bypass] code:2 reached, ssrc=${ssrc}. Waiting 3s for real UDP discovery...`);
+          if (udpBypassAttempts <= 2) {
+            console.log(`[UDP Bypass] code:2 reached, ssrc=${ssrc}. Waiting 3s for real UDP discovery...`);
+          }
 
           setTimeout(async () => {
             if (connection.state.status === VoiceConnectionStatus.Ready) {
-              console.log('[UDP Bypass] Connection already Ready — real UDP worked, bypass skipped');
               return;
             }
-            console.log('[UDP Bypass] Connection still not Ready after 3s — faking discovery response');
+            if (udpBypassAttempts <= 2) {
+              console.log('[UDP Bypass] Connection still not Ready after 3s — faking discovery response');
+            }
 
             let externalIp = '127.0.0.1';
             try {
@@ -178,7 +236,7 @@ export async function moveToChannel(channel) {
               const json = await resp.json();
               externalIp = json.ip;
             } catch (e) {
-              console.warn('[UDP Bypass] ipify failed:', e.message);
+              if (udpBypassAttempts <= 2) console.warn('[UDP Bypass] ipify failed:', e.message);
             }
 
             const localPort = await new Promise(res => {
@@ -199,10 +257,8 @@ export async function moveToChannel(channel) {
               tryPort();
             });
             if (localPort === 0) {
-              console.log('[UDP Bypass] Aborted — connection state changed or port wait timed out');
               return;
             }
-            console.log(`[UDP Bypass] Emitting fake discovery: ip=${externalIp} port=${localPort}`);
 
             const fake = Buffer.alloc(74);
             fake.writeUInt16BE(2, 0);
@@ -243,19 +299,44 @@ export async function moveToChannel(channel) {
   // on the very first attempt. The internal retry loop reuses the same stale token, so it
   // never recovers on its own. After 20 seconds, we fully leave and re-join to get fresh
   // credentials from Discord (new VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE).
+  let connectionFailCount = 0;
+  const CONNECTION_FAIL_LIMIT = 3;
   let watchdogTriggered = false;
   const watchdog = setTimeout(async () => {
     if (state.connection !== connection) return;
     const status = connection.state.status;
-    if (status === VoiceConnectionStatus.Ready) return;
+    if (status === VoiceConnectionStatus.Ready) {
+      reconnectAttempts.set(guildId, 0);
+      return;
+    }
 
     watchdogTriggered = true;
-    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" for 20s — forcing full reconnect`);
+    const attempts = (reconnectAttempts.get(guildId) || 0) + 1;
+    reconnectAttempts.set(guildId, attempts);
+
+    if (attempts > MAX_RECONNECT_ATTEMPTS) {
+      const cooldown = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, attempts - MAX_RECONNECT_ATTEMPTS));
+      console.log(`[Dispatch] Watchdog: ${attempts} failed attempts — cooling down for ${Math.round(cooldown / 1000)}s before next try`);
+      try { connection.destroy(); } catch {}
+
+      setTimeout(async () => {
+        if (state.connection) return;
+        reconnectAttempts.set(guildId, 0);
+        const targetChannel = _findActivePatrolChannel(guildId);
+        if (targetChannel) {
+          console.log(`[Dispatch] Watchdog: cooldown ended, retrying "${targetChannel.name}"`);
+          moveToChannel(targetChannel);
+        }
+      }, cooldown);
+      return;
+    }
+
+    const backoff = Math.min(30000, BASE_BACKOFF_MS * attempts);
+    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" — attempt ${attempts}/${MAX_RECONNECT_ATTEMPTS}, reconnecting in ${Math.round(backoff / 1000)}s`);
     try { connection.destroy(); } catch {}
 
-    // Wait 3 seconds for Discord to process the leave (gives us a fresh session on rejoin)
-    await new Promise(r => setTimeout(r, 3000));
-    if (state.connection) return; // something else already reconnected
+    await new Promise(r => setTimeout(r, backoff));
+    if (state.connection) return;
 
     const targetChannel = _findActivePatrolChannel(guildId);
     if (targetChannel) {
@@ -264,8 +345,16 @@ export async function moveToChannel(channel) {
     }
   }, 25000);
 
-  // Clean up watchdog when connection succeeds or is destroyed
-  connection.once(VoiceConnectionStatus.Ready, () => clearTimeout(watchdog));
+  connection.once(VoiceConnectionStatus.Ready, () => {
+    clearTimeout(watchdog);
+    reconnectAttempts.set(guildId, 0);
+    for (const key of [...logThrottleCounts.keys()]) {
+      if (key.endsWith(`:${guildId}`)) logThrottleCounts.delete(key);
+    }
+    for (const key of [...lastLoggedState.keys()]) {
+      if (key.endsWith(`:${guildId}`)) lastLoggedState.delete(key);
+    }
+  });
 
   connection.once(VoiceConnectionStatus.Destroyed, () => {
     clearTimeout(watchdog);
@@ -274,8 +363,9 @@ export async function moveToChannel(channel) {
       state.currentChannelId = null;
     }
 
-    // If this wasn't triggered by our watchdog (e.g. an external disconnect), auto-reconnect
     if (!watchdogTriggered) {
+      const attempts = reconnectAttempts.get(guildId) || 0;
+      const backoff = Math.min(30000, BASE_BACKOFF_MS * Math.max(1, attempts));
       setTimeout(async () => {
         if (state.connection) return;
         const targetChannel = _findActivePatrolChannel(guildId);
@@ -283,7 +373,7 @@ export async function moveToChannel(channel) {
           console.log(`[Dispatch] Auto-reconnecting to "${targetChannel.name}" after disconnect`);
           moveToChannel(targetChannel);
         }
-      }, 4000);
+      }, backoff);
     }
   });
 
@@ -392,6 +482,13 @@ export function leaveDispatchChannel(guildId) {
     try { state.connection.destroy(); } catch {}
   }
   dispatchState.delete(guildId);
+  reconnectAttempts.delete(guildId);
+  for (const key of [...logThrottleCounts.keys()]) {
+    if (key.endsWith(`:${guildId}`)) logThrottleCounts.delete(key);
+  }
+  for (const key of [...lastLoggedState.keys()]) {
+    if (key.endsWith(`:${guildId}`)) lastLoggedState.delete(key);
+  }
 }
 
 /**
