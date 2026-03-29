@@ -5,35 +5,38 @@ import Config from '../models/Config.js';
 import { StrikeConfig } from '../models/Strike.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
+function menuEmbed(title, description) {
+  return new EmbedBuilder()
+    .setColor('#5865F2')
+    .setTitle(title)
+    .setDescription(description)
+    .setFooter({ text: 'EverLink' });
+}
+
 function createSetupMenu() {
   const steps = [
-    { id: 'select_verify_channel', label: 'Select Verify Channel (Required)' },
-    { id: 'select_verified_role', label: 'Select Verified Role (Required)' },
-    { id: 'select_unverified_role', label: 'Select Unverified Role (Required)' },
-    { id: 'select_verified_channels', label: 'Select Verified Channels (Required)' },
-    { id: 'set_custom_question', label: 'Set Custom Question (Optional)' },
-    { id: 'delete_custom_question', label: 'Delete Custom Question (Optional)' },
-    { id: 'toggle_approval_required', label: 'Toggle Approval Required (Optional)' },
-    { id: 'set_rp_tag', label: 'Set RP Tag (Optional)' },
-    { id: 'verify_setup_done', label: '✅ Done - Close Setup' },
+    { id: 'select_verify_channel', label: 'Verify Channel', description: 'Required — where members submit verification' },
+    { id: 'select_verified_role', label: 'Verified Role', description: 'Required — role granted on approval' },
+    { id: 'select_unverified_role', label: 'Unverified Role', description: 'Required — role before verification' },
+    { id: 'select_verified_channels', label: 'Verified Channels', description: 'Required — channels unlocked after verify' },
+    { id: 'set_custom_question', label: 'Custom Question', description: 'Optional — question shown to applicants' },
+    { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional — clear the custom question' },
+    { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: 'Optional — require staff to approve' },
+    { id: 'set_rp_tag', label: 'RP Tag', description: 'Optional — tag added to verified nicknames' },
+    { id: 'verify_setup_done', label: '✓ Finish Setup', description: 'Close the setup menu' },
   ];
 
   const menu = new ActionRowBuilder()
     .addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('verify_setup_menu')
-        .setPlaceholder('Choose a setup option...')
-        .addOptions(
-          steps.map(step => ({
-            label: step.label,
-            value: step.id,
-            description: `Configure ${step.label.toLowerCase()}`,
-          }))
-        )
+        .setPlaceholder('Select an option...')
+        .addOptions(steps.map(step => ({ label: step.label, value: step.id, description: step.description })))
     );
 
   return {
-    content: '**Verification System Setup**\n\nVerification is simple: Just set the verify channel and verified role. The bot handles the rest!\n\nSetup channel permissions yourself based on your server needs.',
+    embeds: [menuEmbed('Verification Setup', 'Configure how members verify and what happens once they do. At minimum, set the verify channel and verified role.')],
+    content: '',
     components: [menu],
     flags: 64
   };
@@ -41,28 +44,23 @@ function createSetupMenu() {
 
 function createWelcomeSetupMenu() {
   const steps = [
-    { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
-    { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
-    { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
-    { id: 'welcome_setup_done', label: '✅ Done - Close Setup' },
+    { id: 'select_welcome_channel_setup', label: 'Welcome Channel', description: 'Channel where welcome messages are posted' },
+    { id: 'set_welcome_message_setup', label: 'Welcome Message', description: 'Message posted when a member joins' },
+    { id: 'set_welcome_dm_setup', label: 'Welcome DM', description: 'DM sent directly to the new member' },
+    { id: 'welcome_setup_done', label: '✓ Finish Setup', description: 'Close the setup menu' },
   ];
 
   const menu = new ActionRowBuilder()
     .addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('welcome_setup_menu')
-        .setPlaceholder('Choose a setup option...')
-        .addOptions(
-          steps.map(step => ({
-            label: step.label,
-            value: step.id,
-            description: `Configure ${step.label.toLowerCase()}`,
-          }))
-        )
+        .setPlaceholder('Select an option...')
+        .addOptions(steps.map(step => ({ label: step.label, value: step.id, description: step.description })))
     );
 
   return {
-    content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
+    embeds: [menuEmbed('Welcome System Setup', 'Set a welcome channel, customize the server greeting, and optionally send a DM to new members.')],
+    content: '',
     components: [menu],
     flags: 64
   };
@@ -72,7 +70,7 @@ function createStrikeSetupMenu() {
   const steps = [
     { id: 'strike_set_roles', label: 'Set Strike Level Roles (Optional)' },
     { id: 'strike_set_actions', label: 'Set Strike Actions (Kick/Timeout/Ban)' },
-    { id: 'strike_setup_done', label: '✅ Done - Close Setup' },
+    { id: 'strike_setup_done', label: '✓ Finish Setup' },
   ];
 
   const menu = new ActionRowBuilder()
@@ -90,7 +88,8 @@ function createStrikeSetupMenu() {
     );
 
   return {
-    content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:',
+    embeds: [menuEmbed('Strike System Setup', 'Configure strike roles and what actions are taken at each strike level (kick, timeout, ban).')],
+    content: '',
     components: [menu],
     flags: 64
   };

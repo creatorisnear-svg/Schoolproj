@@ -641,9 +641,9 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
 
     // Create the panel embed with custom title and description
     const panelEmbed = new EmbedBuilder()
-      .setColor('#0099ff')
+      .setColor('#5865F2')
       .setTitle(ticketConfig.panelTitle || 'Support Tickets')
-      .setDescription(ticketConfig.panelDescription || 'Select a button below to create a support ticket.')
+      .setDescription(ticketConfig.panelDescription || 'Select a category below to open a support ticket. A private channel will be created for you.')
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
 
@@ -880,12 +880,12 @@ export async function handleTicketCreationModal(interaction) {
     const buttonRow = new ActionRowBuilder().addComponents(closeButton, deleteButton);
 
     const welcomeEmbed = new EmbedBuilder()
-      .setColor('#0099ff')
-      .setTitle(`${ticketType.label} Ticket`)
+      .setColor('#5865F2')
+      .setTitle(ticketType.label)
+      .setDescription(`${user} — a staff member will be with you shortly.\n\n**Your message:**\n> ${description}`)
       .addFields(
-        { name: 'Ticket ID', value: ticketId, inline: true },
-        { name: 'Type', value: ticketType.label, inline: true },
-        { name: 'Description', value: description, inline: false }
+        { name: 'Ticket', value: ticketId, inline: true },
+        { name: 'Category', value: ticketType.label, inline: true }
       )
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
@@ -900,7 +900,7 @@ export async function handleTicketCreationModal(interaction) {
 
     // Reply to user
     await interaction.reply({
-      content: `✅ Ticket created! Check ${channel}`,
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   } catch (error) {
@@ -920,14 +920,14 @@ export async function handleTicketCloseButton(interaction) {
 
     if (!ticket) {
       return interaction.reply({
-        content: '❌ Ticket not found.',
+        embeds: [errorEmbed('Ticket not found.')],
         flags: 64,
       });
     }
 
     if (ticket.status === 'closed') {
       return interaction.reply({
-        content: '❌ This ticket is already closed.',
+        embeds: [errorEmbed('This ticket is already closed.')],
         flags: 64,
       });
     }
@@ -942,7 +942,6 @@ export async function handleTicketCloseButton(interaction) {
     const channel = await interaction.guild.channels.fetch(ticket.channelId).catch(() => null);
     
     if (channel) {
-      // Deny SendMessages for @everyone
       await channel.permissionOverwrites.edit(interaction.guild.id, {
         SendMessages: false,
       });
@@ -950,13 +949,12 @@ export async function handleTicketCloseButton(interaction) {
 
     // Update embed to show ticket is closed
     const closedEmbed = new EmbedBuilder()
-      .setColor('#ff6b6b')
-      .setTitle(`${ticket.ticketType} Ticket - CLOSED`)
+      .setColor('#ED4245')
+      .setTitle(`${ticket.ticketType}  —  Closed`)
+      .setDescription(`> This ticket has been locked. Use the button below to permanently delete it.`)
       .addFields(
-        { name: 'Ticket ID', value: ticketId, inline: true },
-        { name: 'Type', value: ticket.ticketType, inline: true },
-        { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true },
-        { name: 'Description', value: ticket.description, inline: false }
+        { name: 'Ticket', value: ticketId, inline: true },
+        { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true }
       )
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
@@ -1003,7 +1001,7 @@ export async function handleTicketDeleteButton(interaction) {
 
     if (!ticket) {
       return interaction.reply({
-        content: '❌ Ticket not found.',
+        embeds: [errorEmbed('Ticket not found.')],
         flags: 64,
       });
     }

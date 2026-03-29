@@ -3,6 +3,8 @@ import EmergencyCall from '../models/EmergencyCall.js';
 import CADConfig from '../models/CADConfig.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
+const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'EverLink' });
+
 export async function handle911RespondButton(interaction) {
   try {
     const callId = interaction.customId.replace('911_respond_', '');
@@ -55,7 +57,7 @@ export async function handle911RespondButton(interaction) {
     });
 
     return interaction.reply({
-      content: `✅ You are now the primary responder for call #${callId}`,
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   } catch (error) {
@@ -92,7 +94,7 @@ export async function handle911AttachButton(interaction) {
 
     if (call.attachedLeoIds.includes(interaction.user.id)) {
       return interaction.reply({
-        content: `You are already attached to this call.`,
+        embeds: [errorEmbed('You are already attached to this call.')],
         flags: 64,
       });
     }
@@ -132,7 +134,7 @@ export async function handle911AttachButton(interaction) {
     });
 
     return interaction.reply({
-      content: `✅ You are now attached to call #${callId}`,
+      embeds: [quickEmbed('#23D160', `You are now attached to call **#${callId}**`)],
       flags: 64,
     });
   } catch (error) {
@@ -182,7 +184,7 @@ export async function handle911DismissButton(interaction) {
     });
 
     return interaction.reply({
-      content: `✅ Call #${callId} has been dismissed.`,
+      embeds: [quickEmbed('#23D160', `Call **#${callId}** has been dismissed.`)],
       flags: 64,
     });
   } catch (error) {

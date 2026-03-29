@@ -8,7 +8,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const priority = await Priority.findOne({ guildId: interaction.guildId });
     if (!priority || !priority.channelId) {
       return interaction.reply({
-        content: 'Priority tracker is not set up.',
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('The priority tracker hasn\'t been set up yet. Ask an admin to run `/prioritytrackersetup`.').setFooter({ text: 'EverLink' })],
         flags: 64,
       });
     }
@@ -17,22 +17,22 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const channel = interaction.channel;
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
-        content: 'Could not send message to this channel.',
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Unable to send to this channel.').setFooter({ text: 'EverLink' })],
         flags: 64,
       });
     }
 
     // Create priority request embed
     const embed = new EmbedBuilder()
-      .setColor('#FFAA00')
-      .setTitle('📋 Priority Request')
-      .setDescription('Awaiting staff approval')
+      .setColor('#FEE75C')
+      .setTitle('Priority Request')
+      .setDescription('> Awaiting staff approval')
       .addFields(
-        { name: 'Requested by', value: `${interaction.user.tag}`, inline: false },
-        { name: 'Scene Member', value: `<@${member.id}>`, inline: false },
-        { name: 'Scene Type', value: sceneType, inline: false },
-        { name: 'Scene Reason', value: sceneReason, inline: false },
-        { name: 'Host Ping', value: `<@${host.id}>`, inline: false }
+        { name: 'Requested By', value: `<@${interaction.user.id}>`, inline: true },
+        { name: 'Scene Member', value: `<@${member.id}>`, inline: true },
+        { name: 'Host', value: `<@${host.id}>`, inline: true },
+        { name: 'Scene Type', value: sceneType, inline: true },
+        { name: 'Reason', value: sceneReason, inline: false }
       )
       .setFooter({ text: 'EverLink' })
       .setTimestamp();
@@ -43,11 +43,13 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
         new ButtonBuilder()
           .setCustomId('priority_approve')
           .setLabel('Approve')
-          .setStyle(ButtonStyle.Success),
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('✅'),
         new ButtonBuilder()
           .setCustomId('priority_deny')
           .setLabel('Deny')
           .setStyle(ButtonStyle.Danger)
+          .setEmoji('❌')
       );
 
     // Send to the channel where user submitted the command
@@ -67,13 +69,13 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     });
 
     return interaction.reply({
-      content: '✅ Priority request submitted! Staff will review it shortly.',
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription('Priority request submitted — staff will review it shortly.').setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority request command:', error);
     return interaction.reply({
-      content: 'An error occurred while submitting your request.',
+      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while submitting your request.').setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   }
@@ -86,7 +88,7 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!isAdminUser && !isStaffUser) {
       return interaction.reply({
-        content: 'Only staff and admins can approve/deny priority requests.',
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Only staff and admins can approve or deny priority requests.').setFooter({ text: 'EverLink' })],
         flags: 64,
       });
     }
@@ -96,14 +98,14 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     if (!request) {
       return interaction.reply({
-        content: 'Priority request not found.',
+        embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('Priority request not found.').setFooter({ text: 'EverLink' })],
         flags: 64,
       });
     }
 
     if (request.status !== 'pending') {
       return interaction.reply({
-        content: `This request has already been ${request.status}.`,
+        embeds: [new EmbedBuilder().setColor('#FFDD57').setDescription(`This request has already been **${request.status}**.`).setFooter({ text: 'EverLink' })],
         flags: 64,
       });
     }
@@ -118,10 +120,10 @@ export async function handlePriorityRequestButton(interaction, client) {
     // Update embed
     const oldEmbed = interaction.message.embeds[0];
     const newEmbed = new EmbedBuilder(oldEmbed.data)
-      .setColor(isApprove ? 0x00FF00 : 0xFF0000)
-      .setDescription(isApprove ? '✅ APPROVED' : '❌ DENIED')
+      .setColor(isApprove ? 0x23D160 : 0xFF3860)
+      .setDescription(isApprove ? '> ✅ Approved' : '> ❌ Denied')
       .addFields(
-        { name: `${isApprove ? 'Approved' : 'Denied'} by`, value: interaction.user.tag }
+        { name: isApprove ? 'Approved By' : 'Denied By', value: `<@${interaction.user.id}>`, inline: true }
       );
 
     await interaction.message.edit({ embeds: [newEmbed], components: [] });
@@ -152,13 +154,13 @@ export async function handlePriorityRequestButton(interaction, client) {
     }
 
     return interaction.reply({
-      content: `✅ Priority request ${isApprove ? 'approved' : 'denied'}!`,
+      embeds: [new EmbedBuilder().setColor(isApprove ? '#23D160' : '#FF3860').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   } catch (error) {
     console.error('Error handling priority request button:', error);
     return interaction.reply({
-      content: 'An error occurred while processing your request.',
+      embeds: [new EmbedBuilder().setColor('#FF3860').setDescription('An error occurred while processing this request.').setFooter({ text: 'EverLink' })],
       flags: 64,
     });
   }
@@ -170,25 +172,25 @@ function buildPriorityEmbed(priority) {
     const now = new Date();
     const remaining = Math.floor((priority.cooldownEndsAt - now) / 1000 / 60);
     if (remaining > 0) {
-      cooldownText = `${remaining}m (counting down)`;
+      cooldownText = `${remaining} min remaining`;
     }
   }
 
-  const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
-  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
+  const isActive = priority.priorityActive;
+  const statusLine = isActive ? '🔴  **Priority is ACTIVE**' : '⚫  Priority is inactive';
 
-  let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
-  description += `**Priority issued by:** ${priorityIssuedBy}\n`;
-  description += `**Priority cooldown:** ${cooldownText}\n`;
-  description += `**Cooldown issued by:** ${cooldownIssuedBy}`;
+  let description = `${statusLine}\n\n`;
+  description += `**Issued By:** ${priority.priorityIssuedBy || 'N/A'}\n`;
+  description += `**Cooldown:** ${cooldownText}\n`;
+  description += `**Cooldown By:** ${priority.cooldownIssuedBy || 'N/A'}`;
 
   if (priority.customMessage) {
-    description += `\n\n${priority.customMessage}`;
+    description += `\n\n> ${priority.customMessage}`;
   }
 
   return new EmbedBuilder()
-    .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
-    .setTitle('🚨 Priority Tracker')
+    .setColor(isActive ? 0xFF3860 : 0x36393F)
+    .setTitle('Priority Tracker')
     .setDescription(description)
     .setFooter({ text: 'EverLink' })
     .setTimestamp();
