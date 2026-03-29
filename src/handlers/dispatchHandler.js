@@ -7,6 +7,9 @@ import OpenAI from 'openai';
 import DispatchConfig from '../models/DispatchConfig.js';
 import OfficerStatus from '../models/OfficerStatus.js';
 import CADConfig from '../models/CADConfig.js';
+import EmergencyCall from '../models/EmergencyCall.js';
+import CADCharacter from '../models/CADCharacter.js';
+import BOLO from '../models/BOLO.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 const TEN_CODES = {
@@ -89,6 +92,98 @@ function detectJoinStop(text) {
     if (match?.[1]) return match[1].trim();
   }
   return null;
+}
+
+function detectCADLookup(text) {
+  const lower = text.toLowerCase();
+  const plateMatch = lower.match(/run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plate\s+([a-z0-9\s]+)/i);
+  if (plateMatch) {
+    return { type: 'plate', query: plateMatch[1].trim().replace(/\s+/g, '').toUpperCase() };
+  }
+  const nameMatch = lower.match(/run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?name\s+(.+)/i);
+  if (nameMatch) {
+    return { type: 'name', query: nameMatch[1].trim() };
+  }
+  return null;
+}
+
+async function runCADLookup(guildId, lookup) {
+  if (lookup.type === 'plate') {
+    const character = await CADCharacter.findOne({
+      guildId,
+      $or: [
+        { licensePlate: { $regex: new RegExp(`^${lookup.query}$`, 'i') } },
+        { 'vehicles.licensePlate': { $regex: new RegExp(`^${lookup.query}$`, 'i') } },
+      ],
+    });
+    if (!character) return { found: false, ttsResponse: `Negative, plate ${lookup.query.split('').join(' ')} comes back with no records.` };
+
+    const vehicle = character.vehicles?.find(v => v.licensePlate?.toUpperCase() === lookup.query) || character.vehicles?.[0];
+    const vehicleDesc = vehicle ? `${vehicle.color || ''} ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim() : 'unknown vehicle';
+    const wantedStatus = character.status === 'wanted' ? 'WANTED' : 'clean';
+    const licenseStatus = character.driverLicenseStatus || 'unknown';
+
+    const bolos = await BOLO.find({ guildId, characterId: character._id, active: true });
+    const hasBolo = bolos.length > 0;
+
+    let tts = `Plate ${lookup.query.split('').join(' ')} comes back to ${character.characterName}, ${vehicleDesc}. Record shows ${wantedStatus}.`;
+    if (licenseStatus === 'invalid') tts += ' License is invalid.';
+    if (hasBolo) tts += ` Caution, active BOLO on this individual. ${bolos[0].reason}.`;
+
+    return {
+      found: true,
+      character,
+      vehicle,
+      bolos,
+      ttsResponse: tts,
+      embed: {
+        owner: character.characterName,
+        vehicleDesc,
+        plate: lookup.query,
+        status: wantedStatus,
+        license: licenseStatus,
+        hasBolo,
+        boloReason: hasBolo ? bolos[0].reason : null,
+      },
+    };
+  }
+
+  if (lookup.type === 'name') {
+    const escapedQuery = lookup.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const character = await CADCharacter.findOne({
+      guildId,
+      characterName: { $regex: new RegExp(escapedQuery, 'i') },
+    });
+    if (!character) return { found: false, ttsResponse: `Negative, no records found for ${lookup.query}.` };
+
+    const wantedStatus = character.status === 'wanted' ? 'WANTED' : 'clean';
+    const licenseStatus = character.driverLicenseStatus || 'unknown';
+    const vehicleCount = character.vehicles?.length || 0;
+    const bolos = await BOLO.find({ guildId, characterId: character._id, active: true });
+    const hasBolo = bolos.length > 0;
+
+    let tts = `${character.characterName}, record shows ${wantedStatus}. License ${licenseStatus}. ${vehicleCount} registered vehicle${vehicleCount !== 1 ? 's' : ''}.`;
+    if (hasBolo) tts += ` Caution, active BOLO. ${bolos[0].reason}.`;
+
+    return {
+      found: true,
+      character,
+      bolos,
+      ttsResponse: tts,
+      embed: {
+        name: character.characterName,
+        age: character.age,
+        gender: character.gender,
+        status: wantedStatus,
+        license: licenseStatus,
+        vehicles: character.vehicles,
+        hasBolo,
+        boloReason: hasBolo ? bolos[0].reason : null,
+      },
+    };
+  }
+
+  return { found: false, ttsResponse: 'Unable to process lookup request.' };
 }
 
 /** Finds a guild member by partial display name or username (case-insensitive). */
@@ -403,6 +498,87 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End join-stop detection ---
 
+    // --- CAD lookup detection (run plate / run name) ---
+    const cadLookup = detectCADLookup(transcript);
+    if (cadLookup) {
+      console.log(`[Dispatch] CAD lookup detected: ${cadLookup.type} → "${cadLookup.query}"`);
+      const result = await runCADLookup(guild.id, cadLookup);
+
+      const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+      if (dispatchChannel?.isTextBased()) {
+        if (cadLookup.type === 'plate') {
+          const embed = new EmbedBuilder()
+            .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
+            .setTitle('🔍 Plate Lookup')
+            .setFooter({ text: 'EverLink' })
+            .setTimestamp()
+            .addFields(
+              { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
+              { name: '🔢 Plate', value: cadLookup.query, inline: true },
+            );
+          if (result.found) {
+            embed.addFields(
+              { name: '👤 Owner', value: result.embed.owner, inline: true },
+              { name: '🚗 Vehicle', value: result.embed.vehicleDesc || 'N/A', inline: true },
+              { name: '📋 Status', value: result.embed.status, inline: true },
+              { name: '🪪 License', value: result.embed.license, inline: true },
+            );
+            if (result.embed.hasBolo) {
+              embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
+            }
+          } else {
+            embed.addFields({ name: '📋 Result', value: 'No records found', inline: false });
+          }
+          embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+        } else {
+          const embed = new EmbedBuilder()
+            .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
+            .setTitle('🔍 Name Lookup')
+            .setFooter({ text: 'EverLink' })
+            .setTimestamp()
+            .addFields(
+              { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
+              { name: '🔎 Name', value: cadLookup.query, inline: true },
+            );
+          if (result.found) {
+            embed.addFields(
+              { name: '👤 Name', value: result.embed.name, inline: true },
+              { name: '📋 Status', value: result.embed.status, inline: true },
+              { name: '🪪 License', value: result.embed.license, inline: true },
+            );
+            if (result.embed.age) embed.addFields({ name: '🎂 Age', value: `${result.embed.age}`, inline: true });
+            if (result.embed.gender) embed.addFields({ name: '⚧ Gender', value: result.embed.gender, inline: true });
+            if (result.embed.vehicles?.length > 0) {
+              const vList = result.embed.vehicles.map(v => `${v.color || ''} ${v.year || ''} ${v.make || ''} ${v.model || ''} — ${v.licensePlate || 'No Plate'}`.trim()).join('\n');
+              embed.addFields({ name: '🚗 Vehicles', value: vList, inline: false });
+            }
+            if (result.embed.hasBolo) {
+              embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
+            }
+          } else {
+            embed.addFields({ name: '📋 Result', value: 'No records found', inline: false });
+          }
+          embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+        }
+      }
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(result.ttsResponse);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) {
+          console.error('[Dispatch TTS] CAD lookup voice error:', err.message);
+        }
+      }
+      return;
+    }
+    // --- End CAD lookup detection ---
+
     const parsed = parseTranscript(transcript);
 
     let dispatchResponse = null;
@@ -542,14 +718,21 @@ export async function rebuildStatusBoard(guild, config) {
     updatedAt: { $gte: cutoff },
   }).sort({ updatedAt: -1 });
 
-  const embed = new EmbedBuilder()
+  const activeCalls = await EmergencyCall.find({
+    guildId: guild.id,
+    status: 'active',
+  }).sort({ timestamp: -1 });
+
+  const embeds = [];
+
+  const officerEmbed = new EmbedBuilder()
     .setColor('#23D160')
     .setTitle('🚔 Officer Status Board')
     .setFooter({ text: 'EverLink' })
     .setTimestamp();
 
   if (officers.length === 0) {
-    embed.setDescription('*No officers currently on duty.*');
+    officerEmbed.setDescription('*No officers currently on duty.*');
   } else {
     const rows = officers.map((o) => {
       const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
@@ -558,9 +741,50 @@ export async function rebuildStatusBoard(guild, config) {
       if (o.subject) line += ` · with ${o.subject}`;
       if (o.location) line += ` @ ${o.location}`;
       line += ` · ${since}`;
+
+      const attachedCall = activeCalls.find(c =>
+        c.respondingLeoId === o.userId || c.attachedLeoIds?.includes(o.userId)
+      );
+      if (attachedCall) {
+        line += ` · [${attachedCall.respondingLeoId === o.userId ? '🔴 PRIMARY' : '📎 ATTACHED'} — Call #${attachedCall.callId?.split('-').pop() || '???'}]`;
+      }
+
       return line;
     });
-    embed.setDescription(rows.join('\n'));
+    officerEmbed.setDescription(rows.join('\n'));
+  }
+  embeds.push(officerEmbed);
+
+  if (activeCalls.length > 0) {
+    const callEmbed = new EmbedBuilder()
+      .setColor('#FF6B6B')
+      .setTitle('📞 Active 911 Calls')
+      .setTimestamp();
+
+    const callRows = activeCalls.map(c => {
+      const since = `<t:${Math.floor(new Date(c.timestamp).getTime() / 1000)}:R>`;
+      const callNum = c.callId?.split('-').pop() || '???';
+      let line = `**Call #${callNum}** · ${since}`;
+      if (c.issue) line += `\n┗ ${c.issue}`;
+      if (c.location) line += ` @ ${c.location}`;
+
+      if (c.respondingLeoId) {
+        line += `\n┗ 🔴 Primary: <@${c.respondingLeoId}>`;
+      }
+      if (c.attachedLeoIds?.length > 0) {
+        const attached = c.attachedLeoIds.filter(id => id !== c.respondingLeoId);
+        if (attached.length > 0) {
+          line += `\n┗ 📎 Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
+        }
+      }
+      if (!c.respondingLeoId && c.attachedLeoIds?.length === 0) {
+        line += `\n┗ ⚠️ **NO UNITS RESPONDING**`;
+      }
+
+      return line;
+    });
+    callEmbed.setDescription(callRows.join('\n\n'));
+    embeds.push(callEmbed);
   }
 
   const clearButtons = officers.slice(0, 20).map((o) =>
@@ -580,12 +804,12 @@ export async function rebuildStatusBoard(guild, config) {
     if (config.statusBoardMessageId) {
       const existing = await channel.messages.fetch(config.statusBoardMessageId).catch(() => null);
       if (existing) {
-        await existing.edit({ embeds: [embed], components });
+        await existing.edit({ embeds, components });
         return;
       }
     }
 
-    const msg = await channel.send({ embeds: [embed], components });
+    const msg = await channel.send({ embeds, components });
     await msg.pin().catch(() => {});
     await DispatchConfig.updateOne({ guildId: guild.id }, { statusBoardMessageId: msg.id });
   } catch (err) {
@@ -663,6 +887,85 @@ export async function handleStopClearButton(interaction) {
   }
 }
 
+const lastReminderAt = new Map();
+const REPEAT_DELAY_MS = 2 * 60 * 1000;
+const REMINDER_INTERVAL_MS = 2 * 60 * 1000;
+const repeatIntervals = new Map();
+
+async function checkUnrespondedCalls(guild, client) {
+  try {
+    const config = await DispatchConfig.findOne({ guildId: guild.id });
+    if (!config?.enabled) return;
+
+    const cutoff = new Date(Date.now() - REPEAT_DELAY_MS);
+    const unrespondedCalls = await EmergencyCall.find({
+      guildId: guild.id,
+      status: 'active',
+      $or: [{ respondingLeoId: { $exists: false } }, { respondingLeoId: null }],
+      attachedLeoIds: { $size: 0 },
+      timestamp: { $lte: cutoff },
+    });
+
+    for (const call of unrespondedCalls) {
+      const lastReminder = lastReminderAt.get(call.callId) || 0;
+      if (Date.now() - lastReminder < REMINDER_INTERVAL_MS) continue;
+      lastReminderAt.set(call.callId, Date.now());
+
+      const callNum = call.callId?.split('-').pop() || 'unknown';
+      console.log(`[Dispatch] Repeating unresponded 911 call #${callNum} for ${guild.name}`);
+
+      const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      if (dispatchChannel?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('🚨 911 Call Reminder — No Units Responding')
+          .setDescription(
+            `**Call #${callNum}** has had no response for over 2 minutes.\n\n` +
+            (call.issue ? `**Issue:** ${call.issue}\n` : '') +
+            (call.location ? `**Location:** ${call.location}\n` : '') +
+            (call.suspectsDescription ? `**Suspects:** ${call.suspectsDescription}\n` : '') +
+            `\n**Any available unit, please respond.**`
+          )
+          .setFooter({ text: 'EverLink' })
+          .setTimestamp();
+        await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice, getDispatchState } = await import('../utils/voiceListener.js');
+          const state = getDispatchState?.(guild.id);
+          if (state?.connection) {
+            let ttsText = `Attention all units, reminder, we still have an active 911 call with no responding units. `;
+            if (call.issue) ttsText += `${call.issue}. `;
+            if (call.location) ttsText += `Location: ${call.location}. `;
+            ttsText += `Any available unit, please respond.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          }
+        } catch (err) {
+          console.error(`[Dispatch] Failed to repeat 911 call #${callNum} TTS:`, err.message);
+        }
+      }
+    }
+
+    for (const [callId] of lastReminderAt) {
+      const stillActive = unrespondedCalls.some(c => c.callId === callId);
+      if (!stillActive) lastReminderAt.delete(callId);
+    }
+  } catch (err) {
+    console.error(`[Dispatch] checkUnrespondedCalls error:`, err.message);
+  }
+}
+
+export function startCallRepeatTimer(guild, client) {
+  if (repeatIntervals.has(guild.id)) return;
+  const interval = setInterval(() => checkUnrespondedCalls(guild, client), 60 * 1000);
+  repeatIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] 911 repeat timer started for ${guild.name}`);
+}
+
 export async function initDispatchForGuild(guild, client) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
@@ -681,8 +984,6 @@ export async function initDispatchForGuild(guild, client) {
       },
     };
 
-    // Pre-generate the join announcement TTS so it's ready the moment the
-    // voice connection becomes Ready — no async work needed at that point.
     let joinAudioBuffer = null;
     try {
       joinAudioBuffer = await generateDispatchTTS('Dispatch online, ready to serve.');
@@ -693,9 +994,6 @@ export async function initDispatchForGuild(guild, client) {
 
     setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer);
 
-    // On startup, only join a patrol channel if it currently has LEO members.
-    // (Discord allows only one voice connection per guild; the bot dynamically
-    // moves between patrol channels via voiceStateUpdate as officers join/leave.)
     for (const channelId of config.patrolChannelIds) {
       const channel = guild.channels.cache.get(channelId) ||
         await guild.channels.fetch(channelId).catch(() => null);
@@ -710,8 +1008,8 @@ export async function initDispatchForGuild(guild, client) {
         break;
       }
     }
-    // If no patrol channel currently has officers, the bot waits in a disconnected
-    // state and joins the first channel an officer enters (via voiceStateUpdate).
+
+    startCallRepeatTimer(guild, client);
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }

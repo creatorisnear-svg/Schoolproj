@@ -142,6 +142,10 @@ export async function moveToChannel(channel) {
   state.currentChannelId = channel.id;
   joiningGuilds.delete(guildId);
 
+  connection.on('error', (err) => {
+    console.error(`[Voice] Connection error in guild ${guildId}:`, err.message);
+  });
+
   connection.on('stateChange', (oldState, newState) => {
     console.log(`[Voice] ${oldState.status} → ${newState.status}`);
     const net = newState.networking;

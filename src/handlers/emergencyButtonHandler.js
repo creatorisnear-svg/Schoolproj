@@ -1,6 +1,8 @@
 import { EmbedBuilder } from 'discord.js';
 import EmergencyCall from '../models/EmergencyCall.js';
 import CADConfig from '../models/CADConfig.js';
+import DispatchConfig from '../models/DispatchConfig.js';
+import { rebuildStatusBoard } from './dispatchHandler.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'EverLink' });
@@ -55,6 +57,9 @@ export async function handle911RespondButton(interaction) {
     await originalMessage.edit({
       embeds: [updatedEmbed],
     });
+
+    const dConfig = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
 
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'EverLink' })],
@@ -133,6 +138,9 @@ export async function handle911AttachButton(interaction) {
       embeds: [updatedEmbed],
     });
 
+    const dConfig = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
+
     return interaction.reply({
       embeds: [quickEmbed('#23D160', `You are now attached to call **#${callId}**`)],
       flags: 64,
@@ -182,6 +190,9 @@ export async function handle911DismissButton(interaction) {
       embeds: [updatedEmbed],
       components: [], // Remove buttons
     });
+
+    const dConfig = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
 
     return interaction.reply({
       embeds: [quickEmbed('#23D160', `Call **#${callId}** has been dismissed.`)],

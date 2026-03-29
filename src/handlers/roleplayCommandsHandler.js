@@ -430,6 +430,10 @@ export async function handle911ReportModal(interaction) {
           playDispatchVoice(interaction.guildId, ttsBuffer);
         }
       }
+      if (dispatchConfig) {
+        const { rebuildStatusBoard } = await import('./dispatchHandler.js');
+        rebuildStatusBoard(interaction.guild, dispatchConfig).catch(() => {});
+      }
     } catch (err) {
       console.error('[Dispatch] 911 voice announcement error:', err.message);
     }
