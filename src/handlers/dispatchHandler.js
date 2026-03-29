@@ -238,6 +238,10 @@ async function transcribeAudio(wavBuffer) {
   }
 }
 
+export async function generateDispatchTTSPublic(text) {
+  return generateDispatchTTS(text);
+}
+
 async function generateDispatchTTS(text) {
   const { client, provider } = getAIClient();
   const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';

@@ -413,10 +413,26 @@ export async function handle911ReportModal(interaction) {
     });
     console.log(`✓ 911 message sent successfully - Message ID: ${sentMessage.id}, Call ID: ${callId}`);
 
-    // Save message ID and channel ID to the emergency call
     emergencyCall.messageId = sentMessage.id;
     emergencyCall.channelId = roleplayConfig.use911Channel;
     await emergencyCall.save();
+
+    try {
+      const DispatchConfig = await import('../models/DispatchConfig.js').then(m => m.default);
+      const dispatchConfig = await DispatchConfig.findOne({ guildId: interaction.guildId, enabled: true });
+      if (dispatchConfig?.aiEnabled) {
+        const { getDispatchState, playDispatchVoice } = await import('../utils/voiceListener.js');
+        const state = getDispatchState(interaction.guildId);
+        if (state?.connection) {
+          const { generateDispatchTTSPublic } = await import('./dispatchHandler.js');
+          const ttsText = `Attention all units, we have a 911 call. ${issue}${location ? `, location ${location}` : ''}. Any available unit please respond.`;
+          const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+          playDispatchVoice(interaction.guildId, ttsBuffer);
+        }
+      }
+    } catch (err) {
+      console.error('[Dispatch] 911 voice announcement error:', err.message);
+    }
 
     return interaction.editReply({
       content: '✅ 911 report submitted!',
