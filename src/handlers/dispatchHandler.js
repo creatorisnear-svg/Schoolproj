@@ -335,8 +335,9 @@ export async function initDispatchForGuild(guild, client) {
 
     setupDispatchForGuild(guild.id, config.patrolChannelIds, options);
 
-    // Join the first patrol channel that has LEO members, else join the first configured channel
-    let joined = false;
+    // On startup, only join a patrol channel if it currently has LEO members.
+    // (Discord allows only one voice connection per guild; the bot dynamically
+    // moves between patrol channels via voiceStateUpdate as officers join/leave.)
     for (const channelId of config.patrolChannelIds) {
       const channel = guild.channels.cache.get(channelId) ||
         await guild.channels.fetch(channelId).catch(() => null);
@@ -347,17 +348,11 @@ export async function initDispatchForGuild(guild, client) {
 
       if (hasLeo) {
         await moveToChannel(channel);
-        joined = true;
         break;
       }
     }
-
-    if (!joined && config.patrolChannelIds.length > 0) {
-      const firstChannelId = config.patrolChannelIds[0];
-      const channel = guild.channels.cache.get(firstChannelId) ||
-        await guild.channels.fetch(firstChannelId).catch(() => null);
-      if (channel) await moveToChannel(channel);
-    }
+    // If no patrol channel currently has officers, the bot waits in a disconnected
+    // state and joins the first channel an officer enters (via voiceStateUpdate).
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }

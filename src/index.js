@@ -161,7 +161,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
   try {
-    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState } = await import('./utils/voiceListener.js');
+    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, leaveDispatchChannel } = await import('./utils/voiceListener.js');
 
     // Officer entered a patrol channel that the bot isn't currently in
     if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
@@ -181,7 +181,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       const humanMembersLeft = vacatedChannel?.members.filter(m => !m.user.bot).size ?? 0;
 
       if (humanMembersLeft === 0) {
-        // Try to find another patrol channel that has members
+        // Check every other patrol channel for human members
         let moved = false;
         for (const channelId of state.patrolChannelIds) {
           if (channelId === leftChannelId) continue;
@@ -193,13 +193,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
           }
         }
 
-        // Fall back to first patrol channel if no active one found
+        // No patrol channel has human members — disconnect entirely
         if (!moved) {
-          const [fallbackId] = [...state.patrolChannelIds];
-          if (fallbackId && fallbackId !== leftChannelId) {
-            const fallbackCh = guild.channels.cache.get(fallbackId);
-            if (fallbackCh) await moveToChannel(fallbackCh);
-          }
+          leaveDispatchChannel(guild.id);
         }
       }
     }
