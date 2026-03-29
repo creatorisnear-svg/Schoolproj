@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder } from 'discord.js';
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -36,6 +36,28 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  makeCache: Options.cacheWithLimits({
+    ...Options.DefaultMakeCacheSettings,
+    MessageManager: 50,
+    GuildMemberManager: {
+      maxSize: 200,
+      keepOverLimit: (member) => member.id === member.client.user?.id,
+    },
+    PresenceManager: 0,
+    GuildEmojiManager: 0,
+    GuildStickerManager: 0,
+    GuildInviteManager: 0,
+    GuildScheduledEventManager: 0,
+    ThreadManager: 0,
+  }),
+  sweepers: {
+    ...Options.DefaultSweeperSettings,
+    messages: { interval: 300, lifetime: 600 },
+    users: {
+      interval: 600,
+      filter: () => (user) => user.id !== user.client.user?.id && !user.bot,
+    },
+  },
 });
 
 const app = express();

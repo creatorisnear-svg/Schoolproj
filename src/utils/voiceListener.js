@@ -10,21 +10,7 @@ import {
 } from '@discordjs/voice';
 import { createSocket as createUdpSocket } from 'dgram';
 import { Readable } from 'stream';
-import { createReadStream } from 'fs';
-import { writeFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
 import prism from 'prism-media';
-import ffmpegStatic from 'ffmpeg-static';
-import { execSync } from 'child_process';
-
-if (ffmpegStatic) {
-  process.env.FFMPEG_PATH = ffmpegStatic;
-  const dir = ffmpegStatic.substring(0, ffmpegStatic.lastIndexOf('/'));
-  if (!process.env.PATH.includes(dir)) {
-    process.env.PATH = `${dir}:${process.env.PATH}`;
-  }
-}
 
 /**
  * Per-guild dispatch state.
@@ -419,26 +405,21 @@ export async function playDispatchVoice(guildId, audioBuffer) {
     if (state.connection !== conn) return;
   }
 
-  const tempPath = join(tmpdir(), `tts_${guildId}_${Date.now()}.wav`);
-
   try {
     if (state.audioPlayer) {
       try { state.audioPlayer.stop(true); } catch {}
     }
 
-    writeFileSync(tempPath, audioBuffer);
-
     const player = createAudioPlayer();
     state.audioPlayer = player;
 
-    const fileStream = createReadStream(tempPath);
-    fileStream.on('error', err => {
-      console.error('[Dispatch TTS] File stream error:', err.message);
-      try { unlinkSync(tempPath); } catch {}
-    });
+    const bufferStream = new Readable();
+    bufferStream.push(audioBuffer);
+    bufferStream.push(null);
 
-    const resource = createAudioResource(fileStream, {
-      inputType: StreamType.Arbitrary,
+    const isOgg = audioBuffer.length >= 4 && audioBuffer.toString('ascii', 0, 4) === 'OggS';
+    const resource = createAudioResource(bufferStream, {
+      inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
     });
 
     conn.subscribe(player);
@@ -448,16 +429,13 @@ export async function playDispatchVoice(guildId, audioBuffer) {
 
     player.on('error', err => {
       console.error('[Dispatch TTS] Audio player error:', err.message);
-      try { unlinkSync(tempPath); } catch {}
     });
 
     player.on(AudioPlayerStatus.Idle, () => {
       if (state.audioPlayer === player) state.audioPlayer = null;
-      try { unlinkSync(tempPath); } catch {}
     });
   } catch (err) {
     console.error('[Dispatch TTS] Failed to play voice:', err.message);
-    try { unlinkSync(tempPath); } catch {}
   }
 }
 
