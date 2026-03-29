@@ -644,6 +644,9 @@ export async function handleSelectMenu(interaction) {
   if (customId === 'dispatch_stop_channel_select') {
     return handleDispatchStopChannelSelect(interaction);
   }
+  if (customId === 'dispatch_remove_patrol_select') {
+    return handleDispatchRemovePatrolSelect(interaction);
+  }
 
 }
 
@@ -2816,7 +2819,9 @@ function buildDispatchSetupMenu() {
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
         { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
-        { label: '🤖 Toggle AI Dispatch', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
+        { label: '🔌 Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
+        { label: '🤖 Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
+        { label: '🗑️ Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
         { label: '📋 View Settings', value: 'view_settings', description: 'See current configuration' },
         { label: '✓ Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
       )
@@ -2870,14 +2875,54 @@ async function handleDispatchSetupMenu(interaction) {
       });
     }
 
+    if (choice === 'toggle_system') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+      config.enabled = !config.enabled;
+      await config.save();
+
+      if (!config.enabled) {
+        const { leaveDispatchChannel } = await import('../utils/voiceListener.js');
+        leaveDispatchChannel(interaction.guildId);
+      }
+
+      const status = config.enabled ? '✅ **Enabled**' : '❌ **Disabled**';
+      return interaction.update({
+        embeds: [successEmbed('Dispatch System Toggle', `The AI dispatch system is now ${status}.\n\nSelect your next option below.`)],
+        components: [buildDispatchSetupMenu()],
+      });
+    }
+
     if (choice === 'toggle_ai') {
       const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
       config.aiEnabled = !config.aiEnabled;
       await config.save();
       const status = config.aiEnabled ? '✅ **Enabled**' : '❌ **Disabled**';
       return interaction.update({
-        embeds: [successEmbed('AI Dispatch Toggle', `AI-generated dispatcher responses are now ${status}.\n\nSelect your next option below.`)],
+        embeds: [successEmbed('AI Responses Toggle', `AI-generated dispatcher responses are now ${status}.\n\nSelect your next option below.`)],
         components: [buildDispatchSetupMenu()],
+      });
+    }
+
+    if (choice === 'remove_patrol_channel') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+      if (!config || config.patrolChannelIds.length === 0) {
+        return interaction.update({
+          embeds: [infoEmbed('Remove Patrol Channel', 'No patrol channels are currently configured.')],
+          components: [buildDispatchSetupMenu()],
+        });
+      }
+      const options = config.patrolChannelIds.map(id => ({
+        label: `Channel ID: ${id}`,
+        value: id,
+        description: `Stop monitoring <#${id}>`,
+      }));
+      const selector = new StringSelectMenuBuilder()
+        .setCustomId('dispatch_remove_patrol_select')
+        .setPlaceholder('Select a channel to remove...')
+        .addOptions(options);
+      return interaction.update({
+        embeds: [menuEmbed('Remove Patrol Channel', 'Select a patrol voice channel to stop monitoring.')],
+        components: [new ActionRowBuilder().addComponents(selector)],
       });
     }
 
@@ -2905,6 +2950,7 @@ async function handleDispatchSetupMenu(interaction) {
           { name: '🚗 Traffic Stop Channel', value: stopCh, inline: true },
           { name: '🤖 AI Responses', value: config.aiEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
           { name: '🔌 System', value: config.enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+          { name: 'ℹ️ Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
         )
         .setFooter({ text: 'EverLink' });
       return interaction.update({
@@ -3025,6 +3071,56 @@ async function handleDispatchStopChannelSelect(interaction) {
     });
   } catch (err) {
     console.error('[Dispatch] Stop channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchRemovePatrolSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    if (!config) {
+      return interaction.update({
+        embeds: [errorEmbed('No dispatch configuration found.')],
+        components: [buildDispatchSetupMenu()],
+      });
+    }
+
+    config.patrolChannelIds = config.patrolChannelIds.filter(id => id !== channelId);
+    config.markModified('patrolChannelIds');
+    await config.save();
+
+    // Remove from in-memory state
+    const { getDispatchState, moveToChannel, leaveDispatchChannel } = await import('../utils/voiceListener.js');
+    const state = getDispatchState(interaction.guildId);
+    if (state) {
+      state.patrolChannelIds.delete(channelId);
+
+      // If the bot is currently in the removed channel, move to another or disconnect
+      if (state.currentChannelId === channelId) {
+        if (config.patrolChannelIds.length > 0) {
+          const nextId = config.patrolChannelIds[0];
+          const nextCh = interaction.guild.channels.cache.get(nextId);
+          if (nextCh) {
+            await moveToChannel(nextCh);
+          } else {
+            leaveDispatchChannel(interaction.guildId);
+          }
+        } else {
+          leaveDispatchChannel(interaction.guildId);
+        }
+      }
+    }
+
+    const remaining = config.patrolChannelIds.length > 0
+      ? config.patrolChannelIds.map(id => `<#${id}>`).join(', ')
+      : '*None*';
+    return interaction.update({
+      embeds: [successEmbed('Patrol Channel Removed', `<#${channelId}> has been removed from monitoring.\n\n**Remaining patrol channels:** ${remaining}\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Remove patrol select error:', err.message);
     return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
   }
 }
