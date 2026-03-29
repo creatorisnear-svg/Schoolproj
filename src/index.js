@@ -151,10 +151,60 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   }
 });
 
-// Voice monitoring feature
-client.on('voiceStateUpdate', (oldState, newState) => {
-  if (newState.channelId && oldState.channelId !== newState.channelId) {
-    console.log(`[VOICE] User ${newState.member.user.tag} joined channel: ${newState.channel.name}`);
+// Voice state updates — handles AI Dispatch channel lifecycle
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  const guild = newState.guild;
+  const userId = newState.member?.id;
+  if (!userId) return;
+
+  const joinedChannelId = newState.channelId;
+  const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
+
+  try {
+    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState } = await import('./utils/voiceListener.js');
+
+    // Officer entered a patrol channel that the bot isn't currently in
+    if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
+      const channel = newState.channel;
+      if (channel) {
+        await moveToChannel(channel);
+      }
+    }
+
+    // Bot's current patrol channel may now be empty — move to another active patrol channel or a fallback
+    if (leftChannelId && isPatrolChannel(guild.id, leftChannelId) && getCurrentChannelId(guild.id) === leftChannelId) {
+      const state = getDispatchState(guild.id);
+      if (!state) return;
+
+      // Check if the now-vacated channel is truly empty of non-bot voice members
+      const vacatedChannel = guild.channels.cache.get(leftChannelId);
+      const humanMembersLeft = vacatedChannel?.members.filter(m => !m.user.bot).size ?? 0;
+
+      if (humanMembersLeft === 0) {
+        // Try to find another patrol channel that has members
+        let moved = false;
+        for (const channelId of state.patrolChannelIds) {
+          if (channelId === leftChannelId) continue;
+          const ch = guild.channels.cache.get(channelId);
+          if (ch && ch.members.filter(m => !m.user.bot).size > 0) {
+            await moveToChannel(ch);
+            moved = true;
+            break;
+          }
+        }
+
+        // Fall back to first patrol channel if no active one found
+        if (!moved) {
+          const [fallbackId] = [...state.patrolChannelIds];
+          if (fallbackId && fallbackId !== leftChannelId) {
+            const fallbackCh = guild.channels.cache.get(fallbackId);
+            if (fallbackCh) await moveToChannel(fallbackCh);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch] voiceStateUpdate error:', err.message);
   }
 });
 

@@ -2975,24 +2975,31 @@ async function handleDispatchPatrolChannelSelect(interaction) {
       await config.save();
     }
 
-    if (config.enabled) {
-      try {
-        const channel = interaction.guild.channels.cache.get(channelId);
-        if (channel) {
-          const { joinDispatchChannel } = await import('../utils/voiceListener.js');
-          const { processVoiceCall } = await import('./dispatchHandler.js');
-          const CADConfig = (await import('../models/CADConfig.js')).default;
-          const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-          joinDispatchChannel(channel, {
-            onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
-            userFilter: async (uid) => {
-              if (!cadConfig?.leoRoleIds?.length) return false;
-              const member = await interaction.guild.members.fetch(uid).catch(() => null);
-              return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
-            },
-          });
+    try {
+      const channel = interaction.guild.channels.cache.get(channelId);
+      if (channel) {
+        const { addPatrolChannel, moveToChannel, getDispatchState } = await import('../utils/voiceListener.js');
+        const { processVoiceCall } = await import('./dispatchHandler.js');
+        const CADConfig = (await import('../models/CADConfig.js')).default;
+        const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+
+        const options = {
+          onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
+          userFilter: async (uid) => {
+            if (!cadConfig?.leoRoleIds?.length) return false;
+            const member = await interaction.guild.members.fetch(uid).catch(() => null);
+            return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
+          },
+        };
+
+        addPatrolChannel(interaction.guildId, channelId, options);
+
+        if (config.enabled && !getDispatchState(interaction.guildId)?.connection) {
+          await moveToChannel(channel);
         }
-      } catch {}
+      }
+    } catch (joinErr) {
+      console.error('[Dispatch] Failed to register patrol channel:', joinErr.message);
     }
 
     const list = config.patrolChannelIds.map(id => `<#${id}>`).join(', ');

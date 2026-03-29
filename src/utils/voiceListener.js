@@ -1,19 +1,81 @@
 import { joinVoiceChannel, EndBehaviorType, VoiceConnectionStatus, entersState } from '@discordjs/voice';
 import prism from 'prism-media';
 
-const connections = new Map();
+/**
+ * Per-guild dispatch state.
+ * Discord only allows one VoiceConnection per guild, so we maintain ONE connection
+ * and move it between patrol channels as officers become active in them.
+ *
+ * Map<guildId, {
+ *   connection:       VoiceConnection | null,
+ *   currentChannelId: string | null,
+ *   patrolChannelIds: Set<string>,
+ *   options:          { onTranscription, userFilter }
+ * }>
+ */
+const dispatchState = new Map();
+
+/** "guildId:userId" pairs currently being recorded — prevents parallel subscriptions */
 const recordingUsers = new Set();
 
-export function joinDispatchChannel(channel, options = {}) {
-  const { onTranscription, userFilter } = options;
-  const guildId = channel.guild.id;
-
-  const existing = connections.get(guildId);
+/**
+ * Store patrol config for a guild without joining any channel yet.
+ * Call this on startup / when config is first loaded.
+ */
+export function setupDispatchForGuild(guildId, patrolChannelIds, options) {
+  const existing = dispatchState.get(guildId);
   if (existing) {
-    const channels = existing._patrolChannelIds || new Set();
-    channels.add(channel.id);
-    existing._patrolChannelIds = channels;
-    return existing;
+    existing.patrolChannelIds = new Set(patrolChannelIds);
+    existing.options = options;
+  } else {
+    dispatchState.set(guildId, {
+      connection: null,
+      currentChannelId: null,
+      patrolChannelIds: new Set(patrolChannelIds),
+      options,
+    });
+  }
+}
+
+/**
+ * Register an additional patrol channel for a guild that already has state.
+ * Used when the admin adds a new patrol channel via /dispatchsetup.
+ */
+export function addPatrolChannel(guildId, channelId, options) {
+  const state = dispatchState.get(guildId);
+  if (state) {
+    state.patrolChannelIds.add(channelId);
+    if (options) state.options = options;
+  } else {
+    dispatchState.set(guildId, {
+      connection: null,
+      currentChannelId: null,
+      patrolChannelIds: new Set([channelId]),
+      options: options || {},
+    });
+  }
+}
+
+/**
+ * Join (or switch to) a voice channel.
+ * Only acts if the channel is in the guild's patrol list.
+ * Destroys any existing connection for that guild before creating a new one.
+ */
+export async function moveToChannel(channel) {
+  const guildId = channel.guild.id;
+  const state = dispatchState.get(guildId);
+  if (!state) return null;
+
+  if (!state.patrolChannelIds.has(channel.id)) return null;
+
+  if (state.currentChannelId === channel.id && state.connection) {
+    return state.connection;
+  }
+
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
   }
 
   let connection;
@@ -26,12 +88,43 @@ export function joinDispatchChannel(channel, options = {}) {
       selfMute: true,
     });
   } catch (err) {
-    console.error(`[Dispatch] Failed to join voice channel ${channel.name}:`, err.message);
+    console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
     return null;
   }
 
-  connection._patrolChannelIds = new Set([channel.id]);
+  state.connection = connection;
+  state.currentChannelId = channel.id;
 
+  _setupReceiver(connection, channel.guild, state, guildId);
+
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    try {
+      await Promise.race([
+        entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+        entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+      ]);
+    } catch {
+      if (state.connection === connection) {
+        state.connection = null;
+        state.currentChannelId = null;
+      }
+      try { connection.destroy(); } catch {}
+    }
+  });
+
+  connection.on(VoiceConnectionStatus.Destroyed, () => {
+    if (state.connection === connection) {
+      state.connection = null;
+      state.currentChannelId = null;
+    }
+  });
+
+  console.log(`[Dispatch] Joined voice channel "${channel.name}" in ${channel.guild.name}`);
+  return connection;
+}
+
+function _setupReceiver(connection, guild, state, guildId) {
+  const { onTranscription, userFilter } = state.options;
   const receiver = connection.receiver;
 
   receiver.speaking.on('start', async (userId) => {
@@ -39,19 +132,21 @@ export function joinDispatchChannel(channel, options = {}) {
     if (recordingUsers.has(key)) return;
 
     if (userFilter) {
-      try {
-        const allowed = await userFilter(userId);
-        if (!allowed) return;
-      } catch {
-        return;
-      }
+      const allowed = await userFilter(userId).catch(() => false);
+      if (!allowed) return;
     }
 
     recordingUsers.add(key);
 
-    const stream = receiver.subscribe(userId, {
-      end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 },
-    });
+    let stream;
+    try {
+      stream = receiver.subscribe(userId, {
+        end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 },
+      });
+    } catch (err) {
+      recordingUsers.delete(key);
+      return;
+    }
 
     let decoder;
     try {
@@ -66,19 +161,15 @@ export function joinDispatchChannel(channel, options = {}) {
     const pcmChunks = [];
     stream.pipe(decoder);
 
-    decoder.on('data', (chunk) => pcmChunks.push(chunk));
+    decoder.on('data', chunk => pcmChunks.push(chunk));
 
     decoder.on('end', async () => {
       recordingUsers.delete(key);
       if (pcmChunks.length < 8) return;
-
-      const wavBuffer = createWavBuffer(pcmChunks);
+      const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
-        try {
-          await onTranscription(wavBuffer, userId, channel.guild);
-        } catch (err) {
-          console.error('[Dispatch] onTranscription error:', err.message);
-        }
+        try { await onTranscription(wav, userId, guild); }
+        catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
       }
     });
 
@@ -89,46 +180,34 @@ export function joinDispatchChannel(channel, options = {}) {
 
     stream.on('error', (err) => {
       recordingUsers.delete(key);
-      console.error('[Dispatch] Audio stream error:', err.message);
+      console.error('[Dispatch] Stream error:', err.message);
     });
   });
-
-  connection.on(VoiceConnectionStatus.Disconnected, async () => {
-    try {
-      await Promise.race([
-        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
-      ]);
-    } catch {
-      try { connection.destroy(); } catch {}
-      connections.delete(guildId);
-    }
-  });
-
-  connection.on(VoiceConnectionStatus.Destroyed, () => {
-    connections.delete(guildId);
-  });
-
-  connections.set(guildId, connection);
-  console.log(`[Dispatch] Joined voice channel "${channel.name}" in ${channel.guild.name}`);
-  return connection;
 }
 
+/** Destroy the voice connection and remove all state for this guild. */
 export function leaveDispatchChannel(guildId) {
-  const connection = connections.get(guildId);
-  if (connection) {
-    try { connection.destroy(); } catch {}
-    connections.delete(guildId);
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
   }
+  dispatchState.delete(guildId);
 }
 
-export function getDispatchConnection(guildId) {
-  return connections.get(guildId) || null;
+/** Returns the dispatch state object for a guild, or null if not configured. */
+export function getDispatchState(guildId) {
+  return dispatchState.get(guildId) || null;
 }
 
-export function isListeningToChannel(guildId, channelId) {
-  const conn = connections.get(guildId);
-  return conn?._patrolChannelIds?.has(channelId) ?? false;
+/** True if the given channelId is in this guild's patrol list. */
+export function isPatrolChannel(guildId, channelId) {
+  return dispatchState.get(guildId)?.patrolChannelIds.has(channelId) ?? false;
+}
+
+/** Returns the voice channel ID the bot is currently listening in (or null). */
+export function getCurrentChannelId(guildId) {
+  return dispatchState.get(guildId)?.currentChannelId ?? null;
 }
 
 function createWavBuffer(pcmChunks) {

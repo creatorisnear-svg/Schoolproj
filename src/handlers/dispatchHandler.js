@@ -321,22 +321,42 @@ export async function initDispatchForGuild(guild, client) {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
     if (!config || !config.enabled || config.patrolChannelIds.length === 0) return;
 
-    const { joinDispatchChannel } = await import('../utils/voiceListener.js');
+    const { setupDispatchForGuild, moveToChannel } = await import('../utils/voiceListener.js');
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });
 
+    const options = {
+      onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
+      userFilter: async (userId) => {
+        if (!cadConfig?.leoRoleIds?.length) return false;
+        const member = await guild.members.fetch(userId).catch(() => null);
+        return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
+      },
+    };
+
+    setupDispatchForGuild(guild.id, config.patrolChannelIds, options);
+
+    // Join the first patrol channel that has LEO members, else join the first configured channel
+    let joined = false;
     for (const channelId of config.patrolChannelIds) {
       const channel = guild.channels.cache.get(channelId) ||
         await guild.channels.fetch(channelId).catch(() => null);
       if (!channel) continue;
 
-      joinDispatchChannel(channel, {
-        onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
-        userFilter: async (userId) => {
-          if (!cadConfig?.leoRoleIds?.length) return false;
-          const member = await guild.members.fetch(userId).catch(() => null);
-          return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
-        },
-      });
+      const hasLeo = cadConfig?.leoRoleIds?.length > 0 &&
+        channel.members.some(m => m.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)));
+
+      if (hasLeo) {
+        await moveToChannel(channel);
+        joined = true;
+        break;
+      }
+    }
+
+    if (!joined && config.patrolChannelIds.length > 0) {
+      const firstChannelId = config.patrolChannelIds[0];
+      const channel = guild.channels.cache.get(firstChannelId) ||
+        await guild.channels.fetch(firstChannelId).catch(() => null);
+      if (channel) await moveToChannel(channel);
     }
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
