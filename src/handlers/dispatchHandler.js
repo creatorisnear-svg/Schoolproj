@@ -465,7 +465,7 @@ async function generateDispatchTTS(text) {
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
     const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
-    const voice = provider === 'groq' ? 'tara' : 'nova';
+    const voice = provider === 'groq' ? 'diana' : 'nova';
     try {
       if (attempt === 0) console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
       const response = await client.audio.speech.create({
