@@ -165,13 +165,19 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
     // Officer entered a patrol channel that the bot isn't currently in
     if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
-      const channel = newState.channel;
-      if (channel) {
-        await moveToChannel(channel);
+      // Only move for LEO members (same role filter as transcription path)
+      const CADConfigModel = (await import('./models/CADConfig.js')).default;
+      const cadConfig = await CADConfigModel.findOne({ guildId: guild.id });
+      const isLeo = cadConfig?.leoRoleIds?.length > 0 &&
+        newState.member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id));
+
+      if (isLeo) {
+        const channel = newState.channel;
+        if (channel) await moveToChannel(channel);
       }
     }
 
-    // Bot's current patrol channel may now be empty — move to another active patrol channel or a fallback
+    // Bot's current patrol channel may now be empty — move to another active patrol channel or disconnect
     if (leftChannelId && isPatrolChannel(guild.id, leftChannelId) && getCurrentChannelId(guild.id) === leftChannelId) {
       const state = getDispatchState(guild.id);
       if (!state) return;

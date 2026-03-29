@@ -276,6 +276,7 @@ export async function rebuildStatusBoard(guild, config) {
     }
 
     const msg = await channel.send({ embeds: [embed], components });
+    await msg.pin().catch(() => {});
     await DispatchConfig.updateOne({ guildId: guild.id }, { statusBoardMessageId: msg.id });
   } catch (err) {
     console.error('[Dispatch] Status board update error:', err.message);
