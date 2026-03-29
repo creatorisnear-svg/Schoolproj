@@ -153,22 +153,25 @@ export async function moveToChannel(channel) {
       net.once('close', (code) => {
         console.log(`[Voice Networking] closed code: ${code}`);
       });
-      // Intercept UDP handshake phase to bypass IP discovery
-      // (Replit's network blocks inbound UDP from Discord's voice servers)
+      // Intercept UDP handshake phase to bypass IP discovery if needed.
+      // Many container hosts (Replit, Koyeb, etc.) block inbound UDP from
+      // Discord's voice servers. We wait 3 seconds for real UDP to work; if
+      // the connection is still stuck, we fake the discovery response.
+      let udpBypassFired = false;
       net.on('stateChange', (_oNS, nNS) => {
-        if (nNS.code === 2 && nNS.udp) {
-          // BYPASS: performIPDiscovery is already called (before state transitions to code:2),
-          // and its Promise is waiting for a UDP response that will never arrive from Replit.
-          // We fake the response by emitting a synthetic 'message' event on the dgram socket.
-          // The listener inside performIPDiscovery will pick it up and resolve the Promise.
+        if (nNS.code === 2 && nNS.udp && !udpBypassFired) {
+          udpBypassFired = true;
           const udp = nNS.udp;
           const ssrc = nNS.connectionData?.ssrc || 0;
-          // The socket was already bound by the discovery send() call
-          let localPort = 0;
-          try { localPort = udp.socket.address().port; } catch {}
-          console.log(`[UDP Bypass] code:2 reached. ssrc=${ssrc}. Faking discovery response...`);
+          console.log(`[UDP Bypass] code:2 reached, ssrc=${ssrc}. Waiting 3s for real UDP discovery...`);
 
-          (async () => {
+          setTimeout(async () => {
+            if (connection.state.status === VoiceConnectionStatus.Ready) {
+              console.log('[UDP Bypass] Connection already Ready — real UDP worked, bypass skipped');
+              return;
+            }
+            console.log('[UDP Bypass] Connection still not Ready after 3s — faking discovery response');
+
             let externalIp = '127.0.0.1';
             try {
               const resp = await fetch('https://api.ipify.org?format=json');
@@ -177,7 +180,7 @@ export async function moveToChannel(channel) {
             } catch (e) {
               console.warn('[UDP Bypass] ipify failed:', e.message);
             }
-            // Wait for the socket to actually bind (send() is async-bind internally)
+
             await new Promise(res => {
               const tryPort = () => {
                 try {
@@ -189,18 +192,16 @@ export async function moveToChannel(channel) {
               tryPort();
             });
             const localPort = (() => { try { return udp.socket.address().port; } catch { return 12345; } })();
-            console.log(`[UDP Bypass] Emitting fake discovery response ip=${externalIp} port=${localPort}`);
-            // Build a fake IP discovery response packet that parseLocalPacket() will accept:
-            // [type:2 BE16][len:70 BE16][ssrc:BE32][ip null-terminated][...][port BE16 at offset 72]
+            console.log(`[UDP Bypass] Emitting fake discovery: ip=${externalIp} port=${localPort}`);
+
             const fake = Buffer.alloc(74);
-            fake.writeUInt16BE(2, 0);          // type = Response (0x0002)
-            fake.writeUInt16BE(70, 2);         // length
-            fake.writeUInt32BE(ssrc, 4);       // ssrc
-            fake.write(externalIp, 8, 'utf8'); // ip string (rest auto-null by alloc)
-            fake.writeUInt16BE(localPort, 72); // port (read by parseLocalPacket as last 2 bytes BE)
-            // Emit on the raw dgram socket — the performIPDiscovery listener will receive it
+            fake.writeUInt16BE(2, 0);
+            fake.writeUInt16BE(70, 2);
+            fake.writeUInt32BE(ssrc, 4);
+            fake.write(externalIp, 8, 'utf8');
+            fake.writeUInt16BE(localPort, 72);
             udp.socket.emit('message', fake);
-          })();
+          }, 3000);
         }
       });
     }
@@ -251,7 +252,7 @@ export async function moveToChannel(channel) {
       console.log(`[Dispatch] Watchdog: rejoining "${targetChannel.name}"`);
       moveToChannel(targetChannel);
     }
-  }, 20000);
+  }, 25000);
 
   // Clean up watchdog when connection succeeds or is destroyed
   connection.once(VoiceConnectionStatus.Ready, () => clearTimeout(watchdog));
