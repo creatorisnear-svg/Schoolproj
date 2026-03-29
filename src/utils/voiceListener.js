@@ -15,6 +15,16 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import prism from 'prism-media';
+import ffmpegStatic from 'ffmpeg-static';
+import { execSync } from 'child_process';
+
+if (ffmpegStatic) {
+  process.env.FFMPEG_PATH = ffmpegStatic;
+  const dir = ffmpegStatic.substring(0, ffmpegStatic.lastIndexOf('/'));
+  if (!process.env.PATH.includes(dir)) {
+    process.env.PATH = `${dir}:${process.env.PATH}`;
+  }
+}
 
 /**
  * Per-guild dispatch state.
@@ -421,7 +431,13 @@ export async function playDispatchVoice(guildId, audioBuffer) {
     const player = createAudioPlayer();
     state.audioPlayer = player;
 
-    const resource = createAudioResource(createReadStream(tempPath), {
+    const fileStream = createReadStream(tempPath);
+    fileStream.on('error', err => {
+      console.error('[Dispatch TTS] File stream error:', err.message);
+      try { unlinkSync(tempPath); } catch {}
+    });
+
+    const resource = createAudioResource(fileStream, {
       inputType: StreamType.Arbitrary,
     });
 
