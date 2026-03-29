@@ -294,9 +294,60 @@ client.once('clientReady', async () => {
   console.log('============================================================');
   console.log('');
 
-  // Mock background services logs to match user request
+  const EmergencyCall = (await import('./models/EmergencyCall.js')).default;
+  const BOLO = (await import('./models/BOLO.js')).default;
+
+  setInterval(async () => {
+    try {
+      const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+      const expiredCalls = await EmergencyCall.find({ status: 'active', timestamp: { $lt: cutoff } });
+      for (const call of expiredCalls) {
+        const callNum = call.callId?.split('-').pop() || '???';
+        console.log(`[911 Cleanup] Deleting expired call #${callNum} in guild ${call.guildId} (older than 10 min)`);
+
+        if (call.messageId && call.channelId) {
+          try {
+            const g = client.guilds.cache.get(call.guildId);
+            if (g) {
+              const ch = g.channels.cache.get(call.channelId) || await g.channels.fetch(call.channelId).catch(() => null);
+              if (ch?.isTextBased()) {
+                const msg = await ch.messages.fetch(call.messageId).catch(() => null);
+                if (msg) await msg.delete().catch(() => {});
+              }
+
+              const DispatchConfig = (await import('./models/DispatchConfig.js')).default;
+              const config = await DispatchConfig.findOne({ guildId: call.guildId });
+              if (config) {
+                const { rebuildStatusBoard } = await import('./handlers/dispatchHandler.js');
+                await rebuildStatusBoard(g, config);
+              }
+            }
+          } catch (err) {
+            console.error(`[911 Cleanup] Error cleaning up message for call #${callNum}:`, err.message);
+          }
+        }
+
+        await EmergencyCall.deleteOne({ _id: call._id });
+      }
+    } catch (err) {
+      console.error('[911 Cleanup] Error:', err.message);
+    }
+  }, 60 * 1000);
   console.log('🚨 Emergency call auto-delete started (10-minute timeout for all calls)');
+
+  setInterval(async () => {
+    try {
+      const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+      const result = await BOLO.deleteMany({ createdAt: { $lt: cutoff } });
+      if (result.deletedCount > 0) {
+        console.log(`[BOLO Cleanup] Deleted ${result.deletedCount} expired BOLO(s)`);
+      }
+    } catch (err) {
+      console.error('[BOLO Cleanup] Error:', err.message);
+    }
+  }, 5 * 60 * 1000);
   console.log('🚨 BOLO auto-delete started (1-hour expiration for all BOLOs)');
+
   console.log('⏰ Priority tracker countdown updater started');
   console.log('⏰ Priority auto-deactivate started (10-minute timeout for active priorities)');
 
