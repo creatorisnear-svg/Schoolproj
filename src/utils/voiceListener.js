@@ -117,13 +117,11 @@ export async function moveToChannel(channel) {
   _setupReceiver(connection, channel.guild, state, guildId);
 
   if (state.options?.onJoin) {
-    entersState(connection, VoiceConnectionStatus.Ready, 10_000)
-      .then(() => {
-        setTimeout(() => {
-          try { state.options.onJoin(guildId); } catch {}
-        }, 500);
-      })
-      .catch(() => {});
+    setTimeout(() => {
+      state.options.onJoin(guildId).catch(err => {
+        console.error('[Dispatch] onJoin callback error:', err.message);
+      });
+    }, 2000);
   }
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -260,7 +258,7 @@ export function playDispatchVoice(guildId, audioBuffer) {
     state.audioPlayer = player;
 
     const resource = createAudioResource(Readable.from(audioBuffer), {
-      inputType: StreamType.OggOpus,
+      inputType: StreamType.Arbitrary,
     });
 
     state.connection.subscribe(player);

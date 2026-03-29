@@ -246,7 +246,7 @@ async function generateDispatchTTS(text) {
     model,
     voice,
     input: text,
-    response_format: 'opus',
+    response_format: 'mp3',
   });
   return Buffer.from(await response.arrayBuffer());
 }
