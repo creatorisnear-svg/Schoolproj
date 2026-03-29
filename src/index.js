@@ -10,6 +10,7 @@ import axios from 'axios';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
+import Priority from './models/Priority.js';
 
 dotenv.config();
 
@@ -217,6 +218,20 @@ client.once('clientReady', async () => {
   console.log('🚨 BOLO auto-delete started (1-hour expiration for all BOLOs)');
   console.log('⏰ Priority tracker countdown updater started');
   console.log('⏰ Priority auto-deactivate started (10-minute timeout for active priorities)');
+
+  // Re-schedule any cooldowns that survived a restart
+  try {
+    const { scheduleCooldownExpiry } = await import('./commands/prioritycooldown.js');
+    const activeCooldowns = await Priority.find({ cooldownEndsAt: { $gt: new Date() } });
+    for (const p of activeCooldowns) {
+      scheduleCooldownExpiry(client, p);
+    }
+    if (activeCooldowns.length > 0) {
+      console.log(`⏰ Rescheduled ${activeCooldowns.length} active cooldown(s) after restart`);
+    }
+  } catch (err) {
+    // DB not connected or no cooldowns — safe to ignore
+  }
 });
 
 client.on('interactionCreate', async interaction => {

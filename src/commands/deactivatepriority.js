@@ -103,16 +103,17 @@ async function updatePriorityMessage(interaction, priority) {
 
 function buildPriorityEmbed(priority) {
   let cooldownText = 'None';
+  let cooldownIssuedBy = 'N/A';
+
   if (priority.cooldownEndsAt) {
-    const now = new Date();
-    const remaining = Math.floor((priority.cooldownEndsAt - now) / 1000 / 60);
+    const remaining = Math.floor((new Date(priority.cooldownEndsAt) - Date.now()) / 1000 / 60);
     if (remaining > 0) {
       cooldownText = `${remaining}m (counting down)`;
+      cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
     }
   }
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
-  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
 
   let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
   description += `**Priority issued by:** ${priorityIssuedBy}\n`;

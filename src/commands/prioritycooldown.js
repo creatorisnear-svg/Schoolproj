@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
@@ -49,7 +49,9 @@ export async function execute(interaction) {
     priority.cooldownIssuedBy = interaction.user.tag;
     await priority.save();
 
-    await updatePriorityMessage(interaction, priority);
+    await updatePriorityMessage(interaction.guild, priority);
+
+    scheduleCooldownExpiry(interaction.client, priority);
 
     return interaction.reply({
       embeds: [successEmbed('Cooldown Set', `Priority cooldown has been set to ${minutes} minute(s)`)],
@@ -64,19 +66,75 @@ export async function execute(interaction) {
   }
 }
 
-async function updatePriorityMessage(interaction, priority) {
+export function scheduleCooldownExpiry(client, priority) {
+  if (!priority.cooldownEndsAt || !priority.channelId || !priority.messageId) return;
+
+  const expiresAt = new Date(priority.cooldownEndsAt).getTime();
+  const delay = Math.max(0, expiresAt - Date.now());
+  const guildId = priority.guildId;
+
+  async function expireCooldown() {
+    try {
+      const record = await Priority.findOne({ guildId });
+      if (!record || !record.cooldownEndsAt) return;
+      if (new Date(record.cooldownEndsAt).getTime() > Date.now() + 5000) return;
+
+      record.cooldownEndsAt = null;
+      record.cooldownIssuedBy = null;
+      record.cooldownMinutes = 0;
+      await record.save();
+
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return;
+      const channel = await guild.channels.fetch(record.channelId).catch(() => null);
+      if (!channel || !channel.isTextBased()) return;
+      const message = await channel.messages.fetch(record.messageId).catch(() => null);
+      if (!message) return;
+
+      const embed = buildPriorityEmbed(record);
+      const components = (record.priorityActive && record.hostUserId)
+        ? [new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('priority_stop')
+              .setLabel('Stop Priority')
+              .setStyle(ButtonStyle.Danger)
+              .setEmoji('🛑')
+          )]
+        : [];
+      await message.edit({ embeds: [embed], components });
+    } catch (err) {
+      console.error('Error auto-expiring cooldown:', err);
+    }
+  }
+
+  if (delay === 0) {
+    expireCooldown();
+  } else {
+    setTimeout(expireCooldown, delay);
+  }
+}
+
+async function updatePriorityMessage(guild, priority) {
   try {
-    const channel = await interaction.guild.channels.fetch(priority.channelId);
+    const channel = await guild.channels.fetch(priority.channelId);
     if (!channel) return;
 
     const embed = buildPriorityEmbed(priority);
+    const components = (priority.priorityActive && priority.hostUserId)
+      ? [new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('priority_stop')
+            .setLabel('Stop Priority')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🛑')
+        )]
+      : [];
 
     if (priority.messageId) {
       try {
         const message = await channel.messages.fetch(priority.messageId);
-        await message.edit({ embeds: [embed] });
+        await message.edit({ embeds: [embed], components });
       } catch (err) {
-        // Message not found, create new one
         const message = await channel.send({ embeds: [embed] });
         priority.messageId = message.id;
         await priority.save();
@@ -93,16 +151,17 @@ async function updatePriorityMessage(interaction, priority) {
 
 function buildPriorityEmbed(priority) {
   let cooldownText = 'None';
+  let cooldownIssuedBy = 'N/A';
+
   if (priority.cooldownEndsAt) {
-    const now = new Date();
-    const remaining = Math.floor((priority.cooldownEndsAt - now) / 1000 / 60);
+    const remaining = Math.floor((new Date(priority.cooldownEndsAt) - Date.now()) / 1000 / 60);
     if (remaining > 0) {
       cooldownText = `${remaining}m (counting down)`;
+      cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
     }
   }
 
   const priorityIssuedBy = priority.priorityIssuedBy || 'N/A';
-  const cooldownIssuedBy = priority.cooldownIssuedBy || 'N/A';
 
   let description = `**Priority active:** ${priority.priorityActive ? 'Active' : 'Inactive'}\n`;
   description += `**Priority issued by:** ${priorityIssuedBy}\n`;

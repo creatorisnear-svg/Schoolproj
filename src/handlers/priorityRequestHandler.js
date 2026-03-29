@@ -240,11 +240,13 @@ export async function handlePriorityStop(interaction) {
 
 function buildPriorityEmbed(priority) {
   let cooldownText = 'None';
+  let cooldownBy = 'N/A';
+
   if (priority.cooldownEndsAt) {
-    const now = new Date();
-    const remaining = Math.floor((priority.cooldownEndsAt - now) / 1000 / 60);
+    const remaining = Math.floor((new Date(priority.cooldownEndsAt) - Date.now()) / 1000 / 60);
     if (remaining > 0) {
       cooldownText = `${remaining} min remaining`;
+      cooldownBy = priority.cooldownIssuedBy || 'N/A';
     }
   }
 
@@ -254,7 +256,7 @@ function buildPriorityEmbed(priority) {
   let description = `${statusLine}\n\n`;
   description += `**Issued By:** ${priority.priorityIssuedBy || 'N/A'}\n`;
   description += `**Cooldown:** ${cooldownText}\n`;
-  description += `**Cooldown By:** ${priority.cooldownIssuedBy || 'N/A'}`;
+  description += `**Cooldown By:** ${cooldownBy}`;
 
   if (priority.customMessage) {
     description += `\n\n> ${priority.customMessage}`;
