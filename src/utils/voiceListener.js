@@ -8,6 +8,7 @@ import {
   AudioPlayerStatus,
   StreamType,
 } from '@discordjs/voice';
+import { createSocket as createUdpSocket } from 'dgram';
 import { Readable } from 'stream';
 import { createReadStream } from 'fs';
 import { writeFileSync, unlinkSync } from 'fs';
@@ -147,6 +148,62 @@ export async function moveToChannel(channel) {
 
   connection.on('stateChange', (oldState, newState) => {
     console.log(`[Voice] ${oldState.status} → ${newState.status}`);
+    const net = newState.networking;
+    if (net && net !== oldState.networking) {
+      net.once('close', (code) => {
+        console.log(`[Voice Networking] closed code: ${code}`);
+      });
+      // Intercept UDP handshake phase to bypass IP discovery
+      // (Replit's network blocks inbound UDP from Discord's voice servers)
+      net.on('stateChange', (_oNS, nNS) => {
+        if (nNS.code === 2 && nNS.udp) {
+          // BYPASS: performIPDiscovery is already called (before state transitions to code:2),
+          // and its Promise is waiting for a UDP response that will never arrive from Replit.
+          // We fake the response by emitting a synthetic 'message' event on the dgram socket.
+          // The listener inside performIPDiscovery will pick it up and resolve the Promise.
+          const udp = nNS.udp;
+          const ssrc = nNS.connectionData?.ssrc || 0;
+          // The socket was already bound by the discovery send() call
+          let localPort = 0;
+          try { localPort = udp.socket.address().port; } catch {}
+          console.log(`[UDP Bypass] code:2 reached. ssrc=${ssrc}. Faking discovery response...`);
+
+          (async () => {
+            let externalIp = '127.0.0.1';
+            try {
+              const resp = await fetch('https://api.ipify.org?format=json');
+              const json = await resp.json();
+              externalIp = json.ip;
+            } catch (e) {
+              console.warn('[UDP Bypass] ipify failed:', e.message);
+            }
+            // Wait for the socket to actually bind (send() is async-bind internally)
+            await new Promise(res => {
+              const tryPort = () => {
+                try {
+                  const p = udp.socket.address().port;
+                  if (p > 0) { res(p); return; }
+                } catch {}
+                setImmediate(tryPort);
+              };
+              tryPort();
+            });
+            const localPort = (() => { try { return udp.socket.address().port; } catch { return 12345; } })();
+            console.log(`[UDP Bypass] Emitting fake discovery response ip=${externalIp} port=${localPort}`);
+            // Build a fake IP discovery response packet that parseLocalPacket() will accept:
+            // [type:2 BE16][len:70 BE16][ssrc:BE32][ip null-terminated][...][port BE16 at offset 72]
+            const fake = Buffer.alloc(74);
+            fake.writeUInt16BE(2, 0);          // type = Response (0x0002)
+            fake.writeUInt16BE(70, 2);         // length
+            fake.writeUInt32BE(ssrc, 4);       // ssrc
+            fake.write(externalIp, 8, 'utf8'); // ip string (rest auto-null by alloc)
+            fake.writeUInt16BE(localPort, 72); // port (read by parseLocalPacket as last 2 bytes BE)
+            // Emit on the raw dgram socket — the performIPDiscovery listener will receive it
+            udp.socket.emit('message', fake);
+          })();
+        }
+      });
+    }
   });
 
   _setupReceiver(connection, channel.guild, state, guildId);

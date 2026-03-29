@@ -37,6 +37,7 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Status Heartbeat System:** Background system for monitoring bot status, sending periodic messages to a support server.
 - **Database Integration:** Mongoose schemas ensure per-server data isolation and persistence.
 - **AI Voice Dispatch System:** Officers speak in monitored voice channels; the bot captures their audio via `@discordjs/voice`, transcribes it using OpenAI Whisper, parses 10-codes (10-4, 10-8, 10-11, 10-80, etc.), generates a realistic GTA5 RP dispatcher response via GPT-4o-mini, posts a branded embed to the dispatch channel, automatically moves officers to a traffic stop voice channel on 10-11, and maintains a live status board. Configured per-guild via `/dispatchsetup` (admin only). Requires `OPENAI_API_KEY` environment variable. Models: `DispatchConfig`, `OfficerStatus`. Utils: `src/utils/voiceListener.js`. Handler: `src/handlers/dispatchHandler.js`.
+  - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** — without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
 
 **Economy System:** A comprehensive economy with staff (`/economysetup`, `/storesetup`) and member (`/economy`) commands.
     - **Staff Commands:** Manage currency (symbol, start/max balance), money (add/remove/reset, log channel, leaderboard), work/crime settings (cooldowns, payouts, fine rates, custom replies), role income (amounts, cooldowns, fines), chat money (amounts, channels, cooldowns), gambling settings (bet limits, game cooldowns, symbols), and feature permissions.
@@ -50,7 +51,8 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
 - **Express:** Used for HTTP server functionality (e.g., health checks).
 - **Dotenv:** For managing environment variables.
 - **UUID:** For generating unique identifiers.
-- **@discordjs/voice:** Voice channel connection and audio receive pipeline for AI dispatch.
+- **@discordjs/voice 0.19.2:** Voice channel connection and audio pipeline for AI dispatch. **Critical:** Must be 0.19.2+ for DAVE (Discord Audio Video Encryption) protocol support; older versions get rejected with close code 4017.
+- **@snazzah/davey:** DAVE E2E encryption library (auto-installed as peer dependency of @discordjs/voice 0.19.2).
 - **opusscript:** Pure-JS Opus audio codec (peer dependency for @discordjs/voice audio receiving).
 - **prism-media:** Audio stream processing; decodes Opus packets to raw PCM for WAV conversion.
 - **OpenAI SDK:** Whisper API (audio transcription) and GPT-4o-mini (dispatcher AI responses).
