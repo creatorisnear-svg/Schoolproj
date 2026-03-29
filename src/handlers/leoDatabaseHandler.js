@@ -8,6 +8,7 @@ import BOLO from '../models/BOLO.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { EmbedBuilder } from 'discord.js';
 import { capitalizeName } from '../utils/nameFormatter.js';
+import { getGuildLimits } from '../utils/premiumCheck.js';
 
 export async function handleLEODatabaseMenu(interaction) {
   const choice = interaction.values[0];
@@ -108,7 +109,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .setColor('#ff6600')
           .setTitle(`🚨 Call #${index + 1}: ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `EverLink | ID: ${call.callId}` })
+          .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -352,7 +353,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .setColor('#ff0000')
           .setTitle(`🚨 BOLO: ${bolo.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'EverLink' });
+          .setFooter({ text: 'RolePlayManager' });
       });
 
       const backButton = new ActionRowBuilder()
@@ -471,7 +472,7 @@ export async function handleLEOSearchPlateModal(interaction) {
       .setColor(embedColor)
       .setTitle(`License Plate Search: ${plate}`)
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     return interaction.update({
@@ -562,7 +563,7 @@ export async function handleLEORespondCall(interaction) {
       .setColor('#ff6600')
       .setTitle(`🚨 Call #${call.callId}: ${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `EverLink | ID: ${call.callId}` })
+      .setFooter({ text: `RolePlayManager | ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach
@@ -863,7 +864,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     return interaction.update({
@@ -1091,9 +1092,17 @@ export async function handleLEOCreateBOLOModal(interaction) {
       });
     }
 
-    // Create BOLO with 1-hour expiration
+    const limits = await getGuildLimits(interaction.guildId);
+    const boloCount = await BOLO.countDocuments({ guildId: interaction.guildId, active: true });
+    if (boloCount >= limits.bolos) {
+      return interaction.reply({
+        embeds: [errorEmbed('BOLO Limit Reached', `This server has reached the maximum of **${limits.bolos} active BOLOs**. Upgrade to **Premium** with \`/activatepremium\` for unlimited BOLOs.`)],
+        flags: 64,
+      });
+    }
+
     const boloId = `BOLO-${Date.now()}`;
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     
     const bolo = new BOLO({
       guildId: interaction.guildId,
@@ -1250,7 +1259,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
       .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
       .setTitle(`Character Profile: ${character.characterName}`)
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     return interaction.update({
@@ -1312,7 +1321,7 @@ export async function handleLEOManageBolosSelect(interaction) {
       .setColor('#ff0000')
       .setTitle(`BOLO Details`)
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     return interaction.update({

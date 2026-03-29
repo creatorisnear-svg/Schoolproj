@@ -10,7 +10,7 @@ function menuEmbed(title, description) {
     .setColor('#5865F2')
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RolePlayManager' });
 }
 
 export async function handleBackToMenu(interaction) {
@@ -283,7 +283,7 @@ export async function handleBackToMenu(interaction) {
         new EmbedBuilder()
           .setColor('#FF3860')
           .setDescription('Something went wrong. Please try running the command again.')
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'RolePlayManager' })
       ],
       content: '',
       components: [],

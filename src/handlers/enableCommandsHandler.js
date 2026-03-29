@@ -21,7 +21,7 @@ export async function handleEnableChoiceButton(interaction) {
         .setColor('#FF0000')
         .setTitle('Permission Denied')
         .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
       
       return interaction.reply({
         embeds: [embed],
@@ -45,7 +45,7 @@ export async function handleEnableChoiceButton(interaction) {
         .setColor('#00AA00')
         .setTitle('Enable Features')
         .setDescription('Select which features you want to enable:')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       const enableRow1 = new ActionRowBuilder()
         .addComponents(
@@ -105,7 +105,7 @@ export async function handleEnableChoiceButton(interaction) {
         .setColor('#FF0000')
         .setTitle('Disable Features')
         .setDescription('Select which features you want to disable:')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       const disableRow1 = new ActionRowBuilder()
         .addComponents(
@@ -182,7 +182,7 @@ export async function handleEnableCommandButton(interaction) {
         .setColor('#FF0000')
         .setTitle('Permission Denied')
         .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
       
       return interaction.reply({
         embeds: [embed],
@@ -350,7 +350,7 @@ function createSuccessEmbed(title, description) {
     .setColor('#00AA00')
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RolePlayManager' });
 }
 
 function createErrorEmbed(description) {
@@ -358,5 +358,5 @@ function createErrorEmbed(description) {
     .setColor('#FF0000')
     .setTitle('Error')
     .setDescription(description)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RolePlayManager' });
 }

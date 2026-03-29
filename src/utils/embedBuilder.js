@@ -11,7 +11,7 @@ const COLORS = {
 export function createEmbed(options = {}) {
   const embed = new EmbedBuilder()
     .setColor(options.color || COLORS.info)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RolePlayManager' });
 
   if (options.title) embed.setTitle(options.title);
   if (options.description) embed.setDescription(options.description);

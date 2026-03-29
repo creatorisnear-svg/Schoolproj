@@ -644,7 +644,7 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
       .setColor('#5865F2')
       .setTitle(ticketConfig.panelTitle || 'Support Tickets')
       .setDescription(ticketConfig.panelDescription || 'Select a category below to open a support ticket. A private channel will be created for you.')
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     // Create buttons for each selected ticket type with their custom colors
@@ -887,7 +887,7 @@ export async function handleTicketCreationModal(interaction) {
         { name: 'Ticket', value: ticketId, inline: true },
         { name: 'Category', value: ticketType.label, inline: true }
       )
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     await channel.send({
@@ -900,7 +900,7 @@ export async function handleTicketCreationModal(interaction) {
 
     // Reply to user
     await interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'EverLink' })],
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RolePlayManager' })],
       flags: 64,
     });
   } catch (error) {
@@ -956,7 +956,7 @@ export async function handleTicketCloseButton(interaction) {
         { name: 'Ticket', value: ticketId, inline: true },
         { name: 'Closed By', value: `<@${interaction.user.id}>`, inline: true }
       )
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     // Show only delete button after closing

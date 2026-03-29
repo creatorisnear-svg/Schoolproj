@@ -2,12 +2,12 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('View all EverLink commands and features');
+  .setDescription('View all RolePlayManager commands and features');
 
 export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
     .setColor('#0099ff')
-    .setTitle('📘 EverLink - Command Help')
+    .setTitle('📘 RolePlayManager - Command Help')
     .setDescription('Complete guide to all available commands')
     .addFields(
       {
@@ -51,12 +51,17 @@ export async function execute(interaction) {
         inline: false,
       },
       {
+        name: '🎙️ AI Dispatch (Premium)',
+        value: '/dispatchsetup - Configure AI voice dispatch\n/activatepremium - Activate a premium key',
+        inline: false,
+      },
+      {
         name: '⚙️ Utility Commands',
         value: '/enablecommands - Enable/disable features\n/reloadconfig - Reload config\n/clear - Delete messages\n/embed - Send embed\n/help - Show this help',
         inline: false,
       }
     )
-    .setFooter({ text: 'EverLink | Type / to see command options' })
+    .setFooter({ text: 'RolePlayManager | Type / to see command options' })
     .setTimestamp();
 
   return interaction.reply({

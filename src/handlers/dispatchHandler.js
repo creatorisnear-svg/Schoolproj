@@ -644,7 +644,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
             )
             .addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
-            .setFooter({ text: 'EverLink' })
+            .setFooter({ text: 'RolePlayManager' })
             .setTimestamp();
 
           const clearBtn = new ButtonBuilder()
@@ -688,7 +688,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           const embed = new EmbedBuilder()
             .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
             .setTitle('🔍 Plate Lookup')
-            .setFooter({ text: 'EverLink' })
+            .setFooter({ text: 'RolePlayManager' })
             .setTimestamp()
             .addFields(
               { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
@@ -713,7 +713,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           const embed = new EmbedBuilder()
             .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
             .setTitle('🔍 Name Lookup')
-            .setFooter({ text: 'EverLink' })
+            .setFooter({ text: 'RolePlayManager' })
             .setTimestamp()
             .addFields(
               { name: '👮 Requested By', value: `<@${userId}>`, inline: true },
@@ -834,7 +834,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               `**Location:** ${call.location || 'Unknown'}\n` +
               `**Role:** ${role === 'primary responder' ? '🔴 Primary Responder' : '📎 Attached'}`
             )
-            .setFooter({ text: 'EverLink' })
+            .setFooter({ text: 'RolePlayManager' })
             .setTimestamp();
           await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
         }
@@ -911,7 +911,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
         .setTitle('📻 Dispatch Radio')
-        .setFooter({ text: 'EverLink' })
+        .setFooter({ text: 'RolePlayManager' })
         .setTimestamp()
         .addFields(
           { name: '👮 Officer', value: `<@${userId}>`, inline: true },
@@ -975,7 +975,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
                 `Officer **${officerName}** is on a **10-11**. They must return to patrol on their own.\n\n` +
                 `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
               )
-              .setFooter({ text: 'EverLink' })
+              .setFooter({ text: 'RolePlayManager' })
               .setTimestamp();
             const clearBtn = new ButtonBuilder()
               .setCustomId(`dispatch_stop_clear_${userId}`)
@@ -1044,7 +1044,7 @@ export async function rebuildStatusBoard(guild, config) {
   const officerEmbed = new EmbedBuilder()
     .setColor('#23D160')
     .setTitle('🚔 Officer Status Board')
-    .setFooter({ text: 'EverLink' })
+    .setFooter({ text: 'RolePlayManager' })
     .setTimestamp();
 
   if (officers.length === 0) {
@@ -1155,7 +1155,7 @@ export async function handleClearStatusButton(interaction) {
 
     const targetMention = targetUserId === interaction.user.id ? 'Your' : `<@${targetUserId}>'s`;
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`${targetMention} status has been cleared from the board.`).setFooter({ text: 'EverLink' })],
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`${targetMention} status has been cleared from the board.`).setFooter({ text: 'RolePlayManager' })],
       flags: 64,
     });
   } catch (err) {
@@ -1193,7 +1193,7 @@ export async function handleStopClearButton(interaction) {
       .setColor('#23D160')
       .setTitle('✅ Traffic Stop Cleared')
       .setDescription(`<@${targetUserId}> is **10-8 — Available**. The traffic stop has been cleared.`)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     return interaction.update({ embeds: [clearEmbed], components: [] });
@@ -1243,7 +1243,7 @@ async function checkUnrespondedCalls(guild, client) {
             (call.suspectsDescription ? `**Suspects:** ${call.suspectsDescription}\n` : '') +
             `\n**Any available unit, please respond.**`
           )
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'RolePlayManager' })
           .setTimestamp();
         await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
       }
@@ -1286,6 +1286,13 @@ export async function initDispatchForGuild(guild, client) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
     if (!config || !config.enabled || config.patrolChannelIds.length === 0) return;
+
+    const { isPremiumGuild } = await import('../utils/premiumCheck.js');
+    const premium = await isPremiumGuild(guild.id);
+    if (!premium) {
+      console.log(`[Dispatch] Skipping AI dispatch for ${guild.name} — not premium`);
+      return;
+    }
 
     const { setupDispatchForGuild, moveToChannel } = await import('../utils/voiceListener.js');
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });

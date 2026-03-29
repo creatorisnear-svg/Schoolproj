@@ -31,7 +31,7 @@ export async function execute(interaction) {
 
     const modal = new ModalBuilder()
       .setCustomId('verify_modal')
-      .setTitle('EverLink Verification');
+      .setTitle('RolePlayManager Verification');
 
     const psnXboxInput = new TextInputBuilder()
       .setCustomId('psnxbox')

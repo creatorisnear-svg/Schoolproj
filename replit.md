@@ -1,21 +1,21 @@
-# EverLink Discord Bot
+# RolePlayManager Discord Bot
 
 ## Overview
-EverLink is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
+RolePlayManager is a Discord bot designed for multi-server roleplay and gaming communities, particularly those involved in GTA5 RP. Its core purpose is to streamline community management through features like emergency reporting (911), member verification, staff management, a strike system, priority tracking, a roleplay calendar, sticky messages, anti-promoting, reaction roles, and a role request system. The bot offers independent configuration for each server, enhancing administration and member experience in roleplaying environments. The project also aims to provide a comprehensive economy system with role-based income, work/crime commands, gambling, a store/inventory, and granular permission controls.
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- EverLink branding on all embeds (footer: "EverLink")
+- RolePlayManager branding on all embeds (footer: "RolePlayManager")
 - MongoDB for persistent data storage
 - Staff and Admins have full access to all commands
 - General members restricted to roleplay/verification commands only
 
 ## System Architecture
-The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
+The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v14 library, with MongoDB Atlas for persistent data storage.
 
 **UI/UX Decisions:**
 - All bot responses leverage Discord embeds for a clean, professional, and branded interface.
-- Embeds consistently feature "EverLink" branding in the footer.
+- Embeds consistently feature "RolePlayManager" branding in the footer.
 - Interactive elements utilize Discord dropdown selectors, modals, and buttons.
 - Configuration fallback messages are provided for unconfigured features.
 
@@ -41,6 +41,8 @@ The EverLink Discord bot is built on Node.js (v20) using the Discord.js v14 libr
   - **Status Board with Active Calls:** The officer status board (`rebuildStatusBoard`) now includes a second embed showing all active 911 calls with responding/attached officers. Officers on the board show which call they're attached to. The board updates when officers respond/attach/dismiss calls or when new 911 calls are created.
   - **911 Call Repeat Announcements:** A 60-second interval checks for active 911 calls older than 2 minutes with no responding or attached officers. Unresponded calls get a text reminder in the dispatch channel and a TTS announcement over the voice channel. Reminders repeat every 2 minutes until someone responds. Cleanup removes tracking for resolved calls.
   - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** — without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
+
+**Premium System:** Premium keys lock to one guild. Servers without premium have limits: 100 characters, 200 vehicles, 100 firearms, 20 active BOLOs. AI Voice Dispatch requires premium. Use `/activatepremium` with a valid key. Keys stored in `PremiumKey` model; checks cached for 5 minutes via `src/utils/premiumCheck.js`.
 
 **Economy System:** A comprehensive economy with staff (`/economysetup`, `/storesetup`) and member (`/economy`) commands.
     - **Staff Commands:** Manage currency (symbol, start/max balance), money (add/remove/reset, log channel, leaderboard), work/crime settings (cooldowns, payouts, fine rates, custom replies), role income (amounts, cooldowns, fines), chat money (amounts, channels, cooldowns), gambling settings (bet limits, game cooldowns, symbols), and feature permissions.

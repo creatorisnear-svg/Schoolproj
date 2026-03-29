@@ -99,7 +99,7 @@ export async function execute(interaction) {
           { name: 'Action Taken', value: actionTaken, inline: false }
         )
         .setTimestamp()
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       await targetUser.send({ embeds: [strikeDM] }).catch(() => {});
     }
@@ -119,7 +119,7 @@ export async function execute(interaction) {
             { name: 'Action Taken', value: actionTaken, inline: false }
           )
           .setTimestamp()
-          .setFooter({ text: 'EverLink' });
+          .setFooter({ text: 'RolePlayManager' });
 
         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
       }

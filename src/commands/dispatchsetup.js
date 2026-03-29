@@ -1,15 +1,24 @@
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
 import { isAdmin } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
+import { isPremiumGuild } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('dispatchsetup')
-  .setDescription('Configure the AI Voice Dispatch system (Admin only)');
+  .setDescription('Configure the AI Voice Dispatch system (Premium only)');
 
 export async function execute(interaction) {
   if (!await isAdmin(interaction.member)) {
     return interaction.reply({
       embeds: [errorEmbed('Only server administrators can configure the AI dispatch system.')],
+      flags: 64,
+    });
+  }
+
+  const premium = await isPremiumGuild(interaction.guildId);
+  if (!premium) {
+    return interaction.reply({
+      embeds: [errorEmbed('🌟 Premium Required', 'AI Voice Dispatch is a **Premium** feature. Use `/activatepremium` with a valid key to unlock it.')],
       flags: 64,
     });
   }
@@ -42,7 +51,7 @@ export async function execute(interaction) {
         .setColor('#5865F2')
         .setTitle('AI Dispatch Setup')
         .setDescription(`Configure the AI-powered voice dispatch system. Officers speak in monitored voice channels — the bot transcribes their call, generates a realistic dispatcher response, and updates the live status board.${warning}`)
-        .setFooter({ text: 'EverLink' }),
+        .setFooter({ text: 'RolePlayManager' }),
     ],
     components: [menu],
     flags: 64,

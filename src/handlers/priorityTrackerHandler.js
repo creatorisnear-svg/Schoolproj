@@ -140,6 +140,6 @@ export async function buildPriorityEmbed(priority) {
     .setTitle('🚨 Priority Tracker')
     .setDescription(description)
     .setColor(priority.priorityActive ? 0xFF0000 : 0x808080)
-    .setFooter({ text: 'EverLink' })
+    .setFooter({ text: 'RolePlayManager' })
     .setTimestamp();
 }

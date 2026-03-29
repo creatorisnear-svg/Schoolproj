@@ -174,7 +174,7 @@ async function handleVerifyModal(interaction) {
           
           const embed = new EmbedBuilder()
             .setColor('#FFA500')
-            .setTitle('EverLink Verification Pending')
+            .setTitle('RolePlayManager Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user} (${interaction.user.id})`, inline: false },
               { name: 'PSN / XBOX', value: psnxbox, inline: false }
@@ -190,7 +190,7 @@ async function handleVerifyModal(interaction) {
             embed.addFields(questionFields);
           }
 
-          embed.setTimestamp().setFooter({ text: 'EverLink' });
+          embed.setTimestamp().setFooter({ text: 'RolePlayManager' });
 
           const msg = await approvalChannel.send({ embeds: [embed], components: [row] });
           pending.messageId = msg.id;
@@ -254,7 +254,7 @@ async function handleVerifyModal(interaction) {
           }));
           logEmbed.addFields(questionFields);
 
-          logEmbed.setTimestamp().setFooter({ text: 'EverLink' });
+          logEmbed.setTimestamp().setFooter({ text: 'RolePlayManager' });
 
           await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
@@ -267,7 +267,7 @@ async function handleVerifyModal(interaction) {
         .setColor('#00ff00')
         .setTitle('Verification Successful')
         .setDescription(dmMessage)
-        .setFooter({ text: 'EverLink' })
+        .setFooter({ text: 'RolePlayManager' })
       ]
     });
 
@@ -275,7 +275,7 @@ async function handleVerifyModal(interaction) {
       .setColor('#00ff00')
       .setTitle('You\'re Verified!')
       .setDescription('You may now see all member channels. Welcome to the community!')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     console.log(`Member ${interaction.user.username} successfully verified (instant)`);
     return interaction.reply({

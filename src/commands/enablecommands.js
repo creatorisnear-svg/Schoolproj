@@ -16,7 +16,7 @@ export async function execute(interaction) {
       .setColor('#FF0000')
       .setTitle('Permission Denied')
       .setDescription('You do not have permission to use this command. This is an admin/staff-only command.')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
     
     return interaction.reply({
       embeds: [embed],
@@ -33,7 +33,7 @@ export async function execute(interaction) {
         .setColor('#FF6600')
         .setTitle('Setup Required')
         .setDescription('Before you can manage bot features, you need to set up the system first.\n\n**Here\'s what to do:**\n1. Have an admin run `/setlogchannel` to designate a channel for bot logs\n2. Have an admin run `/addstaff` to add bot staff members\n3. Return here and you\'ll be able to enable or disable features')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
       
       return interaction.reply({
         embeds: [embed],
@@ -46,7 +46,7 @@ export async function execute(interaction) {
       .setColor('#2E2E2E')
       .setTitle('Feature Management')
       .setDescription('What would you like to do?')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     const choiceRow = new ActionRowBuilder()
       .addComponents(
@@ -72,7 +72,7 @@ export async function execute(interaction) {
       .setColor('#FF0000')
       .setTitle('Error')
       .setDescription('An error occurred.')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
     
     return interaction.reply({
       embeds: [embed],

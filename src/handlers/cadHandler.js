@@ -2,6 +2,7 @@ import CADConfig from '../models/CADConfig.js';
 import CADCharacter from '../models/CADCharacter.js';
 import { ActionRowBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
+import { getGuildLimits } from '../utils/premiumCheck.js';
 
 async function showSetupMenu(interaction) {
   const menu = new ActionRowBuilder()
@@ -383,7 +384,7 @@ export async function handleCADCharacterMenu(interaction) {
           .setColor(c.status === 'wanted' ? '#ff0000' : '#00ff00')
           .setTitle(`${c.characterName}`)
           .setDescription(description)
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'RolePlayManager' })
           .setTimestamp();
       });
 
@@ -522,12 +523,20 @@ export async function handleCADCharacterCreateModal(interaction) {
   const age = interaction.fields.getTextInputValue('character_age') || null;
   const gender = interaction.fields.getTextInputValue('character_gender') || null;
 
-  // Capitalize first letter of each word
   characterName = characterName.split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
 
   try {
+    const limits = await getGuildLimits(interaction.guildId);
+    const charCount = await CADCharacter.countDocuments({ guildId: interaction.guildId });
+    if (charCount >= limits.characters) {
+      return interaction.reply({
+        embeds: [errorEmbed('Character Limit Reached', `This server has reached the maximum of **${limits.characters} characters**. Upgrade to **Premium** with \`/activatepremium\` for unlimited characters.`)],
+        flags: 64,
+      });
+    }
+
     const existing = await CADCharacter.findOne({ guildId: interaction.guildId, userId: interaction.user.id, characterName });
 
     if (existing) {
@@ -564,7 +573,7 @@ export async function handleCADCharacterCreateModal(interaction) {
       .setColor('#0099ff')
       .setTitle('✅ Character Created - Step 1/3')
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     // Show "Continue Character" button for Step 2
@@ -703,7 +712,7 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
       .setColor('#0099ff')
       .setTitle('✅ Character Setup - Step 2/3')
       .setDescription(description)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     // Show license and veteran status buttons for Step 3
@@ -739,7 +748,7 @@ export async function handleCharacterHeightRaceModal(interaction, characterId) {
       .setColor('#0099ff')
       .setTitle('📋 Final Setup - Step 3/3')
       .setDescription('**Select your license status:**\n(Click one option below)\n\n**Select your special status:**\n(Click one option below, or click "✅ Done" to skip)')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     return interaction.reply({
       embeds: [embed, statusEmbed],
@@ -871,6 +880,16 @@ export async function handleCADVehicleAddModal(interaction) {
   const condition = interaction.fields.getTextInputValue('vehicle_condition') || null;
 
   try {
+    const limits = await getGuildLimits(interaction.guildId);
+    const allChars = await CADCharacter.find({ guildId: interaction.guildId }, 'vehicles');
+    const vehicleCount = allChars.reduce((sum, c) => sum + (c.vehicles?.length || 0), 0);
+    if (vehicleCount >= limits.vehicles) {
+      return interaction.reply({
+        embeds: [errorEmbed('Vehicle Limit Reached', `This server has reached the maximum of **${limits.vehicles} vehicles**. Upgrade to **Premium** with \`/activatepremium\` for unlimited vehicles.`)],
+        flags: 64,
+      });
+    }
+
     await CADCharacter.updateOne(
       { _id: characterId },
       { $push: { vehicles: { make, model, color, licensePlate: plate, condition } } }
@@ -934,6 +953,16 @@ export async function handleCADGunAddModal(interaction) {
   const serialNumber = interaction.fields.getTextInputValue('gun_serial') || null;
 
   try {
+    const limits = await getGuildLimits(interaction.guildId);
+    const allChars = await CADCharacter.find({ guildId: interaction.guildId }, 'guns');
+    const gunCount = allChars.reduce((sum, c) => sum + (c.guns?.length || 0), 0);
+    if (gunCount >= limits.firearms) {
+      return interaction.reply({
+        embeds: [errorEmbed('Firearm Limit Reached', `This server has reached the maximum of **${limits.firearms} firearms**. Upgrade to **Premium** with \`/activatepremium\` for unlimited firearms.`)],
+        flags: 64,
+      });
+    }
+
     await CADCharacter.updateOne(
       { _id: characterId },
       { $push: { guns: { name: gunName, serialNumber } } }

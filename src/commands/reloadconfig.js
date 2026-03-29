@@ -19,7 +19,7 @@ export async function execute(interaction) {
       .setColor('#00AA00')
       .setTitle('✅ Configuration Reloaded')
       .setDescription('All bot configurations have been reloaded from the database.\n\nThe following are loaded on-demand:\n• Server Configuration\n• Staff Members\n• Verification System\n• Welcome System\n• Priority Tracker\n• Strike System\n• Ticket Support\n• Roleplay Commands\n• Reaction Roles\n• Role Request System\n• Sticky Messages\n• Emergency Calls\n• CAD Configuration')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     return interaction.reply({
       embeds: [embed],

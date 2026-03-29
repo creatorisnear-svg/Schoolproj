@@ -11,7 +11,7 @@ function menuEmbed(title, description) {
     .setColor('#5865F2')
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RolePlayManager' });
 }
 
 function createSetupMenu() {
@@ -1041,7 +1041,7 @@ export async function handleSetupModals(interaction) {
         .setColor('#0099ff')
         .setTitle('✅ Server Verification')
         .setDescription('Click the button below to verify and access all member channels!')
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       await channel.send({
         embeds: [verifyEmbed],
@@ -1385,7 +1385,7 @@ async function handleVerifyChannelSelect(interaction) {
       .setColor('#0099ff')
       .setTitle('✅ Server Verification')
       .setDescription('Click the button below to verify and access all member channels!')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     await channel.send({
       embeds: [verifyEmbed],
@@ -2291,7 +2291,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor('#2E2E2E')
         .setTitle('Whitelisted Invite Links')
         .setDescription(linkList)
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       return interaction.update({
         embeds: [embed],
@@ -2321,7 +2321,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor(config.staffCanBypassLinks ? '#00AA00' : '#FF0000')
         .setTitle('Staff Bypass Updated')
         .setDescription(description)
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       return interaction.update({
         embeds: [embed],
@@ -2349,7 +2349,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .setColor('#2E2E2E')
         .setTitle('Anti-Promoting Settings')
         .setDescription(description)
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
 
       return interaction.update({
         embeds: [embed],
@@ -2523,7 +2523,7 @@ async function handleStatusMainMenu(interaction) {
             { name: 'Interval', value: `${statusConfig.intervalMinutes} minutes`, inline: true },
             { name: 'Auto-delete', value: `${statusConfig.deleteAfterSeconds} seconds`, inline: true }
           ],
-          footer: { text: 'EverLink' }
+          footer: { text: 'RolePlayManager' }
         }],
         flags: 64,
       });
@@ -2670,7 +2670,7 @@ async function handleVerificationApprove(interaction) {
           .setColor('#00ff00')
           .setTitle('Verification Approved')
           .setDescription('Your verification has been approved! You now have access to member channels.')
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'RolePlayManager' })
         ]
       }).catch(() => {});
     }
@@ -2683,7 +2683,7 @@ async function handleVerificationApprove(interaction) {
         .setColor('#00ff00')
         .setTitle('Approved')
         .setDescription(`${pending.username} has been verified.`)
-        .setFooter({ text: 'EverLink' })
+        .setFooter({ text: 'RolePlayManager' })
       ],
       components: [],
     });
@@ -2736,7 +2736,7 @@ async function handleVerificationReject(interaction) {
           .setColor('#ff0000')
           .setTitle('Verification Rejected')
           .setDescription('Your verification application has been rejected. Please try again with more information.')
-          .setFooter({ text: 'EverLink' })
+          .setFooter({ text: 'RolePlayManager' })
         ]
       }).catch(() => {});
     }
@@ -2749,7 +2749,7 @@ async function handleVerificationReject(interaction) {
         .setColor('#ff0000')
         .setTitle('Rejected')
         .setDescription(`${pending.username}'s verification has been rejected.`)
-        .setFooter({ text: 'EverLink' })
+        .setFooter({ text: 'RolePlayManager' })
       ],
       components: [],
     });
@@ -3002,7 +3002,7 @@ async function handleDispatchSetupMenu(interaction) {
           { name: '🔌 System', value: config.enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
           { name: 'ℹ️ Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
         )
-        .setFooter({ text: 'EverLink' });
+        .setFooter({ text: 'RolePlayManager' });
       return interaction.update({
         embeds: [embed],
         components: [buildDispatchSetupMenu()],

@@ -17,7 +17,7 @@ export async function handleVerifyModal(interaction) {
 
     const modal = new ModalBuilder()
       .setCustomId('verify_modal')
-      .setTitle('EverLink Verification');
+      .setTitle('RolePlayManager Verification');
 
     const psnXboxInput = new TextInputBuilder()
       .setCustomId('psnxbox')
@@ -73,8 +73,8 @@ export async function handleVerifyModalSubmit(interaction) {
         const authEmbed = new EmbedBuilder()
           .setColor('#5865F2')
           .setTitle('🔐 Additional Authorization Required')
-          .setDescription('To complete your verification, you must authorize your Discord account with EverLink.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
-          .setFooter({ text: 'EverLink' });
+          .setDescription('To complete your verification, you must authorize your Discord account with RolePlayManager.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
+          .setFooter({ text: 'RolePlayManager' });
 
         const authRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
@@ -100,12 +100,12 @@ export async function handleVerifyModalSubmit(interaction) {
         if (approvalChannel) {
           const embed = new EmbedBuilder()
             .setColor('#FFA500')
-            .setTitle('EverLink Verification Pending')
+            .setTitle('RolePlayManager Verification Pending')
             .addFields(
               { name: 'Member', value: `${interaction.user}`, inline: true },
               { name: 'PSN/XBOX', value: psnxbox, inline: true }
             )
-            .setFooter({ text: 'EverLink' });
+            .setFooter({ text: 'RolePlayManager' });
 
           if (customAnswer) {
             embed.addFields({ name: 'Custom Question Answer', value: customAnswer });

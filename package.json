@@ -1,7 +1,7 @@
 {
-  "name": "EverLink-discord-bot",
+  "name": "RolePlayManager-discord-bot",
   "version": "1.0.0",
-  "description": "Discord bot for EverLink Community",
+  "description": "Discord bot for RolePlayManager",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

@@ -44,7 +44,7 @@ export async function execute(interaction) {
       .setColor('#2E2E2E')
       .setTitle('Anti-Promoting System Setup')
       .setDescription('Manage whitelisted invite links and staff bypass settings')
-      .setFooter({ text: 'EverLink' });
+      .setFooter({ text: 'RolePlayManager' });
 
     return interaction.reply({
       embeds: [embed],

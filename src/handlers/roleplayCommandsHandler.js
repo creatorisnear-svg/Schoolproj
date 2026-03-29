@@ -231,7 +231,7 @@ export async function handleTwitterPostModal(interaction) {
       .setTitle('Twitter Post')
       .setDescription(message)
       .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     await channel.send({ embeds: [twitterEmbed] });
@@ -275,7 +275,7 @@ export async function handleAnonPostModal(interaction) {
       .setColor('#808080')
       .setTitle('Anonymous Message')
       .setDescription(message)
-      .setFooter({ text: 'EverLink' })
+      .setFooter({ text: 'RolePlayManager' })
       .setTimestamp();
 
     await channel.send({ embeds: [anonEmbed] });
@@ -382,7 +382,7 @@ export async function handle911ReportModal(interaction) {
         { name: 'Last Seen', value: lastSeen, inline: false },
         { name: 'Contact Info', value: contact, inline: false }
       )
-      .setFooter({ text: `EverLink | Call ID: ${callId}` })
+      .setFooter({ text: `RolePlayManager | Call ID: ${callId}` })
       .setTimestamp();
 
     const { ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');

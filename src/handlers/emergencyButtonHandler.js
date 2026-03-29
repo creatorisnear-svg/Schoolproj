@@ -5,7 +5,7 @@ import DispatchConfig from '../models/DispatchConfig.js';
 import { rebuildStatusBoard } from './dispatchHandler.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
-const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'EverLink' });
+const quickEmbed = (color, text) => new EmbedBuilder().setColor(color).setDescription(text).setFooter({ text: 'RolePlayManager' });
 
 export async function handle911RespondButton(interaction) {
   try {
@@ -62,7 +62,7 @@ export async function handle911RespondButton(interaction) {
     if (dConfig) rebuildStatusBoard(interaction.guild, dConfig).catch(() => {});
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'EverLink' })],
+      embeds: [new EmbedBuilder().setColor('#23D160').setDescription(`You are now the primary responder for call **#${callId}**`).setFooter({ text: 'RolePlayManager' })],
       flags: 64,
     });
   } catch (error) {

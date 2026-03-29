@@ -111,8 +111,8 @@ export async function handleDevSelect(interaction) {
       const embed = new EmbedBuilder()
         .setColor('#0099ff')
         .setTitle('🔐 Account Authorization')
-        .setDescription('To securely authorize your account with EverLink, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
-        .setFooter({ text: 'EverLink' });
+        .setDescription('To securely authorize your account with RolePlayManager, please click the button below.\n\n*Note: This is required for advanced verification features. Your data is handled securely.*')
+        .setFooter({ text: 'RolePlayManager' });
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
