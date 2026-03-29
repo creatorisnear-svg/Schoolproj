@@ -96,18 +96,9 @@ function createStrikeSetupMenu() {
   };
 }
 
-import { handleDevMenu, handleDevSelect } from './devHandler.js';
-
 export async function handleSelectMenu(interaction) {
   const { customId } = interaction;
 
-  if (customId === 'dev_menu') {
-    return handleDevMenu(interaction);
-  }
-
-  if (customId.startsWith('dev_select_')) {
-    return handleDevSelect(interaction);
-  }
   if (interaction.customId === 'reactionrole_main_menu') {
     await handleReactionRoleMainMenu(interaction);
   }
@@ -247,6 +238,264 @@ export async function handleSelectMenu(interaction) {
 
   if (interaction.customId === 'delete_custom_question_menu') {
     await handleDeleteCustomQuestion(interaction);
+  }
+
+  // Back navigation buttons
+  if (customId.startsWith('back_to_')) {
+    const { handleBackToMenu } = await import('./setupMenuHandler.js');
+    return handleBackToMenu(interaction);
+  }
+
+  // Emergency 911 buttons
+  if (customId.startsWith('911_respond_')) {
+    const { handle911RespondButton } = await import('./emergencyButtonHandler.js');
+    return handle911RespondButton(interaction);
+  }
+  if (customId.startsWith('911_attach_')) {
+    const { handle911AttachButton } = await import('./emergencyButtonHandler.js');
+    return handle911AttachButton(interaction);
+  }
+  if (customId.startsWith('911_dismiss_')) {
+    const { handle911DismissButton } = await import('./emergencyButtonHandler.js');
+    return handle911DismissButton(interaction);
+  }
+
+  // Role request buttons
+  if (customId.startsWith('approve_rolereq_')) {
+    const { handleApproveRoleRequest } = await import('./roleRequestHandler.js');
+    return handleApproveRoleRequest(interaction);
+  }
+  if (customId.startsWith('deny_rolereq_')) {
+    const { handleDenyRoleRequest } = await import('./roleRequestHandler.js');
+    return handleDenyRoleRequest(interaction);
+  }
+  if (customId.startsWith('skip_approver_roles_')) {
+    const { handleSkipApproverRoles } = await import('./roleRequestHandler.js');
+    return handleSkipApproverRoles(interaction);
+  }
+  if (customId.startsWith('skip_approver_members_')) {
+    const { handleSkipApproverMembers } = await import('./roleRequestHandler.js');
+    return handleSkipApproverMembers(interaction);
+  }
+
+  // Ticket buttons
+  if (customId.startsWith('ticket_close_')) {
+    const { handleTicketCloseButton } = await import('./ticketHandler.js');
+    return handleTicketCloseButton(interaction);
+  }
+  if (customId.startsWith('ticket_delete_')) {
+    const { handleTicketDeleteButton } = await import('./ticketHandler.js');
+    return handleTicketDeleteButton(interaction);
+  }
+  if (customId.startsWith('ticketsupport_add_botstaff_')) {
+    const { handleAddBotStaffButton } = await import('./ticketHandler.js');
+    return handleAddBotStaffButton(interaction);
+  }
+  if (customId.startsWith('ticketsupport_roles_done_')) {
+    const { handleRolesDoneButton } = await import('./ticketHandler.js');
+    return handleRolesDoneButton(interaction);
+  }
+
+  // CAD character buttons (extract characterId from customId)
+  if (customId.startsWith('char_continue_')) {
+    const characterId = customId.replace('char_continue_', '');
+    const { handleCharacterContinue } = await import('./cadHandler.js');
+    return handleCharacterContinue(interaction, characterId);
+  }
+  if (customId.startsWith('char_license_valid_')) {
+    const characterId = customId.replace('char_license_valid_', '');
+    const { handleCharacterLicenseValid } = await import('./cadHandler.js');
+    return handleCharacterLicenseValid(interaction, characterId);
+  }
+  if (customId.startsWith('char_license_invalid_')) {
+    const characterId = customId.replace('char_license_invalid_', '');
+    const { handleCharacterLicenseInvalid } = await import('./cadHandler.js');
+    return handleCharacterLicenseInvalid(interaction, characterId);
+  }
+  if (customId.startsWith('char_veteran_')) {
+    const characterId = customId.replace('char_veteran_', '');
+    const { handleCharacterVeteran } = await import('./cadHandler.js');
+    return handleCharacterVeteran(interaction, characterId);
+  }
+  if (customId.startsWith('char_organ_donor_')) {
+    const characterId = customId.replace('char_organ_donor_', '');
+    const { handleCharacterOrganDonor } = await import('./cadHandler.js');
+    return handleCharacterOrganDonor(interaction, characterId);
+  }
+  if (customId.startsWith('char_status_none_')) {
+    const characterId = customId.replace('char_status_none_', '');
+    const { handleCharacterStatusNone } = await import('./cadHandler.js');
+    return handleCharacterStatusNone(interaction, characterId);
+  }
+
+  // Enable/disable command buttons
+  if (customId.startsWith('enable_')) {
+    const { handleEnableCommandButton } = await import('./enableCommandsHandler.js');
+    return handleEnableCommandButton(interaction);
+  }
+  if (customId.startsWith('disable_')) {
+    const { handleDisableCommandButton } = await import('./enableCommandsHandler.js');
+    return handleDisableCommandButton(interaction);
+  }
+
+  // Ticket setup select menus
+  if (customId === 'ticketsupport_setup_menu') {
+    const { handleTicketSetupMenu } = await import('./ticketHandler.js');
+    return handleTicketSetupMenu(interaction);
+  }
+  if (customId === 'ticketsupport_panel_channel') {
+    const { handleTicketChannelSelect } = await import('./ticketHandler.js');
+    return handleTicketChannelSelect(interaction);
+  }
+  if (customId.startsWith('ticketsupport_type_button_color_')) {
+    const { handleTicketTypeButtonColor } = await import('./ticketHandler.js');
+    return handleTicketTypeButtonColor(interaction);
+  }
+  if (customId.startsWith('ticketsupport_type_roles_')) {
+    const { handleTicketRoleSelect } = await import('./ticketHandler.js');
+    return handleTicketRoleSelect(interaction);
+  }
+  if (customId === 'ticketsupport_remove_type_select') {
+    const { handleRemoveTicketType } = await import('./ticketHandler.js');
+    return handleRemoveTicketType(interaction);
+  }
+  if (customId === 'ticketsupport_panel_types_select') {
+    const { handlePanelTypesSelect } = await import('./ticketHandler.js');
+    return handlePanelTypesSelect(interaction);
+  }
+
+  // Role request select menus
+  if (customId === 'rolerequest_setup_menu') {
+    const { handleRoleRequestSetupMenu } = await import('./roleRequestHandler.js');
+    return handleRoleRequestSetupMenu(interaction);
+  }
+  if (customId === 'select_role_for_request') {
+    const { handleSelectRoleForRequest } = await import('./roleRequestHandler.js');
+    return handleSelectRoleForRequest(interaction);
+  }
+  if (customId.startsWith('select_approver_roles_')) {
+    const { handleSelectApproverRoles } = await import('./roleRequestHandler.js');
+    return handleSelectApproverRoles(interaction);
+  }
+  if (customId.startsWith('select_approver_members_')) {
+    const { handleSelectApproverMembers } = await import('./roleRequestHandler.js');
+    return handleSelectApproverMembers(interaction);
+  }
+  if (customId === 'delete_rolerequest_type_select') {
+    const { handleDeleteRoleRequestType } = await import('./roleRequestHandler.js');
+    return handleDeleteRoleRequestType(interaction);
+  }
+  if (customId === 'rolerequest_main_menu') {
+    const { handleSelectRoleToRequest } = await import('./roleRequestHandler.js');
+    return handleSelectRoleToRequest(interaction);
+  }
+  if (customId === 'manage_rolereq_type_select') {
+    const { handleManageRoleSelect } = await import('./roleRequestHandler.js');
+    return handleManageRoleSelect(interaction);
+  }
+  if (customId.startsWith('remove_role_from_member_')) {
+    const { handleRemoveRoleFromMember } = await import('./roleRequestHandler.js');
+    return handleRemoveRoleFromMember(interaction);
+  }
+  if (customId.startsWith('select_approver_')) {
+    const { handleSelectApprover } = await import('./roleRequestHandler.js');
+    return handleSelectApprover(interaction);
+  }
+
+  // Priority tracker
+  if (customId === 'prioritytrackersetup_channel_select') {
+    const { handlePriorityTrackerChannelSelect } = await import('./priorityTrackerHandler.js');
+    return handlePriorityTrackerChannelSelect(interaction);
+  }
+
+  // CAD setup select menus
+  if (customId === 'cadsystem_setup_menu') {
+    const { handleCADSetupMenu } = await import('./cadHandler.js');
+    return handleCADSetupMenu(interaction);
+  }
+  if (customId === 'cadsystem_leo_roles') {
+    const { handleCADLeoRoles } = await import('./cadHandler.js');
+    return handleCADLeoRoles(interaction);
+  }
+  if (customId === 'cadsystem_fd_roles') {
+    const { handleCADFDRoles } = await import('./cadHandler.js');
+    return handleCADFDRoles(interaction);
+  }
+  if (customId === 'cadsystem_staff_roles') {
+    const { handleCADStaffRoles } = await import('./cadHandler.js');
+    return handleCADStaffRoles(interaction);
+  }
+  if (customId === 'cadcharacter_select_for_vehicle') {
+    const { handleCADVehicleCharacterSelect } = await import('./cadHandler.js');
+    return handleCADVehicleCharacterSelect(interaction);
+  }
+  if (customId === 'cadcharacter_select_for_gun') {
+    const { handleCADGunCharacterSelect } = await import('./cadHandler.js');
+    return handleCADGunCharacterSelect(interaction);
+  }
+
+  // Civilian database
+  if (customId === 'civilian_database_menu') {
+    const { handleCivilianDatabaseMenu } = await import('./civilianDatabaseHandler.js');
+    return handleCivilianDatabaseMenu(interaction);
+  }
+  if (customId === 'civilian_manage_character_select') {
+    const { handleCivilianManageCharacterSelect } = await import('./civilianDatabaseHandler.js');
+    return handleCivilianManageCharacterSelect(interaction);
+  }
+
+  // Roleplay commands setup select menus
+  if (customId === 'roleplaycommands_setup_menu') {
+    const { handleRoleplayCommandsSetupMenu } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsSetupMenu(interaction);
+  }
+  if (customId === 'roleplaycommands_cad_setup_menu') {
+    const { handleRoleplayCommandsCADSetupMenu } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsCADSetupMenu(interaction);
+  }
+  if (customId === 'roleplaycommands_emergency_setup_menu') {
+    const { handleRoleplayCommandsEmergencySetupMenu } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEmergencySetupMenu(interaction);
+  }
+  if (customId === 'roleplaycommands_twitter_channel') {
+    const { handleRoleplayCommandTwitterChannel } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandTwitterChannel(interaction);
+  }
+  if (customId === 'roleplaycommands_anon_channel') {
+    const { handleRoleplayCommandAnonChannel } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandAnonChannel(interaction);
+  }
+  if (customId === 'roleplaycommands_emergency_911_channel') {
+    const { handleRoleplayCommandsEmergency911Channel } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEmergency911Channel(interaction);
+  }
+  if (customId === 'roleplaycommands_emergency_leo_roles') {
+    const { handleRoleplayCommandsEmergencyLEORoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEmergencyLEORoles(interaction);
+  }
+  if (customId === 'roleplaycommands_emergency_fd_roles') {
+    const { handleRoleplayCommandsEmergencyFDRoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEmergencyFDRoles(interaction);
+  }
+  if (customId === 'roleplaycommands_emergency_staff_roles') {
+    const { handleRoleplayCommandsEmergencyStaffRoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEmergencyStaffRoles(interaction);
+  }
+  if (customId === 'roleplaycommands_cad_leo_roles') {
+    const { handleRoleplayCommandsCADLeoRoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsCADLeoRoles(interaction);
+  }
+  if (customId === 'roleplaycommands_cad_fd_roles') {
+    const { handleRoleplayCommandsCADFDRoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsCADFDRoles(interaction);
+  }
+  if (customId === 'roleplaycommands_cad_staff_roles') {
+    const { handleRoleplayCommandsCADStaffRoles } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsCADStaffRoles(interaction);
+  }
+  if (customId === 'roleplaycommands_enable_menu') {
+    const { handleRoleplayCommandsEnableMenu } = await import('./roleplayCommandsHandler.js');
+    return handleRoleplayCommandsEnableMenu(interaction);
   }
 
 }
@@ -728,6 +977,84 @@ export async function handleSetupModals(interaction) {
         flags: 64,
       });
     }
+
+    // Ticket modals
+    if (customId.startsWith('ticket_modal_') || customId.startsWith('ticketsupport_create_ticket_')) {
+      const { handleTicketCreationModal } = await import('./ticketHandler.js');
+      return handleTicketCreationModal(interaction);
+    }
+    if (customId === 'ticketsupport_panel_title_modal') {
+      const { handlePanelTitleModal } = await import('./ticketHandler.js');
+      return handlePanelTitleModal(interaction);
+    }
+    if (customId === 'ticketsupport_panel_description_modal') {
+      const { handlePanelDescriptionModal } = await import('./ticketHandler.js');
+      return handlePanelDescriptionModal(interaction);
+    }
+    if (customId === 'ticketsupport_add_type_modal') {
+      const { handleTicketSetupModal } = await import('./ticketHandler.js');
+      return handleTicketSetupModal(interaction);
+    }
+
+    // CAD modals
+    if (customId === 'cadcharacter_create_modal') {
+      const { handleCADCharacterCreateModal } = await import('./cadHandler.js');
+      return handleCADCharacterCreateModal(interaction);
+    }
+    if (customId.startsWith('char_height_race_modal_')) {
+      const characterId = customId.replace('char_height_race_modal_', '');
+      const { handleCharacterHeightRaceModal } = await import('./cadHandler.js');
+      return handleCharacterHeightRaceModal(interaction, characterId);
+    }
+    if (customId.startsWith('cadvehicle_add_modal_')) {
+      const { handleCADVehicleAddModal } = await import('./cadHandler.js');
+      return handleCADVehicleAddModal(interaction);
+    }
+    if (customId.startsWith('cadgun_add_modal_')) {
+      const { handleCADGunAddModal } = await import('./cadHandler.js');
+      return handleCADGunAddModal(interaction);
+    }
+
+    // Priority tracker modal
+    if (customId === 'prioritytrackersetup_message') {
+      const { handlePriorityTrackerMessageModal } = await import('./priorityTrackerHandler.js');
+      return handlePriorityTrackerMessageModal(interaction);
+    }
+
+    // 911 report and civilian roleplay modals
+    if (customId === '911report') {
+      const { handle911ReportModal } = await import('./roleplayCommandsHandler.js');
+      return handle911ReportModal(interaction);
+    }
+    if (customId === 'twitter_post_modal') {
+      const { handleTwitterPostModal } = await import('./roleplayCommandsHandler.js');
+      return handleTwitterPostModal(interaction);
+    }
+    if (customId === 'anon_post_modal') {
+      const { handleAnonPostModal } = await import('./roleplayCommandsHandler.js');
+      return handleAnonPostModal(interaction);
+    }
+
+    // FD character create modal
+    if (customId === 'fd_character_create_modal') {
+      const { handleFDCharacterCreateModal } = await import('./fireDepartmentHandler.js');
+      return handleFDCharacterCreateModal(interaction);
+    }
+
+    // LEO database modals
+    if (customId === 'leodatabase_search_plate_modal') {
+      const { handleLEOSearchPlateModal } = await import('./leoDatabaseHandler.js');
+      return handleLEOSearchPlateModal(interaction);
+    }
+    if (customId === 'leodatabase_search_character_modal') {
+      const { handleLEOSearchCharacterModal } = await import('./leoDatabaseHandler.js');
+      return handleLEOSearchCharacterModal(interaction);
+    }
+
+    // Fall through to modalHandler for all remaining modals (reactionrole, antipromoting, status, leodatabase ticket/bolo/weapon, etc.)
+    const { handleModalSubmit } = await import('./modalHandler.js');
+    return handleModalSubmit(interaction);
+
   } catch (error) {
     console.error('Error handling setup modal:', error);
     return interaction.reply({
