@@ -185,7 +185,25 @@ function _setupReceiver(connection, guild, state, guildId) {
   });
 }
 
-/** Destroy the voice connection and remove all state for this guild. */
+/**
+ * Idle disconnect: destroy the voice connection but keep patrol config in memory.
+ * Use this when all patrol channels are temporarily empty so the bot can rejoin
+ * automatically when officers next enter a patrol channel (via voiceStateUpdate).
+ */
+export function disconnectDispatchChannel(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
+  }
+}
+
+/**
+ * Full teardown: destroy the voice connection AND remove all state for this guild.
+ * Use this only for explicit unconfigure flows (e.g., system disabled via /dispatchsetup).
+ */
 export function leaveDispatchChannel(guildId) {
   const state = dispatchState.get(guildId);
   if (!state) return;

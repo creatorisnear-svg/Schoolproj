@@ -161,7 +161,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
   try {
-    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, leaveDispatchChannel } = await import('./utils/voiceListener.js');
+    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel } = await import('./utils/voiceListener.js');
 
     // Officer entered a patrol channel that the bot isn't currently in
     if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
@@ -193,9 +193,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
           }
         }
 
-        // No patrol channel has human members — disconnect entirely
+        // No patrol channel has human members — idle disconnect (preserves state for re-join)
         if (!moved) {
-          leaveDispatchChannel(guild.id);
+          disconnectDispatchChannel(guild.id);
         }
       }
     }
