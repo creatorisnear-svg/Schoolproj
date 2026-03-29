@@ -662,15 +662,8 @@ export async function handleManageRoleSelect(interaction) {
     // Defer the interaction to avoid timeout on large guild member fetches
     await interaction.deferReply({ flags: 64 });
 
-    // Get all members with this role - use cached members to avoid rate limits
     let membersWithRole = [];
-    
-    // Try to use cached members first
-    if (interaction.guild.members.cache.size > 0) {
-      const members = interaction.guild.members.cache;
-      membersWithRole = Array.from(members.values())
-        .filter(m => m.roles.cache.has(roleConfig.roleId) && !m.user.bot);
-    } else {
+    {
       // Only fetch if cache is empty, with retry and exponential backoff
       let members;
       let retries = 3;

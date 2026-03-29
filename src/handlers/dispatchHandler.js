@@ -307,6 +307,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (!transcript || transcript.trim().length < 3) return;
     console.log(`[Dispatch] Transcript: "${transcript}"`);
 
+    const words = transcript.trim().toLowerCase().split(/\s+/);
+    const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === 'dispatch');
+    if (dispatchIdx === -1 || dispatchIdx > 3) {
+      console.log(`[Dispatch] Ignored — officer did not address dispatch`);
+      return;
+    }
+    const cleanedTranscript = words.slice(dispatchIdx + 1).join(' ');
+    if (cleanedTranscript.length < 2) return;
+    transcript = cleanedTranscript;
+    console.log(`[Dispatch] Cleaned transcript: "${transcript}"`);
+
     // --- "Show me in / show me on" join-stop detection ---
     const joinTargetName = detectJoinStop(transcript);
     if (joinTargetName && config.trafficStopChannelIds?.length > 0) {

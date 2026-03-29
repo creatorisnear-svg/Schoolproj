@@ -177,8 +177,15 @@ export async function moveToChannel(channel) {
               console.warn('[UDP Bypass] ipify failed:', e.message);
             }
 
-            await new Promise(res => {
+            const localPort = await new Promise(res => {
+              const start = Date.now();
               const tryPort = () => {
+                if (connection.state.status === VoiceConnectionStatus.Ready ||
+                    state.connection !== connection ||
+                    Date.now() - start > 2000) {
+                  res(0);
+                  return;
+                }
                 try {
                   const p = udp.socket.address().port;
                   if (p > 0) { res(p); return; }
@@ -187,7 +194,10 @@ export async function moveToChannel(channel) {
               };
               tryPort();
             });
-            const localPort = (() => { try { return udp.socket.address().port; } catch { return 12345; } })();
+            if (localPort === 0) {
+              console.log('[UDP Bypass] Aborted — connection state changed or port wait timed out');
+              return;
+            }
             console.log(`[UDP Bypass] Emitting fake discovery: ip=${externalIp} port=${localPort}`);
 
             const fake = Buffer.alloc(74);
