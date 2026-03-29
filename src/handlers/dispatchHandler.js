@@ -23,10 +23,30 @@ const TEN_CODES = {
   '10-99': { label: '10-99 Officer Down', action: null },
 };
 
-function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error('OPENAI_API_KEY not configured');
-  return new OpenAI({ apiKey: key });
+/**
+ * Returns an AI client + provider info.
+ * Prefers GROQ_API_KEY (free). Falls back to OPENAI_API_KEY (paid).
+ */
+function getAIClient() {
+  const groqKey = process.env.GROQ_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (groqKey) {
+    return {
+      client: new OpenAI({ apiKey: groqKey, baseURL: 'https://api.groq.com/openai/v1' }),
+      provider: 'groq',
+    };
+  }
+  if (openaiKey) {
+    return {
+      client: new OpenAI({ apiKey: openaiKey }),
+      provider: 'openai',
+    };
+  }
+  throw new Error('No AI API key configured. Set GROQ_API_KEY (free) or OPENAI_API_KEY.');
+}
+
+function hasAIKey() {
+  return !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
 }
 
 /**
@@ -89,13 +109,14 @@ function parseTranscript(text) {
 }
 
 async function transcribeAudio(wavBuffer) {
-  const openai = getOpenAI();
+  const { client, provider } = getAIClient();
+  const model = provider === 'groq' ? 'whisper-large-v3' : 'whisper-1';
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
   writeFileSync(tempPath, wavBuffer);
   try {
-    const result = await openai.audio.transcriptions.create({
+    const result = await client.audio.transcriptions.create({
       file: createReadStream(tempPath),
-      model: 'whisper-1',
+      model,
       language: 'en',
     });
     return result.text || '';
@@ -105,10 +126,12 @@ async function transcribeAudio(wavBuffer) {
 }
 
 async function generateDispatchTTS(text) {
-  const openai = getOpenAI();
-  const response = await openai.audio.speech.create({
-    model: 'tts-1',
-    voice: 'onyx',
+  const { client, provider } = getAIClient();
+  const model = provider === 'groq' ? 'playai-tts' : 'tts-1';
+  const voice = provider === 'groq' ? 'Fritz-PlayAI' : 'onyx';
+  const response = await client.audio.speech.create({
+    model,
+    voice,
     input: text,
     response_format: 'opus',
   });
@@ -116,11 +139,12 @@ async function generateDispatchTTS(text) {
 }
 
 async function generateDispatchResponse(officerName, parsed) {
-  const openai = getOpenAI();
+  const { client, provider } = getAIClient();
+  const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+  const response = await client.chat.completions.create({
+    model,
     messages: [
       {
         role: 'system',
@@ -232,7 +256,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         }
 
         // Speak the confirmation in voice
-        if (config.aiEnabled && process.env.OPENAI_API_KEY) {
+        if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
             const civName = civMember?.displayName || civMember?.user?.username || joinTargetName;
@@ -253,7 +277,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     const parsed = parseTranscript(transcript);
 
     let dispatchResponse = null;
-    if (config.aiEnabled && process.env.OPENAI_API_KEY) {
+    if (config.aiEnabled && hasAIKey()) {
       try {
         dispatchResponse = await generateDispatchResponse(officerName, parsed);
       } catch (err) {
@@ -288,7 +312,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
 
     // Speak the dispatcher response in the voice channel
-    if (dispatchResponse && config.aiEnabled && process.env.OPENAI_API_KEY) {
+    if (dispatchResponse && config.aiEnabled && hasAIKey()) {
       try {
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
         const ttsBuffer = await generateDispatchTTS(dispatchResponse);

@@ -14,10 +14,10 @@ export async function execute(interaction) {
     });
   }
 
-  const hasApiKey = !!process.env.OPENAI_API_KEY;
+  const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
   const warning = hasApiKey
     ? ''
-    : '\n\n⚠️ **OPENAI_API_KEY is not set.** AI transcription and responses require this environment variable to be configured on your server.';
+    : '\n\n⚠️ **No AI key set.** Set `GROQ_API_KEY` (free at console.groq.com) or `OPENAI_API_KEY` to enable AI transcription, responses, and TTS.';
 
   const menu = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
