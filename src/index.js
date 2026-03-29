@@ -339,6 +339,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_clear_status_')) {
         const { handleClearStatusButton } = await import('./handlers/dispatchHandler.js');
         await handleClearStatusButton(interaction);
+      } else if (interaction.customId.startsWith('dispatch_stop_clear_')) {
+        const { handleStopClearButton } = await import('./handlers/dispatchHandler.js');
+        await handleStopClearButton(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);

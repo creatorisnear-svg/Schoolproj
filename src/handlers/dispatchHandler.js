@@ -175,7 +175,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         let bestChannelId = null;
         let bestCount = Infinity;
         for (const id of config.trafficStopChannelIds) {
-          if (id === member.voice?.channelId) continue; // skip if already there
+          if (id === member.voice?.channelId) continue;
           const ch = guild.channels.cache.get(id) ||
             await guild.channels.fetch(id).catch(() => null);
           if (!ch) continue;
@@ -183,20 +183,37 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           if (count < bestCount) { bestCount = count; bestChannelId = id; }
         }
         if (bestChannelId && member.voice?.channelId) {
-          const lastPatrolChannelId = member.voice.channelId;
           await member.voice.setChannel(bestChannelId);
-          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, lastPatrolChannelId);
+          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null);
+        }
+        // Post a traffic stop active notice with a 10-8 clear button in the dispatch channel
+        if (config.dispatchChannelId) {
+          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+          if (dispatchCh?.isTextBased()) {
+            const stopEmbed = new EmbedBuilder()
+              .setColor('#FFDD57')
+              .setTitle('🚗 Traffic Stop Active')
+              .setDescription(
+                `**Officer:** <@${userId}>\n` +
+                `**Moved to:** <#${bestChannelId}>\n\n` +
+                `Officer **${officerName}** is on a **10-11**. They must return to patrol on their own.\n\n` +
+                `Press **"✅ 10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
+              )
+              .setFooter({ text: 'EverLink' })
+              .setTimestamp();
+            const clearBtn = new ButtonBuilder()
+              .setCustomId(`dispatch_stop_clear_${userId}`)
+              .setLabel('✅ 10-8 — Stop Clear')
+              .setStyle(ButtonStyle.Success);
+            await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
+          }
         }
       } catch (err) {
         console.error('[Dispatch] Voice channel move error:', err.message);
       }
     } else if (voiceAction === 'available') {
-      const status = await OfficerStatus.findOne({ guildId: guild.id, userId });
-      if (status?.lastPatrolChannelId && member.voice?.channelId) {
-        try {
-          await member.voice.setChannel(status.lastPatrolChannelId);
-        } catch {}
-      }
+      // Officer called 10-8 verbally — clear their stop status (they move back themselves)
       await updateOfficerStatus(guild.id, userId, officerName, '10-8', parsed, null);
     } else if (voiceAction === 'out_of_service') {
       await OfficerStatus.deleteOne({ guildId: guild.id, userId }).catch(() => {});
@@ -324,6 +341,42 @@ export async function handleClearStatusButton(interaction) {
       embeds: [errorEmbed('An error occurred while clearing the status.')],
       flags: 64,
     });
+  }
+}
+
+export async function handleStopClearButton(interaction) {
+  try {
+    const targetUserId = interaction.customId.replace('dispatch_stop_clear_', '');
+
+    const isAdmin = interaction.member.permissions.has('Administrator');
+    const isSelf = interaction.user.id === targetUserId;
+    const staffDoc = await (await import('../models/Staff.js')).default
+      .findOne({ guildId: interaction.guildId, userId: interaction.user.id }).catch(() => null);
+    const isStaff = !!staffDoc;
+
+    if (!isAdmin && !isStaff && !isSelf) {
+      return interaction.reply({
+        embeds: [errorEmbed('Only staff, the officer themselves, or an admin can clear this traffic stop.')],
+        flags: 64,
+      });
+    }
+
+    await OfficerStatus.deleteOne({ guildId: interaction.guildId, userId: targetUserId });
+
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+    await rebuildStatusBoard(interaction.guild, config);
+
+    const clearEmbed = new EmbedBuilder()
+      .setColor('#23D160')
+      .setTitle('✅ Traffic Stop Cleared')
+      .setDescription(`<@${targetUserId}> is **10-8 — Available**. The traffic stop has been cleared.`)
+      .setFooter({ text: 'EverLink' })
+      .setTimestamp();
+
+    return interaction.update({ embeds: [clearEmbed], components: [] });
+  } catch (err) {
+    console.error('[Dispatch] Stop clear button error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred.')], flags: 64 }).catch(() => {});
   }
 }
 
