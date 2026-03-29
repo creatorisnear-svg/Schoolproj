@@ -77,8 +77,35 @@ async function findMemberByName(guild, name) {
   }
 }
 
+/**
+ * Converts spoken word numbers after "ten" into digit form.
+ * e.g. "ten eleven" → "10-11", "ten eighty" → "10-80", "ten four" → "10-4"
+ */
+const WORD_TO_NUM = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
+  fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
+  nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
+  sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+};
+const NUM_WORDS = Object.keys(WORD_TO_NUM).join('|');
+function normalizeSpokenCodes(text) {
+  return text.replace(
+    new RegExp(
+      `\\bten[-\\s]?(${NUM_WORDS})(?:[-\\s](${NUM_WORDS}))?\\b`,
+      'gi'
+    ),
+    (_, part1, part2) => {
+      let val = WORD_TO_NUM[part1.toLowerCase()] || 0;
+      if (part2) val += WORD_TO_NUM[part2.toLowerCase()] || 0;
+      return `10-${val}`;
+    }
+  );
+}
+
 function parseTranscript(text) {
-  const lower = text.toLowerCase();
+  const normalized = normalizeSpokenCodes(text);
+  const lower = normalized.toLowerCase();
 
   let detectedCode = null;
   for (const code of Object.keys(TEN_CODES)) {
@@ -91,12 +118,17 @@ function parseTranscript(text) {
 
   const withMatch = lower.match(/\bwith\s+([a-z][a-z\s]{1,30}?)(?:\s+at|\s+on|\s*$)/i);
   const atMatch = lower.match(/\bat\s+(.{2,40}?)(?:\s+with|\s*$)/i);
+  // Also handle spoken "show me a ten eleven" after normalization
   const showMeMatch = lower.match(/show\s+me\s+(?:a\s+)?(\d{2}[\-\s]?\d{1,2})/i);
 
   if (!detectedCode && showMeMatch) {
     const raw = showMeMatch[1].replace(/\s/, '-');
-    const normalized = `10-${raw.split('-')[1] || raw}`;
-    if (TEN_CODES[normalized]) detectedCode = normalized;
+    const normalized2 = `10-${raw.split('-')[1] || raw}`;
+    if (TEN_CODES[normalized2]) detectedCode = normalized2;
+  }
+
+  if (detectedCode) {
+    console.log(`[Dispatch] Detected code: ${detectedCode} (normalized: "${normalized.trim()}")`);
   }
 
   return {

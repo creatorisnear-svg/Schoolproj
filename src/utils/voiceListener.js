@@ -28,6 +28,9 @@ const dispatchState = new Map();
 /** "guildId:userId" pairs currently being recorded — prevents parallel subscriptions */
 const recordingUsers = new Set();
 
+/** Guild IDs currently in the process of joining a channel — prevents concurrent joins */
+const joiningGuilds = new Set();
+
 /**
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
@@ -82,6 +85,10 @@ export async function moveToChannel(channel) {
     return state.connection;
   }
 
+  // Prevent concurrent joins for the same guild
+  if (joiningGuilds.has(guildId)) return null;
+  joiningGuilds.add(guildId);
+
   if (state.connection) {
     try { state.connection.destroy(); } catch {}
     state.connection = null;
@@ -99,11 +106,13 @@ export async function moveToChannel(channel) {
     });
   } catch (err) {
     console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
+    joiningGuilds.delete(guildId);
     return null;
   }
 
   state.connection = connection;
   state.currentChannelId = channel.id;
+  joiningGuilds.delete(guildId);
 
   _setupReceiver(connection, channel.guild, state, guildId);
 
