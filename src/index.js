@@ -165,11 +165,16 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
     // Officer entered a patrol channel that the bot isn't currently in
     if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
-      // Only move for LEO members (same role filter as transcription path)
+      // Only move for LEO members (dispatch config roles take priority over CAD config)
+      const DispatchConfigModel = (await import('./models/DispatchConfig.js')).default;
       const CADConfigModel = (await import('./models/CADConfig.js')).default;
-      const cadConfig = await CADConfigModel.findOne({ guildId: guild.id });
-      const isLeo = cadConfig?.leoRoleIds?.length > 0 &&
-        newState.member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id));
+      const [dispatchCfg, cadConfig] = await Promise.all([
+        DispatchConfigModel.findOne({ guildId: guild.id }),
+        CADConfigModel.findOne({ guildId: guild.id }),
+      ]);
+      const leoRoleIds = dispatchCfg?.leoRoleIds?.length > 0 ? dispatchCfg.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
+      const isLeo = leoRoleIds.length > 0 &&
+        newState.member?.roles.cache.some(r => leoRoleIds.includes(r.id));
 
       if (isLeo) {
         const channel = newState.channel;

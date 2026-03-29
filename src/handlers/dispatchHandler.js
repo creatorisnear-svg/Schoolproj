@@ -152,8 +152,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (!member) return;
 
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });
-    const isLeo = cadConfig?.leoRoleIds?.length > 0 &&
-      member.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id));
+    const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
+    const isLeo = leoRoleIds.length > 0 && member.roles.cache.some(r => leoRoleIds.includes(r.id));
     if (!isLeo) return;
 
     const officerName = member.displayName || member.user.username;
@@ -517,13 +517,14 @@ export async function initDispatchForGuild(guild, client) {
 
     const { setupDispatchForGuild, moveToChannel } = await import('../utils/voiceListener.js');
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });
+    const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
 
     const options = {
       onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
       userFilter: async (userId) => {
-        if (!cadConfig?.leoRoleIds?.length) return false;
+        if (!leoRoleIds.length) return false;
         const member = await guild.members.fetch(userId).catch(() => null);
-        return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
+        return member?.roles.cache.some(r => leoRoleIds.includes(r.id)) ?? false;
       },
     };
 
@@ -537,8 +538,8 @@ export async function initDispatchForGuild(guild, client) {
         await guild.channels.fetch(channelId).catch(() => null);
       if (!channel) continue;
 
-      const hasLeo = cadConfig?.leoRoleIds?.length > 0 &&
-        channel.members.some(m => m.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)));
+      const hasLeo = leoRoleIds.length > 0 &&
+        channel.members.some(m => m.roles.cache.some(r => leoRoleIds.includes(r.id)));
 
       if (hasLeo) {
         await moveToChannel(channel);

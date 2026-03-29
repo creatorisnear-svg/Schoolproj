@@ -641,6 +641,9 @@ export async function handleSelectMenu(interaction) {
   if (customId === 'dispatch_patrol_channel_select') {
     return handleDispatchPatrolChannelSelect(interaction);
   }
+  if (customId === 'dispatch_leo_role_select') {
+    return handleDispatchLeoRoleSelect(interaction);
+  }
   if (customId === 'dispatch_stop_channel_select') {
     return handleDispatchStopChannelSelect(interaction);
   }
@@ -2820,6 +2823,7 @@ function buildDispatchSetupMenu() {
       .addOptions(
         { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
+        { label: '🎖️ Set LEO Role(s)', value: 'set_leo_roles', description: 'Roles the bot will listen to in patrol channels' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
         { label: '➕ Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
         { label: '🗑️ Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
@@ -2853,6 +2857,18 @@ async function handleDispatchSetupMenu(interaction) {
         .setChannelTypes(ChannelType.GuildText);
       return interaction.update({
         embeds: [menuEmbed('AI Dispatch Setup', 'Select the **text channel** for the live officer status board embed.')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'set_leo_roles') {
+      const selector = new RoleSelectMenuBuilder()
+        .setCustomId('dispatch_leo_role_select')
+        .setPlaceholder('Select LEO role(s)...')
+        .setMinValues(1)
+        .setMaxValues(10);
+      return interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Select the **role(s)** that identify LEO officers. The bot will only listen to members with these roles in patrol channels.\n\nYou can select multiple roles at once.')],
         components: [new ActionRowBuilder().addComponents(selector)],
       });
     }
@@ -2970,12 +2986,16 @@ async function handleDispatchSetupMenu(interaction) {
       const stopCh = config.trafficStopChannelIds?.length > 0
         ? config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ')
         : '*None*';
+      const leoRoles = config.leoRoleIds?.length > 0
+        ? config.leoRoleIds.map(id => `<@&${id}>`).join(', ')
+        : '*Not set (using CAD config)*';
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
         .setTitle('📋 AI Dispatch Settings')
         .addFields(
           { name: '📻 Dispatch Channel', value: dispatchCh, inline: true },
           { name: '🚔 Status Board', value: statusCh, inline: true },
+          { name: '🎖️ LEO Roles', value: leoRoles, inline: false },
           { name: '🎙️ Patrol Channels', value: patrol, inline: false },
           { name: '🚗 Traffic Stop Channels', value: stopCh, inline: false },
           { name: '🤖 AI Responses', value: config.aiEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
@@ -3058,13 +3078,14 @@ async function handleDispatchPatrolChannelSelect(interaction) {
         const { processVoiceCall } = await import('./dispatchHandler.js');
         const CADConfig = (await import('../models/CADConfig.js')).default;
         const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+        const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
 
         const options = {
           onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
           userFilter: async (uid) => {
-            if (!cadConfig?.leoRoleIds?.length) return false;
+            if (!leoRoleIds.length) return false;
             const member = await interaction.guild.members.fetch(uid).catch(() => null);
-            return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
+            return member?.roles.cache.some(r => leoRoleIds.includes(r.id)) ?? false;
           },
         };
 
@@ -3085,6 +3106,25 @@ async function handleDispatchPatrolChannelSelect(interaction) {
     });
   } catch (err) {
     console.error('[Dispatch] Patrol channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchLeoRoleSelect(interaction) {
+  try {
+    const roleIds = interaction.values;
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+    config.leoRoleIds = roleIds;
+    config.markModified('leoRoleIds');
+    await config.save();
+
+    const list = roleIds.map(id => `<@&${id}>`).join(', ');
+    return interaction.update({
+      embeds: [successEmbed('LEO Roles Set', `The bot will now listen to members with: ${list}\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] LEO role select error:', err.message);
     return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
   }
 }
