@@ -95,28 +95,69 @@ function detectJoinStop(text) {
 }
 
 function detectCADLookup(text) {
-  const lower = text.toLowerCase();
-  const plateMatch = lower.match(/run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plate\s+([a-z0-9\s]+)/i);
-  if (plateMatch) {
-    return { type: 'plate', query: plateMatch[1].trim().replace(/\s+/g, '').toUpperCase() };
+  const lower = text.toLowerCase().trim();
+  console.log(`[CAD Detect] Checking transcript for CAD lookup: "${lower}"`);
+
+  const platePatterns = [
+    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?(?:license\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9\s]+)/i,
+    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:for\s+(?:me\s+)?)?([a-z0-9\s]+)/i,
+    /plates?\s+(?:number\s+)?(?:is\s+)?([a-z0-9]{2,}(?:\s+[a-z0-9]+)*)\s*(?:run|check|look)/i,
+    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9\s]+)/i,
+    /run\s+([a-z0-9\s]+?)(?:\s+plate|\s+plates)/i,
+  ];
+
+  for (const pattern of platePatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      const raw = match[1].trim().replace(/\s+/g, '').toUpperCase();
+      if (raw.length >= 2 && raw.length <= 10) {
+        console.log(`[CAD Detect] Plate detected: "${raw}" (pattern: ${pattern.source})`);
+        return { type: 'plate', query: raw };
+      }
+    }
   }
-  const nameMatch = lower.match(/run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?name\s+(.+)/i);
-  if (nameMatch) {
-    return { type: 'name', query: nameMatch[1].trim() };
+
+  const namePatterns = [
+    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:on\s+)?(.+)/i,
+    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:for\s+(?:me\s+)?)?(.+)/i,
+    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:on\s+)?(.+)/i,
+  ];
+
+  for (const pattern of namePatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      const raw = match[1].trim().replace(/[.,!?]+$/g, '');
+      if (raw.length >= 2) {
+        console.log(`[CAD Detect] Name detected: "${raw}" (pattern: ${pattern.source})`);
+        return { type: 'name', query: raw };
+      }
+    }
   }
+
+  console.log(`[CAD Detect] No CAD lookup detected in: "${lower}"`);
   return null;
 }
 
 async function runCADLookup(guildId, lookup) {
+  console.log(`[CAD Lookup] Running ${lookup.type} lookup for "${lookup.query}" in guild ${guildId}`);
+
   if (lookup.type === 'plate') {
+    const escapedPlate = lookup.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const character = await CADCharacter.findOne({
       guildId,
       $or: [
-        { licensePlate: { $regex: new RegExp(`^${lookup.query}$`, 'i') } },
-        { 'vehicles.licensePlate': { $regex: new RegExp(`^${lookup.query}$`, 'i') } },
+        { licensePlate: { $regex: new RegExp(`^${escapedPlate}$`, 'i') } },
+        { 'vehicles.licensePlate': { $regex: new RegExp(`^${escapedPlate}$`, 'i') } },
       ],
     });
-    if (!character) return { found: false, ttsResponse: `Negative, plate ${lookup.query.split('').join(' ')} comes back with no records.` };
+    if (!character) {
+      console.log(`[CAD Lookup] No records found for plate "${lookup.query}"`);
+      return {
+        found: false,
+        ttsResponse: `Negative on that plate, ${lookup.query.split('').join(' ')} comes back with no records in the system. No registered owner found.`,
+      };
+    }
+    console.log(`[CAD Lookup] Plate match found: owner="${character.characterName}", status="${character.status}"`);
 
     const vehicle = character.vehicles?.find(v => v.licensePlate?.toUpperCase() === lookup.query) || character.vehicles?.[0];
     const vehicleDesc = vehicle ? `${vehicle.color || ''} ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim() : 'unknown vehicle';
@@ -154,7 +195,11 @@ async function runCADLookup(guildId, lookup) {
       guildId,
       characterName: { $regex: new RegExp(escapedQuery, 'i') },
     });
-    if (!character) return { found: false, ttsResponse: `Negative, no records found for ${lookup.query}.` };
+    if (!character) {
+      console.log(`[CAD Lookup] No records found for name "${lookup.query}"`);
+      return { found: false, ttsResponse: `Negative, no records found for ${lookup.query} in the system.` };
+    }
+    console.log(`[CAD Lookup] Name match found: "${character.characterName}", status="${character.status}"`);
 
     const wantedStatus = character.status === 'wanted' ? 'WANTED' : 'clean';
     const licenseStatus = character.driverLicenseStatus || 'unknown';
@@ -366,7 +411,8 @@ Keep responses to 1-2 sentences maximum.
 Only respond to what the officer actually said. Do not assume or add details about traffic conditions, weather, nearby units, backup status, or anything the officer did not mention.
 Stick to acknowledging the officer's status and repeating back the key details they gave you (who they're with, their location, their 10-code).
 Common codes: 10-4 (acknowledged), 10-8 (available), 10-11 (traffic stop/pullover), 10-7 (out of service), 10-80 (pursuit), 10-99 (officer down).
-Use "Los Santos" and "Blaine County" for locations. Do not use real-world city names.`,
+Use "Los Santos" and "Blaine County" for locations. Do not use real-world city names.
+If the officer mentions running a plate, running a name, checking plates, or looking someone up, tell them "Copy, say again the plate number" or "Copy, say again the name" — ask them to repeat it clearly so you can run it.`,
       },
       {
         role: 'user',
@@ -529,10 +575,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: '📋 Result', value: 'No records found', inline: false });
+            embed.addFields({ name: '📋 Result', value: '❌ No records found — plate is not registered in the system', inline: false });
           }
           embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
-          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+          await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send plate embed:', e.message));
         } else {
           const embed = new EmbedBuilder()
             .setColor(result.found && result.embed?.status === 'WANTED' ? '#FF0000' : result.found ? '#23D160' : '#808080')
@@ -559,21 +605,27 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               embed.addFields({ name: '🚨 BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: '📋 Result', value: 'No records found', inline: false });
+            embed.addFields({ name: '📋 Result', value: '❌ No records found — name is not in the system', inline: false });
           }
           embed.addFields({ name: '🎙️ Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
-          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+          await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send name embed:', e.message));
         }
+      } else {
+        console.error(`[CAD Lookup] Dispatch channel not found: ${config.dispatchChannelId}`);
       }
 
+      console.log(`[CAD Lookup] Generating TTS response: "${result.ttsResponse}"`);
       if (config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
           const ttsBuffer = await generateDispatchTTS(result.ttsResponse);
+          console.log(`[CAD Lookup] TTS buffer generated (${ttsBuffer.length} bytes), playing audio`);
           playDispatchVoice(guild.id, ttsBuffer);
         } catch (err) {
           console.error('[Dispatch TTS] CAD lookup voice error:', err.message);
         }
+      } else {
+        console.log(`[CAD Lookup] TTS skipped — aiEnabled=${config.aiEnabled}, hasKey=${hasAIKey()}`);
       }
       return;
     }
