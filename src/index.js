@@ -156,6 +156,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const guild = newState.guild;
   const userId = newState.member?.id;
   if (!userId) return;
+  if (newState.member?.user?.bot) return;
 
   const joinedChannelId = newState.channelId;
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;

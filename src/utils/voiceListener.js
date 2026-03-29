@@ -9,6 +9,10 @@ import {
   StreamType,
 } from '@discordjs/voice';
 import { Readable } from 'stream';
+import { createReadStream } from 'fs';
+import { writeFileSync, unlinkSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import prism from 'prism-media';
 
 /**
@@ -117,11 +121,16 @@ export async function moveToChannel(channel) {
   _setupReceiver(connection, channel.guild, state, guildId);
 
   if (state.options?.onJoin) {
-    setTimeout(() => {
-      state.options.onJoin(guildId).catch(err => {
-        console.error('[Dispatch] onJoin callback error:', err.message);
-      });
-    }, 2000);
+    const onReady = () => {
+      setTimeout(() => {
+        if (state.connection === connection) {
+          state.options.onJoin(guildId).catch(err => {
+            console.error('[Dispatch] onJoin callback error:', err.message);
+          });
+        }
+      }, 1000);
+    };
+    connection.once(VoiceConnectionStatus.Ready, onReady);
   }
 
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -244,35 +253,46 @@ export function leaveDispatchChannel(guildId) {
  * Play a TTS audio buffer (OGG Opus format) through the guild's active voice connection.
  * Stops any currently playing audio first so the dispatcher never overlaps itself.
  */
-export function playDispatchVoice(guildId, audioBuffer) {
+export async function playDispatchVoice(guildId, audioBuffer) {
   const state = dispatchState.get(guildId);
-  if (!state?.connection) return;
+  if (!state?.connection) {
+    console.error('[Dispatch TTS] No active connection for guild:', guildId);
+    return;
+  }
+
+  const tempPath = join(tmpdir(), `tts_${guildId}_${Date.now()}.wav`);
 
   try {
-    // Stop and clean up any previous player
     if (state.audioPlayer) {
       try { state.audioPlayer.stop(true); } catch {}
     }
 
+    writeFileSync(tempPath, audioBuffer);
+
     const player = createAudioPlayer();
     state.audioPlayer = player;
 
-    const resource = createAudioResource(Readable.from(audioBuffer), {
+    const resource = createAudioResource(createReadStream(tempPath), {
       inputType: StreamType.Arbitrary,
     });
 
     state.connection.subscribe(player);
     player.play(resource);
 
+    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+
     player.on('error', err => {
       console.error('[Dispatch TTS] Audio player error:', err.message);
+      try { unlinkSync(tempPath); } catch {}
     });
 
     player.on(AudioPlayerStatus.Idle, () => {
       if (state.audioPlayer === player) state.audioPlayer = null;
+      try { unlinkSync(tempPath); } catch {}
     });
   } catch (err) {
     console.error('[Dispatch TTS] Failed to play voice:', err.message);
+    try { unlinkSync(tempPath); } catch {}
   }
 }
 
