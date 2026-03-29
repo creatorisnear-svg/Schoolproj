@@ -497,6 +497,120 @@ export async function handleSelectMenu(interaction) {
     return handleRoleplayCommandsEnableMenu(interaction);
   }
 
+  // Enable/disable choice buttons from /enablecommands
+  if (customId === 'choice_enable' || customId === 'choice_disable' || customId === 'choice_done') {
+    const { handleEnableChoiceButton } = await import('./enableCommandsHandler.js');
+    return handleEnableChoiceButton(interaction);
+  }
+
+  // Civilian database (command sends 'civiliandatabase_menu')
+  if (customId === 'civiliandatabase_menu') {
+    const { handleCivilianDatabaseMenu } = await import('./civilianDatabaseHandler.js');
+    return handleCivilianDatabaseMenu(interaction);
+  }
+
+  // LEO database main menu and buttons
+  if (customId === 'leodatabase_menu') {
+    const { handleLEODatabaseMenu } = await import('./leoDatabaseHandler.js');
+    return handleLEODatabaseMenu(interaction);
+  }
+  if (customId === 'leodatabase_respond_call') {
+    const { handleLEORespondCall } = await import('./leoDatabaseHandler.js');
+    return handleLEORespondCall(interaction);
+  }
+  if (customId === 'leo_manage_bolos_select') {
+    const { handleLEOManageBolosSelect } = await import('./leoDatabaseHandler.js');
+    return handleLEOManageBolosSelect(interaction);
+  }
+  if (customId.startsWith('leo_respond_primary_')) {
+    const { handleLEOPrimaryResponse } = await import('./leoDatabaseHandler.js');
+    return handleLEOPrimaryResponse(interaction);
+  }
+  if (customId.startsWith('leo_respond_attach_')) {
+    const { handleLEOAttachResponse } = await import('./leoDatabaseHandler.js');
+    return handleLEOAttachResponse(interaction);
+  }
+  if (customId.startsWith('leo_delete_bolo_')) {
+    const { handleLEODeleteBOLO } = await import('./leoDatabaseHandler.js');
+    return handleLEODeleteBOLO(interaction);
+  }
+  if (customId.startsWith('view_char_profile_')) {
+    const { handleLEOViewCharacterProfile } = await import('./leoDatabaseHandler.js');
+    return handleLEOViewCharacterProfile(interaction);
+  }
+
+  // Fire Department database main menu and buttons
+  if (customId === 'firedepartmentdatabase_menu') {
+    const { handleFireDepartmentMenu } = await import('./fireDepartmentHandler.js');
+    return handleFireDepartmentMenu(interaction);
+  }
+  if (customId === 'fd_respond_call') {
+    const { handleFDRespondCall } = await import('./fireDepartmentHandler.js');
+    return handleFDRespondCall(interaction);
+  }
+  if (customId === 'fd_vehicle_character_select') {
+    const { handleFDVehicleCharacterSelect } = await import('./fireDepartmentHandler.js');
+    return handleFDVehicleCharacterSelect(interaction);
+  }
+  if (customId.startsWith('fd_respond_primary_')) {
+    const { handleFDPrimaryResponse } = await import('./fireDepartmentHandler.js');
+    return handleFDPrimaryResponse(interaction);
+  }
+  if (customId.startsWith('fd_respond_attach_')) {
+    const { handleFDAttachResponse } = await import('./fireDepartmentHandler.js');
+    return handleFDAttachResponse(interaction);
+  }
+
+  // Priority tracker setup channel (command uses 'prioritytrackersetup_channel')
+  if (customId === 'prioritytrackersetup_channel') {
+    const { handlePriorityTrackerChannelSelect } = await import('./priorityTrackerHandler.js');
+    return handlePriorityTrackerChannelSelect(interaction);
+  }
+
+  // Roleplay calendar setup channel
+  if (customId === 'roleplaycalendarsetup_channel') {
+    const { handleRoleplayCalendarChannelSelect } = await import('./roleplayCalendarHandler.js');
+    return handleRoleplayCalendarChannelSelect(interaction);
+  }
+
+  // Unset RP event select
+  if (customId === 'unsetrp_select') {
+    const { handleUnsetRpSelect } = await import('./roleplayCalendarHandler.js');
+    return handleUnsetRpSelect(interaction);
+  }
+
+  // Role request: member selecting a role to request
+  if (customId === 'select_role_to_request') {
+    const { handleSelectRoleToRequest } = await import('./roleRequestHandler.js');
+    return handleSelectRoleToRequest(interaction);
+  }
+
+  // Manage roles: approver selecting which role to manage
+  if (customId === 'manage_role_select') {
+    const { handleManageRoleSelect } = await import('./roleRequestHandler.js');
+    return handleManageRoleSelect(interaction);
+  }
+
+  // Character edit / delete buttons (extract characterId from customId)
+  if (customId.startsWith('char_edit_')) {
+    const characterId = customId.replace('char_edit_', '');
+    const { handleCharacterEdit } = await import('./civilianDatabaseHandler.js');
+    return handleCharacterEdit(interaction, characterId);
+  }
+  if (customId.startsWith('char_delete_confirm_')) {
+    const characterId = customId.replace('char_delete_confirm_', '');
+    const { handleCharacterDeleteConfirm } = await import('./civilianDatabaseHandler.js');
+    return handleCharacterDeleteConfirm(interaction, characterId);
+  }
+  if (customId.startsWith('char_delete_') && !customId.startsWith('char_delete_confirm_')) {
+    const characterId = customId.replace('char_delete_', '');
+    const { handleCharacterDelete } = await import('./civilianDatabaseHandler.js');
+    return handleCharacterDelete(interaction, characterId);
+  }
+  if (customId === 'char_delete_cancel') {
+    return interaction.update({ content: 'Character deletion cancelled.', components: [], embeds: [] });
+  }
+
 }
 
 async function handleVerifySetupMenu(interaction) {

@@ -46,6 +46,12 @@ export async function handleModalSubmit(interaction) {
   if (interaction.customId === 'setup_custom_question_modal') {
     await handleSetupCustomQuestionModal(interaction);
   }
+
+  if (interaction.customId.startsWith('char_edit_modal_')) {
+    const characterId = interaction.customId.replace('char_edit_modal_', '');
+    const { handleCharacterEditModal } = await import('./civilianDatabaseHandler.js');
+    return handleCharacterEditModal(interaction, characterId);
+  }
 }
 
 async function handleSetupCustomQuestionModal(interaction) {
