@@ -776,6 +776,7 @@ export async function handleTicketCreation(interaction) {
 
     await interaction.showModal(modal);
   } catch (error) {
+    if (error.code === 10062) return;
     console.error('Error in ticket creation:', error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ embeds: [errorEmbed('An error occurred.')], flags: 64 }).catch(() => {});
