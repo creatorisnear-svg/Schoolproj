@@ -439,6 +439,7 @@ export async function generateDispatchTTSPublic(text) {
 }
 
 async function generateDispatchTTS(text) {
+  text = text.replace(/\b911\b/g, '9 1 1');
   const key = ttsCacheKey(text);
 
   if (ttsMemCache.has(key)) {
