@@ -11,6 +11,7 @@ import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
 import Priority from './models/Priority.js';
+import DispatchConfig from './models/DispatchConfig.js';
 
 dotenv.config();
 
@@ -232,6 +233,25 @@ client.once('clientReady', async () => {
   } catch (err) {
     // DB not connected or no cooldowns — safe to ignore
   }
+
+  // Initialize AI Voice Dispatch for all configured guilds
+  try {
+    const { initDispatchForGuild } = await import('./handlers/dispatchHandler.js');
+    const dispatchConfigs = await DispatchConfig.find({ enabled: true });
+    let dispatchCount = 0;
+    for (const cfg of dispatchConfigs) {
+      const guild = client.guilds.cache.get(cfg.guildId);
+      if (guild) {
+        await initDispatchForGuild(guild, client);
+        dispatchCount++;
+      }
+    }
+    if (dispatchCount > 0) {
+      console.log(`🎙️ AI Dispatch initialized for ${dispatchCount} guild(s)`);
+    }
+  } catch (err) {
+    console.error('[Dispatch] Startup initialization error:', err.message);
+  }
 });
 
 client.on('interactionCreate', async interaction => {
@@ -264,6 +284,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'priority_stop') {
         const { handlePriorityStop } = await import('./handlers/priorityRequestHandler.js');
         await handlePriorityStop(interaction);
+      } else if (interaction.customId.startsWith('dispatch_clear_status_')) {
+        const { handleClearStatusButton } = await import('./handlers/dispatchHandler.js');
+        await handleClearStatusButton(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);

@@ -232,6 +232,28 @@ export async function handleBackToMenu(interaction) {
         components: [menu],
       });
 
+    } else if (customId === 'back_to_dispatch_menu') {
+      const menu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('dispatch_setup_menu')
+            .setPlaceholder('Select an option...')
+            .addOptions(
+              { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
+              { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
+              { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
+              { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
+              { label: '🤖 Toggle AI Dispatch', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
+              { label: '📋 View Settings', value: 'view_settings', description: 'See current configuration' },
+              { label: '✓ Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
+            )
+        );
+      await interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Configure the AI-powered voice dispatch system for your roleplay server.')],
+        content: '',
+        components: [menu],
+      });
+
     } else if (customId === 'back_to_antipromotingsetup_menu') {
       const menu = new ActionRowBuilder()
         .addComponents(

@@ -3,6 +3,7 @@ import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
 import { StrikeConfig } from '../models/Strike.js';
+import DispatchConfig from '../models/DispatchConfig.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 function menuEmbed(title, description) {
@@ -625,6 +626,23 @@ export async function handleSelectMenu(interaction) {
   // Roleplay calendar setup menu (shown via back_to_calendar_menu)
   if (customId === 'roleplay_calendar_setup_menu') {
     return handleRoleplayCalendarSetupMenu(interaction);
+  }
+
+  // Dispatch setup menu
+  if (customId === 'dispatch_setup_menu') {
+    return handleDispatchSetupMenu(interaction);
+  }
+  if (customId === 'dispatch_text_channel_select') {
+    return handleDispatchTextChannelSelect(interaction);
+  }
+  if (customId === 'dispatch_status_channel_select') {
+    return handleDispatchStatusChannelSelect(interaction);
+  }
+  if (customId === 'dispatch_patrol_channel_select') {
+    return handleDispatchPatrolChannelSelect(interaction);
+  }
+  if (customId === 'dispatch_stop_channel_select') {
+    return handleDispatchStopChannelSelect(interaction);
   }
 
 }
@@ -2785,6 +2803,222 @@ async function handleApprovalChannelSelect(interaction) {
       embeds: [errorEmbed('An error occurred. Please try again.')],
       flags: 64,
     });
+  }
+}
+
+function buildDispatchSetupMenu() {
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('dispatch_setup_menu')
+      .setPlaceholder('Select an option...')
+      .addOptions(
+        { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
+        { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
+        { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
+        { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
+        { label: '🤖 Toggle AI Dispatch', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
+        { label: '📋 View Settings', value: 'view_settings', description: 'See current configuration' },
+        { label: '✓ Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
+      )
+  );
+}
+
+async function handleDispatchSetupMenu(interaction) {
+  const choice = interaction.values[0];
+  try {
+    if (choice === 'set_dispatch_channel') {
+      const selector = new ChannelSelectMenuBuilder()
+        .setCustomId('dispatch_text_channel_select')
+        .setPlaceholder('Select the dispatch log channel...')
+        .setChannelTypes(ChannelType.GuildText);
+      return interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Select the **text channel** where dispatch logs and AI responses will be posted.')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'set_status_channel') {
+      const selector = new ChannelSelectMenuBuilder()
+        .setCustomId('dispatch_status_channel_select')
+        .setPlaceholder('Select the status board channel...')
+        .setChannelTypes(ChannelType.GuildText);
+      return interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Select the **text channel** for the live officer status board embed.')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'add_patrol_channel') {
+      const selector = new ChannelSelectMenuBuilder()
+        .setCustomId('dispatch_patrol_channel_select')
+        .setPlaceholder('Select a patrol voice channel...')
+        .setChannelTypes(ChannelType.GuildVoice);
+      return interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Select a **voice channel** to monitor for officer radio calls. You can add multiple channels one at a time.')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'set_stop_channel') {
+      const selector = new ChannelSelectMenuBuilder()
+        .setCustomId('dispatch_stop_channel_select')
+        .setPlaceholder('Select the traffic stop voice channel...')
+        .setChannelTypes(ChannelType.GuildVoice);
+      return interaction.update({
+        embeds: [menuEmbed('AI Dispatch Setup', 'Select the **voice channel** officers will be moved to when they call a **10-11** (traffic stop).')],
+        components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    if (choice === 'toggle_ai') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+      config.aiEnabled = !config.aiEnabled;
+      await config.save();
+      const status = config.aiEnabled ? '✅ **Enabled**' : '❌ **Disabled**';
+      return interaction.update({
+        embeds: [successEmbed('AI Dispatch Toggle', `AI-generated dispatcher responses are now ${status}.\n\nSelect your next option below.`)],
+        components: [buildDispatchSetupMenu()],
+      });
+    }
+
+    if (choice === 'view_settings') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
+      if (!config) {
+        return interaction.update({
+          embeds: [infoEmbed('AI Dispatch Settings', 'No settings configured yet.')],
+          components: [buildDispatchSetupMenu()],
+        });
+      }
+      const dispatchCh = config.dispatchChannelId ? `<#${config.dispatchChannelId}>` : '*Not set*';
+      const statusCh = config.statusBoardChannelId ? `<#${config.statusBoardChannelId}>` : '*Not set*';
+      const patrol = config.patrolChannelIds.length > 0
+        ? config.patrolChannelIds.map(id => `<#${id}>`).join(', ')
+        : '*None*';
+      const stopCh = config.trafficStopChannelId ? `<#${config.trafficStopChannelId}>` : '*Not set*';
+      const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('📋 AI Dispatch Settings')
+        .addFields(
+          { name: '📻 Dispatch Channel', value: dispatchCh, inline: true },
+          { name: '🚔 Status Board', value: statusCh, inline: true },
+          { name: '🎙️ Patrol Channels', value: patrol, inline: false },
+          { name: '🚗 Traffic Stop Channel', value: stopCh, inline: true },
+          { name: '🤖 AI Responses', value: config.aiEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+          { name: '🔌 System', value: config.enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+        )
+        .setFooter({ text: 'EverLink' });
+      return interaction.update({
+        embeds: [embed],
+        components: [buildDispatchSetupMenu()],
+      });
+    }
+
+    if (choice === 'setup_done') {
+      return interaction.update({
+        embeds: [successEmbed('AI Dispatch Setup Complete', 'Your dispatch system has been configured. Officers with LEO roles speaking in monitored voice channels will be transcribed and responded to automatically.')],
+        components: [],
+      });
+    }
+
+    return interaction.update({
+      embeds: [errorEmbed('Unknown option selected.')],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Setup menu error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchTextChannelSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+    config.dispatchChannelId = channelId;
+    config.enabled = true;
+    await config.save();
+    return interaction.update({
+      embeds: [successEmbed('Dispatch Channel Set', `Dispatch logs will be posted in <#${channelId}>.\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Text channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchStatusChannelSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+    config.statusBoardChannelId = channelId;
+    config.statusBoardMessageId = null;
+    await config.save();
+    return interaction.update({
+      embeds: [successEmbed('Status Board Channel Set', `The live officer status board will appear in <#${channelId}>.\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Status channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchPatrolChannelSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+
+    if (!config.patrolChannelIds.includes(channelId)) {
+      config.patrolChannelIds.push(channelId);
+      config.markModified('patrolChannelIds');
+      await config.save();
+    }
+
+    if (config.enabled) {
+      try {
+        const channel = interaction.guild.channels.cache.get(channelId);
+        if (channel) {
+          const { joinDispatchChannel } = await import('../utils/voiceListener.js');
+          const { processVoiceCall } = await import('./dispatchHandler.js');
+          const CADConfig = (await import('../models/CADConfig.js')).default;
+          const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
+          joinDispatchChannel(channel, {
+            onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
+            userFilter: async (uid) => {
+              if (!cadConfig?.leoRoleIds?.length) return false;
+              const member = await interaction.guild.members.fetch(uid).catch(() => null);
+              return member?.roles.cache.some(r => cadConfig.leoRoleIds.includes(r.id)) ?? false;
+            },
+          });
+        }
+      } catch {}
+    }
+
+    const list = config.patrolChannelIds.map(id => `<#${id}>`).join(', ');
+    return interaction.update({
+      embeds: [successEmbed('Patrol Channel Added', `<#${channelId}> is now being monitored.\n\n**Current patrol channels:** ${list}\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Patrol channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
+  }
+}
+
+async function handleDispatchStopChannelSelect(interaction) {
+  try {
+    const channelId = interaction.values[0];
+    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+    config.trafficStopChannelId = channelId;
+    await config.save();
+    return interaction.update({
+      embeds: [successEmbed('Traffic Stop Channel Set', `Officers will be moved to <#${channelId}> when they call **10-11**.\n\nSelect your next option below.`)],
+      components: [buildDispatchSetupMenu()],
+    });
+  } catch (err) {
+    console.error('[Dispatch] Stop channel select error:', err.message);
+    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
   }
 }
 
