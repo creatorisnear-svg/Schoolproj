@@ -61,6 +61,34 @@ export function createApiRouter(client) {
     }
   });
 
+  function getTextChannels(guild) {
+    return guild.channels.cache
+      .filter(c => c.type === 0)
+      .sort((a, b) => a.position - b.position)
+      .map(c => ({ value: c.id, label: '#' + c.name }));
+  }
+
+  function getCategoryChannels(guild) {
+    return guild.channels.cache
+      .filter(c => c.type === 4)
+      .sort((a, b) => a.position - b.position)
+      .map(c => ({ value: c.id, label: c.name }));
+  }
+
+  function getVoiceChannels(guild) {
+    return guild.channels.cache
+      .filter(c => c.type === 2)
+      .sort((a, b) => a.position - b.position)
+      .map(c => ({ value: c.id, label: c.name }));
+  }
+
+  function getRoles(guild) {
+    return guild.roles.cache
+      .filter(r => r.id !== guild.id && !r.managed)
+      .sort((a, b) => b.position - a.position)
+      .map(r => ({ value: r.id, label: '@' + r.name }));
+  }
+
   router.get('/guild/:id', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
@@ -72,24 +100,29 @@ export function createApiRouter(client) {
       const guild = client.guilds.cache.get(req.params.id);
       if (!guild) return res.status(404).json({ error: 'Guild not found' });
 
-      let config = {};
+      let config = {
+        logChannelId: null,
+        logChannelName: null,
+        verifyEnabled: false,
+        strikeEnabled: false,
+        ticketEnabled: false,
+        dispatchEnabled: false,
+        priorityEnabled: false,
+        antiPromotingEnabled: false,
+        welcomeEnabled: false,
+        calendarEnabled: false,
+        roleplayEnabled: false,
+        roleRequestEnabled: false,
+      };
+
       try {
         const { default: Config } = await import('../../models/Config.js');
         const dbConfig = await Config.findOne({ guildId: guild.id });
         if (dbConfig) {
           const logChannel = dbConfig.logChannelId ? guild.channels.cache.get(dbConfig.logChannelId) : null;
-          config = {
-            logChannelId: dbConfig.logChannelId || null,
-            logChannelName: logChannel?.name || null,
-            verifyEnabled: false,
-            strikeEnabled: !!dbConfig.logChannelId,
-            ticketEnabled: false,
-            dispatchEnabled: false,
-            priorityEnabled: false,
-            antiPromotingEnabled: !!dbConfig.antiPromotingEnabled,
-            welcomeEnabled: false,
-            calendarEnabled: false,
-          };
+          config.logChannelId = dbConfig.logChannelId || null;
+          config.logChannelName = logChannel?.name || null;
+          config.antiPromotingEnabled = !!dbConfig.antiPromotingEnabled;
         }
       } catch (err) {
         console.error('[DASHBOARD] Config fetch error:', err.message);
@@ -122,7 +155,31 @@ export function createApiRouter(client) {
       try {
         const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
         const rc = await RoleplayCalendar.findOne({ guildId: guild.id });
-        if (rc) config.calendarEnabled = !!rc.channelId;
+        if (rc) config.calendarEnabled = !!rc.enabled;
+      } catch {}
+
+      try {
+        const { default: RoleplayCommands } = await import('../../models/RoleplayCommands.js');
+        const rpc = await RoleplayCommands.findOne({ guildId: guild.id });
+        if (rpc) config.roleplayEnabled = !!rpc.enabled;
+      } catch {}
+
+      try {
+        const { default: Verification } = await import('../../models/Verification.js');
+        const vc = await Verification.findOne({ guildId: guild.id });
+        if (vc) config.verifyEnabled = !!vc.enabled;
+      } catch {}
+
+      try {
+        const { StrikeConfig } = await import('../../models/Strike.js');
+        const sc = await StrikeConfig.findOne({ guildId: guild.id });
+        if (sc) config.strikeEnabled = !!sc.enabled;
+      } catch {}
+
+      try {
+        const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
+        const rrc = await RoleRequestConfig.findOne({ guildId: guild.id });
+        if (rrc) config.roleRequestEnabled = !!rrc.enabled;
       } catch {}
 
       let premium = false;
@@ -147,33 +204,91 @@ export function createApiRouter(client) {
     }
   });
 
-  function getTextChannels(guild) {
-    return guild.channels.cache
-      .filter(c => c.type === 0)
-      .sort((a, b) => a.position - b.position)
-      .map(c => ({ value: c.id, label: '#' + c.name }));
-  }
+  router.post('/guild/:id/feature/:feature', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
-  function getCategoryChannels(guild) {
-    return guild.channels.cache
-      .filter(c => c.type === 4)
-      .sort((a, b) => a.position - b.position)
-      .map(c => ({ value: c.id, label: c.name }));
-  }
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
 
-  function getVoiceChannels(guild) {
-    return guild.channels.cache
-      .filter(c => c.type === 2)
-      .sort((a, b) => a.position - b.position)
-      .map(c => ({ value: c.id, label: c.name }));
-  }
+    const guildId = req.params.id;
+    const feature = req.params.feature;
+    const { enabled } = req.body;
 
-  function getRoles(guild) {
-    return guild.roles.cache
-      .filter(r => r.id !== guild.id && !r.managed)
-      .sort((a, b) => b.position - a.position)
-      .map(r => ({ value: r.id, label: '@' + r.name }));
-  }
+    if (!client.guilds.cache.has(guildId)) {
+      return res.status(404).json({ error: 'Guild not found' });
+    }
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+
+    try {
+      switch (feature) {
+        case 'roleplay': {
+          const { default: RoleplayCommands } = await import('../../models/RoleplayCommands.js');
+          await RoleplayCommands.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'priority': {
+          const { default: Priority } = await import('../../models/Priority.js');
+          await Priority.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'strike': {
+          const { StrikeConfig } = await import('../../models/Strike.js');
+          await StrikeConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'calendar': {
+          const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+          await RoleplayCalendar.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'ticket': {
+          const { default: TicketConfig } = await import('../../models/TicketConfig.js');
+          await TicketConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'antipromote': {
+          const { default: Config } = await import('../../models/Config.js');
+          await Config.findOneAndUpdate({ guildId }, { antiPromotingEnabled: enabled }, { upsert: true });
+          break;
+        }
+        case 'rolerequest': {
+          const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
+          await RoleRequestConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'verification': {
+          const { default: Verification } = await import('../../models/Verification.js');
+          await Verification.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'welcome': {
+          const { default: Welcome } = await import('../../models/Welcome.js');
+          await Welcome.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'dispatch': {
+          const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
+          await DispatchConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        default:
+          return res.status(404).json({ error: 'Unknown feature' });
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error(`[DASHBOARD] Feature toggle error (${feature}):`, err.message);
+      res.status(500).json({ error: 'Failed to toggle feature' });
+    }
+  });
 
   router.get('/guild/:id/settings/:mod', async (req, res) => {
     const token = getToken(req);
@@ -200,32 +315,35 @@ export function createApiRouter(client) {
       switch (mod) {
         case 'general': {
           result.name = 'General Settings';
-          result.description = 'Core server configuration';
+          result.description = 'Core bot configuration for this server';
           const { default: Config } = await import('../../models/Config.js');
           const config = await Config.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'logChannelId', label: 'Log Channel', description: 'Channel for bot action logs', type: 'select', value: config?.logChannelId || '', options: channels },
-            { key: 'staffCanBypassLinks', label: 'Staff Bypass Links', description: 'Allow staff to post invite links', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
+            { key: 'logChannelId', label: 'Log Channel', description: 'Channel where bot actions are logged', type: 'select', value: config?.logChannelId || '', options: channels },
+            { key: 'staffCanBypassLinks', label: 'Staff Bypass Links', description: 'Allow staff members to post invite links without being flagged', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
           ];
           break;
         }
 
         case 'verification': {
           result.name = 'Verification System';
-          result.description = 'Member verification with approval workflows';
-          const { default: PendingVerification } = await import('../../models/PendingVerification.js');
-          const { default: Config } = await import('../../models/Config.js');
-          const config = await Config.findOne({ guildId: guild.id });
+          result.description = 'Gate new members with verification questions and approval';
+          const { default: Verification } = await import('../../models/Verification.js');
+          const vc = await Verification.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'verifyChannelId', label: 'Verify Channel', description: 'Channel where verification panel is posted', type: 'select', value: config?.reportChannelId || '', options: channels },
+            { key: 'verifyChannelId', label: 'Verification Channel', description: 'Channel where the verify button is posted', type: 'select', value: vc?.verifyChannelId || '', options: channels },
+            { key: 'approvalChannelId', label: 'Approval Channel', description: 'Channel where staff approve/deny applications', type: 'select', value: vc?.approvalChannelId || '', options: channels },
+            { key: 'verifiedRoleId', label: 'Verified Role', description: 'Role given to verified members', type: 'role', value: vc?.verifiedRoleId || '', options: roles },
+            { key: 'unverifiedRoleId', label: 'Unverified Role', description: 'Role assigned to new unverified members', type: 'role', value: vc?.unverifiedRoleId || '', options: roles },
+            { key: 'approvalRequired', label: 'Require Staff Approval', description: 'Staff must approve each verification before the role is given', type: 'toggle', value: vc?.approvalRequired ?? false },
+            { key: 'rpTag', label: 'RP Tag', description: 'Ask for PSN/Xbox/PC tag during verification', type: 'text', value: vc?.rpTag || '', placeholder: 'e.g. PSN, Xbox, PC' },
+            { key: 'verifyDMMessage', label: 'Approval DM Message', description: 'Sent to the member when they are approved. Use {server} for server name', type: 'textarea', value: vc?.verifyDMMessage || '', placeholder: 'Welcome to {server}! You have been verified.' },
           ];
           try {
-            const { default: Verification } = await import('../../models/Verification.js');
-            const pending = await Verification.countDocuments({ guildId: guild.id, status: 'pending' });
-            const approved = await Verification.countDocuments({ guildId: guild.id, status: 'approved' });
+            const { default: PendingVerification } = await import('../../models/PendingVerification.js');
+            const pending = await PendingVerification.countDocuments({ guildId: guild.id, status: 'pending' });
             result.stats = [
-              { label: 'Pending', value: pending },
-              { label: 'Approved', value: approved },
+              { label: 'Pending Applications', value: pending },
             ];
           } catch {}
           break;
@@ -233,27 +351,47 @@ export function createApiRouter(client) {
 
         case 'strikes': {
           result.name = 'Strike System';
-          result.description = 'Track and manage member strikes';
-          result.fields = [];
-          try {
-            const { default: Strike } = await import('../../models/Strike.js');
-            const total = await Strike.countDocuments({ guildId: guild.id });
-            result.stats = [{ label: 'Total Strike Records', value: total }];
-          } catch {}
+          result.description = 'Automated strike levels with configurable punishments';
+          const { StrikeConfig } = await import('../../models/Strike.js');
+          const sc = await StrikeConfig.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'strike1_roleId', label: 'Strike 1 Role', description: 'Role assigned at strike level 1', type: 'role', value: sc?.strikes?.strike1?.roleId || '', options: roles },
+            { key: 'strike1_action', label: 'Strike 1 Action', description: 'Action taken at strike level 1', type: 'action', value: sc?.strikes?.strike1?.action || 'none', options: [
+              { value: 'none', label: 'No action' }, { value: 'timeout', label: 'Timeout' }, { value: 'kick', label: 'Kick' }, { value: 'ban', label: 'Ban' }
+            ]},
+            { key: 'strike2_roleId', label: 'Strike 2 Role', description: 'Role assigned at strike level 2', type: 'role', value: sc?.strikes?.strike2?.roleId || '', options: roles },
+            { key: 'strike2_action', label: 'Strike 2 Action', description: 'Action taken at strike level 2', type: 'action', value: sc?.strikes?.strike2?.action || 'none', options: [
+              { value: 'none', label: 'No action' }, { value: 'timeout', label: 'Timeout' }, { value: 'kick', label: 'Kick' }, { value: 'ban', label: 'Ban' }
+            ]},
+            { key: 'strike3_roleId', label: 'Strike 3 Role', description: 'Role assigned at strike level 3', type: 'role', value: sc?.strikes?.strike3?.roleId || '', options: roles },
+            { key: 'strike3_action', label: 'Strike 3 Action', description: 'Action taken at strike level 3', type: 'action', value: sc?.strikes?.strike3?.action || 'none', options: [
+              { value: 'none', label: 'No action' }, { value: 'timeout', label: 'Timeout' }, { value: 'kick', label: 'Kick' }, { value: 'ban', label: 'Ban' }
+            ]},
+            { key: 'strike4_roleId', label: 'Strike 4 Role', description: 'Role assigned at strike level 4', type: 'role', value: sc?.strikes?.strike4?.roleId || '', options: roles },
+            { key: 'strike4_action', label: 'Strike 4 Action', description: 'Action taken at strike level 4', type: 'action', value: sc?.strikes?.strike4?.action || 'none', options: [
+              { value: 'none', label: 'No action' }, { value: 'timeout', label: 'Timeout' }, { value: 'kick', label: 'Kick' }, { value: 'ban', label: 'Ban' }
+            ]},
+          ];
           break;
         }
 
         case 'tickets': {
           result.name = 'Ticket Support';
-          result.description = 'Support ticket management system';
+          result.description = 'Support ticket system with categories and staff roles';
           const { default: TicketConfig } = await import('../../models/TicketConfig.js');
           const tc = await TicketConfig.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'enabled', label: 'Enabled', description: 'Enable or disable the ticket system', type: 'toggle', value: tc?.enabled ?? false },
-            { key: 'panelChannelId', label: 'Panel Channel', description: 'Channel where the ticket panel is posted', type: 'select', value: tc?.panelChannelId || '', options: channels },
-            { key: 'panelTitle', label: 'Panel Title', description: 'Title text for the ticket embed', type: 'text', value: tc?.panelTitle || '', placeholder: 'Support Tickets' },
-            { key: 'panelDescription', label: 'Panel Description', description: 'Description text for the ticket embed', type: 'text', value: tc?.panelDescription || '', placeholder: 'Click below to open a ticket' },
+            { key: 'panelChannelId', label: 'Panel Channel', description: 'Channel where the ticket panel embed is posted', type: 'select', value: tc?.panelChannelId || '', options: channels },
+            { key: 'panelTitle', label: 'Panel Title', description: 'Title shown on the ticket panel embed', type: 'text', value: tc?.panelTitle || '', placeholder: 'Support Tickets' },
+            { key: 'panelDescription', label: 'Panel Description', description: 'Description shown on the ticket panel embed', type: 'textarea', value: tc?.panelDescription || '', placeholder: 'Click a button below to open a ticket' },
           ];
+          if (tc?.ticketTypes?.length > 0) {
+            result.ticketTypes = tc.ticketTypes.map(t => ({
+              id: t.id || t._id?.toString(),
+              label: t.label,
+              allowedRoleIds: t.allowedRoleIds || [],
+            }));
+          }
           try {
             const { default: Ticket } = await import('../../models/Ticket.js');
             const open = await Ticket.countDocuments({ guildId: guild.id, status: 'open' });
@@ -268,55 +406,101 @@ export function createApiRouter(client) {
 
         case 'dispatch': {
           result.name = 'AI Voice Dispatch';
-          result.description = 'AI-powered voice dispatch system (Premium)';
+          result.description = 'AI-powered voice dispatch for law enforcement roleplay (Premium)';
+          result.premium = true;
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
           const dc = await DispatchConfig.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'enabled', label: 'Enabled', description: 'Enable or disable dispatch', type: 'toggle', value: dc?.enabled ?? false },
-            { key: 'aiEnabled', label: 'AI Responses', description: 'Generate AI dispatcher responses', type: 'toggle', value: dc?.aiEnabled ?? false },
-            { key: 'dispatchChannelId', label: 'Dispatch Channel', description: 'Channel for dispatch logs', type: 'select', value: dc?.dispatchChannelId || '', options: channels },
-            { key: 'statusBoardChannelId', label: 'Status Board Channel', description: 'Channel for the officer status board', type: 'select', value: dc?.statusBoardChannelId || '', options: channels },
+            { key: 'aiEnabled', label: 'AI Responses', description: 'Generate AI dispatcher responses from officer voice input', type: 'toggle', value: dc?.aiEnabled ?? false },
+            { key: 'dispatchChannelId', label: 'Dispatch Channel', description: 'Text channel for dispatch logs and AI responses', type: 'select', value: dc?.dispatchChannelId || '', options: channels },
+            { key: 'statusBoardChannelId', label: 'Status Board Channel', description: 'Channel for the live officer status board embed', type: 'select', value: dc?.statusBoardChannelId || '', options: channels },
           ];
+          result.voiceChannels = voiceChannels;
+          result.currentPatrolChannels = dc?.patrolChannelIds || [];
+          result.currentTrafficChannels = dc?.trafficStopChannelIds || [];
+          result.leoRoles = dc?.leoRoleIds || [];
+          result.roles = roles;
           break;
         }
 
         case 'priority': {
           result.name = 'Priority Tracker';
-          result.description = 'Real-time priority event tracking';
+          result.description = 'Real-time priority event tracking with cooldowns';
           const { default: Priority } = await import('../../models/Priority.js');
           const pc = await Priority.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'enabled', label: 'Enabled', description: 'Enable or disable the priority tracker', type: 'toggle', value: pc?.enabled ?? false },
-            { key: 'channelId', label: 'Priority Channel', description: 'Channel for priority announcements', type: 'select', value: pc?.channelId || '', options: channels },
-            { key: 'cooldownMinutes', label: 'Cooldown (minutes)', description: 'Cooldown between priorities', type: 'number', value: pc?.cooldownMinutes || 10, min: 1, max: 120 },
+            { key: 'channelId', label: 'Priority Channel', description: 'Channel where priority status embeds are posted', type: 'select', value: pc?.channelId || '', options: channels },
+            { key: 'cooldownMinutes', label: 'Cooldown (minutes)', description: 'Minimum time between priority activations', type: 'number', value: pc?.cooldownMinutes || 10, min: 1, max: 120 },
+          ];
+          result.stats = [
+            { label: 'Status', value: pc?.priorityActive ? 'ACTIVE' : 'Inactive' },
           ];
           break;
         }
 
         case 'antipromo': {
           result.name = 'Anti-Promoting';
-          result.description = 'Automatic invite link detection and removal';
+          result.description = 'Automatically detect and remove Discord invite links';
           const { default: Config } = await import('../../models/Config.js');
           const config = await Config.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'antiPromotingEnabled', label: 'Enabled', description: 'Detect and remove Discord invite links', type: 'toggle', value: config?.antiPromotingEnabled ?? false },
-            { key: 'antiPromotingLogChannelId', label: 'Log Channel', description: 'Channel to log deleted invite links', type: 'select', value: config?.antiPromotingLogChannelId || '', options: channels },
-            { key: 'staffCanBypassLinks', label: 'Staff Bypass', description: 'Allow staff to post invite links', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
+            { key: 'antiPromotingLogChannelId', label: 'Log Channel', description: 'Channel where deleted invite link logs are sent', type: 'select', value: config?.antiPromotingLogChannelId || '', options: channels },
+            { key: 'staffCanBypassLinks', label: 'Staff Bypass', description: 'Allow staff members to post invite links', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
           ];
+          if (config?.whitelistedInviteLinks?.length > 0) {
+            result.whitelistedLinks = config.whitelistedInviteLinks;
+          }
           break;
         }
 
         case 'welcome': {
           result.name = 'Welcome System';
-          result.description = 'Welcome messages for new members';
+          result.description = 'Send welcome messages when new members join';
           const { default: Welcome } = await import('../../models/Welcome.js');
           const wc = await Welcome.findOne({ guildId: guild.id });
           result.fields = [
-            { key: 'enabled', label: 'Enabled', description: 'Enable or disable welcome messages', type: 'toggle', value: wc?.enabled ?? false },
-            { key: 'channelId', label: 'Welcome Channel', description: 'Channel for welcome messages', type: 'select', value: wc?.channelId || '', options: channels },
-            { key: 'welcomeMessage', label: 'Channel Message', description: 'Use {user} for mention, {server} for server name', type: 'text', value: wc?.welcomeMessage || '', placeholder: 'Welcome {user} to {server}!' },
-            { key: 'welcomeDM', label: 'DM Message', description: 'Sent to the new member via DM', type: 'text', value: wc?.welcomeDM || '', placeholder: 'Welcome to {server}!' },
+            { key: 'channelId', label: 'Welcome Channel', description: 'Channel where welcome messages are sent', type: 'select', value: wc?.channelId || '', options: channels },
+            { key: 'welcomeMessage', label: 'Channel Message', description: 'Use {user} for mention, {server} for server name', type: 'textarea', value: wc?.welcomeMessage || '', placeholder: 'Welcome {user} to {server}!' },
+            { key: 'welcomeDM', label: 'DM Message', description: 'Private message sent to the new member on join', type: 'textarea', value: wc?.welcomeDM || '', placeholder: 'Welcome to {server}!' },
           ];
+          break;
+        }
+
+        case 'roleplay': {
+          result.name = 'Roleplay Commands';
+          result.description = 'Configure channels for 911 calls, Twitter, anonymous tips, and CAD';
+          const { default: RoleplayCommands } = await import('../../models/RoleplayCommands.js');
+          const rpc = await RoleplayCommands.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'use911', label: 'Enable 911 Command', description: 'Allow civilians to make emergency calls', type: 'toggle', value: rpc?.use911 ?? false },
+            { key: 'use911Channel', label: '911 Channel', description: 'Channel where 911 calls are posted', type: 'select', value: rpc?.use911Channel || '', options: channels },
+            { key: 'useTwitter', label: 'Enable Twitter Command', description: 'Allow in-character Twitter posts', type: 'toggle', value: rpc?.useTwitter ?? false },
+            { key: 'twitterChannel', label: 'Twitter Channel', description: 'Channel where Twitter posts appear', type: 'select', value: rpc?.twitterChannel || '', options: channels },
+            { key: 'useAnon', label: 'Enable Anonymous Tips', description: 'Allow anonymous tip submissions', type: 'toggle', value: rpc?.useAnon ?? false },
+            { key: 'anonChannel', label: 'Anonymous Channel', description: 'Channel where anonymous tips are posted', type: 'select', value: rpc?.anonChannel || '', options: channels },
+            { key: 'useCAD', label: 'Enable CAD System', description: 'Enable the CAD database commands', type: 'toggle', value: rpc?.useCAD ?? false },
+            { key: 'cadChannel', label: 'CAD Channel', description: 'Channel for CAD lookups and responses', type: 'select', value: rpc?.cadChannel || '', options: channels },
+          ];
+          break;
+        }
+
+        case 'calendar': {
+          result.name = 'Roleplay Calendar';
+          result.description = 'Schedule and display weekly roleplay events';
+          const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+          const rc = await RoleplayCalendar.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'channelId', label: 'Calendar Channel', description: 'Channel where the calendar embed is posted', type: 'select', value: rc?.channelId || '', options: channels },
+          ];
+          if (rc?.events?.length > 0) {
+            result.events = rc.events.map(e => ({
+              day: e.day,
+              time: e.time,
+              description: e.description,
+              person: e.person,
+              timezone: e.timezone,
+            }));
+          }
           break;
         }
 
@@ -353,10 +537,20 @@ export function createApiRouter(client) {
 
     try {
       switch (mod) {
-        case 'general':
+        case 'general': {
+          const { default: Config } = await import('../../models/Config.js');
+          const allowed = ['logChannelId', 'staffCanBypassLinks'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await Config.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
         case 'antipromo': {
           const { default: Config } = await import('../../models/Config.js');
-          const allowed = ['logChannelId', 'antiPromotingEnabled', 'antiPromotingLogChannelId', 'staffCanBypassLinks'];
+          const allowed = ['antiPromotingEnabled', 'antiPromotingLogChannelId', 'staffCanBypassLinks'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -367,7 +561,7 @@ export function createApiRouter(client) {
 
         case 'tickets': {
           const { default: TicketConfig } = await import('../../models/TicketConfig.js');
-          const allowed = ['enabled', 'panelChannelId', 'panelTitle', 'panelDescription'];
+          const allowed = ['panelChannelId', 'panelTitle', 'panelDescription'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -378,7 +572,7 @@ export function createApiRouter(client) {
 
         case 'dispatch': {
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
-          const allowed = ['enabled', 'aiEnabled', 'dispatchChannelId', 'statusBoardChannelId'];
+          const allowed = ['aiEnabled', 'dispatchChannelId', 'statusBoardChannelId', 'patrolChannelIds', 'trafficStopChannelIds', 'leoRoleIds'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -389,7 +583,7 @@ export function createApiRouter(client) {
 
         case 'priority': {
           const { default: Priority } = await import('../../models/Priority.js');
-          const allowed = ['enabled', 'channelId', 'cooldownMinutes'];
+          const allowed = ['channelId', 'cooldownMinutes'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) {
@@ -403,7 +597,7 @@ export function createApiRouter(client) {
 
         case 'welcome': {
           const { default: Welcome } = await import('../../models/Welcome.js');
-          const allowed = ['enabled', 'channelId', 'welcomeMessage', 'welcomeDM'];
+          const allowed = ['channelId', 'welcomeMessage', 'welcomeDM'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -412,9 +606,56 @@ export function createApiRouter(client) {
           break;
         }
 
-        case 'verification':
-        case 'strikes':
+        case 'verification': {
+          const { default: Verification } = await import('../../models/Verification.js');
+          const allowed = ['verifyChannelId', 'approvalChannelId', 'verifiedRoleId', 'unverifiedRoleId', 'approvalRequired', 'rpTag', 'verifyDMMessage'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await Verification.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           break;
+        }
+
+        case 'strikes': {
+          const { StrikeConfig } = await import('../../models/Strike.js');
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            const match = k.match(/^(strike[1-4])_(roleId|action|duration)$/);
+            if (match) {
+              const [, level, field] = match;
+              if (!update[`strikes.${level}.${field}`]) {
+                update[`strikes.${level}.${field}`] = v;
+              }
+            }
+          }
+          if (Object.keys(update).length > 0) {
+            await StrikeConfig.findOneAndUpdate({ guildId: guild.id }, { $set: update }, { upsert: true });
+          }
+          break;
+        }
+
+        case 'roleplay': {
+          const { default: RoleplayCommands } = await import('../../models/RoleplayCommands.js');
+          const allowed = ['use911', 'use911Channel', 'useTwitter', 'twitterChannel', 'useAnon', 'anonChannel', 'useCAD', 'cadChannel'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await RoleplayCommands.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
+        case 'calendar': {
+          const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+          const allowed = ['channelId'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await RoleplayCalendar.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
 
         default:
           return res.status(404).json({ error: 'Module not found' });

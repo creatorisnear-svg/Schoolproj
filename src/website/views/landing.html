@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RolePlayManager</title>
+  <title>RolePlayManager - Discord Bot for GTA 5 RP</title>
   <meta name="description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
   <link rel="icon" type="image/png" href="/img/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
   <nav>
     <div class="container">
       <a href="/" class="logo">
-        <img src="/img/logo.png" alt="RM">
+        <img src="/img/logo.png" alt="RPM">
         <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
       </a>
       <ul class="nav-links">
@@ -45,7 +45,7 @@
           <div class="stat-label">Users</div>
         </div>
         <div class="stat">
-          <div class="stat-value">39</div>
+          <div class="stat-value">38</div>
           <div class="stat-label">Commands</div>
         </div>
       </div>
@@ -101,8 +101,8 @@
         </div>
         <div class="feature-card">
           <div class="feature-icon">+</div>
-          <h3>And More</h3>
-          <p>Sticky messages, anti-promoting, reaction roles, role requests, staff management, and full per-server configuration.</p>
+          <h3>Web Dashboard</h3>
+          <p>Full web dashboard to enable/disable features, configure every module, manage channels, roles, and settings without touching Discord.</p>
         </div>
       </div>
     </div>
@@ -129,10 +129,10 @@
   </footer>
 
   <script>
-    fetch('/api/stats').then(r => r.json()).then(data => {
+    fetch('/api/stats').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
       document.getElementById('stat-users').textContent = data.users || '\u2014';
-    }).catch(() => {});
+    }).catch(function() {});
   </script>
 </body>
 </html>

@@ -49,6 +49,9 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - Landing page at `/` with live server/user stats, feature showcase, and invite button.
 - Admin dashboard at `/dashboard` with Discord OAuth2 login (`identify guilds` scope).
 - Dashboard shows server selector (admin-only servers where bot is present), module status overview, and per-module configuration/stats.
+- **Full bot setup through website:** Overview page has feature toggle cards for all 10 modules (Roleplay Commands, Priority Tracker, Strike System, RP Calendar, Ticket Support, Anti-Promoting, Role Request, Verification, Welcome System, AI Voice Dispatch). Each module has a dedicated settings page with all configurable fields.
+- **Feature toggle API:** `POST /api/guild/:id/feature/:feature` enables/disables any module. Validates guild exists in bot cache.
+- **Settings API:** `GET/POST /api/guild/:id/settings/:mod` for all modules: general, roleplay, verification, strikes, tickets, dispatch, priority, antipromo, welcome, calendar. POST endpoints whitelist allowed fields per module.
 - Dashboard auth uses `dash_token` cookie (7-day expiry) on Koyeb, or Bearer token via localStorage on the static site.
 - Dashboard OAuth redirect (Koyeb): `https://{DOMAIN}/dashboard/callback`.
 - Dashboard OAuth redirect (static site): `https://{DOMAIN}/auth/site/callback` → redirects to `roleplaymanager.xyz/dashboard/#token=<token>`.
