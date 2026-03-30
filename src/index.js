@@ -12,6 +12,7 @@ import { resolve } from 'path';
 import axios from 'axios';
 import { createApiRouter } from './website/routes/api.js';
 import { createAuthRouter } from './website/routes/auth.js';
+import { createDevRouter } from './website/routes/dev.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -126,6 +127,7 @@ app.get('/dashboard', (req, res) => {
 });
 
 app.use('/dashboard', createAuthRouter());
+app.use('/dev', createDevRouter());
 
 app.get('/auth/site/callback', async (req, res) => {
   const { code, state } = req.query;

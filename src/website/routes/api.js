@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import axios from 'axios';
+import Announcement from '../../models/Announcement.js';
+import Changelog from '../../models/Changelog.js';
+import PreviewVideo from '../../models/PreviewVideo.js';
 
 async function verifyAdminAccess(token, guildId) {
   const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
@@ -23,6 +26,27 @@ export function createApiRouter(client) {
     const servers = client.guilds.cache.size;
     const users = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
     res.json({ servers, users });
+  });
+
+  router.get('/public/announcements', async (req, res) => {
+    try {
+      const items = await Announcement.find({ active: true }).sort({ createdAt: -1 }).limit(5);
+      res.json(items);
+    } catch { res.json([]); }
+  });
+
+  router.get('/public/changelogs', async (req, res) => {
+    try {
+      const items = await Changelog.find().sort({ date: -1 }).limit(5);
+      res.json(items);
+    } catch { res.json([]); }
+  });
+
+  router.get('/public/videos', async (req, res) => {
+    try {
+      const items = await PreviewVideo.find().sort({ order: 1, createdAt: -1 });
+      res.json(items);
+    } catch { res.json([]); }
   });
 
   router.get('/me', async (req, res) => {
