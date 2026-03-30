@@ -596,6 +596,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'dispatch_quick_10_8' || interaction.customId === 'dispatch_quick_10_6') {
         const { handleQuickStatusButton } = await import('./handlers/dispatchHandler.js');
         await handleQuickStatusButton(interaction);
+      } else if (interaction.customId.startsWith('dispatch_pursuit_respond_')) {
+        const { handlePursuitRespondButton } = await import('./handlers/dispatchHandler.js');
+        await handlePursuitRespondButton(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);

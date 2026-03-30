@@ -984,6 +984,50 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End attach/respond detection ---
 
+    // --- Pursuit backup voice response detection ---
+    // If there's an active pursuit alert, check if this officer is responding verbally
+    const pursuitAlert = activePursuitAlerts.get(guild.id);
+    if (pursuitAlert && detectPursuitResponse(transcript)) {
+      const responderName = officerName;
+      const pursuitChannel = guild.channels.cache.get(pursuitAlert.pursuitChannelId) ||
+        await guild.channels.fetch(pursuitAlert.pursuitChannelId).catch(() => null);
+
+      if (pursuitChannel && member?.voice?.channelId) {
+        await member.voice.setChannel(pursuitChannel).catch(() => {});
+        console.log(`[Dispatch] ${responderName} responding to pursuit — moved to channel "${pursuitChannel.name}"`);
+
+        if (config.dispatchChannelId) {
+          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+          if (dispatchCh?.isTextBased()) {
+            const embed = new EmbedBuilder()
+              .setColor('#FF0000')
+              .setTitle('10-80 — Unit Responding')
+              .setDescription(
+                `**<@${userId}> (${responderName})** is responding to the pursuit.\n` +
+                `Moved to pursuit channel <#${pursuitAlert.pursuitChannelId}>.`
+              )
+              .setFooter({ text: 'RPM • Dispatch' })
+              .setTimestamp();
+            await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+          }
+        }
+
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsText = `Copy ${responderName}, moving you to the pursuit channel to back up ${pursuitAlert.officerName}. Ten four.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch {}
+        }
+
+        activePursuitAlerts.delete(guild.id);
+        return;
+      }
+    }
+    // --- End pursuit backup detection ---
+
     // --- "Stay with me / stay on channel" detection ---
     // Officer asks dispatch to remain in their traffic stop channel
     const stayPattern = /\b(?:stay(?:\s+(?:with\s+me|on\s+(?:my\s+)?channel|here|on\s+this\s+channel))?|keep\s+(?:dispatch\s+)?(?:with\s+me|on\s+(?:this\s+)?channel|here)|i\s+need\s+(?:you|dispatch)\s+(?:to\s+)?stay)\b/i;
@@ -1154,6 +1198,21 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       // 10-99 — Panic alert: broadcast urgent all-units notice
       if (parsed.code === '10-99') {
         await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
+      }
+
+      // 10-80 — Pursuit from traffic stop: broadcast to patrol and ask for backup
+      if (parsed.code === '10-80') {
+        const { getCurrentChannelId, clearExtendedStay } = await import('../utils/voiceListener.js');
+        const currentBotChannelId = getCurrentChannelId(guild.id);
+        const officerVoiceChannelId = member?.voice?.channelId;
+        const isInStopChannel = currentBotChannelId &&
+          officerVoiceChannelId === currentBotChannelId &&
+          !config.patrolChannelIds?.includes(currentBotChannelId);
+
+        if (isInStopChannel) {
+          await triggerPursuitBroadcast(guild, config, userId, officerName, currentBotChannelId);
+          clearExtendedStay(guild.id);
+        }
       }
     }
 
@@ -1458,6 +1517,152 @@ export async function handlePanicAckButton(interaction) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// 10-80 PURSUIT BROADCAST
+// ────────────────────────────────────────────────────────────────────────────
+// Map<guildId, { officerId, officerName, pursuitChannelId, patrolChannelId, timestamp }>
+const activePursuitAlerts = new Map();
+
+async function triggerPursuitBroadcast(guild, config, officerId, officerName, pursuitChannelId) {
+  try {
+    const patrolChannelId = config.patrolChannelIds?.[0];
+
+    activePursuitAlerts.set(guild.id, {
+      officerId,
+      officerName,
+      pursuitChannelId,
+      patrolChannelId,
+      timestamp: Date.now(),
+    });
+
+    // ── Return bot to patrol channel so backup officers can be heard ──────
+    if (patrolChannelId) {
+      const { getDispatchState, moveToChannel } = await import('../utils/voiceListener.js');
+      const state = getDispatchState(guild.id);
+      if (state) {
+        // Remove pursuit channel from temp patrol set if it was added
+        state.patrolChannelIds.delete(pursuitChannelId);
+      }
+      const patrolCh = guild.channels.cache.get(patrolChannelId) ||
+        await guild.channels.fetch(patrolChannelId).catch(() => null);
+      if (patrolCh) {
+        await moveToChannel(patrolCh).catch(() => {});
+      }
+    }
+
+    // ── Broadcast via TTS in patrol channel ──────────────────────────────
+    if (config.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsText = `Attention all units, Officer ${officerName} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${officerName}? Say ten four to respond or press the respond button in dispatch.`;
+        const ttsBuffer = await generateDispatchTTS(ttsText);
+        playDispatchVoice(guild.id, ttsBuffer);
+      } catch (err) {
+        console.error('[Dispatch TTS] Pursuit broadcast TTS error:', err.message);
+      }
+    }
+
+    // ── Post embed in dispatch channel with Respond button ───────────────
+    if (config.dispatchChannelId) {
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('10-80 — Active Pursuit')
+          .setDescription(
+            `**Officer:** <@${officerId}> (${officerName})\n` +
+            `**Status:** Active pursuit in progress\n` +
+            `**Pursuit Channel:** <#${pursuitChannelId}>\n\n` +
+            `Officer ${officerName} has initiated a **10-80 pursuit**. Any available unit, please respond.\n` +
+            `Pressing **"Respond to Pursuit"** will move you to the pursuit channel.`
+          )
+          .setFooter({ text: 'RPM • Dispatch' })
+          .setTimestamp();
+
+        const respondBtn = new ButtonBuilder()
+          .setCustomId(`dispatch_pursuit_respond_${guild.id}`)
+          .setLabel('Respond to Pursuit')
+          .setStyle(ButtonStyle.Danger);
+
+        await dispatchCh.send({
+          content: '@here',
+          embeds: [embed],
+          components: [new ActionRowBuilder().addComponents(respondBtn)],
+        }).catch(() => {});
+      }
+    }
+
+    console.log(`[Dispatch] 10-80 pursuit broadcast triggered for ${officerName} in ${guild.name}, pursuit channel: ${pursuitChannelId}`);
+
+    // Auto-clear the pursuit alert after 10 minutes
+    setTimeout(() => {
+      const current = activePursuitAlerts.get(guild.id);
+      if (current?.officerId === officerId) activePursuitAlerts.delete(guild.id);
+    }, 10 * 60 * 1000);
+  } catch (err) {
+    console.error('[Dispatch] triggerPursuitBroadcast error:', err.message);
+  }
+}
+
+export async function handlePursuitRespondButton(interaction) {
+  try {
+    const guildId = interaction.customId.replace('dispatch_pursuit_respond_', '');
+    const pursuit = activePursuitAlerts.get(guildId);
+
+    if (!pursuit) {
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('This pursuit alert is no longer active.').setFooter({ text: 'RPM' })],
+        flags: 64,
+      });
+    }
+
+    const responderName = interaction.member.displayName || interaction.user.username;
+
+    // Move the responding officer to the pursuit channel
+    const pursuitChannel = interaction.guild.channels.cache.get(pursuit.pursuitChannelId) ||
+      await interaction.guild.channels.fetch(pursuit.pursuitChannelId).catch(() => null);
+
+    if (pursuitChannel && interaction.member.voice?.channelId) {
+      await interaction.member.voice.setChannel(pursuitChannel).catch(() => {});
+    }
+
+    // Update the embed to show who responded
+    const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+      .setDescription(
+        (interaction.message.embeds[0]?.description || '') +
+        `\n\n✅ **<@${interaction.user.id}> (${responderName}) is responding — moved to pursuit channel.**`
+      );
+
+    const disabledBtn = new ButtonBuilder()
+      .setCustomId(`dispatch_pursuit_respond_${guildId}`)
+      .setLabel(`${responderName} — Responding`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true);
+
+    await interaction.update({ embeds: [updatedEmbed], components: [new ActionRowBuilder().addComponents(disabledBtn)] });
+
+    // TTS acknowledgment in patrol
+    const config = await DispatchConfig.findOne({ guildId });
+    if (config?.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsText = `Copy ${responderName}, moving you to the pursuit channel to back up ${pursuit.officerName}. Ten four.`;
+        const ttsBuffer = await generateDispatchTTS(ttsText);
+        playDispatchVoice(guildId, ttsBuffer);
+      } catch {}
+    }
+  } catch (err) {
+    console.error('[Dispatch] Pursuit respond button error:', err.message);
+    interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
+  }
+}
+
+// Detects if an officer in patrol is responding verbally to an active pursuit
+function detectPursuitResponse(text) {
+  return /\b(?:yes|ten[\s-]?four|copy|responding|i'?ll?\s+respond|i'?m\s+(?:responding|en\s*route)|on\s+my\s+way|rolling|ten[\s-]?76)\b/i.test(text);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // TRAFFIC STOP CHECK-IN TIMER (every 1 minute)
 // ────────────────────────────────────────────────────────────────────────────
 const trafficStopCheckIntervals = new Map();
@@ -1508,8 +1713,8 @@ async function checkTrafficStops(guild) {
         try {
           const { playTTSInChannelAndReturn } = await import('../utils/voiceListener.js');
           const subjectPart = officer.subject ? ` with ${officer.subject}` : '';
-          const minutesPart = minutesIn !== null ? ` You have been on this stop for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.` : '';
-          const ttsText = `${officer.username}, are you still on the traffic stop${subjectPart}?${minutesPart} Please confirm your status or say ten eight when clear.`;
+          const minutesPart = minutesIn !== null ? ` You have been on scene for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.` : '';
+          const ttsText = `${officer.username}, are you still on scene${subjectPart}?${minutesPart} Please confirm your status or say ten eight when clear.`;
           const ttsBuffer = await generateDispatchTTS(ttsText);
           await playTTSInChannelAndReturn(targetChannel, ttsBuffer);
         } catch (err) {
@@ -1526,8 +1731,8 @@ async function checkTrafficStops(guild) {
             .setColor('#FF8C00')
             .setTitle('Traffic Stop Check-In')
             .setDescription(
-              `<@${officer.userId}> — are you still on the traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}?` +
-              (minutesIn !== null ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} elapsed` : '')
+              `<@${officer.userId}> — are you still on scene${officer.subject ? ` with **${officer.subject}**` : ''}?` +
+              (minutesIn !== null ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} on scene` : '')
             )
             .setFooter({ text: 'RPM • Dispatch' })
             .setTimestamp();
