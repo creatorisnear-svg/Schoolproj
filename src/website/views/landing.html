@@ -20,6 +20,8 @@
       </a>
       <ul class="nav-links">
         <li><a href="#features">Features</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Support</a></li>
         <li><a href="/dashboard" class="btn btn-sm btn-secondary">Dashboard</a></li>
         <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
       </ul>
@@ -108,22 +110,124 @@
     </div>
   </section>
 
+  <section class="faq-section" id="faq">
+    <div class="container">
+      <div class="section-title">
+        <h2>Frequently Asked Questions</h2>
+        <p>Answers to common questions about RolePlayManager</p>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            Is RolePlayManager free to use?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Yes, the core bot is completely free. Most features including the CAD database, 911 system, strike system, verification, ticket support, and more are available at no cost. Premium is only required for the AI Voice Dispatch feature.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            What does Premium include?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Premium unlocks the AI Voice Dispatch system -- officers speak into a voice channel, the bot transcribes their speech, recognizes 10-codes, generates realistic dispatcher responses using AI, and updates a live officer status board automatically.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            How do I activate my premium key?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Go to the Dashboard, select your server, and scroll to the Premium section on the overview page. Enter your key and click Activate. If you need to move the key to a different server, use the Transfer Key option in the same section.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            Can I transfer my premium key to another server?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Yes. Go to the Dashboard, select the server currently using the key, and click Transfer Key in the Premium section. Your key will be released and shown to you so you can activate it on a different server.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            How do I set up the bot for the first time?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Add the bot to your server using the link above. Then use the slash commands (type / in Discord) to set up each system you want -- for example /verifysystemsetup for verification, /ticketsupportsetup for tickets, and /dispatchsetup for the AI dispatch. You can also configure most settings from the web dashboard.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            The bot isn't responding to commands. What do I do?
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Make sure the bot has the Administrator permission in your server. If commands aren't showing up, try removing and re-adding the bot. If problems persist, join our support server and we'll help you out.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <div class="section-title">
+        <h2>Get in touch</h2>
+        <p>Need help or have a question? Reach out to us</p>
+      </div>
+      <div class="contact-grid">
+        <a href="https://discord.gg/m4dZsWq6m" target="_blank" class="contact-card">
+          <div class="contact-icon discord-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+          </div>
+          <div class="contact-info">
+            <div class="contact-label">Support Server</div>
+            <div class="contact-value">discord.gg/m4dZsWq6m</div>
+          </div>
+          <span class="contact-arrow">&#8250;</span>
+        </a>
+        <a href="mailto:creatorisnear@gmail.com" class="contact-card">
+          <div class="contact-icon email-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 7 10-7"/></svg>
+          </div>
+          <div class="contact-info">
+            <div class="contact-label">Email</div>
+            <div class="contact-value">creatorisnear@gmail.com</div>
+          </div>
+          <span class="contact-arrow">&#8250;</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <section class="cta">
     <div class="container">
       <div class="cta-box">
         <h2>Ready to level up your RP server?</h2>
         <p>Add RolePlayManager in seconds. Free to use, with optional premium for AI dispatch.</p>
-        <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Discord</a>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Discord</a>
+          <a href="https://discord.gg/m4dZsWq6m" target="_blank" class="btn btn-secondary">Join Support Server</a>
+        </div>
       </div>
     </div>
   </section>
 
   <footer>
     <div class="container">
-      <p>RolePlayManager</p>
+      <p>RolePlayManager &copy; 2025</p>
       <ul class="footer-links">
         <li><a href="/dashboard">Dashboard</a></li>
         <li><a href="#features">Features</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="https://discord.gg/m4dZsWq6m" target="_blank">Support</a></li>
+        <li><a href="mailto:creatorisnear@gmail.com">Contact</a></li>
       </ul>
     </div>
   </footer>
@@ -133,6 +237,13 @@
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
       document.getElementById('stat-users').textContent = data.users || '\u2014';
     }).catch(function() {});
+
+    function toggleFaq(btn) {
+      var item = btn.parentElement;
+      var isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(function(el) { el.classList.remove('open'); });
+      if (!isOpen) item.classList.add('open');
+    }
   </script>
 </body>
 </html>

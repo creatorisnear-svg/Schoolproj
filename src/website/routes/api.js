@@ -668,6 +668,38 @@ export function createApiRouter(client) {
     }
   });
 
+  router.post('/guild/:id/premium/transfer', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+      const premiumKey = await PremiumKey.findOne({ guildId });
+      if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+
+      const keyValue = premiumKey.key;
+      premiumKey.guildId = null;
+      premiumKey.guildName = null;
+      premiumKey.activatedBy = null;
+      premiumKey.activatedAt = null;
+      await premiumKey.save();
+
+      res.json({ success: true, key: keyValue });
+    } catch (err) {
+      console.error('[DASHBOARD] Premium transfer error:', err.message);
+      res.status(500).json({ error: 'Failed to transfer premium key' });
+    }
+  });
+
   router.post('/guild/:id/premium', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });

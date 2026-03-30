@@ -177,17 +177,44 @@ function renderDashboard() {
   app.innerHTML = html;
 }
 
+function transferPremium() {
+  if (!confirm('This will release the premium key from this server. You will be shown the key to activate it on another server. Continue?')) return;
+  var btn = document.getElementById('transfer-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Releasing...'; }
+  api('/guild/' + currentGuild.id + '/premium/transfer', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      currentGuild.premium = false;
+      var section = document.getElementById('premium-section');
+      if (section) {
+        section.innerHTML =
+          '<div class="config-section-header"><h3>Premium</h3>' +
+          '<span class="status-badge disabled"><span class="status-dot"></span>Released</span></div>' +
+          '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+          '<span class="config-label">Key released successfully. Copy your key below to activate it on another server.</span>' +
+          '<div style="display:flex;gap:8px;align-items:center;">' +
+          '<code style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:13px;letter-spacing:1px;">' + result.key + '</code>' +
+          '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + result.key + '\').then(function(){toast(\'Key copied!\')})">Copy</button>' +
+          '</div></div>';
+      }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Transfer Key'; }
+    }
+  });
+}
+
 function renderPremiumSection(g) {
   if (g.premium) {
-    return '<div class="config-section" style="margin-top:20px;">' +
+    return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
       '<div class="config-section-header"><h3>Premium</h3>' +
       '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>' +
       '</div>' +
-      '<div class="config-row"><span class="config-label">Premium is active on this server.</span>' +
-      '<span style="font-size:12px;color:var(--text-dim);">All premium features are unlocked.</span></div>' +
-      '</div>';
+      '<div class="config-row" style="justify-content:space-between;">' +
+      '<div><span class="config-label">Premium is active on this server.</span>' +
+      '<div class="config-sublabel">All premium features are unlocked. Need to move to another server?</div></div>' +
+      '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
+      '</div></div>';
   }
-  return '<div class="config-section" style="margin-top:20px;">' +
+  return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
     '<div class="config-section-header"><h3>Premium</h3>' +
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
