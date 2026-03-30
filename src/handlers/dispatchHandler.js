@@ -714,7 +714,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         await updateOfficerStatus(guild.id, userId, officerName, '10-11',
           { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
-          null);
+          null, bestChannelId);
 
         const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
           await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
@@ -1050,7 +1050,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         }
         if (bestChannelId && member.voice?.channelId) {
           await member.voice.setChannel(bestChannelId);
-          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null);
+          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, bestChannelId);
         }
         // Post a traffic stop active notice with a 10-8 clear button in the dispatch channel
         if (config.dispatchChannelId) {
@@ -1058,15 +1058,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
             await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
           if (dispatchCh?.isTextBased()) {
             const stopEmbed = new EmbedBuilder()
-              .setColor('#2d2d2d')
-              .setTitle('Traffic Stop Active')
+              .setColor('#FF8C00')
+              .setTitle('Traffic Stop Active — 10-11')
               .setDescription(
                 `**Officer:** <@${userId}>\n` +
                 `**Moved to:** <#${bestChannelId}>\n\n` +
                 `Officer **${officerName}** is on a **10-11**. They must return to patrol on their own.\n\n` +
                 `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
               )
-              .setFooter({ text: 'RPM' })
+              .setFooter({ text: 'RPM • Dispatch' })
               .setTimestamp();
             const clearBtn = new ButtonBuilder()
               .setCustomId(`dispatch_stop_clear_${userId}`)
@@ -1086,6 +1086,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     } else if (parsed.code) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
+
+      // 10-99 — Panic alert: broadcast urgent all-units notice
+      if (parsed.code === '10-99') {
+        await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
+      }
     }
 
     await rebuildStatusBoard(guild, config);
@@ -1094,20 +1099,34 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
   }
 }
 
-async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, lastPatrolChannelId) {
+async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, lastPatrolChannelId, trafficStopChannelId = null) {
+  const isTrafficStop = tenCode === '10-11';
+  const update = {
+    guildId,
+    userId,
+    username,
+    tenCode,
+    subject: parsed?.subject || null,
+    location: parsed?.location || null,
+    rawCall: parsed?.rawText || null,
+    lastPatrolChannelId: lastPatrolChannelId || null,
+    updatedAt: new Date(),
+  };
+
+  if (isTrafficStop) {
+    const existing = await OfficerStatus.findOne({ guildId, userId });
+    if (!existing || existing.tenCode !== '10-11') {
+      update.trafficStopStartAt = new Date();
+    }
+    if (trafficStopChannelId) update.trafficStopChannelId = trafficStopChannelId;
+  } else {
+    update.trafficStopStartAt = null;
+    update.trafficStopChannelId = null;
+  }
+
   await OfficerStatus.findOneAndUpdate(
     { guildId, userId },
-    {
-      guildId,
-      userId,
-      username,
-      tenCode,
-      subject: parsed?.subject || null,
-      location: parsed?.location || null,
-      rawCall: parsed?.rawText || null,
-      lastPatrolChannelId: lastPatrolChannelId || null,
-      updatedAt: new Date(),
-    },
+    update,
     { upsert: true, new: true }
   );
 }
@@ -1294,6 +1313,303 @@ export async function handleStopClearButton(interaction) {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// 10-99 PANIC ALERT
+// ────────────────────────────────────────────────────────────────────────────
+async function triggerPanicAlert(guild, config, userId, officerName, voiceChannelId) {
+  try {
+    const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+      await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+    if (!dispatchCh?.isTextBased()) return;
+
+    const locationText = voiceChannelId ? `<#${voiceChannelId}>` : 'Unknown location';
+
+    const panicEmbed = new EmbedBuilder()
+      .setColor('#FF0000')
+      .setTitle('🚨 10-99 — OFFICER NEEDS ASSISTANCE 🚨')
+      .setDescription(
+        `**ALL UNITS — RESPOND IMMEDIATELY**\n\n` +
+        `**Officer:** <@${userId}> (${officerName})\n` +
+        `**Last Known Location:** ${locationText}\n\n` +
+        `**10-99 — All available officers need to respond to this officer's location immediately.**`
+      )
+      .setFooter({ text: 'RPM • PANIC ALERT' })
+      .setTimestamp();
+
+    const acknowledgeBtn = new ButtonBuilder()
+      .setCustomId(`dispatch_panic_ack_${userId}`)
+      .setLabel('Acknowledge & En Route')
+      .setStyle(ButtonStyle.Danger);
+
+    await dispatchCh.send({
+      content: '@here',
+      embeds: [panicEmbed],
+      components: [new ActionRowBuilder().addComponents(acknowledgeBtn)],
+    }).catch(() => {});
+
+    // TTS panic broadcast
+    if (config.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${officerName} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
+        const ttsBuffer = await generateDispatchTTS(ttsText);
+        playDispatchVoice(guild.id, ttsBuffer);
+      } catch (err) {
+        console.error('[Dispatch TTS] Panic alert TTS error:', err.message);
+      }
+    }
+
+    console.log(`[Dispatch] 10-99 PANIC ALERT triggered for ${officerName} in ${guild.name}`);
+  } catch (err) {
+    console.error('[Dispatch] triggerPanicAlert error:', err.message);
+  }
+}
+
+export async function handlePanicAckButton(interaction) {
+  try {
+    const targetUserId = interaction.customId.replace('dispatch_panic_ack_', '');
+    const responderName = interaction.member.displayName || interaction.user.username;
+
+    const updatedEmbed = new EmbedBuilder()
+      .setColor('#FF0000')
+      .setTitle('🚨 10-99 — OFFICER NEEDS ASSISTANCE 🚨')
+      .setDescription(
+        (interaction.message.embeds[0]?.description || '') +
+        `\n\n✅ **<@${interaction.user.id}> (${responderName}) is en route.**`
+      )
+      .setFooter({ text: 'RPM • PANIC ALERT' })
+      .setTimestamp();
+
+    const disabledBtn = new ButtonBuilder()
+      .setCustomId(`dispatch_panic_ack_${targetUserId}`)
+      .setLabel(`${responderName} — En Route`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true);
+
+    await interaction.update({ embeds: [updatedEmbed], components: [new ActionRowBuilder().addComponents(disabledBtn)] });
+  } catch (err) {
+    console.error('[Dispatch] Panic ack button error:', err.message);
+    interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// TRAFFIC STOP CHECK-IN TIMER (every 1 minute)
+// ────────────────────────────────────────────────────────────────────────────
+const trafficStopCheckIntervals = new Map();
+const trafficStopCheckinSent = new Map(); // key: guildId:userId — tracks last checkin msg time
+
+async function checkTrafficStops(guild) {
+  try {
+    const config = await DispatchConfig.findOne({ guildId: guild.id });
+    if (!config?.enabled || !config.dispatchChannelId) return;
+
+    const onStopOfficers = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
+    if (onStopOfficers.length === 0) return;
+
+    for (const officer of onStopOfficers) {
+      const key = `${guild.id}:${officer.userId}`;
+      const lastCheck = trafficStopCheckinSent.get(key) || 0;
+
+      // Only send one check-in per minute at most
+      if (Date.now() - lastCheck < 58 * 1000) continue;
+
+      // Determine where to send the check-in
+      const targetChannelId = officer.trafficStopChannelId || config.trafficStopChannelIds?.[0];
+      if (!targetChannelId) continue;
+
+      const targetChannel = guild.channels.cache.get(targetChannelId) ||
+        await guild.channels.fetch(targetChannelId).catch(() => null);
+      if (!targetChannel) continue;
+
+      trafficStopCheckinSent.set(key, Date.now());
+
+      const minutesIn = officer.trafficStopStartAt
+        ? Math.floor((Date.now() - new Date(officer.trafficStopStartAt).getTime()) / 60000)
+        : null;
+
+      const embed = new EmbedBuilder()
+        .setColor('#FF8C00')
+        .setTitle('Traffic Stop Check-In')
+        .setDescription(
+          `<@${officer.userId}>, are you still on the traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}?\n\n` +
+          (minutesIn !== null ? `You have been on this stop for **${minutesIn} minute${minutesIn !== 1 ? 's' : ''}**.\n\n` : '') +
+          `Please confirm your status or clear when finished.`
+        )
+        .setFooter({ text: 'RPM • Dispatch Auto Check-In' })
+        .setTimestamp();
+
+      const stillOnBtn = new ButtonBuilder()
+        .setCustomId(`dispatch_stop_still_${officer.userId}`)
+        .setLabel('Still on Stop')
+        .setStyle(ButtonStyle.Primary);
+
+      const clearBtn = new ButtonBuilder()
+        .setCustomId(`dispatch_stop_clear_${officer.userId}`)
+        .setLabel('10-8 — Stop Clear')
+        .setStyle(ButtonStyle.Success);
+
+      await targetChannel.send({
+        content: `<@${officer.userId}>`,
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(stillOnBtn, clearBtn)],
+      }).catch(() => {});
+
+      console.log(`[Dispatch] Traffic stop check-in sent for ${officer.username} in ${guild.name}`);
+    }
+
+    // Clean up stale keys for officers no longer on a stop
+    for (const [key] of trafficStopCheckinSent) {
+      const [gId, uId] = key.split(':');
+      if (gId !== guild.id) continue;
+      const stillOn = onStopOfficers.some(o => o.userId === uId);
+      if (!stillOn) trafficStopCheckinSent.delete(key);
+    }
+  } catch (err) {
+    console.error('[Dispatch] checkTrafficStops error:', err.message);
+  }
+}
+
+export function startTrafficStopCheckTimer(guild) {
+  if (trafficStopCheckIntervals.has(guild.id)) return;
+  const interval = setInterval(() => checkTrafficStops(guild), 60 * 1000);
+  trafficStopCheckIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] Traffic stop check-in timer started for ${guild.name}`);
+}
+
+export async function handleStopStillButton(interaction) {
+  try {
+    const targetUserId = interaction.customId.replace('dispatch_stop_still_', '');
+    const isSelf = interaction.user.id === targetUserId;
+
+    const embed = new EmbedBuilder()
+      .setColor('#FF8C00')
+      .setTitle('Traffic Stop — Still Active')
+      .setDescription(
+        isSelf
+          ? `<@${targetUserId}> confirmed they are **still on the traffic stop**. Dispatch is aware.`
+          : `<@${interaction.user.id}> confirmed that <@${targetUserId}> is **still on the traffic stop**.`
+      )
+      .setFooter({ text: 'RPM • Dispatch' })
+      .setTimestamp();
+
+    await interaction.update({ embeds: [embed], components: [] });
+  } catch (err) {
+    console.error('[Dispatch] Stop still button error:', err.message);
+    interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// STATUS REMINDER TIMER (every 10 minutes)
+// ────────────────────────────────────────────────────────────────────────────
+const statusReminderIntervals = new Map();
+const STATUS_REMINDER_MS = 10 * 60 * 1000;
+
+async function checkStatusReminders(guild) {
+  try {
+    const config = await DispatchConfig.findOne({ guildId: guild.id });
+    if (!config?.enabled || !config.dispatchChannelId || !config.patrolChannelIds?.length) return;
+
+    const needsReminder = [];
+
+    for (const channelId of config.patrolChannelIds) {
+      const ch = guild.channels.cache.get(channelId) ||
+        await guild.channels.fetch(channelId).catch(() => null);
+      if (!ch) continue;
+
+      for (const [, voiceMember] of ch.members) {
+        if (voiceMember.user.bot) continue;
+
+        const status = await OfficerStatus.findOne({ guildId: guild.id, userId: voiceMember.id });
+
+        // Remind if no status record, or status is not a clear active/busy code
+        const hasGoodStatus = status && ['10-8', '10-6', '10-11', '10-80', '10-97', '10-78'].includes(status.tenCode);
+        if (!hasGoodStatus) {
+          needsReminder.push(voiceMember);
+        }
+      }
+    }
+
+    if (needsReminder.length === 0) return;
+
+    const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+      await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+    if (!dispatchCh?.isTextBased()) return;
+
+    const mentions = needsReminder.map(m => `<@${m.id}>`).join(', ');
+
+    const embed = new EmbedBuilder()
+      .setColor('#FFA500')
+      .setTitle('Status Update Reminder')
+      .setDescription(
+        `${mentions}\n\n` +
+        `Please remember to update your current status on the radio.\n` +
+        `If you are available, say **"Dispatch, 10-8"** or use the quick-status button below.\n` +
+        `If you are busy, say **"Dispatch, 10-6"**.`
+      )
+      .setFooter({ text: 'RPM • Auto Status Reminder' })
+      .setTimestamp();
+
+    const available10_8 = new ButtonBuilder()
+      .setCustomId('dispatch_quick_10_8')
+      .setLabel('10-8 — Available')
+      .setStyle(ButtonStyle.Success);
+
+    const busy10_6 = new ButtonBuilder()
+      .setCustomId('dispatch_quick_10_6')
+      .setLabel('10-6 — Busy')
+      .setStyle(ButtonStyle.Secondary);
+
+    await dispatchCh.send({
+      embeds: [embed],
+      components: [new ActionRowBuilder().addComponents(available10_8, busy10_6)],
+    }).catch(() => {});
+
+    console.log(`[Dispatch] Status reminder sent to ${needsReminder.length} officer(s) in ${guild.name}`);
+  } catch (err) {
+    console.error('[Dispatch] checkStatusReminders error:', err.message);
+  }
+}
+
+export function startStatusReminderTimer(guild) {
+  if (statusReminderIntervals.has(guild.id)) return;
+  const interval = setInterval(() => checkStatusReminders(guild), STATUS_REMINDER_MS);
+  statusReminderIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] Status reminder timer started for ${guild.name}`);
+}
+
+export async function handleQuickStatusButton(interaction) {
+  try {
+    const code = interaction.customId === 'dispatch_quick_10_8' ? '10-8' : '10-6';
+    const officerName = interaction.member.displayName || interaction.user.username;
+    const guildId = interaction.guildId;
+
+    await updateOfficerStatus(guildId, interaction.user.id, officerName, code,
+      { code, codeInfo: TEN_CODES[code], subject: null, location: null, rawText: `Quick status: ${code}` },
+      null
+    );
+
+    const config = await DispatchConfig.findOne({ guildId });
+    await rebuildStatusBoard(interaction.guild, config);
+
+    const label = code === '10-8' ? '10-8 — Available' : '10-6 — Busy';
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setDescription(`<@${interaction.user.id}> is now showing **${label}**. Status board updated.`)
+      .setFooter({ text: 'RPM • Dispatch' })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], flags: 64 });
+  } catch (err) {
+    console.error('[Dispatch] Quick status button error:', err.message);
+    interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// CALL REPEAT TIMER (existing, unchanged below)
+// ────────────────────────────────────────────────────────────────────────────
 const lastReminderAt = new Map();
 const REPEAT_DELAY_MS = 2 * 60 * 1000;
 const REMINDER_INTERVAL_MS = 2 * 60 * 1000;
@@ -1424,6 +1740,8 @@ export async function initDispatchForGuild(guild, client) {
     }
 
     startCallRepeatTimer(guild, client);
+    startTrafficStopCheckTimer(guild);
+    startStatusReminderTimer(guild);
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }

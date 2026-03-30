@@ -553,6 +553,15 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_stop_clear_')) {
         const { handleStopClearButton } = await import('./handlers/dispatchHandler.js');
         await handleStopClearButton(interaction);
+      } else if (interaction.customId.startsWith('dispatch_stop_still_')) {
+        const { handleStopStillButton } = await import('./handlers/dispatchHandler.js');
+        await handleStopStillButton(interaction);
+      } else if (interaction.customId.startsWith('dispatch_panic_ack_')) {
+        const { handlePanicAckButton } = await import('./handlers/dispatchHandler.js');
+        await handlePanicAckButton(interaction);
+      } else if (interaction.customId === 'dispatch_quick_10_8' || interaction.customId === 'dispatch_quick_10_6') {
+        const { handleQuickStatusButton } = await import('./handlers/dispatchHandler.js');
+        await handleQuickStatusButton(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
