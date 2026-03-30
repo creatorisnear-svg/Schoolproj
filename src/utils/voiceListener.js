@@ -591,6 +591,114 @@ export async function playDispatchVoice(guildId, audioBuffer) {
   }
 }
 
+/**
+ * Temporarily join any voice channel (patrol or not), play a TTS buffer, then
+ * automatically return to whichever patrol channel the bot was in before.
+ *
+ * Used for traffic-stop check-ins where the officer is NOT in a patrol channel.
+ */
+export async function playTTSInChannelAndReturn(targetChannel, audioBuffer) {
+  const guildId = targetChannel.guild.id;
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+
+  const returnChannelId = state.currentChannelId;
+
+  // ── Join the target channel ──────────────────────────────────────────────
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  let tempConn;
+  try {
+    tempConn = joinVoiceChannel({
+      channelId: targetChannel.id,
+      guildId,
+      adapterCreator: targetChannel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
+      debug: false,
+    });
+  } catch (err) {
+    console.error(`[Dispatch TTS] Failed to join traffic stop channel "${targetChannel.name}":`, err.message);
+    return;
+  }
+
+  state.connection = tempConn;
+  state.currentChannelId = targetChannel.id;
+
+  try {
+    await entersState(tempConn, VoiceConnectionStatus.Ready, 20_000);
+  } catch {
+    console.error('[Dispatch TTS] Temp connection never reached Ready — aborting check-in TTS');
+    try { tempConn.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
+  }
+
+  // ── Play the TTS ─────────────────────────────────────────────────────────
+  await new Promise((resolve) => {
+    try {
+      const player = createAudioPlayer();
+      state.audioPlayer = player;
+
+      const bufferStream = new Readable();
+      bufferStream.push(audioBuffer);
+      bufferStream.push(null);
+
+      const isOgg = audioBuffer.length >= 4 && audioBuffer.toString('ascii', 0, 4) === 'OggS';
+      const resource = createAudioResource(bufferStream, {
+        inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+      });
+
+      tempConn.subscribe(player);
+      player.play(resource);
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        if (state.audioPlayer === player) state.audioPlayer = null;
+        resolve();
+      });
+      player.on('error', () => resolve());
+
+      // Safety timeout — resolve after 30 s regardless
+      setTimeout(resolve, 30_000);
+    } catch (err) {
+      console.error('[Dispatch TTS] Check-in playback error:', err.message);
+      resolve();
+    }
+  });
+
+  // ── Return to patrol channel ─────────────────────────────────────────────
+  if (returnChannelId) {
+    const returnChannel = targetChannel.guild.channels.cache.get(returnChannelId);
+    if (returnChannel) {
+      try { tempConn.destroy(); } catch {}
+      state.connection = null;
+      state.currentChannelId = null;
+      await new Promise(r => setTimeout(r, 800));
+
+      try {
+        const newConn = joinVoiceChannel({
+          channelId: returnChannelId,
+          guildId,
+          adapterCreator: targetChannel.guild.voiceAdapterCreator,
+          selfDeaf: false,
+          selfMute: false,
+          debug: false,
+        });
+        state.connection = newConn;
+        state.currentChannelId = returnChannelId;
+        console.log(`[Dispatch] Returned to patrol channel after check-in TTS`);
+      } catch (err) {
+        console.error('[Dispatch] Failed to return to patrol channel:', err.message);
+      }
+    }
+  }
+}
+
 /** Returns the dispatch state object for a guild, or null if not configured. */
 export function getDispatchState(guildId) {
   return dispatchState.get(guildId) || null;

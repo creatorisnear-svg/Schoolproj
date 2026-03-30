@@ -1402,7 +1402,7 @@ const trafficStopCheckinSent = new Map(); // key: guildId:userId — tracks last
 async function checkTrafficStops(guild) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
-    if (!config?.enabled || !config.dispatchChannelId) return;
+    if (!config?.enabled) return;
 
     const onStopOfficers = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
     if (onStopOfficers.length === 0) return;
@@ -1411,15 +1411,16 @@ async function checkTrafficStops(guild) {
       const key = `${guild.id}:${officer.userId}`;
       const lastCheck = trafficStopCheckinSent.get(key) || 0;
 
-      // Only send one check-in per minute at most
+      // Only check in once per minute
       if (Date.now() - lastCheck < 58 * 1000) continue;
 
-      // Determine where to send the check-in
-      const targetChannelId = officer.trafficStopChannelId || config.trafficStopChannelIds?.[0];
-      if (!targetChannelId) continue;
+      // Find the officer's current voice channel
+      const member = await guild.members.fetch(officer.userId).catch(() => null);
+      const voiceChannelId = member?.voice?.channelId || officer.trafficStopChannelId;
+      if (!voiceChannelId) continue;
 
-      const targetChannel = guild.channels.cache.get(targetChannelId) ||
-        await guild.channels.fetch(targetChannelId).catch(() => null);
+      const targetChannel = guild.channels.cache.get(voiceChannelId) ||
+        await guild.channels.fetch(voiceChannelId).catch(() => null);
       if (!targetChannel) continue;
 
       trafficStopCheckinSent.set(key, Date.now());
@@ -1428,42 +1429,61 @@ async function checkTrafficStops(guild) {
         ? Math.floor((Date.now() - new Date(officer.trafficStopStartAt).getTime()) / 60000)
         : null;
 
-      const embed = new EmbedBuilder()
-        .setColor('#FF8C00')
-        .setTitle('Traffic Stop Check-In')
-        .setDescription(
-          `<@${officer.userId}>, are you still on the traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}?\n\n` +
-          (minutesIn !== null ? `You have been on this stop for **${minutesIn} minute${minutesIn !== 1 ? 's' : ''}**.\n\n` : '') +
-          `Please confirm your status or clear when finished.`
-        )
-        .setFooter({ text: 'RPM • Dispatch Auto Check-In' })
-        .setTimestamp();
+      console.log(`[Dispatch] Delivering traffic stop check-in TTS for ${officer.username} in channel "${targetChannel.name}"`);
 
-      const stillOnBtn = new ButtonBuilder()
-        .setCustomId(`dispatch_stop_still_${officer.userId}`)
-        .setLabel('Still on Stop')
-        .setStyle(ButtonStyle.Primary);
+      // Speak the check-in into the traffic stop voice channel, then return to patrol
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playTTSInChannelAndReturn } = await import('../utils/voiceListener.js');
+          const subjectPart = officer.subject ? ` with ${officer.subject}` : '';
+          const minutesPart = minutesIn !== null ? ` You have been on this stop for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.` : '';
+          const ttsText = `${officer.username}, are you still on the traffic stop${subjectPart}?${minutesPart} Please confirm your status or say ten eight when clear.`;
+          const ttsBuffer = await generateDispatchTTS(ttsText);
+          await playTTSInChannelAndReturn(targetChannel, ttsBuffer);
+        } catch (err) {
+          console.error('[Dispatch TTS] Traffic stop check-in TTS error:', err.message);
+        }
+      }
 
-      const clearBtn = new ButtonBuilder()
-        .setCustomId(`dispatch_stop_clear_${officer.userId}`)
-        .setLabel('10-8 — Stop Clear')
-        .setStyle(ButtonStyle.Success);
+      // Also post a small text prompt with buttons in the dispatch channel so officers can respond
+      if (config.dispatchChannelId) {
+        const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+        if (dispatchCh?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setColor('#FF8C00')
+            .setTitle('Traffic Stop Check-In')
+            .setDescription(
+              `<@${officer.userId}> — are you still on the traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}?` +
+              (minutesIn !== null ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} elapsed` : '')
+            )
+            .setFooter({ text: 'RPM • Dispatch' })
+            .setTimestamp();
 
-      await targetChannel.send({
-        content: `<@${officer.userId}>`,
-        embeds: [embed],
-        components: [new ActionRowBuilder().addComponents(stillOnBtn, clearBtn)],
-      }).catch(() => {});
+          const stillOnBtn = new ButtonBuilder()
+            .setCustomId(`dispatch_stop_still_${officer.userId}`)
+            .setLabel('Still on Stop')
+            .setStyle(ButtonStyle.Primary);
 
-      console.log(`[Dispatch] Traffic stop check-in sent for ${officer.username} in ${guild.name}`);
+          const clearBtn = new ButtonBuilder()
+            .setCustomId(`dispatch_stop_clear_${officer.userId}`)
+            .setLabel('10-8 — Stop Clear')
+            .setStyle(ButtonStyle.Success);
+
+          await dispatchCh.send({
+            content: `<@${officer.userId}>`,
+            embeds: [embed],
+            components: [new ActionRowBuilder().addComponents(stillOnBtn, clearBtn)],
+          }).catch(() => {});
+        }
+      }
     }
 
-    // Clean up stale keys for officers no longer on a stop
+    // Clean up stale keys
     for (const [key] of trafficStopCheckinSent) {
       const [gId, uId] = key.split(':');
       if (gId !== guild.id) continue;
-      const stillOn = onStopOfficers.some(o => o.userId === uId);
-      if (!stillOn) trafficStopCheckinSent.delete(key);
+      if (!onStopOfficers.some(o => o.userId === uId)) trafficStopCheckinSent.delete(key);
     }
   } catch (err) {
     console.error('[Dispatch] checkTrafficStops error:', err.message);
@@ -1509,64 +1529,40 @@ const STATUS_REMINDER_MS = 10 * 60 * 1000;
 async function checkStatusReminders(guild) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
-    if (!config?.enabled || !config.dispatchChannelId || !config.patrolChannelIds?.length) return;
+    if (!config?.enabled || !config.patrolChannelIds?.length) return;
+
+    // Only check the single patrol voice channel (first one configured)
+    const patrolChannelId = config.patrolChannelIds[0];
+    const patrolChannel = guild.channels.cache.get(patrolChannelId) ||
+      await guild.channels.fetch(patrolChannelId).catch(() => null);
+    if (!patrolChannel) return;
 
     const needsReminder = [];
-
-    for (const channelId of config.patrolChannelIds) {
-      const ch = guild.channels.cache.get(channelId) ||
-        await guild.channels.fetch(channelId).catch(() => null);
-      if (!ch) continue;
-
-      for (const [, voiceMember] of ch.members) {
-        if (voiceMember.user.bot) continue;
-
-        const status = await OfficerStatus.findOne({ guildId: guild.id, userId: voiceMember.id });
-
-        // Remind if no status record, or status is not a clear active/busy code
-        const hasGoodStatus = status && ['10-8', '10-6', '10-11', '10-80', '10-97', '10-78'].includes(status.tenCode);
-        if (!hasGoodStatus) {
-          needsReminder.push(voiceMember);
-        }
-      }
+    for (const [, voiceMember] of patrolChannel.members) {
+      if (voiceMember.user.bot) continue;
+      const status = await OfficerStatus.findOne({ guildId: guild.id, userId: voiceMember.id });
+      const hasGoodStatus = status && ['10-8', '10-6', '10-11', '10-80', '10-97', '10-78'].includes(status.tenCode);
+      if (!hasGoodStatus) needsReminder.push(voiceMember.displayName || voiceMember.user.username);
     }
 
     if (needsReminder.length === 0) return;
 
-    const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-      await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-    if (!dispatchCh?.isTextBased()) return;
+    console.log(`[Dispatch] Broadcasting status reminder TTS to ${needsReminder.length} officer(s) in ${guild.name}`);
 
-    const mentions = needsReminder.map(m => `<@${m.id}>`).join(', ');
-
-    const embed = new EmbedBuilder()
-      .setColor('#FFA500')
-      .setTitle('Status Update Reminder')
-      .setDescription(
-        `${mentions}\n\n` +
-        `Please remember to update your current status on the radio.\n` +
-        `If you are available, say **"Dispatch, 10-8"** or use the quick-status button below.\n` +
-        `If you are busy, say **"Dispatch, 10-6"**.`
-      )
-      .setFooter({ text: 'RPM • Auto Status Reminder' })
-      .setTimestamp();
-
-    const available10_8 = new ButtonBuilder()
-      .setCustomId('dispatch_quick_10_8')
-      .setLabel('10-8 — Available')
-      .setStyle(ButtonStyle.Success);
-
-    const busy10_6 = new ButtonBuilder()
-      .setCustomId('dispatch_quick_10_6')
-      .setLabel('10-6 — Busy')
-      .setStyle(ButtonStyle.Secondary);
-
-    await dispatchCh.send({
-      embeds: [embed],
-      components: [new ActionRowBuilder().addComponents(available10_8, busy10_6)],
-    }).catch(() => {});
-
-    console.log(`[Dispatch] Status reminder sent to ${needsReminder.length} officer(s) in ${guild.name}`);
+    // Announce reminder via TTS in the patrol voice channel
+    if (config.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const nameList = needsReminder.length === 1
+          ? needsReminder[0]
+          : needsReminder.slice(0, -1).join(', ') + ' and ' + needsReminder.at(-1);
+        const ttsText = `Attention all units, ${nameList}, please remember to update your current status on the radio. If you are available, say ten eight. If you are busy, say ten six.`;
+        const ttsBuffer = await generateDispatchTTS(ttsText);
+        playDispatchVoice(guild.id, ttsBuffer);
+      } catch (err) {
+        console.error('[Dispatch TTS] Status reminder TTS error:', err.message);
+      }
+    }
   } catch (err) {
     console.error('[Dispatch] checkStatusReminders error:', err.message);
   }
