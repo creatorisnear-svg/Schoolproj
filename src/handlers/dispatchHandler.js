@@ -984,6 +984,33 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End attach/respond detection ---
 
+    // --- "Dispatch help / what can you do / features" detection ---
+    const helpPattern = /\b(?:what\s+can\s+you\s+do|dispatch\s+help|help\s+me|what\s+are\s+your\s+features?|what\s+do\s+you\s+do|show\s+(?:me\s+)?(?:your\s+)?features?|list\s+(?:your\s+)?(?:features?|commands?|capabilities))\b/i;
+    if (helpPattern.test(transcript)) {
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsText = [
+            `Copy ${officerName}, here is what dispatch can do for you.`,
+            `Say ten eleven to initiate a traffic stop and I will move you to a stop channel.`,
+            `Say ten eight when your stop is clear and I will bring you back to patrol.`,
+            `Say dispatch run plate and give me a plate number to run a vehicle check.`,
+            `Say dispatch stay with me to keep me on your channel for up to ten minutes.`,
+            `Say ten eighty if you initiate a pursuit and I will broadcast to all units for backup.`,
+            `Say ten ninety nine or officer down for an emergency panic alert to all units.`,
+            `I will automatically check on you every minute while on scene and remind all units of their status every ten minutes.`,
+            `Say dispatch attach followed by an officer name to send them to another officer's stop.`,
+          ].join(' ');
+          const ttsBuffer = await generateDispatchTTS(ttsText);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) {
+          console.error('[Dispatch TTS] Help TTS error:', err.message);
+        }
+      }
+      return;
+    }
+    // --- End help detection ---
+
     // --- Pursuit backup voice response detection ---
     // If there's an active pursuit alert, check if this officer is responding verbally
     const pursuitAlert = activePursuitAlerts.get(guild.id);
@@ -1027,6 +1054,62 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
     }
     // --- End pursuit backup detection ---
+
+    // --- "Dispatch, attach [name] to [other officer]'s stop" detection ---
+    const attachStopPattern = /\b(?:attach|send|move|put)\s+(\w+)\s+(?:to|with)\s+(\w+)(?:'s?)?\s+(?:10[-\s]?11|stop|traffic\s+stop|pullover|scene)\b/i;
+    const attachStopMatch = transcript.match(attachStopPattern);
+    if (attachStopMatch) {
+      const targetName  = attachStopMatch[1].toLowerCase(); // officer to move
+      const sceneName   = attachStopMatch[2].toLowerCase(); // officer on scene
+      // Find the scene officer's active stop channel
+      const allStatuses = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
+      const sceneOfficer = allStatuses.find(s =>
+        s.username.toLowerCase().includes(sceneName) || sceneName.includes(s.username.toLowerCase())
+      );
+      const stopChannelId = sceneOfficer?.trafficStopChannelId;
+
+      // Find the officer to move
+      const allMembers = await guild.members.fetch().catch(() => null);
+      const targetMember = allMembers?.find(m =>
+        !m.user.bot && (
+          (m.displayName || m.user.username).toLowerCase().includes(targetName)
+        )
+      );
+
+      if (sceneOfficer && stopChannelId && targetMember) {
+        const stopCh = guild.channels.cache.get(stopChannelId) ||
+          await guild.channels.fetch(stopChannelId).catch(() => null);
+        if (stopCh && targetMember.voice?.channelId) {
+          await targetMember.voice.setChannel(stopCh).catch(() => {});
+          console.log(`[Dispatch] Attached ${targetMember.displayName} to ${sceneOfficer.username}'s stop in channel "${stopCh.name}"`);
+
+          if (config.aiEnabled && hasAIKey()) {
+            try {
+              const { playDispatchVoice } = await import('../utils/voiceListener.js');
+              const moveName = targetMember.displayName || targetMember.user.username;
+              const ttsText = `Copy, moving ${moveName} to ${sceneOfficer.username}'s traffic stop. Ten four.`;
+              const ttsBuffer = await generateDispatchTTS(ttsText);
+              playDispatchVoice(guild.id, ttsBuffer);
+            } catch {}
+          }
+          return;
+        }
+      } else {
+        // Could not resolve — acknowledge the attempt
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsText = sceneOfficer
+              ? `Unable to locate ${targetName} in a voice channel to move them.`
+              : `Unable to find an active traffic stop for ${sceneName}.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch {}
+        }
+        return;
+      }
+    }
+    // --- End attach-to-stop detection ---
 
     // --- "Stay with me / stay on channel" detection ---
     // Officer asks dispatch to remain in their traffic stop channel
@@ -1187,8 +1270,43 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         console.error('[Dispatch] Voice channel move error:', err.message);
       }
     } else if (voiceAction === 'available') {
-      // Officer called 10-8 verbally — clear their stop status (they move back themselves)
+      // Officer called 10-8 verbally — clear their stop status
       await updateOfficerStatus(guild.id, userId, officerName, '10-8', parsed, null);
+
+      // If bot is currently in the stop channel with this officer, move them back to patrol
+      try {
+        const { getCurrentChannelId, clearExtendedStay, moveToChannel } = await import('../utils/voiceListener.js');
+        const currentBotChannelId = getCurrentChannelId(guild.id);
+        const officerVoiceChannelId = member?.voice?.channelId;
+        const isInStopWithOfficer = currentBotChannelId &&
+          officerVoiceChannelId === currentBotChannelId &&
+          !config.patrolChannelIds?.includes(currentBotChannelId);
+
+        if (isInStopWithOfficer) {
+          clearExtendedStay(guild.id);
+          const patrolChannelId = config.patrolChannelIds?.[0];
+          if (patrolChannelId) {
+            const patrolCh = guild.channels.cache.get(patrolChannelId) ||
+              await guild.channels.fetch(patrolChannelId).catch(() => null);
+            if (patrolCh) {
+              // Move the officer back to patrol first
+              await member.voice.setChannel(patrolCh).catch(() => {});
+              // Then return bot to patrol
+              await moveToChannel(patrolCh).catch(() => {});
+            }
+          }
+          // Acknowledge via TTS
+          if (config.aiEnabled && hasAIKey()) {
+            try {
+              const { playDispatchVoice } = await import('../utils/voiceListener.js');
+              const ttsBuffer = await generateDispatchTTS(`Copy ${officerName}, showing you ten eight. Stop is clear, returning you to patrol. Ten four.`);
+              playDispatchVoice(guild.id, ttsBuffer);
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.error('[Dispatch] 10-8 auto-return error:', err.message);
+      }
     } else if (voiceAction === 'out_of_service') {
       await OfficerStatus.deleteOne({ guildId: guild.id, userId }).catch(() => {});
     } else if (parsed.code) {
