@@ -224,6 +224,48 @@ app.get('/callback', async (req, res) => {
   }
 });
 
+client.on('guildCreate', async (guild) => {
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(0xffffff)
+      .setTitle('Thanks for adding RolePlayManager!')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setDescription(
+        `Hey there! RolePlayManager is now in **${guild.name}**.\n\n` +
+        `Here's everything you can set up:\n\n` +
+        `🚨 **911 System** — \`/roleplaycommandsetup\`\n` +
+        `🪪 **Verification** — \`/verifysystemsetup\`\n` +
+        `🎟️ **Ticket Support** — \`/ticketsupportsetup\`\n` +
+        `⚡ **Priority Tracker** — \`/prioritytrackersetup\`\n` +
+        `👋 **Welcome System** — \`/welcomesystemsetup\`\n` +
+        `🚫 **Strike System** — \`/strikesystemsetup\`\n` +
+        `📅 **RP Calendar** — \`/roleplaycalendersetup\`\n` +
+        `🎙️ **AI Voice Dispatch** — \`/dispatchsetup\` *(Premium)*`
+      )
+      .addFields(
+        {
+          name: '💡 Recommended: Use the Web Dashboard',
+          value: 'The easiest way to set everything up is through our website dashboard. Enable features, configure channels, manage roles — all without touching Discord commands.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
+        },
+        {
+          name: '🆘 Need Help?',
+          value: 'Join our support server: **[discord.gg/m4dZsWq6m](https://discord.gg/m4dZsWq6m)**\nOr email us: **creatorisnear@gmail.com**',
+        }
+      )
+      .setFooter({ text: 'RolePlayManager • roleplaymanager.xyz' });
+
+    const systemChannel = guild.systemChannel;
+    if (systemChannel?.permissionsFor(guild.members.me)?.has('SendMessages')) {
+      await systemChannel.send({ embeds: [embed] });
+    } else {
+      const owner = await guild.fetchOwner();
+      await owner.send({ embeds: [embed] }).catch(() => {});
+    }
+  } catch (err) {
+    console.error('[guildCreate] Failed to send welcome message:', err.message);
+  }
+});
+
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   for (const [roleId] of addedRoles) {
