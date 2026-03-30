@@ -991,15 +991,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
           const ttsText = [
-            `Copy ${officerName}, here is what dispatch can do for you.`,
-            `Say ten eleven to initiate a traffic stop and I will move you to a stop channel.`,
+            `Copy ${officerName}, here is what I can do as your AI dispatch.`,
+            `Say ten eleven to initiate a traffic stop and I will move you to an open stop channel.`,
             `Say ten eight when your stop is clear and I will bring you back to patrol.`,
-            `Say dispatch run plate and give me a plate number to run a vehicle check.`,
-            `Say dispatch stay with me to keep me on your channel for up to ten minutes.`,
-            `Say ten eighty if you initiate a pursuit and I will broadcast to all units for backup.`,
-            `Say ten ninety nine or officer down for an emergency panic alert to all units.`,
-            `I will automatically check on you every minute while on scene and remind all units of their status every ten minutes.`,
-            `Say dispatch attach followed by an officer name to send them to another officer's stop.`,
+            `Say dispatch stay with me to keep me on your channel for up to ten minutes while you handle your stop.`,
+            `Say dispatch attach me to followed by an officer name to move yourself to that officer's traffic stop channel.`,
+            `Say ten eighty if you initiate a pursuit and I will broadcast an all units alert and find you backup.`,
+            `Say ten ninety nine or officer down and I will send an immediate panic alert to all units.`,
+            `I will check on you every minute while you are on scene and call out any officers every ten minutes who have not updated their status.`,
           ].join(' ');
           const ttsBuffer = await generateDispatchTTS(ttsText);
           playDispatchVoice(guild.id, ttsBuffer);
@@ -1055,12 +1054,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End pursuit backup detection ---
 
-    // --- "Dispatch, attach [name] to [other officer]'s stop" detection ---
-    const attachStopPattern = /\b(?:attach|send|move|put)\s+(\w+)\s+(?:to|with)\s+(\w+)(?:'s?)?\s+(?:10[-\s]?11|stop|traffic\s+stop|pullover|scene)\b/i;
+    // --- "Dispatch, attach me to [officer]'s stop" detection ---
+    // The SPEAKER is the one being moved to the named officer's traffic stop channel
+    const attachStopPattern = /\b(?:attach|send|move|put)\s+me\s+(?:to|with)\s+(\w+)(?:'s?)?\s+(?:10[-\s]?11|stop|traffic\s+stop|pullover|scene)\b/i;
     const attachStopMatch = transcript.match(attachStopPattern);
     if (attachStopMatch) {
-      const targetName  = attachStopMatch[1].toLowerCase(); // officer to move
-      const sceneName   = attachStopMatch[2].toLowerCase(); // officer on scene
+      const sceneName = attachStopMatch[1].toLowerCase(); // officer on scene
+
       // Find the scene officer's active stop channel
       const allStatuses = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
       const sceneOfficer = allStatuses.find(s =>
@@ -1068,26 +1068,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       );
       const stopChannelId = sceneOfficer?.trafficStopChannelId;
 
-      // Find the officer to move
-      const allMembers = await guild.members.fetch().catch(() => null);
-      const targetMember = allMembers?.find(m =>
-        !m.user.bot && (
-          (m.displayName || m.user.username).toLowerCase().includes(targetName)
-        )
-      );
-
-      if (sceneOfficer && stopChannelId && targetMember) {
+      if (sceneOfficer && stopChannelId && member?.voice?.channelId) {
         const stopCh = guild.channels.cache.get(stopChannelId) ||
           await guild.channels.fetch(stopChannelId).catch(() => null);
-        if (stopCh && targetMember.voice?.channelId) {
-          await targetMember.voice.setChannel(stopCh).catch(() => {});
-          console.log(`[Dispatch] Attached ${targetMember.displayName} to ${sceneOfficer.username}'s stop in channel "${stopCh.name}"`);
+        if (stopCh) {
+          await member.voice.setChannel(stopCh).catch(() => {});
+          console.log(`[Dispatch] Attached ${officerName} to ${sceneOfficer.username}'s stop in channel "${stopCh.name}"`);
 
           if (config.aiEnabled && hasAIKey()) {
             try {
               const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const moveName = targetMember.displayName || targetMember.user.username;
-              const ttsText = `Copy, moving ${moveName} to ${sceneOfficer.username}'s traffic stop. Ten four.`;
+              const ttsText = `Copy ${officerName}, moving you to ${sceneOfficer.username}'s traffic stop. Ten four.`;
               const ttsBuffer = await generateDispatchTTS(ttsText);
               playDispatchVoice(guild.id, ttsBuffer);
             } catch {}
@@ -1095,13 +1086,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           return;
         }
       } else {
-        // Could not resolve — acknowledge the attempt
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = sceneOfficer
-              ? `Unable to locate ${targetName} in a voice channel to move them.`
-              : `Unable to find an active traffic stop for ${sceneName}.`;
+            const ttsText = `Unable to find an active traffic stop for ${sceneName}. Please verify the officer name and try again.`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch {}
