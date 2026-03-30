@@ -1254,6 +1254,20 @@ async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, l
   );
 }
 
+// Status category helpers for the board
+const SCENE_CODES = new Set(['10-11', '10-97', '10-78', '10-80', '10-99']);
+const BUSY_CODES  = new Set(['10-6', '10-7']);
+const CODE_PREFIX = {
+  '10-8':  '[AVL]',
+  '10-11': '[STOP]',
+  '10-97': '[SCENE]',
+  '10-80': '[PURSUIT]',
+  '10-99': '[PANIC]',
+  '10-78': '[ASSIST]',
+  '10-6':  '[BUSY]',
+  '10-7':  '[OOS]',
+};
+
 export async function rebuildStatusBoard(guild, config) {
   if (!config?.statusBoardChannelId) return;
 
@@ -1283,24 +1297,57 @@ export async function rebuildStatusBoard(guild, config) {
   if (officers.length === 0) {
     officerEmbed.setDescription('*No officers currently on duty.*');
   } else {
-    const rows = officers.map((o) => {
-      const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
-      const since = `<t:${Math.floor(new Date(o.updatedAt).getTime() / 1000)}:R>`;
-      let line = `<@${o.userId}> — **${codeLabel}**`;
-      if (o.subject) line += ` · with ${o.subject}`;
-      if (o.location) line += ` @ ${o.location}`;
-      line += ` · ${since}`;
+    // Group: On-Scene | Available/Busy | Other
+    const onScene  = officers.filter(o => SCENE_CODES.has(o.tenCode));
+    const available = officers.filter(o => o.tenCode === '10-8');
+    const busy     = officers.filter(o => BUSY_CODES.has(o.tenCode));
+    const other    = officers.filter(o =>
+      !SCENE_CODES.has(o.tenCode) && o.tenCode !== '10-8' && !BUSY_CODES.has(o.tenCode)
+    );
 
+    const buildRow = (o) => {
+      const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
+      const prefix = CODE_PREFIX[o.tenCode] || `[${o.tenCode}]`;
+      const since = `<t:${Math.floor(new Date(o.updatedAt).getTime() / 1000)}:R>`;
+
+      let line = `**${prefix}** <@${o.userId}> — **${codeLabel}**`;
+
+      // Subject (plate/person description)
+      if (o.subject) line += `\n   Subject: ${o.subject}`;
+      // Location
+      if (o.location) line += `\n   Location: ${o.location}`;
+      // Traffic stop channel link
+      if (o.trafficStopChannelId) line += `\n   Channel: <#${o.trafficStopChannelId}>`;
+      // Time on scene for active scene codes
+      if (SCENE_CODES.has(o.tenCode) && o.trafficStopStartAt) {
+        const mins = Math.floor((Date.now() - new Date(o.trafficStopStartAt).getTime()) / 60000);
+        if (mins > 0) line += `\n   On scene: ${mins} min`;
+      }
+      // Status updated time
+      line += `\n   Updated: ${since}`;
+
+      // Attached emergency call
       const attachedCall = activeCalls.find(c =>
         c.respondingLeoId === o.userId || c.attachedLeoIds?.includes(o.userId)
       );
       if (attachedCall) {
-        line += ` · [${attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED'} — Call #${attachedCall.callId?.split('-').pop() || '???'}]`;
+        const role = attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED';
+        const num = attachedCall.callId?.split('-').pop() || '???';
+        line += `\n   Call #${num} [${role}]`;
       }
 
       return line;
-    });
-    officerEmbed.setDescription(rows.join('\n'));
+    };
+
+    const sections = [];
+    if (onScene.length > 0)   sections.push(`**— ON SCENE (${onScene.length}) —**\n` + onScene.map(buildRow).join('\n\n'));
+    if (available.length > 0) sections.push(`**— AVAILABLE (${available.length}) —**\n` + available.map(buildRow).join('\n\n'));
+    if (busy.length > 0)      sections.push(`**— BUSY / OOS (${busy.length}) —**\n` + busy.map(buildRow).join('\n\n'));
+    if (other.length > 0)     sections.push(`**— OTHER (${other.length}) —**\n` + other.map(buildRow).join('\n\n'));
+
+    const fullDesc = sections.join('\n\n');
+    // Discord embed description limit: 4096 chars
+    officerEmbed.setDescription(fullDesc.slice(0, 4096));
   }
   embeds.push(officerEmbed);
 
@@ -1873,6 +1920,82 @@ export function startStatusReminderTimer(guild) {
   console.log(`[Dispatch] Status reminder timer started for ${guild.name}`);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// HOURLY STATUS RESET (every 60 minutes)
+// ────────────────────────────────────────────────────────────────────────────
+const hourlyResetIntervals = new Map();
+const HOURLY_RESET_MS = 60 * 60 * 1000;
+
+async function runHourlyStatusReset(guild) {
+  try {
+    const config = await DispatchConfig.findOne({ guildId: guild.id });
+    if (!config?.enabled) return;
+
+    console.log(`[Dispatch] Running hourly status reset for ${guild.name}`);
+
+    // Clear all officer statuses for this guild
+    await OfficerStatus.deleteMany({ guildId: guild.id });
+
+    // Rebuild the now-empty board
+    await rebuildStatusBoard(guild, config);
+
+    // Post a notice in dispatch channel
+    if (config.dispatchChannelId) {
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Hourly Status Reset')
+          .setDescription(
+            'Dispatch has cleared all officer statuses for the hour.\n' +
+            'All units, please update your current status on the radio.\n\n' +
+            'Say **ten eight** if available, **ten six** if busy, or your current code if on scene.'
+          )
+          .setFooter({ text: 'RPM • Dispatch' })
+          .setTimestamp();
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+    }
+
+    // Broadcast TTS in patrol voice channel
+    const patrolChannelId = config.patrolChannelIds?.[0];
+    if (patrolChannelId && config.aiEnabled && hasAIKey()) {
+      // Only broadcast if there are officers in the patrol channel
+      const patrolCh = guild.channels.cache.get(patrolChannelId) ||
+        await guild.channels.fetch(patrolChannelId).catch(() => null);
+      const hasOfficers = patrolCh?.members?.some(m => !m.user.bot);
+      if (hasOfficers) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsText = 'Attention all units, dispatch is performing an hourly status reset. All officer statuses have been cleared. All units please update your current status on the radio. Say ten eight if available, ten six if busy, or your current code if you are on scene.';
+          const ttsBuffer = await generateDispatchTTS(ttsText);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) {
+          console.error('[Dispatch TTS] Hourly reset TTS error:', err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch] Hourly status reset error:', err.message);
+  }
+}
+
+export function startHourlyStatusReset(guild) {
+  if (hourlyResetIntervals.has(guild.id)) return;
+  const interval = setInterval(() => runHourlyStatusReset(guild), HOURLY_RESET_MS);
+  hourlyResetIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] Hourly status reset timer started for ${guild.name}`);
+}
+
+export function stopHourlyStatusReset(guildId) {
+  const interval = hourlyResetIntervals.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    hourlyResetIntervals.delete(guildId);
+  }
+}
+
 export async function handleQuickStatusButton(interaction) {
   try {
     const code = interaction.customId === 'dispatch_quick_10_8' ? '10-8' : '10-6';
@@ -2036,6 +2159,7 @@ export async function initDispatchForGuild(guild, client) {
     startCallRepeatTimer(guild, client);
     startTrafficStopCheckTimer(guild);
     startStatusReminderTimer(guild);
+    startHourlyStatusReset(guild);
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }
