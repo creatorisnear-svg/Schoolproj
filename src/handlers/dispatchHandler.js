@@ -1803,6 +1803,8 @@ export async function handleStopStillButton(interaction) {
 const statusReminderIntervals = new Map();
 const STATUS_REMINDER_MS = 10 * 60 * 1000;
 
+const ON_SCENE_CODES = new Set(['10-11', '10-97', '10-80', '10-78']);
+
 async function checkStatusReminders(guild) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
@@ -1814,26 +1816,45 @@ async function checkStatusReminders(guild) {
       await guild.channels.fetch(patrolChannelId).catch(() => null);
     if (!patrolChannel) return;
 
-    const needsReminder = [];
+    const needsReminder = [];   // officers with no status
+    const stillOnScene = [];    // officers whose status is still an on-scene code
+
     for (const [, voiceMember] of patrolChannel.members) {
       if (voiceMember.user.bot) continue;
+      const name = voiceMember.displayName || voiceMember.user.username;
       const status = await OfficerStatus.findOne({ guildId: guild.id, userId: voiceMember.id });
-      const hasGoodStatus = status && ['10-8', '10-6', '10-11', '10-80', '10-97', '10-78'].includes(status.tenCode);
-      if (!hasGoodStatus) needsReminder.push(voiceMember.displayName || voiceMember.user.username);
+      if (!status || !status.tenCode) {
+        needsReminder.push(name);
+      } else if (ON_SCENE_CODES.has(status.tenCode)) {
+        stillOnScene.push({ name, code: status.tenCode, subject: status.subject || null });
+      }
     }
 
-    if (needsReminder.length === 0) return;
+    if (needsReminder.length === 0 && stillOnScene.length === 0) return;
 
-    console.log(`[Dispatch] Broadcasting status reminder TTS to ${needsReminder.length} officer(s) in ${guild.name}`);
+    console.log(`[Dispatch] Status reminder — no status: ${needsReminder.length}, still on scene: ${stillOnScene.length} in ${guild.name}`);
 
-    // Announce reminder via TTS in the patrol voice channel
     if (config.aiEnabled && hasAIKey()) {
       try {
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const nameList = needsReminder.length === 1
-          ? needsReminder[0]
-          : needsReminder.slice(0, -1).join(', ') + ' and ' + needsReminder.at(-1);
-        const ttsText = `Attention all units, ${nameList}, please remember to update your current status on the radio. If you are available, say ten eight. If you are busy, say ten six.`;
+
+        const parts = [];
+
+        if (needsReminder.length > 0) {
+          const nameList = needsReminder.length === 1
+            ? needsReminder[0]
+            : needsReminder.slice(0, -1).join(', ') + ' and ' + needsReminder.at(-1);
+          parts.push(`Attention all units, ${nameList}, please remember to update your current status on the radio. If you are available, say ten eight. If you are busy, say ten six.`);
+        }
+
+        if (stillOnScene.length > 0) {
+          for (const officer of stillOnScene) {
+            const subjectPart = officer.subject ? ` with ${officer.subject}` : '';
+            parts.push(`${officer.name}, dispatch showing you still on scene${subjectPart}. Are you still on scene? Please confirm or say ten eight if you are clear.`);
+          }
+        }
+
+        const ttsText = parts.join(' ');
         const ttsBuffer = await generateDispatchTTS(ttsText);
         playDispatchVoice(guild.id, ttsBuffer);
       } catch (err) {
