@@ -9,6 +9,8 @@ const officerStatusSchema = new mongoose.Schema({
   location: { type: String, default: null },
   rawCall: { type: String, default: null },
   lastPatrolChannelId: { type: String, default: null },
+  trafficStopStartAt: { type: Date, default: null },
+  trafficStopChannelId: { type: String, default: null },
   updatedAt: { type: Date, default: Date.now },
 });
 
