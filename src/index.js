@@ -90,6 +90,31 @@ app.use('/img', express.static(resolve('src/website/public/img')));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(
+    'User-agent: *\n' +
+    'Allow: /\n' +
+    'Disallow: /dashboard\n' +
+    'Disallow: /auth/\n' +
+    'Sitemap: https://roleplaymanager.xyz/sitemap.xml\n'
+  );
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  const now = new Date().toISOString().split('T')[0];
+  res.type('application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://roleplaymanager.xyz/</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+});
+
 app.get('/', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/landing.html'), 'utf8'));
 });
