@@ -993,7 +993,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           const ttsText = [
             `Copy ${officerName}, here is what I can do as your AI dispatch.`,
             `Say ten eleven to initiate a traffic stop and I will move you to an open stop channel.`,
+            `Say show me in a ten eleven with followed by a civilian name to start a stop on a specific person.`,
             `Say ten eight when your stop is clear and I will bring you back to patrol.`,
+            `Say dispatch run plate followed by the plate number to run a vehicle check.`,
+            `Say dispatch run name followed by a name to run a person check.`,
             `Say dispatch stay with me to keep me on your channel for up to ten minutes while you handle your stop.`,
             `Say dispatch attach me to followed by an officer name to move yourself to that officer's traffic stop channel.`,
             `Say ten eighty if you initiate a pursuit and I will broadcast an all units alert and find you backup.`,
