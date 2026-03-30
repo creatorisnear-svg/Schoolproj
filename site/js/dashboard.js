@@ -193,10 +193,12 @@ function renderDashboard() {
       (f.premium ? ' <span class="premium-tag">Premium</span>' : '') +
       '</div><div class="module-desc">' + f.desc + '</div></div>' +
       '</div>' +
-      '<div class="toggle ' + (enabled ? 'active' : '') + '" onclick="toggleFeature(this,\'' + f.feature + '\',\'' + f.key + '\',' + !enabled + ')"></div>' +
+      '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +
       '</div>';
   });
   html += '</div></div>';
+
+  html += renderPremiumSection(g);
 
   html += '<div class="mobile-modules" style="margin-top:20px;">' +
     '<div class="config-section"><div class="config-section-header"><h3>Configure Modules</h3></div>' +
@@ -211,13 +213,71 @@ function renderDashboard() {
   app.innerHTML = html;
 }
 
-function toggleFeature(el, feature, key, newVal) {
+function renderPremiumSection(g) {
+  if (g.premium) {
+    return '<div class="config-section" style="margin-top:20px;">' +
+      '<div class="config-section-header"><h3>Premium</h3>' +
+      '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>' +
+      '</div>' +
+      '<div class="config-row"><span class="config-label">Premium is active on this server.</span>' +
+      '<span style="font-size:12px;color:var(--text-dim);">All premium features are unlocked.</span></div>' +
+      '</div>';
+  }
+  return '<div class="config-section" style="margin-top:20px;">' +
+    '<div class="config-section-header"><h3>Premium</h3>' +
+    '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
+    '</div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+    '<div><span class="config-label">Activate Premium Key</span>' +
+    '<div class="config-sublabel">Enter your premium key to unlock premium features like AI Voice Dispatch.</div></div>' +
+    '<div style="display:flex;gap:8px;width:100%;">' +
+    '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;max-width:320px;">' +
+    '<button class="btn btn-primary btn-sm" onclick="activatePremium()">Activate</button>' +
+    '</div>' +
+    '</div></div>';
+}
+
+function activatePremium() {
+  var input = document.getElementById('premium-key-input');
+  if (!input) return;
+  var key = input.value.trim();
+  if (!key) { toast('Please enter a premium key', 'error'); return; }
+
+  var btn = input.nextElementSibling;
+  btn.disabled = true;
+  btn.textContent = 'Activating...';
+
+  api('/guild/' + currentGuild.id + '/premium', {
+    method: 'POST',
+    body: JSON.stringify({ key: key })
+  }).then(function(result) {
+    btn.disabled = false;
+    btn.textContent = 'Activate';
+    if (result && result.success) {
+      currentGuild.premium = true;
+      toast('Premium activated!');
+      renderDashboard();
+    }
+  });
+}
+
+function toggleFeature(el) {
+  if (el.classList.contains('loading')) return;
+
+  var feature = el.getAttribute('data-feature');
+  var key = el.getAttribute('data-key');
+  var newVal = !el.classList.contains('active');
+
+  el.classList.add('loading');
   el.classList.toggle('active');
+
   api('/guild/' + currentGuild.id + '/feature/' + feature, {
     method: 'POST',
     body: JSON.stringify({ enabled: newVal })
   }).then(function(result) {
+    el.classList.remove('loading');
     if (result && result.success) {
+      if (!currentGuild.config) currentGuild.config = {};
       currentGuild.config[key] = newVal;
       toast(newVal ? 'Feature enabled' : 'Feature disabled');
     } else {

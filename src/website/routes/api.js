@@ -668,5 +668,48 @@ export function createApiRouter(client) {
     }
   });
 
+  router.post('/guild/:id/premium', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+    const { key } = req.body;
+
+    if (!key || typeof key !== 'string' || !key.trim()) {
+      return res.status(400).json({ error: 'A premium key is required' });
+    }
+
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+
+      const existing = await PremiumKey.findOne({ guildId });
+      if (existing) return res.status(400).json({ error: 'This server already has an active premium key' });
+
+      const premiumKey = await PremiumKey.findOne({ key: key.trim(), guildId: null });
+      if (!premiumKey) return res.status(404).json({ error: 'Invalid or already used premium key' });
+
+      premiumKey.guildId = guildId;
+      premiumKey.guildName = guild.name;
+      premiumKey.activatedBy = req.headers.authorization?.slice(7) || 'unknown';
+      premiumKey.activatedAt = new Date();
+      await premiumKey.save();
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[DASHBOARD] Premium activation error:', err.message);
+      res.status(500).json({ error: 'Failed to activate premium key' });
+    }
+  });
+
   return router;
 }
