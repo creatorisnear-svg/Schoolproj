@@ -2048,25 +2048,6 @@ async function runHourlyStatusReset(guild) {
     // Rebuild the now-empty board
     await rebuildStatusBoard(guild, config);
 
-    // Post a notice in dispatch channel
-    if (config.dispatchChannelId) {
-      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-      if (dispatchCh?.isTextBased()) {
-        const embed = new EmbedBuilder()
-          .setColor('#2d2d2d')
-          .setTitle('Hourly Status Reset')
-          .setDescription(
-            'Dispatch has cleared all officer statuses for the hour.\n' +
-            'All units, please update your current status on the radio.\n\n' +
-            'Say **ten eight** if available, **ten six** if busy, or your current code if on scene.'
-          )
-          .setFooter({ text: 'RPM • Dispatch' })
-          .setTimestamp();
-        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
-      }
-    }
-
     // Broadcast TTS in patrol voice channel
     const patrolChannelId = config.patrolChannelIds?.[0];
     if (patrolChannelId && config.aiEnabled && hasAIKey()) {
