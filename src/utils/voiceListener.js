@@ -447,7 +447,7 @@ function _setupReceiver(connection, guild, state, guildId) {
     let stream;
     try {
       stream = receiver.subscribe(userId, {
-        end: { behavior: EndBehaviorType.AfterSilence, duration: 1500 },
+        end: { behavior: EndBehaviorType.AfterSilence, duration: 2000 },
       });
     } catch (err) {
       clearTimeout(safetyTimeout);
@@ -475,7 +475,7 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      if (pcmChunks.length < 8) return;
+      if (pcmChunks.length < 4) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         try { await onTranscription(wav, userId, guild); }

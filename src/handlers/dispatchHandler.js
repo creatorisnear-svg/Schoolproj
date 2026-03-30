@@ -100,23 +100,30 @@ function hasAIKey() {
 function detectJoinStop(text) {
   const lower = text.toLowerCase();
 
+  // NAME pattern: up to 4 words (covers first + last + possible middle/suffix)
+  const NAME = '[A-Za-z0-9_]+(?:\\s+[A-Za-z0-9_]+){0,3}';
+
   // All patterns return the captured civilian name
   const patterns = [
-    // "show me [in/on/as] [a] [code] with NAME"
-    /show\s+me\s+(?:(?:in|on|as)\s+)?(?:a\s+)?(?:10[-\s]?\d{1,2}\s+)?with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    // "show me [in/on/as] [a] [ten eleven / 10-11 / code] with NAME"
+    new RegExp(`show\\s+me\\s+(?:(?:in|on|as)\\s+)?(?:a\\s+)?(?:(?:ten[-\\s]?\\w+|10[-\\s]?\\d{1,2})\\s+)?with\\s+(${NAME})`, 'i'),
     // "show me with NAME"
-    /show\s+me\s+with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    new RegExp(`show\\s+me\\s+with\\s+(${NAME})`, 'i'),
+    // "put me in [a] [ten eleven] with NAME"
+    new RegExp(`put\\s+me\\s+(?:in\\s+)?(?:a\\s+)?(?:(?:ten[-\\s]?\\w+|10[-\\s]?\\d{1,2})\\s+)?with\\s+(${NAME})`, 'i'),
     // "pulling over NAME" / "pulling NAME over"
-    /pulling\s+over\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
-    /pulling\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+over/i,
+    new RegExp(`pulling\\s+over\\s+(${NAME})`, 'i'),
+    new RegExp(`pulling\\s+(${NAME})\\s+over`, 'i'),
     // "stopping NAME" / "I'm stopping NAME"
-    /(?:i(?:'m|m)\s+)?stopping\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    new RegExp(`(?:i(?:'m|m)\\s+)?stopping\\s+(${NAME})`, 'i'),
     // "traffic stop with NAME"
-    /traffic\s+stop\s+with\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)/i,
+    new RegExp(`traffic\\s+stop\\s+with\\s+(${NAME})`, 'i'),
     // "got NAME pulled over" / "I got NAME stopped"
-    /(?:i\s+)?got\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+(?:pulled\s+over|stopped)/i,
+    new RegExp(`(?:i\\s+)?got\\s+(${NAME})\\s+(?:pulled\\s+over|stopped)`, 'i'),
     // "I have NAME stopped" / "have NAME pulled over"
-    /(?:i\s+)?have\s+([A-Za-z0-9_]+(?:\s+[A-Za-z0-9_]+)?)\s+(?:stopped|pulled\s+over)/i,
+    new RegExp(`(?:i\\s+)?have\\s+(${NAME})\\s+(?:stopped|pulled\\s+over)`, 'i'),
+    // "out with NAME" (common cop radio phrase)
+    new RegExp(`out\\s+with\\s+(${NAME})`, 'i'),
   ];
 
   for (const pattern of patterns) {
@@ -263,20 +270,76 @@ async function runCADLookup(guildId, lookup) {
   return { found: false, ttsResponse: 'Unable to process lookup request.' };
 }
 
-/** Finds a guild member by partial display name or username (case-insensitive). */
+/**
+ * Simple name similarity scorer (0–1).
+ * Strips non-alphanumeric, checks exact, substring, and token-overlap matches.
+ */
+function _nameSimilarity(a, b) {
+  a = a.toLowerCase().replace(/[^a-z0-9]/g, '');
+  b = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (b.includes(a) || a.includes(b)) return 0.85;
+  // Token overlap (handles "John Smith" vs "johnsmith" etc.)
+  const aTok = a.match(/[a-z0-9]+/g) || [];
+  const bTok = b.match(/[a-z0-9]+/g) || [];
+  const hits = aTok.filter(t => bTok.some(bt => bt.includes(t) || t.includes(bt)));
+  return hits.length / Math.max(aTok.length, bTok.length, 1);
+}
+
+/**
+ * Fuzzy member search.
+ * Priority: voice-channel members → full cache → Discord API query.
+ * Returns the best match with score ≥ 0.4, or null.
+ */
 async function findMemberByName(guild, name) {
-  const lower = name.toLowerCase();
-  const cached = guild.members.cache.find(m =>
-    m.displayName.toLowerCase().includes(lower) ||
-    m.user.username.toLowerCase().includes(lower)
-  );
-  if (cached) return cached;
+  const query = name.toLowerCase().trim();
+  let bestMember = null;
+  let bestScore = 0;
+
+  const score = (member) => {
+    const dn = member.displayName;
+    const un = member.user.username;
+    return Math.max(_nameSimilarity(query, dn), _nameSimilarity(query, un));
+  };
+
+  // 1. Search members currently in any voice channel first
+  for (const [, channel] of guild.channels.cache) {
+    if (!channel.isVoiceBased?.()) continue;
+    for (const [, member] of channel.members) {
+      if (member.user.bot) continue;
+      const s = score(member);
+      if (s > bestScore) { bestScore = s; bestMember = member; }
+    }
+  }
+  if (bestScore >= 0.6) {
+    console.log(`[Dispatch] Fuzzy match (voice): "${name}" → "${bestMember.displayName}" (score ${bestScore.toFixed(2)})`);
+    return bestMember;
+  }
+
+  // 2. Full guild member cache
+  for (const [, member] of guild.members.cache) {
+    if (member.user.bot) continue;
+    const s = score(member);
+    if (s > bestScore) { bestScore = s; bestMember = member; }
+  }
+  if (bestScore >= 0.4) {
+    console.log(`[Dispatch] Fuzzy match (cache): "${name}" → "${bestMember.displayName}" (score ${bestScore.toFixed(2)})`);
+    return bestMember;
+  }
+
+  // 3. Discord API fetch fallback
   try {
     const fetched = await guild.members.fetch({ query: name, limit: 5 });
-    return fetched.first() || null;
-  } catch {
-    return null;
-  }
+    const apiMember = fetched.first();
+    if (apiMember) {
+      console.log(`[Dispatch] Fuzzy match (API): "${name}" → "${apiMember.displayName}"`);
+      return apiMember;
+    }
+  } catch {}
+
+  console.log(`[Dispatch] No fuzzy match found for name: "${name}"`);
+  return null;
 }
 
 /**
@@ -393,6 +456,11 @@ function parseTranscript(text) {
   };
 }
 
+const WHISPER_PROMPT =
+  'Police radio communication. Common terms: dispatch, 10-4, 10-7, 10-8, 10-11, 10-20, 10-80, 10-97, 10-99, ' +
+  'traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, run the plate, run the name, ' +
+  'pulling over, backing up, requesting backup, officer down, copy that.';
+
 async function transcribeAudio(wavBuffer) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
   writeFileSync(tempPath, wavBuffer);
@@ -407,6 +475,7 @@ async function transcribeAudio(wavBuffer) {
           file: createReadStream(tempPath),
           model,
           language: 'en',
+          prompt: WHISPER_PROMPT,
         });
         return result.text || '';
       } catch (err) {
@@ -434,12 +503,34 @@ function ttsCacheKey(text) {
   return createHash('md5').update(text.toLowerCase().trim()).digest('hex');
 }
 
+/**
+ * Converts numeric 10-codes to their spoken word form so TTS reads them naturally.
+ * "10-11" → "ten eleven", not "one zero one one".
+ */
+const CODE_TO_SPEECH = {
+  '10-4': 'ten four', '10-6': 'ten six', '10-7': 'ten seven', '10-8': 'ten eight',
+  '10-11': 'ten eleven', '10-12': 'ten twelve', '10-15': 'ten fifteen',
+  '10-17': 'ten seventeen', '10-20': 'ten twenty', '10-76': 'ten seventy six',
+  '10-78': 'ten seventy eight', '10-80': 'ten eighty', '10-97': 'ten ninety seven',
+  '10-99': 'ten ninety nine',
+};
+
+function formatCodeForSpeech(text) {
+  let result = text;
+  for (const [code, spoken] of Object.entries(CODE_TO_SPEECH)) {
+    const escaped = code.replace('-', '[-\\s]');
+    result = result.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), spoken);
+  }
+  return result;
+}
+
 export async function generateDispatchTTSPublic(text) {
   return generateDispatchTTS(text);
 }
 
 async function generateDispatchTTS(text) {
   text = text.replace(/\b911\b/g, '9 1 1');
+  text = formatCodeForSpeech(text);
   const key = ttsCacheKey(text);
 
   if (ttsMemCache.has(key)) {
@@ -585,8 +676,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     const words = transcript.trim().toLowerCase().split(/\s+/);
     const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === 'dispatch');
-    if (dispatchIdx === -1 || dispatchIdx > 3) {
-      console.log(`[Dispatch] Ignored — officer did not address dispatch`);
+    if (dispatchIdx === -1 || dispatchIdx > 5) {
+      console.log(`[Dispatch] Ignored — officer did not address dispatch (word index: ${dispatchIdx})`);
       return;
     }
     const cleanedTranscript = words.slice(dispatchIdx + 1).join(' ');
