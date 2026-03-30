@@ -984,6 +984,70 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End attach/respond detection ---
 
+    // --- "Stay with me / stay on channel" detection ---
+    // Officer asks dispatch to remain in their traffic stop channel
+    const stayPattern = /\b(?:stay(?:\s+(?:with\s+me|on\s+(?:my\s+)?channel|here|on\s+this\s+channel))?|keep\s+(?:dispatch\s+)?(?:with\s+me|on\s+(?:this\s+)?channel|here)|i\s+need\s+(?:you|dispatch)\s+(?:to\s+)?stay)\b/i;
+    if (stayPattern.test(transcript)) {
+      const officerVoiceChannelId = member?.voice?.channelId;
+      const officerStatus = await OfficerStatus.findOne({ guildId: guild.id, userId });
+      const isOnStop = officerStatus?.tenCode === '10-11';
+
+      // Only valid if the officer is on a traffic stop and in a non-patrol channel
+      const { getDispatchState, setExtendedStay, getCurrentChannelId } = await import('../utils/voiceListener.js');
+      const dispatchState = getDispatchState(guild.id);
+      const currentDispatchChannelId = getCurrentChannelId(guild.id);
+      const isInStopChannel = officerVoiceChannelId &&
+        currentDispatchChannelId === officerVoiceChannelId &&
+        !config.patrolChannelIds?.includes(currentDispatchChannelId);
+
+      if ((isOnStop || isInStopChannel) && officerVoiceChannelId) {
+        // Extract duration if specified: "stay with me for 5 minutes"
+        const durationMatch = transcript.match(/for\s+(\d+)\s+(?:minute|min)/i);
+        const durationMin = durationMatch ? Math.min(parseInt(durationMatch[1]), 10) : 5;
+        const durationMs = durationMin * 60 * 1000;
+
+        // Find the patrol channel to return to later
+        const patrolChannelId = config.patrolChannelIds?.[0];
+
+        // Add the stop channel to patrol set so the bot can stay and listen
+        if (dispatchState && officerVoiceChannelId) {
+          dispatchState.patrolChannelIds.add(officerVoiceChannelId);
+          setExtendedStay(guild.id, officerVoiceChannelId, durationMs, patrolChannelId);
+        }
+
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsText = `Copy ${officerName}, dispatch will stay on your channel for ${durationMin} minute${durationMin !== 1 ? 's' : ''}. Go ahead with your traffic stop.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) {
+            console.error('[Dispatch TTS] Stay-with-me TTS error:', err.message);
+          }
+        }
+
+        if (config.dispatchChannelId) {
+          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+          if (dispatchCh?.isTextBased()) {
+            const stayEmbed = new EmbedBuilder()
+              .setColor('#2d2d2d')
+              .setTitle('Dispatch On Channel')
+              .setDescription(
+                `**Officer:** <@${userId}>\n` +
+                `Dispatch will remain on <@${userId}>'s traffic stop channel for **${durationMin} minute${durationMin !== 1 ? 's' : ''}**.\n` +
+                `-# Officers can run plates or names during this time.`
+              )
+              .setFooter({ text: 'RPM • Dispatch' })
+              .setTimestamp();
+            await dispatchCh.send({ embeds: [stayEmbed] }).catch(() => {});
+          }
+        }
+        return;
+      }
+    }
+    // --- End stay-with-me detection ---
+
     const parsed = parseTranscript(transcript);
 
     let dispatchResponse = null;
@@ -1413,6 +1477,14 @@ async function checkTrafficStops(guild) {
 
       // Only check in once per minute
       if (Date.now() - lastCheck < 58 * 1000) continue;
+
+      // Skip check-in if dispatch has an active extended stay for this guild
+      const { getExtendedStay } = await import('../utils/voiceListener.js');
+      const stay = getExtendedStay(guild.id);
+      if (stay) {
+        console.log(`[Dispatch] Skipping traffic stop check-in for ${officer.username} — extended stay active`);
+        continue;
+      }
 
       // Find the officer's current voice channel
       const member = await guild.members.fetch(officer.userId).catch(() => null);

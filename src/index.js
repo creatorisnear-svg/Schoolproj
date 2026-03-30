@@ -294,10 +294,12 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
   try {
-    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel } = await import('./utils/voiceListener.js');
+    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel, clearExtendedStay, getExtendedStay } = await import('./utils/voiceListener.js');
+
+    const currentBotChannelId = getCurrentChannelId(guild.id);
 
     // Officer entered a patrol channel that the bot isn't currently in
-    if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && getCurrentChannelId(guild.id) !== joinedChannelId) {
+    if (joinedChannelId && isPatrolChannel(guild.id, joinedChannelId) && currentBotChannelId !== joinedChannelId) {
       // Only move for LEO members (dispatch config roles take priority over CAD config)
       const DispatchConfigModel = (await import('./models/DispatchConfig.js')).default;
       const CADConfigModel = (await import('./models/CADConfig.js')).default;
@@ -316,7 +318,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     }
 
     // Bot's current patrol channel may now be empty — move to another active patrol channel or disconnect
-    if (leftChannelId && isPatrolChannel(guild.id, leftChannelId) && getCurrentChannelId(guild.id) === leftChannelId) {
+    if (leftChannelId && isPatrolChannel(guild.id, leftChannelId) && currentBotChannelId === leftChannelId) {
       const state = getDispatchState(guild.id);
       if (!state) return;
 
@@ -340,6 +342,38 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
         // No patrol channel has human members — idle disconnect (preserves state for re-join)
         if (!moved) {
           disconnectDispatchChannel(guild.id);
+        }
+      }
+    }
+
+    // Bot is currently in a non-patrol channel (traffic stop / extended stay) —
+    // auto-return to patrol if that channel just became empty
+    if (leftChannelId && currentBotChannelId === leftChannelId && !isPatrolChannel(guild.id, leftChannelId)) {
+      const leftChannel = guild.channels.cache.get(leftChannelId);
+      const humanMembersLeft = leftChannel?.members.filter(m => !m.user.bot).size ?? 0;
+
+      if (humanMembersLeft === 0) {
+        console.log(`[Dispatch] Traffic stop channel "${leftChannel?.name}" is now empty — returning to patrol`);
+
+        // Cancel any extended stay
+        clearExtendedStay(guild.id);
+
+        const state = getDispatchState(guild.id);
+        if (state) {
+          // Remove this channel from the patrol set if it was added temporarily
+          state.patrolChannelIds.delete(leftChannelId);
+
+          // Find an active patrol channel to return to
+          let moved = false;
+          for (const channelId of state.patrolChannelIds) {
+            const ch = guild.channels.cache.get(channelId);
+            if (ch && ch.members.filter(m => !m.user.bot).size > 0) {
+              await moveToChannel(ch);
+              moved = true;
+              break;
+            }
+          }
+          if (!moved) disconnectDispatchChannel(guild.id);
         }
       }
     }
