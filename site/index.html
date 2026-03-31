@@ -5,7 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RolePlayManager - Discord Bot for GTA 5 RP</title>
   <meta name="description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
+  <link rel="canonical" href="https://roleplaymanager.xyz/">
   <link rel="icon" type="image/png" href="/img/logo.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://roleplaymanager.xyz/">
+  <meta property="og:title" content="RolePlayManager - Discord Bot for GTA 5 RP">
+  <meta property="og:description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
+  <meta property="og:image" content="https://roleplaymanager.xyz/img/banner.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://roleplaymanager.xyz/">
+  <meta name="twitter:title" content="RolePlayManager - Discord Bot for GTA 5 RP">
+  <meta name="twitter:description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, and more.">
+  <meta name="twitter:image" content="https://roleplaymanager.xyz/img/banner.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -107,6 +121,28 @@
           <p>Full web dashboard to enable/disable features, configure every module, manage channels, roles, and settings without touching Discord.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <div id="announcements-bar" style="display:none;"></div>
+
+  <section id="videos-section" style="display:none; padding: 80px 0; background: #0d0d0d;">
+    <div class="container">
+      <div class="section-title">
+        <h2>See it in action</h2>
+        <p>Watch how RolePlayManager works in a real server</p>
+      </div>
+      <div id="videos-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 32px;"></div>
+    </div>
+  </section>
+
+  <section id="changelog-section" style="display:none; padding: 80px 0; background: #111;">
+    <div class="container">
+      <div class="section-title">
+        <h2>What's new</h2>
+        <p>Latest updates and improvements to RolePlayManager</p>
+      </div>
+      <div id="changelog-list" style="margin-top: 32px; display: flex; flex-direction: column; gap: 16px;"></div>
     </div>
   </section>
 
@@ -234,6 +270,7 @@
 
   <script>
     var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+
     fetch(API_BASE + '/api/stats').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
       document.getElementById('stat-users').textContent = data.users || '\u2014';
@@ -245,6 +282,72 @@
       document.querySelectorAll('.faq-item.open').forEach(function(el) { el.classList.remove('open'); });
       if (!isOpen) item.classList.add('open');
     }
+
+    function toEmbedUrl(url) {
+      var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+      if (match) return 'https://www.youtube.com/embed/' + match[1];
+      return url;
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    var typeColors = { info: '#5b9cf6', update: '#4ade80', warning: '#f59e0b' };
+    var typeBg = { info: '#1a2a4a', update: '#1a3a2a', warning: '#3a2a1a' };
+
+    fetch(API_BASE + '/api/public/announcements').then(function(r) { return r.json(); }).then(function(items) {
+      if (!items || !items.length) return;
+      var bar = document.getElementById('announcements-bar');
+      bar.style.display = 'block';
+      bar.innerHTML = items.map(function(a) {
+        var bg = typeBg[a.type] || '#1a2a4a';
+        var color = typeColors[a.type] || '#5b9cf6';
+        return '<div style="background:' + bg + ';border-left:4px solid ' + color + ';padding:16px 32px;font-size:14px;color:#e0e0e0;">' +
+          '<strong style="color:' + color + ';">' + esc(a.title) + '</strong> &mdash; ' + esc(a.content) + '</div>';
+      }).join('');
+    }).catch(function() {});
+
+    fetch(API_BASE + '/api/public/videos').then(function(r) { return r.json(); }).then(function(items) {
+      if (!items || !items.length) return;
+      var section = document.getElementById('videos-section');
+      var grid = document.getElementById('videos-grid');
+      section.style.display = 'block';
+      grid.innerHTML = items.map(function(v) {
+        return '<div style="background:#161616;border:1px solid #222;border-radius:12px;overflow:hidden;">' +
+          '<div style="aspect-ratio:16/9;">' +
+          '<iframe src="' + toEmbedUrl(esc(v.videoUrl)) + '" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>' +
+          '</div>' +
+          '<div style="padding:16px;">' +
+          '<div style="font-weight:700;font-size:14px;color:#fff;margin-bottom:4px;">' + esc(v.title) + '</div>' +
+          (v.description ? '<div style="font-size:13px;color:#888;">' + esc(v.description) + '</div>' : '') +
+          '</div></div>';
+      }).join('');
+    }).catch(function() {});
+
+    fetch(API_BASE + '/api/public/changelogs').then(function(r) { return r.json(); }).then(function(items) {
+      if (!items || !items.length) return;
+      var section = document.getElementById('changelog-section');
+      var list = document.getElementById('changelog-list');
+      section.style.display = 'block';
+      list.innerHTML = items.map(function(c) {
+        var changes = (c.changes || []).map(function(ch) {
+          return '<li style="font-size:13px;color:#aaa;padding:3px 0 3px 14px;position:relative;list-style:none;">' +
+            '<span style="position:absolute;left:0;color:#5865f2;">•</span>' + esc(ch) + '</li>';
+        }).join('');
+        return '<div style="background:#161616;border:1px solid #222;border-radius:12px;padding:24px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<div>' +
+          '<span style="font-size:15px;font-weight:700;color:#fff;">' + esc(c.version) + '</span>' +
+          '<span style="font-size:15px;color:#888;"> &mdash; ' + esc(c.title) + '</span>' +
+          '</div>' +
+          '<span style="font-size:12px;color:#666;">' + new Date(c.date).toLocaleDateString() + '</span>' +
+          '</div>' +
+          (changes ? '<ul style="margin:0;padding:0;">' + changes + '</ul>' : '') +
+          '</div>';
+      }).join('');
+    }).catch(function() {});
   </script>
 </body>
 </html>
