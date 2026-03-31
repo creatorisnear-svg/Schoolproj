@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dev/
+Disallow: /dashboarddev/
+
+Sitemap: https://roleplaymanager.xyz/sitemap.xml
