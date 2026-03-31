@@ -26,6 +26,14 @@ const premiumKeySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  expiresAt: {
+    type: Date,
+    default: null,
+  },
+  isTrialKey: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 premiumKeySchema.index({ guildId: 1 });
