@@ -2,11 +2,21 @@ import { Router } from 'express';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { randomBytes } from 'crypto';
+import multer from 'multer';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { clearFeatureFlagCache } from '../../utils/premiumCheck.js';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('video/')) cb(null, true);
+    else cb(new Error('Only video files are allowed'));
+  },
+});
 
 const ALL_FEATURES = [
   { feature: 'roleplay', label: 'Roleplay Commands' },
@@ -157,19 +167,37 @@ export function createDevRouter() {
   });
 
   router.get('/videos', devAuth, async (req, res) => {
-    const items = await PreviewVideo.find().sort({ order: 1, createdAt: -1 });
+    const items = await PreviewVideo.find().select('-videoData').sort({ order: 1, createdAt: -1 });
     res.json(items);
   });
 
-  router.post('/videos', devAuth, async (req, res) => {
-    const { title, description, videoUrl, order } = req.body;
-    if (!title || !videoUrl) return res.status(400).json({ error: 'Title and video URL required' });
-    const item = await PreviewVideo.create({ title, description, videoUrl, order: order || 0 });
-    res.json(item);
+  router.post('/videos', devAuth, upload.single('video'), async (req, res) => {
+    try {
+      const { title, description, aspectRatio, order } = req.body;
+      if (!title) return res.status(400).json({ error: 'Title required' });
+      if (!req.file) return res.status(400).json({ error: 'Video file required' });
+      const item = await PreviewVideo.create({
+        title,
+        description: description || '',
+        videoData: req.file.buffer,
+        mimeType: req.file.mimetype,
+        aspectRatio: aspectRatio || '16:9',
+        order: parseInt(order) || 0,
+      });
+      res.json({ _id: item._id, title: item.title, description: item.description, aspectRatio: item.aspectRatio, order: item.order, createdAt: item.createdAt });
+    } catch (err) {
+      res.status(500).json({ error: err.message || 'Upload failed' });
+    }
   });
 
   router.patch('/videos/:id', devAuth, async (req, res) => {
-    const item = await PreviewVideo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { title, description, aspectRatio, order } = req.body;
+    const update = {};
+    if (title !== undefined) update.title = title;
+    if (description !== undefined) update.description = description;
+    if (aspectRatio !== undefined) update.aspectRatio = aspectRatio;
+    if (order !== undefined) update.order = parseInt(order) || 0;
+    const item = await PreviewVideo.findByIdAndUpdate(req.params.id, update, { new: true }).select('-videoData');
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   });

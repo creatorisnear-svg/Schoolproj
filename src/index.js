@@ -104,17 +104,25 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', (req, res) => {
   const now = new Date().toISOString().split('T')[0];
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://roleplaymanager.xyz/</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>`);
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '  <url>',
+    '    <loc>https://roleplaymanager.xyz/</loc>',
+    `    <lastmod>${now}</lastmod>`,
+    '    <changefreq>weekly</changefreq>',
+    '    <priority>1.0</priority>',
+    '  </url>',
+    '</urlset>',
+  ].join('\n');
+  const buf = Buffer.from(xml, 'utf-8');
+  res.writeHead(200, {
+    'Content-Type': 'application/xml; charset=utf-8',
+    'Content-Length': buf.length,
+    'Cache-Control': 'public, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  res.end(buf);
 });
 
 

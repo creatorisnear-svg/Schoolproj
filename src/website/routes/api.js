@@ -48,9 +48,20 @@ export function createApiRouter(client) {
 
   router.get('/public/videos', async (req, res) => {
     try {
-      const items = await PreviewVideo.find().sort({ order: 1, createdAt: -1 });
+      const items = await PreviewVideo.find().select('-videoData').sort({ order: 1, createdAt: -1 });
       res.json(items);
     } catch { res.json([]); }
+  });
+
+  router.get('/public/videos/:id/file', async (req, res) => {
+    try {
+      const item = await PreviewVideo.findById(req.params.id).select('videoData mimeType');
+      if (!item || !item.videoData) return res.status(404).send('Not found');
+      res.setHeader('Content-Type', item.mimeType || 'video/mp4');
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.send(item.videoData);
+    } catch { res.status(500).send('Error'); }
   });
 
   router.get('/public/features', async (req, res) => {

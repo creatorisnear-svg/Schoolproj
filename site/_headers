@@ -1,5 +1,4 @@
 /*
-  Content-Security-Policy: frame-src https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
 
