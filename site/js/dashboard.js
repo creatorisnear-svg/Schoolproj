@@ -8,6 +8,7 @@ var currentUser = null;
 var currentGuild = null;
 var guilds = [];
 var pendingChanges = {};
+var featureFlags = { dispatch: true };
 
 function getToken() { return localStorage.getItem('dash_token'); }
 function setToken(t) { localStorage.setItem('dash_token', t); }
@@ -64,6 +65,15 @@ function showLogin() {
     '</div></div>';
 }
 
+function loadFeatureFlags(callback) {
+  fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
+    featureFlags = flags || { dispatch: true };
+    callback();
+  }).catch(function() {
+    callback();
+  });
+}
+
 function init() {
   var hash = window.location.hash;
   if (hash && hash.indexOf('#token=') === 0) {
@@ -75,29 +85,31 @@ function init() {
 
   app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading...</div></div>';
 
-  api('/me').then(function(data) {
-    if (!data || !data.user) { clearToken(); showLogin(); return; }
-    currentUser = data.user;
-    guilds = data.guilds || [];
+  loadFeatureFlags(function() {
+    api('/me').then(function(data) {
+      if (!data || !data.user) { clearToken(); showLogin(); return; }
+      currentUser = data.user;
+      guilds = data.guilds || [];
 
-    var avatar = currentUser.avatar
-      ? 'https://cdn.discordapp.com/avatars/' + currentUser.id + '/' + currentUser.avatar + '.png?size=32'
-      : null;
-    var navUser = document.getElementById('nav-user');
-    if (navUser) {
-      navUser.innerHTML =
-        '<div class="user-menu" id="user-menu">' +
-        '<button class="user-menu-trigger btn btn-ghost btn-sm" onclick="toggleUserMenu(event)">' +
-        (avatar ? '<img src="' + avatar + '" style="width:24px;height:24px;border-radius:50%;margin-right:6px;">' : '') +
-        esc(currentUser.username) +
-        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><path d="M6 9l6 6 6-6"/></svg>' +
-        '</button>' +
-        '<div class="user-menu-dropdown" id="user-menu-dropdown">' +
-        '<a href="#" onclick="switchAccount();return false;" class="user-menu-item">Switch Account</a>' +
-        '<a href="#" onclick="logout();return false;" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
-        '</div></div>';
-    }
-    renderServerSelect();
+      var avatar = currentUser.avatar
+        ? 'https://cdn.discordapp.com/avatars/' + currentUser.id + '/' + currentUser.avatar + '.png?size=32'
+        : null;
+      var navUser = document.getElementById('nav-user');
+      if (navUser) {
+        navUser.innerHTML =
+          '<div class="user-menu" id="user-menu">' +
+          '<button class="user-menu-trigger btn btn-ghost btn-sm" onclick="toggleUserMenu(event)">' +
+          (avatar ? '<img src="' + avatar + '" style="width:24px;height:24px;border-radius:50%;margin-right:6px;">' : '') +
+          esc(currentUser.username) +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><path d="M6 9l6 6 6-6"/></svg>' +
+          '</button>' +
+          '<div class="user-menu-dropdown" id="user-menu-dropdown">' +
+          '<a href="#" onclick="switchAccount();return false;" class="user-menu-item">Switch Account</a>' +
+          '<a href="#" onclick="logout();return false;" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
+          '</div></div>';
+      }
+      renderServerSelect();
+    });
   });
 }
 
@@ -254,11 +266,12 @@ function renderDashboard() {
   html += '<div class="module-grid">';
   FEATURES.forEach(function(f) {
     var enabled = !!config[f.key];
+    var isPremium = featureFlags[f.feature] === true || (featureFlags[f.feature] === undefined && f.premium);
     html += '<div class="module-card">' +
       '<div class="module-info">' +
       '<div class="module-icon">' + f.icon + '</div>' +
       '<div><div class="module-name">' + f.name +
-      (f.premium ? ' <span class="premium-tag">Premium</span>' : '') +
+      (isPremium ? ' <span class="premium-tag">Premium</span>' : '') +
       '</div><div class="module-desc">' + f.desc + '</div></div>' +
       '</div>' +
       '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +

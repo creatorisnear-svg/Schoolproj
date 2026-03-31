@@ -5,6 +5,20 @@ import { randomBytes } from 'crypto';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
+import FeatureFlag from '../../models/FeatureFlag.js';
+
+const ALL_FEATURES = [
+  { feature: 'roleplay', label: 'Roleplay Commands' },
+  { feature: 'priority', label: 'Priority Tracker' },
+  { feature: 'strike', label: 'Strike System' },
+  { feature: 'calendar', label: 'RP Calendar' },
+  { feature: 'ticket', label: 'Ticket Support' },
+  { feature: 'antipromote', label: 'Anti-Promoting' },
+  { feature: 'rolerequest', label: 'Role Request' },
+  { feature: 'verification', label: 'Verification' },
+  { feature: 'welcome', label: 'Welcome System' },
+  { feature: 'dispatch', label: 'AI Voice Dispatch' },
+];
 
 const DEV_PASSWORD = process.env.DEV_PASSWORD || '67678967';
 const sessions = new Set();
@@ -162,6 +176,40 @@ export function createDevRouter() {
   router.delete('/videos/:id', devAuth, async (req, res) => {
     await PreviewVideo.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
+  });
+
+  router.get('/features', devAuth, async (req, res) => {
+    try {
+      const flags = await FeatureFlag.find();
+      const flagMap = {};
+      flags.forEach(f => { flagMap[f.feature] = f.premium; });
+      const result = ALL_FEATURES.map(f => ({
+        feature: f.feature,
+        label: f.label,
+        premium: flagMap[f.feature] ?? (f.feature === 'dispatch'),
+      }));
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch feature flags' });
+    }
+  });
+
+  router.patch('/features/:feature', devAuth, async (req, res) => {
+    const { feature } = req.params;
+    const { premium } = req.body;
+    const valid = ALL_FEATURES.find(f => f.feature === feature);
+    if (!valid) return res.status(404).json({ error: 'Unknown feature' });
+    if (typeof premium !== 'boolean') return res.status(400).json({ error: 'premium must be boolean' });
+    try {
+      const flag = await FeatureFlag.findOneAndUpdate(
+        { feature },
+        { premium, label: valid.label },
+        { upsert: true, new: true }
+      );
+      res.json({ ok: true, feature: flag.feature, premium: flag.premium });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to update feature flag' });
+    }
   });
 
   return router;

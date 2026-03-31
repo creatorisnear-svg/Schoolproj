@@ -45,6 +45,15 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
   - **911 Call Repeat Announcements:** A 60-second interval checks for active 911 calls older than 2 minutes with no responding or attached officers. Unresponded calls get a text reminder in the dispatch channel and a TTS announcement over the voice channel. Reminders repeat every 2 minutes until someone responds. Cleanup removes tracking for resolved calls.
   - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** — without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
 
+**Feature Flag System:**
+- Developer panel has a "Premium Features" tab where any feature can be marked as Premium or Free.
+- Feature flags stored in MongoDB `FeatureFlag` model (`src/models/FeatureFlag.js`).
+- Dev API: `GET /dev/features` (list all) and `PATCH /dev/features/:feature` (toggle premium status). Protected by dev password.
+- Public API: `GET /api/public/features` — returns a map of `{ featureKey: isPremium }` without auth.
+- Landing page (`site/index.html`) fetches feature flags on load and shows/hides Premium badges on feature cards dynamically via `data-feature` attributes.
+- Dashboard (`site/js/dashboard.js`) fetches feature flags at startup and applies them to module cards.
+- Default: `dispatch` is premium; all others default to free unless set in DB.
+
 **Website & Dashboard:**
 - Landing page at `/` with live server/user stats, feature showcase, and invite button.
 - Admin dashboard at `/dashboard` with Discord OAuth2 login (`identify guilds` scope).

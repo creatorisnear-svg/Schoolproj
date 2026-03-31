@@ -78,6 +78,15 @@
     <button class="tab active" onclick="switchTab('announcements')">Announcements</button>
     <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
     <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
+    <button class="tab" onclick="switchTab('features')">Premium Features</button>
+  </div>
+
+  <div id="panel-features" class="panel">
+    <div style="margin-bottom:20px;">
+      <div class="section-label">Feature Premium Status</div>
+      <p style="font-size:13px;color:#888;margin-bottom:20px;">Toggle which features show as "Premium" on the website and dashboard. Changes take effect immediately for all visitors.</p>
+    </div>
+    <div id="features-list"><div class="empty">Loading...</div></div>
   </div>
 
   <div id="panel-announcements" class="panel active">
@@ -161,8 +170,8 @@
 
 <script>
   function switchTab(name) {
+    const names = ['announcements', 'changelogs', 'videos', 'features'];
     document.querySelectorAll('.tab').forEach((t, i) => {
-      const names = ['announcements', 'changelogs', 'videos'];
       t.classList.toggle('active', names[i] === name);
     });
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -311,12 +320,57 @@
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  async function loadFeatures() {
+    const el = document.getElementById('features-list');
+    const items = await api('GET', '/features');
+    if (!Array.isArray(items) || !items.length) {
+      el.innerHTML = '<div class="empty">No features found.</div>';
+      return;
+    }
+    el.innerHTML = items.map(f => `
+      <div class="card" id="feature-card-${f.feature}">
+        <div class="card-header" style="margin-bottom:0;">
+          <div>
+            <div class="card-title">${esc(f.label)}</div>
+            <div class="card-meta" style="margin-top:4px;">
+              ${f.premium
+                ? '<span style="background:#1a1a3a;color:#5865f2;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;">Premium</span>'
+                : '<span style="background:#1a1a1a;color:#666;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;">Free</span>'
+              }
+            </div>
+          </div>
+          <div class="actions">
+            <button
+              id="feature-btn-${f.feature}"
+              class="toggle-btn ${f.premium ? '' : 'off'}"
+              onclick="toggleFeaturePremium('${f.feature}', ${!f.premium})"
+            >${f.premium ? 'Mark Free' : 'Mark Premium'}</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function toggleFeaturePremium(feature, premium) {
+    const btn = document.getElementById('feature-btn-' + feature);
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    const result = await api('PATCH', '/features/' + feature, { premium });
+    if (result && result.ok !== undefined) {
+      showAlert((premium ? 'Marked as Premium: ' : 'Marked as Free: ') + feature, 'success');
+      loadFeatures();
+    } else {
+      if (btn) { btn.disabled = false; }
+      showAlert('Failed to update feature.', 'error');
+    }
+  }
+
   async function init() {
     const check = await fetch('/dev/check').then(r => r.json());
     if (!check.authorized) { window.location.href = '/dev/login'; return; }
     loadAnnouncements();
     loadChangelogs();
     loadVideos();
+    loadFeatures();
   }
 
   init();

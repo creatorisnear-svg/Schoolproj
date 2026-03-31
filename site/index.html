@@ -77,44 +77,44 @@
         <p>Built specifically for roleplay communities</p>
       </div>
       <div class="features-grid">
-        <div class="feature-card">
+        <div class="feature-card" data-feature="dispatch">
           <div class="feature-icon">AI</div>
-          <h3>AI Voice Dispatch <span class="premium-tag">Premium</span></h3>
+          <h3>AI Voice Dispatch <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Officers speak in voice channels -- the bot transcribes, generates realistic dispatcher responses, and updates the live status board.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="roleplay">
           <div class="feature-icon">DB</div>
-          <h3>CAD Database</h3>
+          <h3>CAD Database <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Full character and vehicle database with license plates, firearms, warrants, and BOLO management for law enforcement.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="roleplay">
           <div class="feature-icon">911</div>
-          <h3>Emergency System</h3>
+          <h3>Emergency System <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Civilians report 911 calls, officers respond and attach. Auto-cleanup and repeat announcements for unresponded calls.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="verification">
           <div class="feature-icon">ID</div>
-          <h3>Verification</h3>
+          <h3>Verification <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Customizable member verification with PSN/Xbox tags, custom questions, approval workflows, and automatic role assignment.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="priority">
           <div class="feature-icon">P</div>
-          <h3>Priority Tracker</h3>
+          <h3>Priority Tracker <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Real-time priority event tracking with cooldown timers, staff controls, and a live-updating embed in your channel.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="strike">
           <div class="feature-icon">S</div>
-          <h3>Strike System</h3>
+          <h3>Strike System <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Multi-level strike system with configurable actions -- timeouts, kicks, bans -- plus automatic DMs and log entries.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="ticket">
           <div class="feature-icon">T</div>
-          <h3>Ticket Support</h3>
+          <h3>Ticket Support <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Custom ticket types with role-based access, automatic channel creation, and a clean close/delete workflow.</p>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" data-feature="calendar">
           <div class="feature-icon">RP</div>
-          <h3>RP Calendar</h3>
+          <h3>RP Calendar <span class="premium-tag feature-premium-tag" style="display:none;">Premium</span></h3>
           <p>Schedule weekly roleplay events with timezone conversion and a clean calendar view for your community.</p>
         </div>
         <div class="feature-card">
@@ -414,6 +414,20 @@
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
       document.getElementById('stat-users').textContent = data.users || '\u2014';
     }).catch(function() {});
+
+    fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
+      document.querySelectorAll('.feature-card[data-feature]').forEach(function(card) {
+        var feature = card.getAttribute('data-feature');
+        var tag = card.querySelector('.feature-premium-tag');
+        if (!tag) return;
+        var isPremium = flags[feature] === true || (flags[feature] === undefined && feature === 'dispatch');
+        tag.style.display = isPremium ? '' : 'none';
+      });
+    }).catch(function() {
+      document.querySelectorAll('.feature-card[data-feature="dispatch"] .feature-premium-tag').forEach(function(t) {
+        t.style.display = '';
+      });
+    });
 
     function toggleFaq(btn) {
       var item = btn.parentElement;

@@ -3,6 +3,9 @@ import axios from 'axios';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
+import FeatureFlag from '../../models/FeatureFlag.js';
+
+const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
 
 async function verifyAdminAccess(token, guildId) {
   const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
@@ -47,6 +50,19 @@ export function createApiRouter(client) {
       const items = await PreviewVideo.find().sort({ order: 1, createdAt: -1 });
       res.json(items);
     } catch { res.json([]); }
+  });
+
+  router.get('/public/features', async (req, res) => {
+    try {
+      const flags = await FeatureFlag.find();
+      const flagMap = {};
+      flags.forEach(f => { flagMap[f.feature] = f.premium; });
+      res.json(flagMap);
+    } catch {
+      const fallback = {};
+      DEFAULT_PREMIUM_FEATURES.forEach(f => { fallback[f] = true; });
+      res.json(fallback);
+    }
   });
 
   router.get('/me', async (req, res) => {
