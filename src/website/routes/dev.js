@@ -11,8 +11,13 @@ const sessions = new Set();
 
 function devAuth(req, res, next) {
   const token = req.cookies?.dev_session;
-  if (!token || !sessions.has(token)) return res.redirect('/dev/login');
-  next();
+  if (token && sessions.has(token)) return next();
+
+  const auth = req.headers.authorization;
+  if (auth && auth === `Bearer ${DEV_PASSWORD}`) return next();
+
+  if (req.method === 'GET' && !req.headers.authorization) return res.redirect('/dev/login');
+  return res.status(401).json({ error: 'Unauthorized' });
 }
 
 export function createDevRouter() {
