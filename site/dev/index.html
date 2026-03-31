@@ -253,8 +253,9 @@
   }
 
   function toEmbedUrl(url) {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-    if (match) return 'https://www.youtube.com/embed/' + match[1];
+    if (!url) return '';
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?\s]+)/);
+    if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0';
     return url;
   }
 
@@ -357,7 +358,7 @@
           </div>
         </div>
         <div class="video-thumb">
-          <iframe src="${toEmbedUrl(esc(v.videoUrl))}" allowfullscreen></iframe>
+          <iframe src="${esc(toEmbedUrl(v.videoUrl))}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
       </div>
     `).join('');
