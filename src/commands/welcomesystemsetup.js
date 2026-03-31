@@ -3,6 +3,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
+import { checkFeatureAccess } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('welcomesystemsetup')
@@ -12,6 +13,14 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      flags: 64,
+    });
+  }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'welcome');
+  if (!access.allowed) {
+    return interaction.reply({
+      embeds: [errorEmbed('Premium Required', 'Welcome System is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
       flags: 64,
     });
   }

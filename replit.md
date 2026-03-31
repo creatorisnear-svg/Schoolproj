@@ -48,6 +48,10 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 **Feature Flag System:**
 - Developer panel has a "Premium Features" tab where any feature can be marked as Premium or Free.
 - Feature flags stored in MongoDB `FeatureFlag` model (`src/models/FeatureFlag.js`).
+- `src/utils/premiumCheck.js` exports `checkFeatureAccess(guildId, featureKey)` — returns `{ allowed }` based on whether the feature is premium-gated AND whether the guild has an active premium key. Results cached for 5 minutes; cache cleared on dev panel flag update via `clearFeatureFlagCache()`.
+- All 10 setup commands (`dispatchsetup`, `roleplaycommandsetup`, `prioritytrackersetup`, `strikesystemsetup`, `roleplaycalendersetup`, `ticketsupportsetup`, `antipromotingsetup`, `verifysystemsetup`, `welcomesystemsetup`, `rolerequestadd`) call `checkFeatureAccess()` right after the permission check.
+- Dashboard feature toggle (`POST /api/guild/:id/feature/:feature`) blocks enabling a premium-gated feature if the guild has no premium key, returning HTTP 403 with `{ error: 'premium_required' }`.
+- Frontend (`site/js/dashboard.js` `toggleFeature`) intercepts 403 premium_required and shows a toast directing the user to activate a key, then reverts the toggle.
 - Dev API: `GET /dev/features` (list all) and `PATCH /dev/features/:feature` (toggle premium status). Protected by dev password.
 - Public API: `GET /api/public/features` — returns a map of `{ featureKey: isPremium }` without auth.
 - Landing page (`site/index.html`) fetches feature flags on load and shows/hides Premium badges on feature cards dynamically via `data-feature` attributes.

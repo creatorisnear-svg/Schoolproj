@@ -6,6 +6,7 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
+import { clearFeatureFlagCache } from '../../utils/premiumCheck.js';
 
 const ALL_FEATURES = [
   { feature: 'roleplay', label: 'Roleplay Commands' },
@@ -206,6 +207,7 @@ export function createDevRouter() {
         { premium, label: valid.label },
         { upsert: true, new: true }
       );
+      clearFeatureFlagCache(feature);
       res.json({ ok: true, feature: flag.feature, premium: flag.premium });
     } catch (err) {
       res.status(500).json({ error: 'Failed to update feature flag' });

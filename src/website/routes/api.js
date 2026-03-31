@@ -4,6 +4,7 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
+import { checkFeatureAccess } from '../../utils/premiumCheck.js';
 
 const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
 
@@ -265,6 +266,13 @@ export function createApiRouter(client) {
 
     if (typeof enabled !== 'boolean') {
       return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+
+    if (enabled) {
+      const access = await checkFeatureAccess(guildId, feature);
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'premium_required', message: 'This feature requires a premium key. Use `/activatepremium` in Discord or enter your key in the Premium section of the dashboard.' });
+      }
     }
 
     try {

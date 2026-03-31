@@ -328,18 +328,49 @@ function toggleFeature(el) {
   el.classList.add('loading');
   el.classList.toggle('active');
 
-  api('/guild/' + currentGuild.id + '/feature/' + feature, {
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/feature/' + feature, {
     method: 'POST',
+    headers: headers,
     body: JSON.stringify({ enabled: newVal })
-  }).then(function(result) {
+  }).then(function(res) {
     el.classList.remove('loading');
-    if (result && result.success) {
-      if (!currentGuild.config) currentGuild.config = {};
-      currentGuild.config[key] = newVal;
-      toast(newVal ? 'Feature enabled' : 'Feature disabled');
-    } else {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    if (res.status === 403) {
       el.classList.toggle('active');
+      res.json().then(function(err) {
+        if (err && err.error === 'premium_required') {
+          toast('Premium required — activate a key in the Premium section below.', 'error');
+        } else {
+          toast(err.error || 'Access denied', 'error');
+        }
+      }).catch(function() { toast('Access denied', 'error'); });
+      return;
     }
+    if (!res.ok) {
+      el.classList.toggle('active');
+      res.json().catch(function() { return {}; }).then(function(err) {
+        toast(err.error || 'Something went wrong', 'error');
+      });
+      return;
+    }
+    res.json().then(function(result) {
+      if (result && result.success) {
+        if (!currentGuild.config) currentGuild.config = {};
+        currentGuild.config[key] = newVal;
+        toast(newVal ? 'Feature enabled' : 'Feature disabled');
+      } else {
+        el.classList.toggle('active');
+        toast('Something went wrong', 'error');
+      }
+    });
+  }).catch(function() {
+    el.classList.remove('loading');
+    el.classList.toggle('active');
+    toast('Connection error. Please try again.', 'error');
   });
 }
 

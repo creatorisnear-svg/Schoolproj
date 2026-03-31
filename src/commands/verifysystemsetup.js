@@ -3,6 +3,7 @@ import Verification from '../models/Verification.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { checkFeatureAccess } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystemsetup')
@@ -12,6 +13,14 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. Only staff can set up the verification system.')],
+      flags: 64,
+    });
+  }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'verification');
+  if (!access.allowed) {
+    return interaction.reply({
+      embeds: [errorEmbed('Premium Required', 'Verification System is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
       flags: 64,
     });
   }

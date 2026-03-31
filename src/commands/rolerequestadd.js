@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { checkFeatureAccess } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rolerequestadd')
@@ -11,6 +12,14 @@ export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
       embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
+      flags: 64,
+    });
+  }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'rolerequest');
+  if (!access.allowed) {
+    return interaction.reply({
+      embeds: [errorEmbed('Premium Required', 'Role Request is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
       flags: 64,
     });
   }
