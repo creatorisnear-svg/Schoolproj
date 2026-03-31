@@ -8,20 +8,9 @@ export async function isPremiumGuild(guildId) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
   const key = await PremiumKey.findOne({ guildId });
-
-  if (!key) {
-    premiumCache.set(guildId, { value: false, ts: Date.now() });
-    return false;
-  }
-
-  if (key.expiresAt && new Date() > key.expiresAt) {
-    await PremiumKey.deleteOne({ _id: key._id });
-    premiumCache.set(guildId, { value: false, ts: Date.now() });
-    return false;
-  }
-
-  premiumCache.set(guildId, { value: true, ts: Date.now() });
-  return true;
+  const result = !!key;
+  premiumCache.set(guildId, { value: result, ts: Date.now() });
+  return result;
 }
 
 export function clearPremiumCache(guildId) {

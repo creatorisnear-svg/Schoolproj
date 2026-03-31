@@ -18,7 +18,6 @@ import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
 import Priority from './models/Priority.js';
 import DispatchConfig from './models/DispatchConfig.js';
-import TopggVote from './models/TopggVote.js';
 
 dotenv.config();
 
@@ -117,21 +116,6 @@ app.get('/sitemap.xml', (req, res) => {
 </urlset>`);
 });
 
-app.post('/webhook/topgg', async (req, res) => {
-  const auth = req.headers.authorization;
-  const webhookAuth = process.env.TOPGG_WEBHOOK_AUTH;
-  if (webhookAuth && auth !== webhookAuth) return res.status(401).end();
-
-  try {
-    const { user, type } = req.body;
-    if (!user || type !== 'upvote') return res.status(200).end();
-    await TopggVote.create({ userId: user, votedAt: new Date(), used: false });
-    console.log(`[top.gg] Vote recorded for user ${user}`);
-  } catch (err) {
-    console.error('[top.gg] Webhook error:', err.message);
-  }
-  res.status(200).end();
-});
 
 app.get('/', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/landing.html'), 'utf8'));
