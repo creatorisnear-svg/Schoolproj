@@ -69,6 +69,7 @@ export function createAuthRouter() {
 
   router.get('/logout', (req, res) => {
     res.clearCookie('dash_token');
+    if (req.query.switch) return res.redirect('/dashboard/login');
     res.redirect('/');
   });
 

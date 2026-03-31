@@ -412,3 +412,12 @@ input[type="number"].config-input { width: 90px; min-width: 90px; }
   select.config-select, select.config-action { max-width: 100%; width: 100%; }
   input.config-input { max-width: 100%; width: 100%; }
 }
+
+.user-menu { position: relative; display: inline-block; }
+.user-menu-trigger { display: flex; align-items: center; cursor: pointer; background: none; border: 1px solid var(--border); }
+.user-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 8px); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); min-width: 160px; overflow: hidden; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.user-menu-dropdown.open { display: block; }
+.user-menu-item { display: block; padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text); text-decoration: none; transition: background .1s; }
+.user-menu-item:hover { background: var(--bg-card-hover); color: var(--text); }
+.user-menu-item-danger { color: var(--red); }
+.user-menu-item-danger:hover { color: var(--red); }

@@ -86,15 +86,33 @@ function init() {
     var navUser = document.getElementById('nav-user');
     if (navUser) {
       navUser.innerHTML =
-        '<a href="#" onclick="logout();return false;" class="btn btn-ghost btn-sm" style="gap:6px;">' +
-        (avatar ? '<img src="' + avatar + '" style="width:20px;height:20px;border-radius:50%;">' : '') +
-        esc(currentUser.username) + '</a>';
+        '<div class="user-menu" id="user-menu">' +
+        '<button class="user-menu-trigger btn btn-ghost btn-sm" onclick="toggleUserMenu(event)">' +
+        (avatar ? '<img src="' + avatar + '" style="width:24px;height:24px;border-radius:50%;margin-right:6px;">' : '') +
+        esc(currentUser.username) +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><path d="M6 9l6 6 6-6"/></svg>' +
+        '</button>' +
+        '<div class="user-menu-dropdown" id="user-menu-dropdown">' +
+        '<a href="#" onclick="switchAccount();return false;" class="user-menu-item">Switch Account</a>' +
+        '<a href="#" onclick="logout();return false;" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
+        '</div></div>';
     }
     renderServerSelect();
   });
 }
 
-function logout() { clearToken(); showLogin(); }
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  var dropdown = document.getElementById('user-menu-dropdown');
+  if (dropdown) dropdown.classList.toggle('open');
+}
+document.addEventListener('click', function() {
+  var dropdown = document.getElementById('user-menu-dropdown');
+  if (dropdown) dropdown.classList.remove('open');
+});
+
+function logout() { clearToken(); window.location.href = '/'; }
+function switchAccount() { clearToken(); showLogin(); }
 
 function renderServerSelect() {
   currentGuild = null;

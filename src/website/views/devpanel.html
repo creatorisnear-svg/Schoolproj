@@ -66,7 +66,8 @@
 <header>
   <img src="/img/logo.png" alt="RPM">
   <span>Developer Panel</span>
-  <div class="user-info" id="user-info">Loading...</div>
+  <div class="user-info" id="user-info">Developer Panel</div>
+  <a href="/dev/logout" style="margin-left:16px;font-size:13px;color:#888;text-decoration:none;padding:6px 14px;border:1px solid #333;border-radius:8px;">Sign Out</a>
 </header>
 
 <div class="container">
@@ -312,8 +313,7 @@
 
   async function init() {
     const check = await fetch('/dev/check').then(r => r.json());
-    if (!check.authorized) { window.location.href = '/dashboard/login'; return; }
-    document.getElementById('user-info').textContent = 'Logged in as ' + check.user.username;
+    if (!check.authorized) { window.location.href = '/dev/login'; return; }
     loadAnnouncements();
     loadChangelogs();
     loadVideos();
