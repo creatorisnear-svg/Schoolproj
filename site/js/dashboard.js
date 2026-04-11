@@ -166,6 +166,7 @@ var FEATURES = [
   { key: 'verifyEnabled', feature: 'verification', name: 'Verification', icon: 'ID', desc: 'Member verification gate', mod: 'verification' },
   { key: 'welcomeEnabled', feature: 'welcome', name: 'Welcome System', icon: 'W', desc: 'New member messages', mod: 'welcome' },
   { key: 'dispatchEnabled', feature: 'dispatch', name: 'AI Voice Dispatch', icon: 'AI', desc: 'AI-powered dispatch (Premium)', mod: 'dispatch', premium: true },
+  { key: 'economyEnabled', feature: 'economy', name: 'Economy', icon: '$', desc: 'Currency, work, crime, gambling', mod: 'economy' },
 ];
 
 var SIDEBAR_MODULES = [
@@ -179,6 +180,7 @@ var SIDEBAR_MODULES = [
   { id: 'antipromo', label: 'Anti-Promoting' },
   { id: 'welcome', label: 'Welcome System' },
   { id: 'calendar', label: 'RP Calendar' },
+  { id: 'economy', label: 'Economy' },
 ];
 
 function renderSidebar(active) {
@@ -427,6 +429,20 @@ function renderSettings(mod) {
         html += '<div class="config-row"><span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span></div>';
       });
       html += '</div>';
+    }
+
+    if (data.roleIncomeList && data.roleIncomeList.length > 0) {
+      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Role Income</h3></div>';
+      html += '<div class="config-row"><span class="config-sublabel" style="font-size:12px;">Use <code>/economysetup roleincome</code> in Discord to add or remove role income entries.</span></div>';
+      data.roleIncomeList.forEach(function(r) {
+        html += '<div class="config-row"><div class="config-left"><span class="config-label">@' + esc(r.roleName) + '</span>' +
+          '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div></div></div>';
+      });
+      html += '</div>';
+    } else if (mod === 'economy') {
+      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Role Income</h3></div>' +
+        '<div class="config-row"><span class="config-sublabel" style="font-size:12px;">No role income configured. Use <code>/economysetup roleincome</code> in Discord to set up periodic income for roles.</span></div>' +
+        '</div>';
     }
 
     html += '</div></div>';
