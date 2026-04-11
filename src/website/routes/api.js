@@ -234,6 +234,12 @@ export function createApiRouter(client) {
         if (rrc) config.roleRequestEnabled = !!rrc.enabled;
       } catch {}
 
+      try {
+        const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+        const ec = await EconomyConfig.findOne({ guildId: guild.id });
+        if (ec) config.economyEnabled = !!ec.enabled;
+      } catch {}
+
       let premium = false;
       try {
         const { default: PremiumKey } = await import('../../models/PremiumKey.js');
@@ -336,6 +342,11 @@ export function createApiRouter(client) {
         case 'dispatch': {
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
           await DispatchConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'economy': {
+          const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+          await EconomyConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
         default:
@@ -563,6 +574,60 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'economy': {
+          result.name = 'Economy';
+          result.description = 'Configure the server economy — currency, work, crime, gambling, and more';
+          const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+          const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
+          const ec = await EconomyConfig.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'currencySymbol', label: 'Currency Symbol', description: 'Symbol shown next to all balances', type: 'text', value: ec?.currencySymbol || '$', placeholder: '$' },
+            { key: 'startingBalance', label: 'Starting Balance', description: 'Cash given to new members on first interaction', type: 'number', value: ec?.startingBalance ?? 1000, min: 0, max: 1000000 },
+            { key: 'maxBalance', label: 'Max Balance', description: 'Maximum cash a member can hold at once', type: 'number', value: ec?.maxBalance ?? 1000000, min: 1, max: 999999999 },
+            { key: 'logChannelId', label: 'Log Channel', description: 'Channel where admin money actions are logged', type: 'select', value: ec?.logChannelId || '', options: channels },
+            { key: 'work_enabled', label: 'Enable Work', description: 'Allow members to earn money with /economy work', type: 'toggle', value: ec?.work?.enabled ?? true },
+            { key: 'work_cooldown', label: 'Work Cooldown (minutes)', description: 'How long members must wait between work uses', type: 'number', value: ec?.work?.cooldown ?? 60, min: 1, max: 1440 },
+            { key: 'work_minPayout', label: 'Work Min Pay', description: 'Minimum earnings per work', type: 'number', value: ec?.work?.minPayout ?? 100, min: 1, max: 1000000 },
+            { key: 'work_maxPayout', label: 'Work Max Pay', description: 'Maximum earnings per work', type: 'number', value: ec?.work?.maxPayout ?? 500, min: 1, max: 1000000 },
+            { key: 'crime_enabled', label: 'Enable Crime', description: 'Allow members to commit crimes with /economy crime', type: 'toggle', value: ec?.crime?.enabled ?? true },
+            { key: 'crime_cooldown', label: 'Crime Cooldown (minutes)', description: 'How long between crime uses', type: 'number', value: ec?.crime?.cooldown ?? 120, min: 1, max: 1440 },
+            { key: 'crime_successRate', label: 'Crime Success Rate (%)', description: 'Chance that a crime attempt succeeds', type: 'number', value: ec?.crime?.successRate ?? 60, min: 1, max: 100 },
+            { key: 'crime_minPayout', label: 'Crime Min Pay', description: 'Minimum earnings on a successful crime', type: 'number', value: ec?.crime?.minPayout ?? 200, min: 1, max: 1000000 },
+            { key: 'crime_maxPayout', label: 'Crime Max Pay', description: 'Maximum earnings on a successful crime', type: 'number', value: ec?.crime?.maxPayout ?? 1000, min: 1, max: 1000000 },
+            { key: 'crime_fineRate', label: 'Crime Fine Rate (%)', description: 'Percentage of max payout lost when caught', type: 'number', value: ec?.crime?.fineRate ?? 50, min: 0, max: 100 },
+            { key: 'rob_enabled', label: 'Enable Rob', description: 'Allow members to rob others with /economy rob', type: 'toggle', value: ec?.rob?.enabled ?? true },
+            { key: 'rob_cooldown', label: 'Rob Cooldown (minutes)', description: 'How long between rob attempts', type: 'number', value: ec?.rob?.cooldown ?? 180, min: 1, max: 1440 },
+            { key: 'rob_successRate', label: 'Rob Success Rate (%)', description: 'Chance that robbing succeeds', type: 'number', value: ec?.rob?.successRate ?? 40, min: 1, max: 100 },
+            { key: 'rob_maxStealPercent', label: 'Max Steal (%)', description: 'Max % of target\'s cash that can be stolen', type: 'number', value: ec?.rob?.maxStealPercent ?? 30, min: 1, max: 100 },
+            { key: 'gambling_enabled', label: 'Enable Gambling', description: 'Allow gambling commands (blackjack, slots, etc.)', type: 'toggle', value: ec?.gambling?.enabled ?? true },
+            { key: 'gambling_minBet', label: 'Min Bet', description: 'Minimum amount per gambling bet', type: 'number', value: ec?.gambling?.minBet ?? 10, min: 1, max: 1000000 },
+            { key: 'gambling_maxBet', label: 'Max Bet', description: 'Maximum amount per gambling bet', type: 'number', value: ec?.gambling?.maxBet ?? 10000, min: 1, max: 1000000 },
+            { key: 'gambling_cooldown', label: 'Gambling Cooldown (minutes)', description: 'Cooldown between gambling uses', type: 'number', value: ec?.gambling?.cooldown ?? 1, min: 0, max: 60 },
+            { key: 'chatMoney_enabled', label: 'Enable Chat Money', description: 'Members earn money passively by sending messages', type: 'toggle', value: ec?.chatMoney?.enabled ?? false },
+            { key: 'chatMoney_minAmount', label: 'Chat Min Earnings', description: 'Minimum cash earned per eligible message', type: 'number', value: ec?.chatMoney?.minAmount ?? 1, min: 1, max: 10000 },
+            { key: 'chatMoney_maxAmount', label: 'Chat Max Earnings', description: 'Maximum cash earned per eligible message', type: 'number', value: ec?.chatMoney?.maxAmount ?? 10, min: 1, max: 10000 },
+            { key: 'chatMoney_cooldown', label: 'Chat Money Cooldown (seconds)', description: 'Seconds before a member can earn again from chatting', type: 'number', value: ec?.chatMoney?.cooldown ?? 60, min: 1, max: 3600 },
+          ];
+          try {
+            const totalMembers = await EconomyBalance.countDocuments({ guildId: guild.id });
+            const totalAgg = await EconomyBalance.aggregate([{ $match: { guildId: guild.id } }, { $group: { _id: null, total: { $sum: { $add: ['$cash', '$bank'] } } } }]);
+            const totalMoney = totalAgg[0]?.total || 0;
+            result.stats = [
+              { label: 'Members with Wallets', value: totalMembers },
+              { label: 'Total Money in Server', value: (ec?.currencySymbol || '$') + totalMoney.toLocaleString() },
+            ];
+          } catch {}
+          if (ec?.roleIncome?.length > 0) {
+            result.roleIncomeList = ec.roleIncome.map(r => ({
+              roleId: r.roleId,
+              roleName: guild.roles.cache.get(r.roleId)?.name || 'Unknown Role',
+              amount: r.amount,
+              cooldown: r.cooldown,
+            }));
+          }
+          break;
+        }
+
         default:
           return res.status(404).json({ error: 'Module not found' });
       }
@@ -713,6 +778,49 @@ export function createApiRouter(client) {
             if (allowed.includes(k)) update[k] = v;
           }
           await RoleplayCalendar.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
+        case 'economy': {
+          const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+          const ec = await EconomyConfig.findOne({ guildId: guild.id }) || new EconomyConfig({ guildId: guild.id });
+          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId'];
+          const nestedMap = {
+            work_enabled: ['work', 'enabled'],
+            work_cooldown: ['work', 'cooldown'],
+            work_minPayout: ['work', 'minPayout'],
+            work_maxPayout: ['work', 'maxPayout'],
+            crime_enabled: ['crime', 'enabled'],
+            crime_cooldown: ['crime', 'cooldown'],
+            crime_successRate: ['crime', 'successRate'],
+            crime_minPayout: ['crime', 'minPayout'],
+            crime_maxPayout: ['crime', 'maxPayout'],
+            crime_fineRate: ['crime', 'fineRate'],
+            rob_enabled: ['rob', 'enabled'],
+            rob_cooldown: ['rob', 'cooldown'],
+            rob_successRate: ['rob', 'successRate'],
+            rob_maxStealPercent: ['rob', 'maxStealPercent'],
+            gambling_enabled: ['gambling', 'enabled'],
+            gambling_minBet: ['gambling', 'minBet'],
+            gambling_maxBet: ['gambling', 'maxBet'],
+            gambling_cooldown: ['gambling', 'cooldown'],
+            chatMoney_enabled: ['chatMoney', 'enabled'],
+            chatMoney_minAmount: ['chatMoney', 'minAmount'],
+            chatMoney_maxAmount: ['chatMoney', 'maxAmount'],
+            chatMoney_cooldown: ['chatMoney', 'cooldown'],
+          };
+          const numericFields = new Set(['startingBalance', 'maxBalance', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
+          for (const [k, v] of Object.entries(changes)) {
+            const val = numericFields.has(k) ? Number(v) : v;
+            if (topLevel.includes(k)) {
+              ec[k] = val;
+            } else if (nestedMap[k]) {
+              const [section, field] = nestedMap[k];
+              ec[section][field] = val;
+              ec.markModified(section);
+            }
+          }
+          await ec.save();
           break;
         }
 
