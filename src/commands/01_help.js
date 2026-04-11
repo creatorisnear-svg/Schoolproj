@@ -25,6 +25,13 @@ export async function execute(interaction) {
       '`/ticketsupportsetup` `/rolerequestadd` `/rolerequest` `/manageroles`\n\n' +
       '### Community\n' +
       '`/reactionrolemessage` `/sticky` `/stickylist` `/antipromotingsetup` `/setlogchannel`\n\n' +
+      '### Economy — Staff\n' +
+      '`/economysetup` `/storesetup`\n\n' +
+      '### Economy — Members\n' +
+      '`/economy balance` `/economy leaderboard` `/economy deposit` `/economy withdraw` `/economy give`\n' +
+      '`/economy work` `/economy crime` `/economy rob` `/economy income`\n' +
+      '`/economy store` `/economy buy` `/economy sell` `/economy use` `/economy inventory` `/economy giveitems`\n' +
+      '`/economy blackjack` `/economy roulette` `/economy slots` `/economy roll` `/economy russianroulette` `/economy cockfight`\n\n' +
       '### AI Dispatch — *Premium*\n' +
       '`/dispatchsetup` `/activatepremium`\n\n' +
       '### Utility\n' +

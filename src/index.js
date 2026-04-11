@@ -419,6 +419,34 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
+// Chat money handler
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
+  try {
+    const EconomyConfig = (await import('./models/EconomyConfig.js')).default;
+    const EconomyBalance = (await import('./models/EconomyBalance.js')).default;
+
+    const config = await EconomyConfig.findOne({ guildId: message.guild.id });
+    if (!config || !config.enabled || !config.chatMoney.enabled) return;
+
+    const { chatMoney, currencySymbol, startingBalance, maxBalance } = config;
+    if (chatMoney.channels.length > 0 && !chatMoney.channels.includes(message.channel.id)) return;
+
+    let bal = await EconomyBalance.findOne({ guildId: message.guild.id, userId: message.author.id });
+    if (!bal) bal = new EconomyBalance({ guildId: message.guild.id, userId: message.author.id, cash: startingBalance, bank: 0 });
+
+    const now = Date.now();
+    if (bal.chatMoneyCooldown && now - bal.chatMoneyCooldown.getTime() < chatMoney.cooldown * 1000) return;
+
+    const earned = Math.floor(Math.random() * (chatMoney.maxAmount - chatMoney.minAmount + 1)) + chatMoney.minAmount;
+    bal.cash = Math.min(bal.cash + earned, maxBalance);
+    bal.chatMoneyCooldown = new Date();
+    await bal.save();
+  } catch (err) {
+    // Silently fail — chat money is non-critical
+  }
+});
+
 client.commands = new Collection();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const commandFiles = fs.readdirSync(join(__dirname, 'commands')).filter(f => f.endsWith('.js'));
