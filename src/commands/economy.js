@@ -8,98 +8,79 @@ import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 export const data = new SlashCommandBuilder()
   .setName('economy')
   .setDescription('Economy commands')
-  // ── Balance & Bank ──────────────────────────────────────────────────────────
+  // ── Wallet ──────────────────────────────────────────────────────────────────
   .addSubcommand(sub =>
-    sub.setName('balance')
-      .setDescription('Check your or another user\'s balance')
+    sub.setName('balance').setDescription('Check your or another user\'s balance')
       .addUserOption(o => o.setName('user').setDescription('User to check (defaults to you)'))
   )
   .addSubcommand(sub =>
-    sub.setName('leaderboard')
-      .setDescription('View the top 10 richest members in this server')
+    sub.setName('leaderboard').setDescription('View the top 10 richest members')
   )
   .addSubcommand(sub =>
-    sub.setName('deposit')
-      .setDescription('Deposit cash into your bank')
+    sub.setName('deposit').setDescription('Deposit cash into your bank')
       .addStringOption(o => o.setName('amount').setDescription('Amount to deposit (or "all")').setRequired(true))
   )
   .addSubcommand(sub =>
-    sub.setName('withdraw')
-      .setDescription('Withdraw cash from your bank')
+    sub.setName('withdraw').setDescription('Withdraw cash from your bank')
       .addStringOption(o => o.setName('amount').setDescription('Amount to withdraw (or "all")').setRequired(true))
   )
   .addSubcommand(sub =>
-    sub.setName('give')
-      .setDescription('Give cash to another member')
+    sub.setName('give').setDescription('Give cash to another member')
       .addUserOption(o => o.setName('user').setDescription('Recipient').setRequired(true))
       .addIntegerOption(o => o.setName('amount').setDescription('Amount to give').setRequired(true).setMinValue(1))
   )
   // ── Earn ────────────────────────────────────────────────────────────────────
   .addSubcommand(sub =>
-    sub.setName('work')
-      .setDescription('Work to earn money')
+    sub.setName('work').setDescription('Work to earn money')
   )
   .addSubcommand(sub =>
-    sub.setName('crime')
-      .setDescription('Commit a crime to earn money (risky)')
+    sub.setName('crime').setDescription('Commit a crime to earn money (risky)')
   )
   .addSubcommand(sub =>
-    sub.setName('rob')
-      .setDescription('Attempt to rob another user')
+    sub.setName('rob').setDescription('Attempt to rob another user')
       .addUserOption(o => o.setName('user').setDescription('User to rob').setRequired(true))
   )
   .addSubcommand(sub =>
-    sub.setName('income')
-      .setDescription('Collect your role-based income')
+    sub.setName('income').setDescription('Collect your role-based income')
   )
-  // ── Store & Inventory ───────────────────────────────────────────────────────
+  // ── Shop ────────────────────────────────────────────────────────────────────
   .addSubcommand(sub =>
-    sub.setName('store')
-      .setDescription('View the server store')
+    sub.setName('store').setDescription('Browse the server store')
   )
   .addSubcommand(sub =>
-    sub.setName('inventory')
-      .setDescription('View your or another user\'s inventory')
+    sub.setName('inventory').setDescription('View your or another user\'s inventory')
       .addUserOption(o => o.setName('user').setDescription('User to check (defaults to you)'))
   )
   .addSubcommand(sub =>
-    sub.setName('buy')
-      .setDescription('Buy an item from the store')
+    sub.setName('buy').setDescription('Buy an item from the store')
       .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
       .addIntegerOption(o => o.setName('quantity').setDescription('How many to buy').setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('sell')
-      .setDescription('Sell an item from your inventory (50% value)')
+    sub.setName('sell').setDescription('Sell an item from your inventory (50% value)')
       .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
       .addIntegerOption(o => o.setName('quantity').setDescription('How many to sell').setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('use')
-      .setDescription('Use an item from your inventory')
+    sub.setName('use').setDescription('Use an item from your inventory')
       .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
   )
   .addSubcommand(sub =>
-    sub.setName('giveitems')
-      .setDescription('Give an item to another user')
+    sub.setName('giveitems').setDescription('Give an item to another user')
       .addUserOption(o => o.setName('user').setDescription('Recipient').setRequired(true))
       .addStringOption(o => o.setName('item').setDescription('Item name').setRequired(true))
       .addIntegerOption(o => o.setName('quantity').setDescription('How many to give').setMinValue(1))
   )
   // ── Gambling ────────────────────────────────────────────────────────────────
   .addSubcommand(sub =>
-    sub.setName('blackjack')
-      .setDescription('Play a hand of blackjack')
+    sub.setName('blackjack').setDescription('Play a hand of blackjack')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('roulette')
-      .setDescription('Spin the roulette wheel')
+    sub.setName('roulette').setDescription('Spin the roulette wheel')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
       .addStringOption(o =>
-        o.setName('choice')
-          .setDescription('What to bet on')
-          .setRequired(true)
+        o.setName('choice').setDescription('What to bet on').setRequired(true)
           .addChoices(
             { name: 'Red (2x)', value: 'red' },
             { name: 'Black (2x)', value: 'black' },
@@ -108,32 +89,26 @@ export const data = new SlashCommandBuilder()
       )
   )
   .addSubcommand(sub =>
-    sub.setName('slots')
-      .setDescription('Pull the slot machine')
+    sub.setName('slots').setDescription('Pull the slot machine')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('roll')
-      .setDescription('Roll a dice against the bot — higher wins')
+    sub.setName('roll').setDescription('Roll a dice against the bot — higher wins')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('russianroulette')
-      .setDescription('1 in 6 chance of losing all your cash')
+    sub.setName('russianroulette').setDescription('1 in 6 chance of losing all your cash')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet (win 1.5x on survival)').setRequired(true).setMinValue(1))
   )
   .addSubcommand(sub =>
-    sub.setName('cockfight')
-      .setDescription('Enter your rooster in a fight — 50/50 for 1.8x')
+    sub.setName('cockfight').setDescription('Enter your rooster in a fight — 50/50 for 1.8x')
       .addIntegerOption(o => o.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
   );
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function getConfig(guildId) {
-  let config = await EconomyConfig.findOne({ guildId });
-  if (!config) config = new EconomyConfig({ guildId });
-  return config;
+  return await EconomyConfig.findOne({ guildId });
 }
 
 async function getBalance(guildId, userId, startingBalance) {
@@ -145,9 +120,7 @@ async function getBalance(guildId, userId, startingBalance) {
   return bal;
 }
 
-function fmt(num) {
-  return Number(num).toLocaleString();
-}
+function fmt(num) { return Number(num).toLocaleString(); }
 
 function cooldownRemaining(date, minutes) {
   if (!date) return 0;
@@ -168,15 +141,6 @@ function formatMs(ms) {
 function hasPermission(member, allowedRoles) {
   if (!allowedRoles || allowedRoles.length === 0) return true;
   return member.roles.cache.some(r => allowedRoles.includes(r.id));
-}
-
-async function logEconomy(guild, config, message) {
-  if (!config.logChannelId) return;
-  try {
-    const ch = guild.channels.cache.get(config.logChannelId);
-    if (!ch?.isTextBased()) return;
-    await ch.send({ embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Economy Log').setDescription(message).setTimestamp().setFooter({ text: 'RPM' })] });
-  } catch {}
 }
 
 // ─── Blackjack engine ────────────────────────────────────────────────────────
@@ -203,14 +167,12 @@ function handTotal(hand) {
   return total;
 }
 
-function handStr(hand) {
-  return hand.map(c => `\`${c.r}${c.s}\``).join(' ');
-}
+function handStr(hand) { return hand.map(c => `\`${c.r}${c.s}\``).join(' '); }
 
 // ─── Slots engine ─────────────────────────────────────────────────────────────
 
 const SLOT_SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '⭐', '💎'];
-const SLOT_WEIGHTS = [30, 25, 20, 15, 7, 3]; // out of 100
+const SLOT_WEIGHTS = [30, 25, 20, 15, 7, 3];
 
 function spinSlot() {
   const r = Math.random() * 100;
@@ -243,43 +205,42 @@ export async function execute(interaction) {
   try {
     const config = await getConfig(guildId);
 
-    if (!config.enabled) {
-      return interaction.reply({ embeds: [errorEmbed('The economy system is not enabled on this server.')], flags: 64 });
+    if (!config || !config.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('The economy system is not enabled on this server. An admin must run `/economysetup enable` first.')],
+        flags: 64,
+      });
     }
 
     const bal = await getBalance(guildId, userId, config.startingBalance);
     const sym = config.currencySymbol;
 
-    // ── balance ────────────────────────────────────────────────────────────────
+    // ── balance ───────────────────────────────────────────────────────────────
     if (sub === 'balance') {
       const target = interaction.options.getUser('user') ?? interaction.user;
       const b = target.id === userId ? bal : await getBalance(guildId, target.id, config.startingBalance);
       const total = b.cash + b.bank;
-      const embed = new EmbedBuilder()
-        .setColor(0x2d2d2d)
-        .setTitle(`${target.username}'s Balance`)
-        .setDescription(`**Cash:** ${sym}${fmt(b.cash)}\n**Bank:** ${sym}${fmt(b.bank)}\n**Total:** ${sym}${fmt(total)}`)
-        .setFooter({ text: 'RPM' });
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+          .setTitle(`${target.username}'s Balance`)
+          .setDescription(`**Cash:** ${sym}${fmt(b.cash)}\n**Bank:** ${sym}${fmt(b.bank)}\n**Total:** ${sym}${fmt(total)}`)
+          .setFooter({ text: 'RPM' })],
+      });
     }
 
     // ── leaderboard ───────────────────────────────────────────────────────────
     if (sub === 'leaderboard') {
-      const top = await EconomyBalance.find({ guildId }).sort({ $expr: { $add: ['$cash', '$bank'] } }).limit(20);
-      const sorted = top.sort((a, b) => (b.cash + b.bank) - (a.cash + a.cash));
-      const lines = [];
-      let rank = 1;
-      for (const entry of sorted.slice(0, 10)) {
-        const total = entry.cash + entry.bank;
-        lines.push(`**${rank}.** <@${entry.userId}> — ${sym}${fmt(total)}`);
-        rank++;
-      }
-      const embed = new EmbedBuilder()
-        .setColor(0x2d2d2d)
-        .setTitle('Economy Leaderboard')
-        .setDescription(lines.length > 0 ? lines.join('\n') : 'No data yet.')
-        .setFooter({ text: 'RPM' });
-      return interaction.reply({ embeds: [embed] });
+      const top = await EconomyBalance.find({ guildId }).limit(20);
+      const sorted = top.sort((a, b) => (b.cash + b.bank) - (a.cash + a.bank));
+      const lines = sorted.slice(0, 10).map((entry, i) =>
+        `**${i + 1}.** <@${entry.userId}> — ${sym}${fmt(entry.cash + entry.bank)}`
+      );
+      return interaction.reply({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+          .setTitle('Economy Leaderboard')
+          .setDescription(lines.length > 0 ? lines.join('\n') : 'No data yet.')
+          .setFooter({ text: 'RPM' })],
+      });
     }
 
     // ── deposit ───────────────────────────────────────────────────────────────
@@ -313,7 +274,6 @@ export async function execute(interaction) {
       if (target.id === userId) return interaction.reply({ embeds: [errorEmbed('You cannot give money to yourself.')], flags: 64 });
       if (target.bot) return interaction.reply({ embeds: [errorEmbed('You cannot give money to a bot.')], flags: 64 });
       if (bal.cash < amount) return interaction.reply({ embeds: [errorEmbed(`You only have ${sym}${fmt(bal.cash)} in cash.`)], flags: 64 });
-
       const targetBal = await getBalance(guildId, target.id, config.startingBalance);
       bal.cash -= amount;
       targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
@@ -346,7 +306,6 @@ export async function execute(interaction) {
         ? config.work.customReplies.map(r => r.replace('{amount}', `${sym}${fmt(pay)}`))
         : defaultReplies;
       const reply = replies[Math.floor(Math.random() * replies.length)];
-
       return interaction.reply({ embeds: [successEmbed('Work Complete', `${reply}\n-# Next work: ${formatMs(config.work.cooldown * 60 * 1000)}`)] });
     }
 
@@ -366,7 +325,6 @@ export async function execute(interaction) {
         const pay = Math.floor(Math.random() * (config.crime.maxPayout - config.crime.minPayout + 1)) + config.crime.minPayout;
         bal.cash = Math.min(bal.cash + pay, config.maxBalance);
         await bal.save();
-
         const defaultReplies = [
           `You robbed a convenience store and got away with ${sym}${fmt(pay)}.`,
           `You hacked into a corporate account and siphoned ${sym}${fmt(pay)}.`,
@@ -422,10 +380,8 @@ export async function execute(interaction) {
       if (config.roleIncome.length === 0) {
         return interaction.reply({ embeds: [errorEmbed('No role income is configured on this server.')], flags: 64 });
       }
-
       const memberRoleIds = interaction.member.roles.cache.map(r => r.id);
       const eligible = config.roleIncome.filter(ri => memberRoleIds.includes(ri.roleId));
-
       if (eligible.length === 0) {
         return interaction.reply({ embeds: [errorEmbed('You do not have any roles with income configured.')], flags: 64 });
       }
@@ -455,12 +411,11 @@ export async function execute(interaction) {
       }
 
       const desc = results.join('\n') + (totalEarned > 0 ? `\n\n**Total Collected:** ${sym}${fmt(totalEarned)}` : '');
-      const embed = new EmbedBuilder()
-        .setColor(totalEarned > 0 ? 0x43b581 : 0x2d2d2d)
-        .setTitle('Role Income')
-        .setDescription(desc)
-        .setFooter({ text: 'RPM' });
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(totalEarned > 0 ? 0x43b581 : 0x2d2d2d)
+          .setTitle('Role Income').setDescription(desc).setFooter({ text: 'RPM' })],
+      });
     }
 
     // ── store ─────────────────────────────────────────────────────────────────
@@ -512,7 +467,6 @@ export async function execute(interaction) {
     if (sub === 'sell') {
       const itemName = interaction.options.getString('item');
       const qty = interaction.options.getInteger('quantity') ?? 1;
-
       const inv = await EconomyInventory.findOne({ guildId, userId });
       const owned = inv?.items.find(i => i.itemName.toLowerCase() === itemName.toLowerCase());
       if (!owned || owned.quantity < qty) return interaction.reply({ embeds: [errorEmbed(`You don't have ${qty}x **${itemName}** in your inventory.`)], flags: 64 });
@@ -525,11 +479,7 @@ export async function execute(interaction) {
       inv.markModified('items');
       await inv.save();
 
-      if (refund > 0) {
-        bal.cash = Math.min(bal.cash + refund, config.maxBalance);
-        await bal.save();
-      }
-
+      if (refund > 0) { bal.cash = Math.min(bal.cash + refund, config.maxBalance); await bal.save(); }
       return interaction.reply({ embeds: [successEmbed('Items Sold', `Sold **${itemName}** x${qty} for **${sym}${fmt(refund)}**.\n**Cash:** ${sym}${fmt(bal.cash)}`)] });
     }
 
@@ -547,9 +497,7 @@ export async function execute(interaction) {
       if (owned.quantity <= 0) inv.items = inv.items.filter(i => i.itemName.toLowerCase() !== itemName.toLowerCase());
       inv.markModified('items');
       await inv.save();
-
-      const effect = storeItem.useEffect || 'You used the item.';
-      return interaction.reply({ embeds: [successEmbed(`Used: ${storeItem.name}`, effect)] });
+      return interaction.reply({ embeds: [successEmbed(`Used: ${storeItem.name}`, storeItem.useEffect || 'You used the item.')] });
     }
 
     // ── giveitems ─────────────────────────────────────────────────────────────
@@ -570,262 +518,156 @@ export async function execute(interaction) {
 
       let targetInv = await EconomyInventory.findOne({ guildId, userId: target.id });
       if (!targetInv) targetInv = new EconomyInventory({ guildId, userId: target.id, items: [] });
-      const targetOwned = targetInv.items.find(i => i.itemName === owned.itemName || i.itemName.toLowerCase() === itemName.toLowerCase());
+      const targetOwned = targetInv.items.find(i => i.itemName.toLowerCase() === itemName.toLowerCase());
       if (targetOwned) targetOwned.quantity += qty;
       else targetInv.items.push({ itemName: itemName, quantity: qty });
       targetInv.markModified('items');
       await targetInv.save();
-
       return interaction.reply({ embeds: [successEmbed('Items Given', `You gave **${itemName}** x${qty} to **${target.username}**.`)] });
     }
 
-    // ─── Gambling guard ──────────────────────────────────────────────────────
-
+    // ── Gambling guard ────────────────────────────────────────────────────────
     const gamblingCmds = ['blackjack', 'roulette', 'slots', 'roll', 'russianroulette', 'cockfight'];
     if (gamblingCmds.includes(sub)) {
       if (!config.gambling.enabled) return interaction.reply({ embeds: [errorEmbed('Gambling is disabled on this server.')], flags: 64 });
       if (!hasPermission(interaction.member, config.permissions.gamblingRoles)) {
         return interaction.reply({ embeds: [errorEmbed('You do not have the required role to gamble.')], flags: 64 });
       }
-
       const bet = interaction.options.getInteger('bet');
       if (bet < config.gambling.minBet) return interaction.reply({ embeds: [errorEmbed(`Minimum bet is ${sym}${fmt(config.gambling.minBet)}.`)], flags: 64 });
       if (bet > config.gambling.maxBet) return interaction.reply({ embeds: [errorEmbed(`Maximum bet is ${sym}${fmt(config.gambling.maxBet)}.`)], flags: 64 });
       if (bet > bal.cash) return interaction.reply({ embeds: [errorEmbed(`You only have ${sym}${fmt(bal.cash)} in cash.`)], flags: 64 });
-
       const cdRemaining = cooldownRemaining(bal.gamblingCooldown, config.gambling.cooldown);
       if (cdRemaining > 0) return interaction.reply({ embeds: [errorEmbed(`You can gamble again in **${formatMs(cdRemaining)}**.`)], flags: 64 });
-    }
 
-    // ── blackjack ─────────────────────────────────────────────────────────────
-    if (sub === 'blackjack') {
-      const bet = interaction.options.getInteger('bet');
-      const deck = newDeck();
-      const player = [deck.pop(), deck.pop()];
-      const dealer = [deck.pop(), deck.pop()];
+      if (sub === 'blackjack') {
+        const deck = newDeck();
+        const player = [deck.pop(), deck.pop()];
+        const dealer = [deck.pop(), deck.pop()];
+        let playerTotal = handTotal(player);
+        let dealerTotal = handTotal(dealer);
+        while (dealerTotal < 17) { dealer.push(deck.pop()); dealerTotal = handTotal(dealer); }
 
-      let playerTotal = handTotal(player);
-      let dealerTotal = handTotal(dealer);
+        const playerBust = playerTotal > 21;
+        const dealerBust = dealerTotal > 21;
+        let result, winAmount;
+        if (playerBust) { result = 'lose'; }
+        else if (dealerBust || playerTotal > dealerTotal) { result = playerTotal === 21 && player.length === 2 ? 'blackjack' : 'win'; }
+        else if (playerTotal === dealerTotal) { result = 'push'; }
+        else { result = 'lose'; }
 
-      // Dealer draws to 17
-      while (dealerTotal < 17) {
-        dealer.push(deck.pop());
-        dealerTotal = handTotal(dealer);
-      }
+        if (result === 'blackjack') { winAmount = Math.floor(bet * 1.5); bal.cash = Math.min(bal.cash + winAmount, config.maxBalance); }
+        else if (result === 'win') { winAmount = bet; bal.cash = Math.min(bal.cash + winAmount, config.maxBalance); }
+        else if (result === 'lose') { winAmount = -bet; bal.cash = Math.max(0, bal.cash - bet); }
+        else { winAmount = 0; }
 
-      const playerBust = playerTotal > 21;
-      const dealerBust = dealerTotal > 21;
-      let result, winAmount;
-
-      if (playerBust) {
-        result = 'lose';
-      } else if (dealerBust || playerTotal > dealerTotal) {
-        result = playerTotal === 21 && player.length === 2 ? 'blackjack' : 'win';
-      } else if (playerTotal === dealerTotal) {
-        result = 'push';
-      } else {
-        result = 'lose';
-      }
-
-      if (result === 'blackjack') {
-        winAmount = Math.floor(bet * 1.5);
-        bal.cash = Math.min(bal.cash + winAmount, config.maxBalance);
-      } else if (result === 'win') {
-        winAmount = bet;
-        bal.cash = Math.min(bal.cash + winAmount, config.maxBalance);
-      } else if (result === 'lose') {
-        winAmount = -bet;
-        bal.cash = Math.max(0, bal.cash - bet);
-      } else {
-        winAmount = 0;
-      }
-
-      bal.gamblingCooldown = new Date();
-      await bal.save();
-
-      const resultText = {
-        blackjack: `Blackjack! You win **${sym}${fmt(winAmount)}**!`,
-        win: `You win **${sym}${fmt(winAmount)}**!`,
-        lose: `You lose **${sym}${fmt(bet)}**.`,
-        push: `Push — your bet is returned.`,
-      }[result];
-
-      const color = result === 'lose' ? 0xf04747 : result === 'push' ? 0xfaa61a : 0x43b581;
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor(color)
-          .setTitle('Blackjack')
-          .setDescription(
-            `**Your hand:** ${handStr(player)} — **${playerTotal}**\n` +
-            `**Dealer hand:** ${handStr(dealer)} — **${dealerTotal}**\n\n` +
-            `${resultText}\n**Cash:** ${sym}${fmt(bal.cash)}`
-          ).setFooter({ text: 'RPM' })],
-      });
-    }
-
-    // ── roulette ──────────────────────────────────────────────────────────────
-    if (sub === 'roulette') {
-      const bet = interaction.options.getInteger('bet');
-      const choice = interaction.options.getString('choice');
-
-      const roll = Math.floor(Math.random() * 38);
-      let landed;
-      if (roll === 0) landed = 'green';
-      else if (roll <= 18) landed = 'red';
-      else landed = 'black';
-
-      const multipliers = { red: 2, black: 2, green: 14 };
-      const won = landed === choice;
-      const mult = multipliers[choice];
-
-      let change;
-      if (won) {
-        change = bet * (mult - 1);
-        bal.cash = Math.min(bal.cash + change, config.maxBalance);
-      } else {
-        change = -bet;
-        bal.cash = Math.max(0, bal.cash - bet);
-      }
-      bal.gamblingCooldown = new Date();
-      await bal.save();
-
-      const color = won ? 0x43b581 : 0xf04747;
-      const landedLabel = landed === 'green' ? '🟢 Green' : landed === 'red' ? '🔴 Red' : '⚫ Black';
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor(color)
-          .setTitle('Roulette')
-          .setDescription(
-            `The wheel landed on **${landedLabel}**.\n\n` +
-            (won ? `You win **${sym}${fmt(change)}**!` : `You lose **${sym}${fmt(bet)}**.`) +
-            `\n**Cash:** ${sym}${fmt(bal.cash)}`
-          ).setFooter({ text: 'RPM' })],
-      });
-    }
-
-    // ── slots ─────────────────────────────────────────────────────────────────
-    if (sub === 'slots') {
-      const bet = interaction.options.getInteger('bet');
-      const reels = [spinSlot(), spinSlot(), spinSlot()];
-      const mult = slotMultiplier(reels);
-
-      let change;
-      if (mult > 0) {
-        change = Math.floor(bet * mult);
-        bal.cash = Math.min(bal.cash + change, config.maxBalance);
-      } else {
-        change = -bet;
-        bal.cash = Math.max(0, bal.cash - bet);
-      }
-      bal.gamblingCooldown = new Date();
-      await bal.save();
-
-      const color = mult > 0 ? 0x43b581 : 0xf04747;
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor(color)
-          .setTitle('Slot Machine')
-          .setDescription(
-            `[ ${reels.join(' | ')} ]\n\n` +
-            (mult > 0 ? `**${mult}x** — You win **${sym}${fmt(change)}**!` : `No match — you lose **${sym}${fmt(bet)}**.`) +
-            `\n**Cash:** ${sym}${fmt(bal.cash)}`
-          ).setFooter({ text: 'RPM' })],
-      });
-    }
-
-    // ── roll ──────────────────────────────────────────────────────────────────
-    if (sub === 'roll') {
-      const bet = interaction.options.getInteger('bet');
-      const playerRoll = Math.floor(Math.random() * 6) + 1;
-      const botRoll = Math.floor(Math.random() * 6) + 1;
-
-      let change;
-      let result;
-      if (playerRoll > botRoll) {
-        change = bet;
-        result = 'win';
-        bal.cash = Math.min(bal.cash + bet, config.maxBalance);
-      } else if (playerRoll < botRoll) {
-        change = -bet;
-        result = 'lose';
-        bal.cash = Math.max(0, bal.cash - bet);
-      } else {
-        change = 0;
-        result = 'tie';
-      }
-      bal.gamblingCooldown = new Date();
-      await bal.save();
-
-      const color = result === 'win' ? 0x43b581 : result === 'lose' ? 0xf04747 : 0xfaa61a;
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor(color)
-          .setTitle('Dice Roll')
-          .setDescription(
-            `**You rolled:** ${playerRoll}  **Bot rolled:** ${botRoll}\n\n` +
-            (result === 'win' ? `You win **${sym}${fmt(change)}**!` : result === 'lose' ? `You lose **${sym}${fmt(bet)}**.` : `Tie — bet returned.`) +
-            `\n**Cash:** ${sym}${fmt(bal.cash)}`
-          ).setFooter({ text: 'RPM' })],
-      });
-    }
-
-    // ── russianroulette ───────────────────────────────────────────────────────
-    if (sub === 'russianroulette') {
-      const bet = interaction.options.getInteger('bet');
-      const chamber = Math.floor(Math.random() * 6);
-
-      if (chamber === 0) {
-        const lost = bal.cash;
-        bal.cash = 0;
         bal.gamblingCooldown = new Date();
         await bal.save();
+
+        const resultText = { blackjack: `Blackjack! You win **${sym}${fmt(winAmount)}**!`, win: `You win **${sym}${fmt(winAmount)}**!`, lose: `You lose **${sym}${fmt(bet)}**.`, push: `Push — your bet is returned.` }[result];
+        const color = result === 'lose' ? 0xf04747 : result === 'push' ? 0xfaa61a : 0x43b581;
         return interaction.reply({
-          embeds: [new EmbedBuilder().setColor(0xf04747)
-            .setTitle('Russian Roulette')
-            .setDescription(`*click* **BANG**\n\nYou lost everything — **${sym}${fmt(lost)}** gone.\n**Cash:** ${sym}0`)
+          embeds: [new EmbedBuilder().setColor(color).setTitle('Blackjack')
+            .setDescription(`**Your hand:** ${handStr(player)} — **${playerTotal}**\n**Dealer hand:** ${handStr(dealer)} — **${dealerTotal}**\n\n${resultText}\n**Cash:** ${sym}${fmt(bal.cash)}`)
             .setFooter({ text: 'RPM' })],
         });
-      } else {
-        const win = Math.floor(bet * 0.5);
-        bal.cash = Math.min(bal.cash + win, config.maxBalance);
+      }
+
+      if (sub === 'roulette') {
+        const choice = interaction.options.getString('choice');
+        const roll = Math.floor(Math.random() * 38);
+        const landed = roll === 0 ? 'green' : roll <= 18 ? 'red' : 'black';
+        const multipliers = { red: 2, black: 2, green: 14 };
+        const won = landed === choice;
+        let change;
+        if (won) { change = bet * (multipliers[choice] - 1); bal.cash = Math.min(bal.cash + change, config.maxBalance); }
+        else { change = -bet; bal.cash = Math.max(0, bal.cash - bet); }
+        bal.gamblingCooldown = new Date();
+        await bal.save();
+        const landedLabel = landed === 'green' ? 'Green' : landed === 'red' ? 'Red' : 'Black';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Roulette')
+            .setDescription(`The wheel landed on **${landedLabel}**.\n\n${won ? `You win **${sym}${fmt(change)}**!` : `You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`)
+            .setFooter({ text: 'RPM' })],
+        });
+      }
+
+      if (sub === 'slots') {
+        const reels = [spinSlot(), spinSlot(), spinSlot()];
+        const mult = slotMultiplier(reels);
+        let change;
+        if (mult > 0) { change = Math.floor(bet * mult); bal.cash = Math.min(bal.cash + change, config.maxBalance); }
+        else { change = -bet; bal.cash = Math.max(0, bal.cash - bet); }
         bal.gamblingCooldown = new Date();
         await bal.save();
         return interaction.reply({
-          embeds: [new EmbedBuilder().setColor(0x43b581)
-            .setTitle('Russian Roulette')
-            .setDescription(`*click* You survived.\n\nYou win **${sym}${fmt(win)}**.\n**Cash:** ${sym}${fmt(bal.cash)}`)
+          embeds: [new EmbedBuilder().setColor(mult > 0 ? 0x43b581 : 0xf04747).setTitle('Slot Machine')
+            .setDescription(`[ ${reels.join(' | ')} ]\n\n${mult > 0 ? `**${mult}x** — You win **${sym}${fmt(change)}**!` : `No match — you lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`)
+            .setFooter({ text: 'RPM' })],
+        });
+      }
+
+      if (sub === 'roll') {
+        const playerRoll = Math.floor(Math.random() * 6) + 1;
+        const botRoll = Math.floor(Math.random() * 6) + 1;
+        let change, result;
+        if (playerRoll > botRoll) { change = bet; result = 'win'; bal.cash = Math.min(bal.cash + bet, config.maxBalance); }
+        else if (playerRoll < botRoll) { change = -bet; result = 'lose'; bal.cash = Math.max(0, bal.cash - bet); }
+        else { change = 0; result = 'tie'; }
+        bal.gamblingCooldown = new Date();
+        await bal.save();
+        const color = result === 'win' ? 0x43b581 : result === 'lose' ? 0xf04747 : 0xfaa61a;
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setColor(color).setTitle('Dice Roll')
+            .setDescription(`**You rolled:** ${playerRoll}  **Bot rolled:** ${botRoll}\n\n${result === 'win' ? `You win **${sym}${fmt(change)}**!` : result === 'lose' ? `You lose **${sym}${fmt(bet)}**.` : `Tie — bet returned.`}\n**Cash:** ${sym}${fmt(bal.cash)}`)
+            .setFooter({ text: 'RPM' })],
+        });
+      }
+
+      if (sub === 'russianroulette') {
+        const chamber = Math.floor(Math.random() * 6);
+        if (chamber === 0) {
+          const lost = bal.cash;
+          bal.cash = 0;
+          bal.gamblingCooldown = new Date();
+          await bal.save();
+          return interaction.reply({
+            embeds: [new EmbedBuilder().setColor(0xf04747).setTitle('Russian Roulette')
+              .setDescription(`*click* **BANG**\n\nYou lost everything — **${sym}${fmt(lost)}** gone.\n**Cash:** ${sym}0`)
+              .setFooter({ text: 'RPM' })],
+          });
+        } else {
+          const win = Math.floor(bet * 0.5);
+          bal.cash = Math.min(bal.cash + win, config.maxBalance);
+          bal.gamblingCooldown = new Date();
+          await bal.save();
+          return interaction.reply({
+            embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('Russian Roulette')
+              .setDescription(`*click* You survived.\n\nYou win **${sym}${fmt(win)}**.\n**Cash:** ${sym}${fmt(bal.cash)}`)
+              .setFooter({ text: 'RPM' })],
+          });
+        }
+      }
+
+      if (sub === 'cockfight') {
+        const won = Math.random() < 0.5;
+        const roosters = ['Rocky', 'Titan', 'Thunder', 'Blaze', 'Shadow', 'Goliath'];
+        const yours = roosters[Math.floor(Math.random() * roosters.length)];
+        let opponent;
+        do { opponent = roosters[Math.floor(Math.random() * roosters.length)]; } while (opponent === yours);
+        let change;
+        if (won) { change = Math.floor(bet * 0.8); bal.cash = Math.min(bal.cash + change, config.maxBalance); }
+        else { change = -bet; bal.cash = Math.max(0, bal.cash - bet); }
+        bal.gamblingCooldown = new Date();
+        await bal.save();
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Cock Fight')
+            .setDescription(`**${yours}** vs **${opponent}**\n\n${won ? `**${yours}** wins! You earn **${sym}${fmt(change)}**.` : `**${opponent}** wins. You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`)
             .setFooter({ text: 'RPM' })],
         });
       }
     }
 
-    // ── cockfight ─────────────────────────────────────────────────────────────
-    if (sub === 'cockfight') {
-      const bet = interaction.options.getInteger('bet');
-      const won = Math.random() < 0.5;
-      const roosters = ['Rocky', 'Titan', 'Thunder', 'Blaze', 'Shadow', 'Goliath'];
-      const yours = roosters[Math.floor(Math.random() * roosters.length)];
-      let opponent;
-      do { opponent = roosters[Math.floor(Math.random() * roosters.length)]; } while (opponent === yours);
-
-      let change;
-      if (won) {
-        change = Math.floor(bet * 0.8);
-        bal.cash = Math.min(bal.cash + change, config.maxBalance);
-      } else {
-        change = -bet;
-        bal.cash = Math.max(0, bal.cash - bet);
-      }
-      bal.gamblingCooldown = new Date();
-      await bal.save();
-
-      const color = won ? 0x43b581 : 0xf04747;
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor(color)
-          .setTitle('Cock Fight')
-          .setDescription(
-            `**${yours}** vs **${opponent}**\n\n` +
-            (won ? `**${yours}** wins! You earn **${sym}${fmt(change)}**.` : `**${opponent}** wins. You lose **${sym}${fmt(bet)}**.`) +
-            `\n**Cash:** ${sym}${fmt(bal.cash)}`
-          ).setFooter({ text: 'RPM' })],
-      });
-    }
   } catch (err) {
     console.error('[economy]', err);
     return interaction.reply({ embeds: [errorEmbed('An error occurred.')], flags: 64 });

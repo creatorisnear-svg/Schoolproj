@@ -26,7 +26,10 @@ export async function execute(interaction) {
       '### Community\n' +
       '`/reactionrolemessage` `/sticky` `/stickylist` `/antipromotingsetup` `/setlogchannel`\n\n' +
       '### Economy — Staff\n' +
-      '`/economysetup` `/storesetup`\n\n' +
+      '`/economysetup enable` `/economysetup disable` `/economysetup currency` `/economysetup work` `/economysetup crime`\n' +
+      '`/economysetup rob` `/economysetup gambling` `/economysetup roleincome` `/economysetup chatmoney`\n' +
+      '`/economysetup storeadd` `/economysetup storeremove` `/economysetup storeedit` `/economysetup storelist`\n' +
+      '`/economysetup addmoney` `/economysetup removemoney` `/economysetup resetmoney` `/economysetup view`\n\n' +
       '### Economy — Members\n' +
       '`/economy balance` `/economy leaderboard` `/economy deposit` `/economy withdraw` `/economy give`\n' +
       '`/economy work` `/economy crime` `/economy rob` `/economy income`\n' +
