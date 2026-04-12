@@ -124,31 +124,47 @@ export const data = new SlashCommandBuilder()
 // ─── Execute ─────────────────────────────────────────────────────────────────
 
 export async function execute(interaction) {
+  const sub = interaction.options.getSubcommand();
+  const guildId = interaction.guildId;
+
+  // enable / disable only require Discord Administrator or Manage Guild — no staff config needed
+  if (sub === 'enable' || sub === 'disable') {
+    const hasAdminPerm =
+      interaction.member.permissions.has(PermissionFlagsBits.Administrator) ||
+      interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
+
+    if (!hasAdminPerm) {
+      return interaction.reply({ embeds: [errorEmbed('You need the **Administrator** or **Manage Server** permission to enable or disable the economy system.')], flags: 64 });
+    }
+
+    try {
+      if (sub === 'enable') {
+        let config = await EconomyConfig.findOne({ guildId });
+        if (!config) config = new EconomyConfig({ guildId });
+        config.enabled = true;
+        await config.save();
+        return interaction.reply({ embeds: [successEmbed('Economy Enabled', 'The economy system is now **enabled**. Members can use `/economy` commands.')], flags: 64 });
+      }
+
+      if (sub === 'disable') {
+        let config = await EconomyConfig.findOne({ guildId });
+        if (!config) return interaction.reply({ embeds: [errorEmbed('The economy system has not been set up on this server.')], flags: 64 });
+        config.enabled = false;
+        await config.save();
+        return interaction.reply({ embeds: [successEmbed('Economy Disabled', 'The economy system has been **disabled**. Members can no longer use `/economy` commands.')], flags: 64 });
+      }
+    } catch (err) {
+      console.error('[economysetup enable/disable]', err);
+      return interaction.reply({ embeds: [errorEmbed('An error occurred while updating the economy status.')], flags: 64 });
+    }
+  }
+
+  // all other subcommands require staff permission
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({ embeds: [errorEmbed('You do not have permission to use this command.')], flags: 64 });
   }
 
-  const sub = interaction.options.getSubcommand();
-  const guildId = interaction.guildId;
-
   try {
-    // enable / disable do not require an existing config
-    if (sub === 'enable') {
-      let config = await EconomyConfig.findOne({ guildId });
-      if (!config) config = new EconomyConfig({ guildId });
-      config.enabled = true;
-      await config.save();
-      return interaction.reply({ embeds: [successEmbed('Economy Enabled', 'The economy system is now enabled. Members can use `/economy` commands.')], flags: 64 });
-    }
-
-    if (sub === 'disable') {
-      let config = await EconomyConfig.findOne({ guildId });
-      if (!config) return interaction.reply({ embeds: [errorEmbed('The economy system has not been set up on this server.')], flags: 64 });
-      config.enabled = false;
-      await config.save();
-      return interaction.reply({ embeds: [successEmbed('Economy Disabled', 'The economy system has been disabled. Members can no longer use `/economy` commands.')], flags: 64 });
-    }
-
     // all other subcommands require an existing config
     let config = await EconomyConfig.findOne({ guildId });
     if (!config) config = new EconomyConfig({ guildId });

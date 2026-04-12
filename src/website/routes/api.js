@@ -33,10 +33,11 @@ export function createApiRouter(client) {
     if (!secret || !token || secret !== token.slice(0, 16)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
+    const appId = process.env.CLIENT_ID || (client.user?.id) || '1441306995641683978';
     try {
       const rest = new REST({ version: '10' }).setToken(token);
-      await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-      res.json({ success: true, message: 'All global commands cleared. Discord will reflect this within a few minutes.' });
+      await rest.put(Routes.applicationCommands(appId), { body: [] });
+      res.json({ success: true, message: `All global commands cleared for app ${appId}. Discord will reflect this within a few minutes.` });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
