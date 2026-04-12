@@ -59,15 +59,21 @@ async function getConfigOrFail(interaction) {
   return config;
 }
 
-function buildShopSelectMenu(allItems, sym, query) {
+function buildShopSelectMenu(mergedItems, sym, query) {
   const filtered = query
-    ? allItems.filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
-    : allItems;
-  const opts = filtered.slice(0, 25).map(item => ({
-    label: `${item.name} — ${sym}${fmt(item.price)}`.slice(0, 100),
-    value: `__item__${item.name}`,
-    description: ((item.category ? `[${item.category}] ` : '') + (item.description || '')).slice(0, 100),
-  }));
+    ? mergedItems.filter(i =>
+        i.name.toLowerCase().includes(query.toLowerCase()) ||
+        (i.category || '').toLowerCase().includes(query.toLowerCase())
+      )
+    : mergedItems;
+  const opts = filtered.slice(0, 25).map(item => {
+    const priceStr = item.price != null ? `${sym}${fmt(item.price)}` : 'No price set';
+    return {
+      label: `${item.name} — ${priceStr}`.slice(0, 100),
+      value: `__item__${item.name}`,
+      description: ((item.category ? `[${item.category}] ` : '') + (item.description || '')).slice(0, 100),
+    };
+  });
   if (!opts.length) return null;
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -75,6 +81,17 @@ function buildShopSelectMenu(allItems, sym, query) {
       .setPlaceholder('Select an item to view details...')
       .addOptions(opts)
   );
+}
+
+function mergeShopItems(guildItems) {
+  const guildNames = new Set(guildItems.map(i => i.name.toLowerCase()));
+  const builtIns = GTA_VEHICLES
+    .filter(v => !guildNames.has(v.name.toLowerCase()))
+    .map(v => ({ name: v.name, price: null, description: v.description, category: v.category, isBuiltIn: true }));
+  const guildFormatted = guildItems.map(i => ({
+    name: i.name, price: i.price, description: i.description, category: 'Custom', isBuiltIn: false,
+  }));
+  return [...guildFormatted, ...builtIns];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,16 +336,19 @@ export async function runShop(interaction, query) {
   const sym = config.currencySymbol;
   const guildId = interaction.guildId;
   const guildItems = await EconomyStore.find({ guildId });
-  const guildFormatted = guildItems.map(i => ({ name: i.name, price: i.price, description: i.description, category: 'Custom' }));
-  const allItems = [...guildFormatted, ...GTA_VEHICLES];
+  const allItems = mergeShopItems(guildItems);
   const filtered = query
-    ? allItems.filter(i => i.name.toLowerCase().includes(query.toLowerCase()) || (i.category || '').toLowerCase().includes(query.toLowerCase()))
+    ? allItems.filter(i =>
+        i.name.toLowerCase().includes(query.toLowerCase()) ||
+        (i.category || '').toLowerCase().includes(query.toLowerCase())
+      )
     : allItems;
   if (!filtered.length) return interaction.reply({ embeds: [errorEmbed(`No items found matching **"${query}"**.`)], flags: 64 });
   const row = buildShopSelectMenu(filtered, sym, null);
+  const pricedCount = allItems.filter(i => i.price != null).length;
   const desc = query
-    ? `Showing **${filtered.length}** result${filtered.length !== 1 ? 's' : ''} for **"${query}"**.\nSelect an item below to view details.`
-    : `**${allItems.length}** item${allItems.length !== 1 ? 's' : ''} available.\nUse \`/shop search:\` to filter. Select an item below to view details.`;
+    ? `Showing **${filtered.length}** result${filtered.length !== 1 ? 's' : ''} for **"${query}"**.\nSelect an item to view details. Items showing *No price set* must be priced by staff before they can be purchased.`
+    : `**${allItems.length}** item${allItems.length !== 1 ? 's' : ''} in catalog — **${pricedCount}** available for purchase.\nUse \`/shop search:\` to filter by name or category. Items showing *No price set* must be priced by staff first.`;
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(desc).setFooter({ text: 'RPM' })],
     components: row ? [row] : [],
@@ -367,20 +387,20 @@ export async function runBuy(interaction, itemName, quantity) {
   const qty = quantity || 1;
   if (qty < 1 || !Number.isInteger(qty)) return interaction.reply({ embeds: [errorEmbed('Quantity must be a positive integer.')], flags: 64 });
   const guildItem = await EconomyStore.findOne({ guildId, name: new RegExp(`^${itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-  const builtIn = GTA_VEHICLES.find(v => v.name.toLowerCase() === itemName.toLowerCase());
-  const item = guildItem ? { name: guildItem.name, price: guildItem.price } : (builtIn ? { name: builtIn.name, price: builtIn.price } : null);
-  if (!item) return interaction.reply({ embeds: [errorEmbed(`No item found named **"${itemName}"**. Use \`/shop\` to browse available items.`)], flags: 64 });
-  const total = item.price * qty;
+  const isKnownVehicle = GTA_VEHICLES.some(v => v.name.toLowerCase() === itemName.toLowerCase());
+  if (!guildItem && !isKnownVehicle) return interaction.reply({ embeds: [errorEmbed(`No item found named **"${itemName}"**. Use \`/shop\` to browse available items.`)], flags: 64 });
+  if (!guildItem) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** has no price set. Ask a staff member to price it via \`/economysetup\` before it can be purchased.`)], flags: 64 });
+  const total = guildItem.price * qty;
   const bal = await getBalance(guildId, userId, config.startingBalance);
   if (bal.cash < total) return interaction.reply({ embeds: [errorEmbed(`You need ${sym}${fmt(total)} but only have ${sym}${fmt(bal.cash)} cash.`)], flags: 64 });
   bal.cash -= total;
   await bal.save();
   let inv = await EconomyInventory.findOne({ guildId, userId }) || new EconomyInventory({ guildId, userId, items: [] });
-  const ex = inv.items.find(i => i.itemName.toLowerCase() === item.name.toLowerCase());
-  if (ex) ex.quantity += qty; else inv.items.push({ itemName: item.name, quantity: qty });
+  const ex = inv.items.find(i => i.itemName.toLowerCase() === guildItem.name.toLowerCase());
+  if (ex) ex.quantity += qty; else inv.items.push({ itemName: guildItem.name, quantity: qty });
   inv.markModified('items');
   await inv.save();
-  return interaction.reply({ embeds: [successEmbed('Purchase Complete', `Bought **${item.name}** x${qty} for **${sym}${fmt(total)}**.\n**Remaining Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
+  return interaction.reply({ embeds: [successEmbed('Purchase Complete', `Bought **${guildItem.name}** x${qty} for **${sym}${fmt(total)}**.\n**Remaining Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -398,8 +418,7 @@ export async function runSell(interaction, itemName, quantity) {
   if (!invItem) return interaction.reply({ embeds: [errorEmbed(`You don't have **"${itemName}"** in your inventory.`)], flags: 64 });
   if (invItem.quantity < qty) return interaction.reply({ embeds: [errorEmbed(`You only have **${invItem.quantity}** of that item.`)], flags: 64 });
   const guildItem = await EconomyStore.findOne({ guildId, name: new RegExp(`^${itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-  const builtIn = GTA_VEHICLES.find(v => v.name.toLowerCase() === itemName.toLowerCase());
-  const price = guildItem ? guildItem.price : (builtIn ? builtIn.price : 0);
+  const price = guildItem ? guildItem.price : 0;
   const payout = Math.floor(price * 0.5) * qty;
   invItem.quantity -= qty;
   if (invItem.quantity <= 0) inv.items = inv.items.filter(i => i.itemName.toLowerCase() !== itemName.toLowerCase());
@@ -408,7 +427,8 @@ export async function runSell(interaction, itemName, quantity) {
   const bal = await getBalance(guildId, userId, config.startingBalance);
   bal.cash = Math.min(bal.cash + payout, config.maxBalance);
   await bal.save();
-  return interaction.reply({ embeds: [successEmbed('Item Sold', `Sold **${invItem.itemName}** x${qty} for **${sym}${fmt(payout)}** (50% value).\n**Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
+  const payoutNote = price > 0 ? `for **${sym}${fmt(payout)}** (50% value)` : 'for **nothing** (item had no price set)';
+  return interaction.reply({ embeds: [successEmbed('Item Sold', `Sold **${invItem.itemName}** x${qty} ${payoutNote}.\n**Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,19 +632,23 @@ export async function handleShopBrowseSelect(interaction) {
   const sym = config?.currencySymbol || '$';
   const guildItem = await EconomyStore.findOne({ guildId, name: new RegExp(`^${itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
   const builtIn = GTA_VEHICLES.find(v => v.name.toLowerCase() === itemName.toLowerCase());
-  const item = guildItem || builtIn;
-  if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [], content: '' });
-  const name = item.name || itemName;
-  const price = item.price ?? 0;
-  const description = item.description || 'No description.';
-  const category = item.category || (guildItem ? 'Custom' : 'Unknown');
+  if (!guildItem && !builtIn) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [], content: '' });
+  const name = guildItem?.name || builtIn?.name || itemName;
+  const description = guildItem?.description || builtIn?.description || 'No description.';
+  const category = builtIn?.category || 'Custom';
   const usable = guildItem?.usable ? ' *(usable)*' : '';
-  const embed = new EmbedBuilder().setColor(0x2d2d2d).setTitle(name)
+  const priceField = guildItem
+    ? `${sym}${fmt(guildItem.price)}`
+    : '*No price set — ask staff to price this item via `/economysetup`*';
+  const footerNote = guildItem
+    ? 'RPM — Use /buy to purchase this item'
+    : 'RPM — This item is not yet available for purchase';
+  const embed = new EmbedBuilder().setColor(guildItem ? 0x2d2d2d : 0xfaa61a).setTitle(name)
     .addFields(
-      { name: 'Price', value: `${sym}${fmt(price)}`, inline: true },
+      { name: 'Price', value: priceField, inline: true },
       { name: 'Category', value: category + usable, inline: true },
     )
     .setDescription(description)
-    .setFooter({ text: 'RPM — Use /buy to purchase this item' });
+    .setFooter({ text: footerNote });
   return interaction.update({ embeds: [embed], components: [], content: '' });
 }
