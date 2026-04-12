@@ -57,6 +57,7 @@ const economyConfigSchema = new mongoose.Schema({
   },
 
   incomeTax: { type: Number, default: 0 },
+  incomeFee: { type: Number, default: 0 },
   incomeChannelId: { type: String, default: null },
   incomeMessageId: { type: String, default: null },
 
