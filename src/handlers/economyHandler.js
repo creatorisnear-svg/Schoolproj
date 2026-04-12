@@ -225,6 +225,12 @@ export async function handleEconomyMenu(interaction) {
   const guildId = interaction.guildId;
   const userId  = interaction.user.id;
 
+  // ── economy_shop_browse_select (standalone /shop command) ─────────────────
+  if (interaction.customId === 'economy_shop_browse_select') {
+    const { handleShopBrowseSelect } = await import('./economyActions.js');
+    return handleShopBrowseSelect(interaction);
+  }
+
   // ── economy_main_menu ────────────────────────────────────────────────────
   if (interaction.customId === 'economy_main_menu') {
     const value = interaction.values[0];
