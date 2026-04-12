@@ -473,10 +473,16 @@ client.once('clientReady', async () => {
   const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
 
   try {
-    await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-    console.log('✨ Global commands cleared');
+    const existingGlobal = await rest.get(Routes.applicationCommands(client.user.id));
+    if (existingGlobal.length > 0) {
+      console.log(`🗑️  Found ${existingGlobal.length} global command(s) to clear: ${existingGlobal.map(c => c.name).join(', ')}`);
+      await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+      console.log('✨ Global commands cleared successfully');
+    } else {
+      console.log('✅ No global commands found — nothing to clear');
+    }
   } catch (e) {
-    console.log('⚠️ Could not clear global commands:', e.message);
+    console.error('⚠️ Could not clear global commands:', e.message);
   }
 
   console.log(`📋 Registering clean commands to ${client.guilds.cache.size} server(s)...`);

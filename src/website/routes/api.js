@@ -29,17 +29,31 @@ export function createApiRouter(client) {
 
   router.get('/admin/clear-global-commands', async (req, res) => {
     const secret = req.query.secret;
+    const adminSecret = process.env.ADMIN_SECRET;
     const token = process.env.DISCORD_TOKEN;
-    if (!secret || !token || secret !== token.slice(0, 16)) {
-      return res.status(403).json({ error: 'Forbidden' });
+
+    if (!adminSecret) {
+      return res.status(500).json({ error: 'ADMIN_SECRET environment variable is not set on the server.' });
     }
-    const appId = process.env.CLIENT_ID || (client.user?.id) || '1441306995641683978';
+    if (!secret || secret !== adminSecret) {
+      return res.status(403).json({ error: 'Forbidden — wrong or missing secret.' });
+    }
+    if (!token) {
+      return res.status(500).json({ error: 'DISCORD_TOKEN environment variable is not set on the server.' });
+    }
+
+    const appId = process.env.CLIENT_ID || client.user?.id || '1441306995641683978';
     try {
       const rest = new REST({ version: '10' }).setToken(token);
+      const before = await rest.get(Routes.applicationCommands(appId));
       await rest.put(Routes.applicationCommands(appId), { body: [] });
-      res.json({ success: true, message: `All global commands cleared for app ${appId}. Discord will reflect this within a few minutes.` });
+      res.json({
+        success: true,
+        cleared: before.length,
+        message: `Cleared ${before.length} global command(s) for app ${appId}. Discord may take up to 1 hour to reflect this globally.`,
+      });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3) });
     }
   });
 
