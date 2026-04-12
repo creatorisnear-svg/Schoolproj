@@ -263,6 +263,15 @@ app.get('/callback', async (req, res) => {
 
 client.on('guildCreate', async (guild) => {
   try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commandData });
+    console.log(`[guildCreate] Registered ${commandData.length} commands to "${guild.name}" (${guild.id})`);
+  } catch (err) {
+    console.error(`[guildCreate] Failed to register commands to "${guild.name}":`, err.message);
+  }
+
+  try {
     const embed = new EmbedBuilder()
       .setColor(0xffffff)
       .setTitle('Thanks for adding RolePlayManager!')
