@@ -10,6 +10,8 @@ import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { GTA_VEHICLES } from '../data/gtaVehicles.js';
+import { mergeShopItems } from './economyActions.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(num) { return Number(num).toLocaleString(); }
@@ -224,12 +226,6 @@ function buildStoreMenu(items, sym, mode, query = null) {
 export async function handleEconomyMenu(interaction) {
   const guildId = interaction.guildId;
   const userId  = interaction.user.id;
-
-  // ── economy_shop_browse_select (standalone /shop command) ─────────────────
-  if (interaction.customId === 'economy_shop_browse_select') {
-    const { handleShopBrowseSelect } = await import('./economyActions.js');
-    return handleShopBrowseSelect(interaction);
-  }
 
   // ── economy_main_menu ────────────────────────────────────────────────────
   if (interaction.customId === 'economy_main_menu') {
@@ -1097,5 +1093,54 @@ export async function handleEconomyModal(interaction) {
     bal.cash = config2.startingBalance; bal.bank = 0; await bal.save();
     await logTx(interaction, config2, `Reset <@${targetId}>'s balance to ${sym}${fmt(config2.startingBalance)}.`);
     return interaction.reply({ embeds: [successEmbed('Balance Reset', `<@${targetId}>'s balance reset to ${sym}${fmt(config2.startingBalance)}.`)], flags: 64 });
+  }
+}
+
+// ── Autocomplete handler ──────────────────────────────────────────────────────
+export async function handleEconomyAutocomplete(interaction) {
+  const { commandName, guildId, user } = interaction;
+  const focused = interaction.options.getFocused(true);
+  const query = (focused.value || '').toLowerCase();
+
+  try {
+    if (commandName === 'buy') {
+      const config = await EconomyConfig.findOne({ guildId });
+      const sym = config?.currencySymbol || '$';
+      const guildItems = await EconomyStore.find({ guildId });
+      const allItems = mergeShopItems(guildItems);
+      const priced = allItems.filter(i => i.price != null);
+      const filtered = query
+        ? priced.filter(i => i.name.toLowerCase().includes(query) || (i.category || '').toLowerCase().includes(query))
+        : priced;
+      return interaction.respond(
+        filtered.slice(0, 25).map(i => ({ name: `${i.name} — ${sym}${fmt(i.price)}`, value: i.name }))
+      );
+    }
+
+    if (commandName === 'sell' || commandName === 'giveitems') {
+      const inv = await EconomyInventory.findOne({ guildId, userId: user.id });
+      const items = inv?.items || [];
+      const filtered = query
+        ? items.filter(i => i.itemName.toLowerCase().includes(query))
+        : items;
+      return interaction.respond(
+        filtered.slice(0, 25).map(i => ({ name: `${i.itemName} (x${i.quantity})`, value: i.itemName }))
+      );
+    }
+
+    if (commandName === 'use') {
+      const inv = await EconomyInventory.findOne({ guildId, userId: user.id });
+      const items = inv?.items || [];
+      const filtered = query
+        ? items.filter(i => i.itemName.toLowerCase().includes(query))
+        : items;
+      return interaction.respond(
+        filtered.slice(0, 25).map(i => ({ name: `${i.itemName} (x${i.quantity})`, value: i.itemName }))
+      );
+    }
+
+    return interaction.respond([]);
+  } catch {
+    return interaction.respond([]).catch(() => {});
   }
 }

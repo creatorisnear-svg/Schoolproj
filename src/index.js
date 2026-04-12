@@ -630,6 +630,14 @@ client.once('clientReady', async () => {
 
 client.on('interactionCreate', async interaction => {
   try {
+    if (interaction.isAutocomplete()) {
+      if (['buy', 'sell', 'use', 'giveitems'].includes(interaction.commandName)) {
+        const { handleEconomyAutocomplete } = await import('./handlers/economyHandler.js');
+        return await handleEconomyAutocomplete(interaction);
+      }
+      return;
+    }
+
     if (interaction.isChatInputCommand()) {
       console.log(`[COMMAND] ${interaction.user.tag} (${interaction.user.id}) used /${interaction.commandName} in ${interaction.guild?.name || 'DM'}`);
       const command = client.commands.get(interaction.commandName);
@@ -681,6 +689,13 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_pursuit_respond_')) {
         const { handlePursuitRespondButton } = await import('./handlers/dispatchHandler.js');
         await handlePursuitRespondButton(interaction);
+      } else if (interaction.customId.startsWith('economy_shop_cat_') || interaction.customId === 'economy_shop_main') {
+        if (interaction.customId === 'economy_shop_main') {
+          const { handleShopMainButton } = await import('./handlers/economyActions.js');
+          return await handleShopMainButton(interaction);
+        }
+        const { handleShopCategoryButton } = await import('./handlers/economyActions.js');
+        await handleShopCategoryButton(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);

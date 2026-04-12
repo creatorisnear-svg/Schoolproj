@@ -6,8 +6,9 @@ export const data = new SlashCommandBuilder()
   .setDescription('Purchase an item from the store')
   .addStringOption(opt =>
     opt.setName('item')
-      .setDescription('Name of the item to buy (e.g. "Zentorno", "Buzzard")')
+      .setDescription('Name of the item to buy — start typing to search')
       .setRequired(true)
+      .setAutocomplete(true)
   )
   .addIntegerOption(opt =>
     opt.setName('quantity')

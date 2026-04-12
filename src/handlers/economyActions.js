@@ -1,5 +1,5 @@
 import {
-  EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder,
+  EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle,
 } from 'discord.js';
 import EconomyConfig from '../models/EconomyConfig.js';
@@ -59,31 +59,30 @@ async function getConfigOrFail(interaction) {
   return config;
 }
 
-function buildShopSelectMenu(mergedItems, sym, query) {
-  const filtered = query
-    ? mergedItems.filter(i =>
-        i.name.toLowerCase().includes(query.toLowerCase()) ||
-        (i.category || '').toLowerCase().includes(query.toLowerCase())
+const SHOP_CATEGORIES = ['Super', 'Sports', 'Muscle', 'SUV', 'Sedan', 'Truck', 'Motorcycle', 'Helicopter', 'Plane', 'Boat'];
+
+function buildCategoryButtons(extraRow) {
+  const cats = SHOP_CATEGORIES;
+  const rows = [];
+  for (let i = 0; i < cats.length; i += 5) {
+    rows.push(new ActionRowBuilder().addComponents(
+      cats.slice(i, i + 5).map(cat =>
+        new ButtonBuilder().setCustomId(`economy_shop_cat_${cat}`).setLabel(cat).setStyle(ButtonStyle.Secondary)
       )
-    : mergedItems;
-  const opts = filtered.slice(0, 25).map(item => {
-    const priceStr = item.price != null ? `${sym}${fmt(item.price)}` : 'No price set';
-    return {
-      label: `${item.name} — ${priceStr}`.slice(0, 100),
-      value: `__item__${item.name}`,
-      description: ((item.category ? `[${item.category}] ` : '') + (item.description || '')).slice(0, 100),
-    };
-  });
-  if (!opts.length) return null;
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('economy_shop_browse_select')
-      .setPlaceholder('Select an item to view details...')
-      .addOptions(opts)
-  );
+    ));
+  }
+  if (extraRow) rows.push(extraRow);
+  return rows;
 }
 
-function mergeShopItems(guildItems) {
+function shopItemLines(items, sym) {
+  return items.map(i => {
+    const price = i.price != null ? `**${sym}${fmt(i.price)}**` : '*No price set*';
+    return `• **${i.name}** — ${price}`;
+  });
+}
+
+export function mergeShopItems(guildItems) {
   const guildNames = new Set(guildItems.map(i => i.name.toLowerCase()));
   const builtIns = GTA_VEHICLES
     .filter(v => !guildNames.has(v.name.toLowerCase()))
@@ -337,22 +336,122 @@ export async function runShop(interaction, query) {
   const guildId = interaction.guildId;
   const guildItems = await EconomyStore.find({ guildId });
   const allItems = mergeShopItems(guildItems);
-  const filtered = query
-    ? allItems.filter(i =>
-        i.name.toLowerCase().includes(query.toLowerCase()) ||
-        (i.category || '').toLowerCase().includes(query.toLowerCase())
-      )
-    : allItems;
-  if (!filtered.length) return interaction.reply({ embeds: [errorEmbed(`No items found matching **"${query}"**.`)], flags: 64 });
-  const row = buildShopSelectMenu(filtered, sym, null);
+
+  if (query) {
+    const filtered = allItems.filter(i =>
+      i.name.toLowerCase().includes(query.toLowerCase()) ||
+      (i.category || '').toLowerCase().includes(query.toLowerCase())
+    );
+    if (!filtered.length) return interaction.reply({ embeds: [errorEmbed(`No items found matching **"${query}"**.`)], flags: 64 });
+    const lines = shopItemLines(filtered, sym);
+    const chunks = [];
+    for (let i = 0; i < lines.length; i += 20) chunks.push(lines.slice(i, i + 20).join('\n'));
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+        .setTitle(`🔍 Search: "${query}"`)
+        .setDescription(`Found **${filtered.length}** item${filtered.length !== 1 ? 's' : ''}.\n\n${chunks[0]}`)
+        .setFooter({ text: 'Use /buy to purchase · RPM' })],
+      flags: 64,
+    });
+  }
+
   const pricedCount = allItems.filter(i => i.price != null).length;
-  const desc = query
-    ? `Showing **${filtered.length}** result${filtered.length !== 1 ? 's' : ''} for **"${query}"**.\nSelect an item to view details. Items showing *No price set* must be priced by staff before they can be purchased.`
-    : `**${allItems.length}** item${allItems.length !== 1 ? 's' : ''} in catalog — **${pricedCount}** available for purchase.\nUse \`/shop search:\` to filter by name or category. Items showing *No price set* must be priced by staff first.`;
+  const customCount = guildItems.length;
+  const catCounts = SHOP_CATEGORIES.map(cat => {
+    const n = GTA_VEHICLES.filter(v => v.category === cat).length;
+    return `**${cat}** (${n})`;
+  });
+  const customRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('economy_shop_cat_Custom').setLabel(`Custom Items (${customCount})`).setStyle(ButtonStyle.Primary)
+  );
   return interaction.reply({
-    embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(desc).setFooter({ text: 'RPM' })],
-    components: row ? [row] : [],
+    embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+      .setTitle('🛒 Server Store')
+      .setDescription(
+        `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
+        `Items without a price must be priced by staff first.\n\n` +
+        `**GTA V Categories:**\n${catCounts.join(' · ')}\n\n` +
+        `Use \`/buy item:\` to purchase — start typing the item name for suggestions.\n` +
+        `Use \`/shop search:\` to filter by name or category.`
+      )
+      .setFooter({ text: 'Select a category below · RPM' })],
+    components: [...buildCategoryButtons(customRow)],
     flags: 64,
+  });
+}
+
+export async function handleShopMainButton(interaction) {
+  const guildId = interaction.guildId;
+  const config = await EconomyConfig.findOne({ guildId });
+  const sym = config?.currencySymbol || '$';
+  const guildItems = await EconomyStore.find({ guildId });
+  const allItems = mergeShopItems(guildItems);
+  const pricedCount = allItems.filter(i => i.price != null).length;
+  const customCount = guildItems.length;
+  const catCounts = SHOP_CATEGORIES.map(cat => {
+    const n = GTA_VEHICLES.filter(v => v.category === cat).length;
+    return `**${cat}** (${n})`;
+  });
+  const customRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('economy_shop_cat_Custom').setLabel(`Custom Items (${customCount})`).setStyle(ButtonStyle.Primary)
+  );
+  return interaction.update({
+    embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+      .setTitle('🛒 Server Store')
+      .setDescription(
+        `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
+        `Items without a price must be priced by staff first.\n\n` +
+        `**GTA V Categories:**\n${catCounts.join(' · ')}\n\n` +
+        `Use \`/buy item:\` to purchase — start typing the item name for suggestions.\n` +
+        `Use \`/shop search:\` to filter by name or category.`
+      )
+      .setFooter({ text: 'Select a category below · RPM' })],
+    components: [...buildCategoryButtons(customRow)],
+    content: '',
+  });
+}
+
+export async function handleShopCategoryButton(interaction) {
+  const guildId = interaction.guildId;
+  const cat = interaction.customId.replace('economy_shop_cat_', '');
+  const config = await EconomyConfig.findOne({ guildId });
+  const sym = config?.currencySymbol || '$';
+  const guildItems = await EconomyStore.find({ guildId });
+  const backRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('economy_shop_main').setLabel('← Categories').setStyle(ButtonStyle.Secondary)
+  );
+
+  if (cat === 'Custom') {
+    if (!guildItems.length) return interaction.update({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Custom Items').setDescription('No custom items have been added yet. Staff can add items via `/economysetup`.').setFooter({ text: 'RPM' })],
+      components: [backRow], content: '',
+    });
+    const lines = shopItemLines(guildItems.map(i => ({ name: i.name, price: i.price, description: i.description })), sym);
+    return interaction.update({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+        .setTitle('🛒 Custom Items')
+        .setDescription(lines.join('\n'))
+        .setFooter({ text: `${guildItems.length} items · Use /buy to purchase · RPM` })],
+      components: [backRow], content: '',
+    });
+  }
+
+  const vehicles = GTA_VEHICLES.filter(v => v.category === cat);
+  const allItems = mergeShopItems(guildItems);
+  const displayItems = vehicles.map(v => {
+    const gi = allItems.find(i => i.name.toLowerCase() === v.name.toLowerCase());
+    return { name: v.name, price: gi?.price ?? null };
+  });
+  const lines = shopItemLines(displayItems, sym);
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += 20) chunks.push(lines.slice(i, i + 20).join('\n'));
+  const pricedHere = displayItems.filter(i => i.price != null).length;
+  return interaction.update({
+    embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+      .setTitle(`🚗 ${cat} Vehicles`)
+      .setDescription(`**${vehicles.length}** vehicles — **${pricedHere}** priced.\n\n${chunks[0]}`)
+      .setFooter({ text: 'Use /buy to purchase · RPM' })],
+    components: [backRow], content: '',
   });
 }
 

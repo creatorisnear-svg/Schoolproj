@@ -11,8 +11,9 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption(opt =>
     opt.setName('item')
-      .setDescription('Name of the item to give')
+      .setDescription('Name of the item to give — start typing to search your inventory')
       .setRequired(true)
+      .setAutocomplete(true)
   )
   .addIntegerOption(opt =>
     opt.setName('quantity')
