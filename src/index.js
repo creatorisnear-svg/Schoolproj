@@ -645,8 +645,13 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
-      await handleSelectMenu(interaction);
+      if (interaction.customId.startsWith('economy')) {
+        const { handleEconomyMenu } = await import('./handlers/economyHandler.js');
+        await handleEconomyMenu(interaction);
+      } else {
+        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
+        await handleSelectMenu(interaction);
+      }
     } else if (interaction.isButton()) {
       console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_button') {
@@ -676,6 +681,12 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_pursuit_respond_')) {
         const { handlePursuitRespondButton } = await import('./handlers/dispatchHandler.js');
         await handlePursuitRespondButton(interaction);
+      } else if (interaction.customId === 'economy_back_to_main') {
+        const { getEconomyMenu } = await import('./handlers/economyHandler.js');
+        await interaction.update(getEconomyMenu());
+      } else if (interaction.customId === 'economysetup_back_to_main') {
+        const { getEconomySetupMenu } = await import('./handlers/economyHandler.js');
+        await interaction.update(getEconomySetupMenu());
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
@@ -685,6 +696,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'verify_modal') {
         const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
         await handleVerifyModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('economy')) {
+        const { handleEconomyModal } = await import('./handlers/economyHandler.js');
+        await handleEconomyModal(interaction);
       } else {
         const { handleSetupModals } = await import('./handlers/selectMenuHandler.js');
         await handleSetupModals(interaction);
