@@ -198,6 +198,28 @@ function backBtn(type = 'economy') {
   );
 }
 
+function buildStoreMenu(items, sym, mode, query = null) {
+  const customId = mode === 'buy' ? 'economy_buy_item_select' : 'economy_store_browse_menu';
+  const opts = [
+    { label: '🔍 Search items...', value: '__search__', description: 'Filter items by name' },
+  ];
+  const displayed = query
+    ? items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
+    : items;
+  displayed.slice(0, 23).forEach(item => {
+    const label = `${item.name} — ${sym}${fmt(item.price)}`;
+    opts.push({
+      label: label.slice(0, 100),
+      value: String(item._id),
+      description: (item.description || 'No description').slice(0, 100),
+    });
+  });
+  opts.push({ label: '← Back to Economy', value: '__back__', description: 'Return to economy menu' });
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder('Select an item...').addOptions(opts)
+  );
+}
+
 // ── Select menu handler ────────────────────────────────────────────────────────
 export async function handleEconomyMenu(interaction) {
   const guildId = interaction.guildId;
@@ -319,8 +341,11 @@ export async function handleEconomyMenu(interaction) {
     if (value === 'store') {
       const items = await EconomyStore.find({ guildId });
       if (!items.length) return interaction.update({ embeds: [errorEmbed('The store has no items yet.')], components: [backBtn()], content: '' });
-      const desc = items.map((item, i) => `**${i + 1}. ${item.name}** — ${sym}${fmt(item.price)}\n-# ${item.description}${item.usable ? ' *(usable)*' : ''}`).join('\n\n');
-      return interaction.update({ embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Server Store').setDescription(desc).setFooter({ text: 'RPM' })], components: [backBtn()], content: '' });
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
+        components: [buildStoreMenu(items, sym, 'browse')],
+        content: '',
+      });
     }
 
     if (value === 'inventory') {
@@ -329,13 +354,22 @@ export async function handleEconomyMenu(interaction) {
       return interaction.update({ embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle(`${interaction.user.username}'s Inventory`).setDescription(inv.items.map(i => `**${i.itemName}** x${i.quantity}`).join('\n')).setFooter({ text: 'RPM' })], components: [backBtn()], content: '' });
     }
 
+    if (value === 'buy') {
+      const items = await EconomyStore.find({ guildId });
+      if (!items.length) return interaction.update({ embeds: [errorEmbed('The store has no items yet.')], components: [backBtn()], content: '' });
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛍️ Buy Item').setDescription(`Select an item to purchase. You have **${sym}${fmt(bal.cash)}** in cash.`).setFooter({ text: 'RPM' })],
+        components: [buildStoreMenu(items, sym, 'buy')],
+        content: '',
+      });
+    }
+
     // Modal-based actions
     const modals = {
       deposit:   { id: 'economy_deposit_modal',   title: 'Deposit Cash',   fields: [{ id: 'amount', label: 'Amount (or "all")', placeholder: 'e.g. 500 or all' }] },
       withdraw:  { id: 'economy_withdraw_modal',  title: 'Withdraw Cash',  fields: [{ id: 'amount', label: 'Amount (or "all")', placeholder: 'e.g. 500 or all' }] },
       give:      { id: 'economy_give_modal',      title: 'Give Money',     fields: [{ id: 'user_id', label: 'User ID or @mention', placeholder: '123456789012345678' }, { id: 'amount', label: 'Amount', placeholder: 'e.g. 500' }] },
       rob:       { id: 'economy_rob_modal',       title: 'Rob a User',     fields: [{ id: 'user_id', label: 'Target User ID or @mention', placeholder: '123456789012345678' }] },
-      buy:       { id: 'economy_buy_modal',       title: 'Buy Item',       fields: [{ id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
       sell:      { id: 'economy_sell_modal',      title: 'Sell Item',      fields: [{ id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
       use:       { id: 'economy_use_modal',       title: 'Use Item',       fields: [{ id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }] },
       giveitems: { id: 'economy_giveitems_modal', title: 'Give Item',      fields: [{ id: 'user_id', label: 'User ID or @mention', placeholder: '123456789012345678' }, { id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
@@ -351,6 +385,59 @@ export async function handleEconomyMenu(interaction) {
       ));
       return interaction.showModal(modal);
     }
+  }
+
+  // ── economy_store_browse_menu ─────────────────────────────────────────────
+  if (interaction.customId === 'economy_store_browse_menu') {
+    const value = interaction.values[0];
+    if (value === '__back__') return interaction.update(getEconomyMenu());
+    if (value === '__search__') {
+      const modal = new ModalBuilder().setCustomId('economy_store_search_browse_modal').setTitle('Search Store');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('query').setLabel('Search for...').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. health')));
+      return interaction.showModal(modal);
+    }
+    const config = await getConfig(guildId);
+    const sym = config?.currencySymbol || '$';
+    const item = await EconomyStore.findById(value).catch(() => null);
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn()], content: '' });
+    const embed = new EmbedBuilder().setColor(0x2d2d2d).setTitle(item.name)
+      .addFields(
+        { name: 'Price', value: `${sym}${fmt(item.price)}`, inline: true },
+        { name: 'Usable', value: item.usable ? 'Yes' : 'No', inline: true },
+      )
+      .setDescription(item.description || 'No description.')
+      .setFooter({ text: 'RPM' });
+    const buyLabel = `Buy ${item.name}`.slice(0, 80);
+    return interaction.update({
+      embeds: [embed],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`economy_buy_now_${item._id}`).setLabel(buyLabel).setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId('economy_back_to_store').setLabel('← Back to Store').setStyle(ButtonStyle.Secondary),
+        ),
+      ],
+      content: '',
+    });
+  }
+
+  // ── economy_buy_item_select ───────────────────────────────────────────────
+  if (interaction.customId === 'economy_buy_item_select') {
+    const value = interaction.values[0];
+    if (value === '__back__') return interaction.update(getEconomyMenu());
+    if (value === '__search__') {
+      const modal = new ModalBuilder().setCustomId('economy_store_search_buy_modal').setTitle('Search Store');
+      modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('query').setLabel('Search for...').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. health')));
+      return interaction.showModal(modal);
+    }
+    const config = await getConfig(guildId);
+    const sym = config?.currencySymbol || '$';
+    const item = await EconomyStore.findById(value).catch(() => null);
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn()], content: '' });
+    const modal = new ModalBuilder().setCustomId(`economy_buy_qty_${item._id}_modal`).setTitle(`Buy ${item.name}`);
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity — ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
+    );
+    return interaction.showModal(modal);
   }
 
   // ── economy_gambling_menu ─────────────────────────────────────────────────
@@ -503,6 +590,45 @@ export async function handleEconomyMenu(interaction) {
   }
 }
 
+// ── Button handler ────────────────────────────────────────────────────────────
+export async function handleEconomyButton(interaction) {
+  const guildId = interaction.guildId;
+  const { customId } = interaction;
+
+  if (customId === 'economy_back_to_main') {
+    return interaction.update(getEconomyMenu());
+  }
+
+  if (customId === 'economysetup_back_to_main') {
+    return interaction.update(getEconomySetupMenu());
+  }
+
+  if (customId === 'economy_back_to_store') {
+    const config = await getConfig(guildId);
+    const sym = config?.currencySymbol || '$';
+    const items = await EconomyStore.find({ guildId });
+    if (!items.length) return interaction.update({ embeds: [errorEmbed('The store is empty.')], components: [backBtn()], content: '' });
+    return interaction.update({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
+      components: [buildStoreMenu(items, sym, 'browse')],
+      content: '',
+    });
+  }
+
+  if (customId.startsWith('economy_buy_now_')) {
+    const itemId = customId.replace('economy_buy_now_', '');
+    const config = await getConfig(guildId);
+    const sym = config?.currencySymbol || '$';
+    const item = await EconomyStore.findById(itemId).catch(() => null);
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn()], content: '' });
+    const modal = new ModalBuilder().setCustomId(`economy_buy_qty_${item._id}_modal`).setTitle(`Buy ${item.name}`);
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity — ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
+    );
+    return interaction.showModal(modal);
+  }
+}
+
 // ── Modal handler ─────────────────────────────────────────────────────────────
 export async function handleEconomyModal(interaction) {
   const guildId = interaction.guildId;
@@ -511,6 +637,41 @@ export async function handleEconomyModal(interaction) {
 
   const config = await getConfig(guildId);
   const sym = config?.currencySymbol || '$';
+
+  // ── Store search modals ─────────────────────────────────────────────────
+  if (customId === 'economy_store_search_browse_modal' || customId === 'economy_store_search_buy_modal') {
+    if (!config?.enabled) return interaction.reply({ embeds: [errorEmbed('Economy is not enabled.')], flags: 64 });
+    const query = interaction.fields.getTextInputValue('query');
+    const items = await EconomyStore.find({ guildId });
+    const mode = customId === 'economy_store_search_buy_modal' ? 'buy' : 'browse';
+    const filtered = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+    if (!filtered.length) return interaction.reply({ embeds: [errorEmbed(`No items matched **"${query}"**.`)], flags: 64 });
+    const title = mode === 'buy' ? '🛍️ Buy Item' : '🛒 Server Store';
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle(title).setDescription(`Showing **${filtered.length}** result${filtered.length !== 1 ? 's' : ''} for **"${query}"**.`).setFooter({ text: 'RPM' })],
+      components: [buildStoreMenu(items, sym, mode, query)],
+      flags: 64,
+    });
+  }
+
+  // ── Buy quantity modal ──────────────────────────────────────────────────
+  if (customId.startsWith('economy_buy_qty_') && customId.endsWith('_modal')) {
+    if (!config?.enabled) return interaction.reply({ embeds: [errorEmbed('Economy is not enabled.')], flags: 64 });
+    const itemId = customId.slice('economy_buy_qty_'.length, -'_modal'.length);
+    const qty = parseInt(interaction.fields.getTextInputValue('quantity')) || 1;
+    if (isNaN(qty) || qty < 1) return interaction.reply({ embeds: [errorEmbed('Invalid quantity.')], flags: 64 });
+    const item = await EconomyStore.findById(itemId).catch(() => null);
+    if (!item) return interaction.reply({ embeds: [errorEmbed('Item not found.')], flags: 64 });
+    const total = item.price * qty;
+    const bal = await getBalance(guildId, userId, config.startingBalance);
+    if (bal.cash < total) return interaction.reply({ embeds: [errorEmbed(`You need ${sym}${fmt(total)} but only have ${sym}${fmt(bal.cash)}.`)], flags: 64 });
+    bal.cash -= total; await bal.save();
+    let inv = await EconomyInventory.findOne({ guildId, userId }) || new EconomyInventory({ guildId, userId, items: [] });
+    const ex = inv.items.find(i => i.itemName === item.name);
+    if (ex) ex.quantity += qty; else inv.items.push({ itemName: item.name, quantity: qty });
+    inv.markModified('items'); await inv.save();
+    return interaction.reply({ embeds: [successEmbed('Purchase Complete', `Bought **${item.name}** x${qty} for **${sym}${fmt(total)}**.\n**Remaining Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
+  }
 
   // ── Member modals ───────────────────────────────────────────────────────
   if (customId === 'economy_deposit_modal') {

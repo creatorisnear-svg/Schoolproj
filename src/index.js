@@ -681,12 +681,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_pursuit_respond_')) {
         const { handlePursuitRespondButton } = await import('./handlers/dispatchHandler.js');
         await handlePursuitRespondButton(interaction);
-      } else if (interaction.customId === 'economy_back_to_main') {
-        const { getEconomyMenu } = await import('./handlers/economyHandler.js');
-        await interaction.update(getEconomyMenu());
-      } else if (interaction.customId === 'economysetup_back_to_main') {
-        const { getEconomySetupMenu } = await import('./handlers/economyHandler.js');
-        await interaction.update(getEconomySetupMenu());
+      } else if (interaction.customId.startsWith('economy')) {
+        const { handleEconomyButton } = await import('./handlers/economyHandler.js');
+        await handleEconomyButton(interaction);
       } else {
         const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
