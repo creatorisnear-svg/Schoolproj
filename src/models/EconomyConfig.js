@@ -56,6 +56,10 @@ const economyConfigSchema = new mongoose.Schema({
     cooldown: { type: Number, default: 60 },
   },
 
+  incomeTax: { type: Number, default: 0 },
+  incomeChannelId: { type: String, default: null },
+  incomeMessageId: { type: String, default: null },
+
   permissions: {
     workRoles: { type: [String], default: [] },
     crimeRoles: { type: [String], default: [] },

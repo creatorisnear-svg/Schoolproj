@@ -162,6 +162,8 @@ export function getEconomySetupMenu() {
             { label: '💸 Remove Money',            value: 'removemoney',      description: 'Remove money from a user' },
             { label: '🔄 Reset Balance',           value: 'resetmoney',       description: "Reset a user's balance" },
             { label: '📋 Set Log Channel',         value: 'setlogchannel',    description: 'Economy transaction log channel' },
+            { label: '🏦 Income Tax',              value: 'incometax',        description: 'Set tax rate deducted from income (%)' },
+            { label: '📢 Income Board',            value: 'incomeboard',      description: 'Post income redemption embed to a channel' },
             { label: '✅ Done',                    value: 'done',             description: 'Close this menu' },
           ])
       ),
@@ -497,7 +499,8 @@ export async function handleEconomyMenu(interaction) {
         `### Rob\n**Enabled:** ${config.rob.enabled}  **Cooldown:** ${config.rob.cooldown}m  **Success:** ${config.rob.successRate}%\n\n` +
         `### Gambling\n**Enabled:** ${config.gambling.enabled}  **Bet:** ${sym}${config.gambling.minBet}–${sym}${config.gambling.maxBet}\n\n` +
         `### Chat Money\n**Enabled:** ${config.chatMoney.enabled}  **Amount:** ${sym}${config.chatMoney.minAmount}–${sym}${config.chatMoney.maxAmount}  **Cooldown:** ${config.chatMoney.cooldown}s\n\n` +
-        `### Role Income\n${config.roleIncome.length ? config.roleIncome.map(r => `<@&${r.roleId}>: ${sym}${r.amount} every ${r.cooldown}h`).join('\n') : 'None configured.'}`;
+        `### Role Income\n${config.roleIncome.length ? config.roleIncome.map(r => `<@&${r.roleId}>: ${sym}${r.amount} every ${r.cooldown}h`).join('\n') : 'None configured.'}\n\n` +
+        `### Income Tax\n**Rate:** ${config.incomeTax || 0}%${config.incomeChannelId ? `  **Board Channel:** <#${config.incomeChannelId}>` : ''}`;
       return interaction.update({ embeds: [{ color: 0x2d2d2d, title: 'Economy Config', description: desc, footer: { text: 'RPM' } }], components: [backBtn('setup')], content: '' });
     }
 
@@ -512,6 +515,14 @@ export async function handleEconomyMenu(interaction) {
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Set Log Channel').setDescription('Select the channel for economy transaction logs.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('economy_log_channel_select').setPlaceholder('Select a text channel...').setChannelTypes(ChannelType.GuildText))],
+        content: '',
+      });
+    }
+
+    if (value === 'incomeboard') {
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Income Board').setDescription('Select the channel where the income redemption embed will be posted.\n\nMembers will be able to click a button to collect their income directly from that channel.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('economy_incomeboard_channel_select').setPlaceholder('Select a text channel...').setChannelTypes(ChannelType.GuildText))],
         content: '',
       });
     }
