@@ -545,12 +545,36 @@ export async function handleEconomyMenu(interaction) {
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
       storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
-      storeremove: { title: 'Remove Store Item', id: 'economysetup_storeremove_modal', fields: [{ id: 'name', label: 'Item Name to Remove', val: '' }] },
-      storeedit: { title: 'Edit Store Item',     id: 'economysetup_storeedit_modal', fields: [{ id: 'name', label: 'Item Name to Edit', val: '' }, { id: 'price', label: 'New Price (blank = keep)', val: '', required: false }, { id: 'description', label: 'New Description (blank = keep)', val: '', style: TextInputStyle.Paragraph, required: false }] },
+      storeremove: null,
+      storeedit: null,
       addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
       removemoney: { title: 'Remove Money',      id: 'economysetup_removemoney_modal', fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
       resetmoney: { title: 'Reset Balance',      id: 'economysetup_resetmoney_modal', fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }] },
     };
+    if (value === 'storeremove' || value === 'storeedit') {
+      const items = await EconomyStore.find({ guildId });
+      if (!items.length) return interaction.update({ embeds: [errorEmbed('There are no items in the store to ' + (value === 'storeremove' ? 'remove' : 'edit') + '.')], components: [backBtn('setup')], content: '' });
+      const action = value === 'storeremove' ? 'remove' : 'edit';
+      const customId = value === 'storeremove' ? 'economysetup_storeremove_select' : 'economysetup_storeedit_select';
+      const opts = items.slice(0, 25).map(item => ({
+        label: item.name.slice(0, 100),
+        value: String(item._id),
+        description: `${sym}${fmt(item.price)} — ${(item.description || 'No description').slice(0, 80)}`,
+      }));
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+          .setTitle(value === 'storeremove' ? '➖ Remove Store Item' : '✏️ Edit Store Item')
+          .setDescription(`Select an item to ${action}. Showing **${items.length}** item${items.length !== 1 ? 's' : ''}.`)
+          .setFooter({ text: 'RPM' })],
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(`Choose an item to ${action}...`).addOptions(opts)
+          ),
+        ],
+        content: '',
+      });
+    }
+
     const sm = setupModals[value];
     if (sm) {
       const modal = new ModalBuilder().setCustomId(sm.id).setTitle(sm.title);
@@ -593,6 +617,33 @@ export async function handleEconomyMenu(interaction) {
     config.logChannelId = channel.id;
     await config.save();
     return interaction.update({ embeds: [successEmbed('Log Channel Set', `Economy logs will be sent to ${channel}.`)], components: [backBtn('setup')], content: '' });
+  }
+
+  // ── economysetup_storeremove_select ───────────────────────────────────────
+  if (interaction.customId === 'economysetup_storeremove_select') {
+    const itemId = interaction.values[0];
+    const item = await EconomyStore.findOneAndDelete({ _id: itemId, guildId });
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found or already removed.')], components: [backBtn('setup')], content: '' });
+    return interaction.update({ embeds: [successEmbed('Item Removed', `**${item.name}** has been removed from the store.`)], components: [backBtn('setup')], content: '' });
+  }
+
+  // ── economysetup_storeedit_select ─────────────────────────────────────────
+  if (interaction.customId === 'economysetup_storeedit_select') {
+    const itemId = interaction.values[0];
+    const item = await EconomyStore.findOne({ _id: itemId, guildId });
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn('setup')], content: '' });
+    const modal = new ModalBuilder().setCustomId(`economysetup_storeedit_modal_${item._id}`).setTitle(`Edit: ${item.name.slice(0, 40)}`);
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('price').setLabel('New Price (leave blank to keep current)').setStyle(TextInputStyle.Short)
+          .setRequired(false).setValue(String(item.price)).setPlaceholder(String(item.price))
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('description').setLabel('New Description (leave blank to keep current)').setStyle(TextInputStyle.Paragraph)
+          .setRequired(false).setValue(item.description || '').setPlaceholder(item.description || 'Enter a description...')
+      ),
+    );
+    return interaction.showModal(modal);
   }
 }
 
@@ -1005,23 +1056,16 @@ export async function handleEconomyModal(interaction) {
     return interaction.reply({ embeds: [successEmbed('Item Added', `**${name}** added for ${sym}${fmt(price)}.\n-# ${desc}`)], flags: 64 });
   }
 
-  if (customId === 'economysetup_storeremove_modal') {
-    const name = interaction.fields.getTextInputValue('name');
-    const del  = await EconomyStore.findOneAndDelete({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } });
-    if (!del) return interaction.reply({ embeds: [errorEmbed(`No item named **${name}** found.`)], flags: 64 });
-    return interaction.reply({ embeds: [successEmbed('Item Removed', `**${name}** removed from the store.`)], flags: 64 });
-  }
-
-  if (customId === 'economysetup_storeedit_modal') {
-    const name = interaction.fields.getTextInputValue('name');
-    const item = await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } });
-    if (!item) return interaction.reply({ embeds: [errorEmbed(`No item named **${name}** found.`)], flags: 64 });
+  if (customId.startsWith('economysetup_storeedit_modal_')) {
+    const itemId = customId.replace('economysetup_storeedit_modal_', '');
+    const item = await EconomyStore.findOne({ _id: itemId, guildId });
+    if (!item) return interaction.reply({ embeds: [errorEmbed('Item not found.')], flags: 64 });
     const pr = parseInt(interaction.fields.getTextInputValue('price'));
     const ds = interaction.fields.getTextInputValue('description');
     if (!isNaN(pr) && pr > 0) item.price = pr;
-    if (ds) item.description = ds;
+    if (ds?.trim()) item.description = ds.trim();
     await item.save();
-    return interaction.reply({ embeds: [successEmbed('Item Updated', `**${item.name}** has been updated.`)], flags: 64 });
+    return interaction.reply({ embeds: [successEmbed('Item Updated', `**${item.name}** updated.\n**Price:** ${config2?.currencySymbol || '$'}${fmt(item.price)}\n**Description:** ${item.description || 'None'}`)], flags: 64 });
   }
 
   if (customId === 'economysetup_addmoney_modal') {
