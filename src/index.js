@@ -272,10 +272,10 @@ client.on('guildCreate', async (guild) => {
   }
 
   const guildNicknames = {
-    'Kosher nostra': 'Kosher nostra',
+    '1393522130334777344': 'Kosher nostra',
   };
-  if (guildNicknames[guild.name]) {
-    await guild.members.me.setNickname(guildNicknames[guild.name]).catch(() => {});
+  if (guildNicknames[guild.id]) {
+    await guild.members.me.setNickname(guildNicknames[guild.id]).catch(() => {});
   }
 
   try {
@@ -524,10 +524,10 @@ client.once('clientReady', async () => {
 
   // Set per-guild nicknames
   const guildNicknames = {
-    'Kosher nostra': 'Kosher nostra',
+    '1393522130334777344': 'Kosher nostra',
   };
-  for (const [, guild] of client.guilds.cache) {
-    const nickname = guildNicknames[guild.name];
+  for (const [guildId, guild] of client.guilds.cache) {
+    const nickname = guildNicknames[guildId];
     if (nickname) {
       await guild.members.me.setNickname(nickname).catch(() => {});
     }
