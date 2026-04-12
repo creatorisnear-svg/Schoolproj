@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { REST, Routes } from 'discord.js';
 import axios from 'axios';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
@@ -25,6 +26,21 @@ function getToken(req) {
 
 export function createApiRouter(client) {
   const router = Router();
+
+  router.get('/admin/clear-global-commands', async (req, res) => {
+    const secret = req.query.secret;
+    const token = process.env.DISCORD_TOKEN;
+    if (!secret || !token || secret !== token.slice(0, 16)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    try {
+      const rest = new REST({ version: '10' }).setToken(token);
+      await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+      res.json({ success: true, message: 'All global commands cleared. Discord will reflect this within a few minutes.' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   router.get('/stats', (req, res) => {
     const servers = client.guilds.cache.size;
