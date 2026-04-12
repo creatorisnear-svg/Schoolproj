@@ -271,6 +271,13 @@ client.on('guildCreate', async (guild) => {
     console.error(`[guildCreate] Failed to register commands to "${guild.name}":`, err.message);
   }
 
+  const guildNicknames = {
+    'Kosher nostra': 'Kosher nostra',
+  };
+  if (guildNicknames[guild.name]) {
+    await guild.members.me.setNickname(guildNicknames[guild.name]).catch(() => {});
+  }
+
   try {
     const embed = new EmbedBuilder()
       .setColor(0xffffff)
@@ -512,6 +519,17 @@ client.once('clientReady', async () => {
       console.log(`  ✅ SUCCESS: ${commandData.length} commands registered in ${endTime - startTime}ms`);
     } catch (error) {
       console.log(`  ❌ FAILED: ${guild.name} (${guildId}) - ${error.message}`);
+    }
+  }
+
+  // Set per-guild nicknames
+  const guildNicknames = {
+    'Kosher nostra': 'Kosher nostra',
+  };
+  for (const [, guild] of client.guilds.cache) {
+    const nickname = guildNicknames[guild.name];
+    if (nickname) {
+      await guild.members.me.setNickname(nickname).catch(() => {});
     }
   }
 
