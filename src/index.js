@@ -471,8 +471,14 @@ client.once('clientReady', async () => {
   
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
-  
-  console.log('✨ Global commands cleared');
+
+  try {
+    await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+    console.log('✨ Global commands cleared');
+  } catch (e) {
+    console.log('⚠️ Could not clear global commands:', e.message);
+  }
+
   console.log(`📋 Registering clean commands to ${client.guilds.cache.size} server(s)...`);
   console.log('');
   console.log('📊 COMMAND SYNC DETAILS:');
