@@ -667,6 +667,17 @@ export async function handleEconomyMenu(interaction) {
     return interaction.update({ embeds: [successEmbed('Log Channel Set', `Economy logs will be sent to ${channel}.`)], components: [backBtn('setup')], content: '' });
   }
 
+  if (interaction.customId === 'economy_incomeboard_channel_select') {
+    const channel = interaction.channels.first();
+    if (!channel) return interaction.update({ embeds: [errorEmbed('No channel selected.')], components: [backBtn('setup')], content: '' });
+    const config = await getConfig(guildId) || new EconomyConfig({ guildId });
+    config.incomeChannelId = channel.id;
+    config.incomeMessageId = null;
+    await config.save();
+    await postIncomeBoard(interaction.guild, config);
+    return interaction.update({ embeds: [successEmbed('Income Panel Sent', `Income collection panel posted to ${channel}.\n\nMembers can click the button there to claim their income and see any deductions applied.`)], components: [backBtn('setup')], content: '' });
+  }
+
   // ── economysetup_storeremove_select ───────────────────────────────────────
   if (interaction.customId === 'economysetup_storeremove_select') {
     const itemId = interaction.values[0];
@@ -695,10 +706,59 @@ export async function handleEconomyMenu(interaction) {
   }
 }
 
+// ── Income Board ─────────────────────────────────────────────────────────────
+export async function postIncomeBoard(guild, config) {
+  if (!config.incomeChannelId) return;
+  const channel = guild.channels.cache.get(config.incomeChannelId);
+  if (!channel) return;
+
+  const sym = config.currencySymbol || '$';
+  const incomeLines = (config.roleIncome || []).length
+    ? config.roleIncome.map(ri => `<@&${ri.roleId}> — +**${sym}${fmt(ri.amount)}** every ${ri.cooldown}h`).join('\n')
+    : '-# No income roles configured.';
+  const deductionLines = (config.roleDeductions || []).length
+    ? config.roleDeductions.map(rd => `<@&${rd.roleId}> — -**${sym}${fmt(rd.amount)}** every ${rd.cooldown}h *(${rd.label})*`).join('\n')
+    : null;
+
+  let desc = `### Income Roles\n${incomeLines}`;
+  if (deductionLines) desc += `\n\n### Deductions\n${deductionLines}`;
+  desc += '\n\n-# Click the button below to collect all available income and apply any deductions.';
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2d2d2d)
+    .setTitle('Income Center')
+    .setDescription(desc)
+    .setFooter({ text: 'RPM' });
+
+  const btn = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('collect_income').setLabel('Collect Income').setStyle(ButtonStyle.Success)
+  );
+
+  try {
+    if (config.incomeMessageId) {
+      const existing = await channel.messages.fetch(config.incomeMessageId).catch(() => null);
+      if (existing) {
+        await existing.edit({ embeds: [embed], components: [btn] });
+        return;
+      }
+    }
+    const msg = await channel.send({ embeds: [embed], components: [btn] });
+    config.incomeMessageId = msg.id;
+    await config.save();
+  } catch (err) {
+    console.error('[IncomeBoard] Failed to post panel:', err.message);
+  }
+}
+
 // ── Button handler ────────────────────────────────────────────────────────────
 export async function handleEconomyButton(interaction) {
   const guildId = interaction.guildId;
   const { customId } = interaction;
+
+  if (customId === 'collect_income') {
+    const { runIncome } = await import('./economyActions.js');
+    return runIncome(interaction);
+  }
 
   if (customId === 'economy_back_to_main') {
     return interaction.update(getEconomyMenu());

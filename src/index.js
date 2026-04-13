@@ -733,7 +733,7 @@ client.on('interactionCreate', async interaction => {
         }
         const { handleShopCategoryButton } = await import('./handlers/economyActions.js');
         await handleShopCategoryButton(interaction);
-      } else if (interaction.customId.startsWith('economy')) {
+      } else if (interaction.customId === 'collect_income' || interaction.customId.startsWith('economy')) {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);
       } else {
