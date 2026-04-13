@@ -6,6 +6,13 @@ const roleIncomeSchema = new mongoose.Schema({
   cooldown: { type: Number, default: 24 },
 }, { _id: false });
 
+const roleDeductionSchema = new mongoose.Schema({
+  roleId: { type: String, required: true },
+  amount: { type: Number, default: 100 },
+  cooldown: { type: Number, default: 24 },
+  label: { type: String, default: 'Deduction' },
+}, { _id: false });
+
 const economyConfigSchema = new mongoose.Schema({
   guildId: { type: String, required: true, unique: true },
   enabled: { type: Boolean, default: true },
@@ -47,6 +54,7 @@ const economyConfigSchema = new mongoose.Schema({
   },
 
   roleIncome: { type: [roleIncomeSchema], default: [] },
+  roleDeductions: { type: [roleDeductionSchema], default: [] },
 
   chatMoney: {
     enabled: { type: Boolean, default: false },

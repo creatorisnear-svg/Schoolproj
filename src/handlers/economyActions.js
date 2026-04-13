@@ -297,15 +297,22 @@ export async function runIncome(interaction) {
   const sym = config.currencySymbol;
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
-  if (!config.roleIncome?.length) return interaction.reply({ embeds: [errorEmbed('No role income is configured on this server.')], flags: 64 });
+
   const memberRoleIds = interaction.member.roles.cache.map(r => r.id);
-  const eligible = config.roleIncome.filter(ri => memberRoleIds.includes(ri.roleId));
-  if (!eligible.length) return interaction.reply({ embeds: [errorEmbed('You do not have any roles with income configured.')], flags: 64 });
+  const eligibleIncome = (config.roleIncome || []).filter(ri => memberRoleIds.includes(ri.roleId));
+  const eligibleDeductions = (config.roleDeductions || []).filter(rd => memberRoleIds.includes(rd.roleId));
+
+  if (!eligibleIncome.length && !eligibleDeductions.length) {
+    return interaction.reply({ embeds: [errorEmbed('No role income or deductions are configured for your roles.')], flags: 64 });
+  }
+
   const bal = await getBalance(guildId, userId, config.startingBalance);
   const incomeCooldowns = bal.incomeCooldowns || new Map();
   let totalEarned = 0;
+  let totalDeducted = 0;
   const results = [];
-  for (const ri of eligible) {
+
+  for (const ri of eligibleIncome) {
     const last = incomeCooldowns.get(ri.roleId);
     const cdMs = ri.cooldown * 60 * 60 * 1000;
     if (last && Date.now() - last.getTime() < cdMs) {
@@ -313,17 +320,39 @@ export async function runIncome(interaction) {
     } else {
       totalEarned += ri.amount;
       incomeCooldowns.set(ri.roleId, new Date());
-      results.push(`<@&${ri.roleId}>: collected **${sym}${fmt(ri.amount)}**`);
+      results.push(`<@&${ri.roleId}>: +**${sym}${fmt(ri.amount)}**`);
     }
   }
-  if (totalEarned > 0) {
-    bal.cash = Math.min(bal.cash + totalEarned, config.maxBalance);
+
+  for (const rd of eligibleDeductions) {
+    const key = `deduction_${rd.roleId}`;
+    const last = incomeCooldowns.get(key);
+    const cdMs = rd.cooldown * 60 * 60 * 1000;
+    if (last && Date.now() - last.getTime() < cdMs) {
+      results.push(`${rd.label} (<@&${rd.roleId}>): ready in ${formatMs(cdMs - (Date.now() - last.getTime()))}`);
+    } else {
+      totalDeducted += rd.amount;
+      incomeCooldowns.set(key, new Date());
+      results.push(`${rd.label} (<@&${rd.roleId}>): -**${sym}${fmt(rd.amount)}**`);
+    }
+  }
+
+  const net = totalEarned - totalDeducted;
+  if (totalEarned > 0 || totalDeducted > 0) {
+    bal.cash = Math.min(Math.max(0, bal.cash + net), config.maxBalance);
     bal.incomeCooldowns = incomeCooldowns;
     bal.markModified('incomeCooldowns');
     await bal.save();
   }
-  const desc = results.join('\n') + (totalEarned > 0 ? `\n\n**Total Collected:** ${sym}${fmt(totalEarned)}` : '');
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(totalEarned > 0 ? 0x43b581 : 0x2d2d2d).setTitle('Role Income').setDescription(desc).setFooter({ text: 'RPM' })], flags: 64 });
+
+  let summary = '';
+  if (totalEarned > 0) summary += `\n**Gross Income:** ${sym}${fmt(totalEarned)}`;
+  if (totalDeducted > 0) summary += `\n**Deductions:** -${sym}${fmt(totalDeducted)}`;
+  if (totalEarned > 0 || totalDeducted > 0) summary += `\n**Net:** ${sym}${fmt(net < 0 ? 0 : net)}`;
+
+  const desc = results.join('\n') + (summary ? `\n${summary}` : '');
+  const color = net > 0 ? 0x43b581 : net < 0 ? 0xf04747 : 0x2d2d2d;
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(color).setTitle('Role Income').setDescription(desc).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

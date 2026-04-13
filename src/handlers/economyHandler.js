@@ -152,8 +152,10 @@ export function getEconomySetupMenu() {
             { label: '🦹 Rob Settings',            value: 'rob',              description: 'Configure the rob command' },
             { label: '🎰 Gambling Settings',       value: 'gambling',         description: 'Configure gambling limits' },
             { label: '💬 Chat Money',              value: 'chatmoney',        description: 'Earn money by chatting' },
-            { label: '👑 Role Income — Add',       value: 'roleincome',       description: 'Grant income to a role' },
-            { label: '🗑️ Role Income — Remove',   value: 'removeroleincome', description: 'Remove income from a role' },
+            { label: '👑 Role Income — Add',       value: 'roleincome',         description: 'Grant income to a role' },
+            { label: '🗑️ Role Income — Remove',   value: 'removeroleincome',   description: 'Remove income from a role' },
+            { label: '📉 Role Deduction — Add',   value: 'rolededuction',      description: 'Deduct money from a role on income collect' },
+            { label: '🗑️ Role Deduction — Remove', value: 'removerolededuction', description: 'Remove a deduction from a role' },
             { label: '➕ Store — Add Item',        value: 'storeadd',         description: 'Add an item to the store' },
             { label: '➖ Store — Remove Item',     value: 'storeremove',      description: 'Remove an item from the store' },
             { label: '✏️ Store — Edit Item',      value: 'storeedit',        description: 'Edit an existing store item' },
@@ -500,6 +502,7 @@ export async function handleEconomyMenu(interaction) {
         `### Gambling\n**Enabled:** ${config.gambling.enabled}  **Bet:** ${sym}${config.gambling.minBet}–${sym}${config.gambling.maxBet}\n\n` +
         `### Chat Money\n**Enabled:** ${config.chatMoney.enabled}  **Amount:** ${sym}${config.chatMoney.minAmount}–${sym}${config.chatMoney.maxAmount}  **Cooldown:** ${config.chatMoney.cooldown}s\n\n` +
         `### Role Income\n${config.roleIncome.length ? config.roleIncome.map(r => `<@&${r.roleId}>: ${sym}${r.amount} every ${r.cooldown}h`).join('\n') : 'None configured.'}\n\n` +
+        `### Role Deductions\n${(config.roleDeductions || []).length ? config.roleDeductions.map(r => `<@&${r.roleId}>: -${sym}${r.amount} every ${r.cooldown}h (${r.label})`).join('\n') : 'None configured.'}\n\n` +
         `### Income Tax\n**Rate:** ${config.incomeTax || 0}%${config.incomeChannelId ? `  **Board Channel:** <#${config.incomeChannelId}>` : ''}`;
       return interaction.update({ embeds: [{ color: 0x2d2d2d, title: 'Economy Config', description: desc, footer: { text: 'RPM' } }], components: [backBtn('setup')], content: '' });
     }
@@ -539,6 +542,22 @@ export async function handleEconomyMenu(interaction) {
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income — Remove').setDescription('Pick the role to remove income from.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_removeroleincome_role_select').setPlaceholder('Select a role...'))],
+        content: '',
+      });
+    }
+
+    if (value === 'rolededuction') {
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction — Add').setDescription('Select the role that will have money deducted when members collect income.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_rolededuction_role_select').setPlaceholder('Select a role...'))],
+        content: '',
+      });
+    }
+
+    if (value === 'removerolededuction') {
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction — Remove').setDescription('Pick the role to remove the deduction from.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_removerolededuction_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
     }
@@ -615,6 +634,28 @@ export async function handleEconomyMenu(interaction) {
     config.markModified('roleIncome');
     await config.save();
     return interaction.update({ embeds: [successEmbed('Role Income Removed', `Income removed for ${role}.`)], components: [backBtn('setup')], content: '' });
+  }
+
+  if (interaction.customId === 'economy_rolededuction_role_select') {
+    const role = interaction.roles.first();
+    if (!role) return interaction.update({ embeds: [errorEmbed('No role selected.')], components: [backBtn('setup')], content: '' });
+    const modal = new ModalBuilder().setCustomId(`economysetup_rolededuction_modal_${role.id}`).setTitle('Role Deduction');
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('label').setLabel('Deduction Label (e.g. Government Tax)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. Government Tax')),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('amount').setLabel('Deduction Amount').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 200')),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('cooldown').setLabel('Cooldown (hours)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 24'))
+    );
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'economy_removerolededuction_role_select') {
+    const role = interaction.roles.first();
+    if (!role) return interaction.update({ embeds: [errorEmbed('No role selected.')], components: [backBtn('setup')], content: '' });
+    const config = await getConfig(guildId) || new EconomyConfig({ guildId });
+    config.roleDeductions = (config.roleDeductions || []).filter(r => r.roleId !== role.id);
+    config.markModified('roleDeductions');
+    await config.save();
+    return interaction.update({ embeds: [successEmbed('Role Deduction Removed', `Deduction removed for ${role}.`)], components: [backBtn('setup')], content: '' });
   }
 
   if (interaction.customId === 'economy_log_channel_select') {
@@ -1051,6 +1092,20 @@ export async function handleEconomyModal(interaction) {
     if (ex) { ex.amount = amount; ex.cooldown = cooldownH; } else config2.roleIncome.push({ roleId, amount, cooldown: cooldownH });
     config2.markModified('roleIncome'); await config2.save();
     return interaction.reply({ embeds: [successEmbed('Role Income Set', `<@&${roleId}>: ${sym}${fmt(amount)} every ${cooldownH}h`)], flags: 64 });
+  }
+
+  if (customId.startsWith('economysetup_rolededuction_modal_')) {
+    const roleId    = customId.replace('economysetup_rolededuction_modal_', '');
+    const label     = interaction.fields.getTextInputValue('label').trim() || 'Deduction';
+    const amount    = parseInt(interaction.fields.getTextInputValue('amount'));
+    const cooldownH = parseInt(interaction.fields.getTextInputValue('cooldown'));
+    if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Invalid amount.')], flags: 64 });
+    if (isNaN(cooldownH) || cooldownH < 1) return interaction.reply({ embeds: [errorEmbed('Invalid cooldown.')], flags: 64 });
+    if (!config2.roleDeductions) config2.roleDeductions = [];
+    const ex = config2.roleDeductions.find(r => r.roleId === roleId);
+    if (ex) { ex.amount = amount; ex.cooldown = cooldownH; ex.label = label; } else config2.roleDeductions.push({ roleId, amount, cooldown: cooldownH, label });
+    config2.markModified('roleDeductions'); await config2.save();
+    return interaction.reply({ embeds: [successEmbed('Role Deduction Set', `<@&${roleId}>: **-${sym}${fmt(amount)}** every ${cooldownH}h\n-# Label: ${label}`)], flags: 64 });
   }
 
   if (customId === 'economysetup_storeadd_modal') {
