@@ -438,6 +438,16 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 // Chat money handler
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
+
+  // Sticky messages
+  try {
+    const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
+    await handleStickyMessages(message);
+  } catch (err) {
+    // Silently fail — sticky messages are non-critical
+  }
+
+  // Chat money
   try {
     const EconomyConfig = (await import('./models/EconomyConfig.js')).default;
     const EconomyBalance = (await import('./models/EconomyBalance.js')).default;
