@@ -528,7 +528,18 @@ export async function runBuy(interaction, itemName, quantity) {
   if (ex) ex.quantity += qty; else inv.items.push({ itemName: guildItem.name, quantity: qty });
   inv.markModified('items');
   await inv.save();
-  return interaction.reply({ embeds: [successEmbed('Purchase Complete', `Bought **${guildItem.name}** x${qty} for **${sym}${fmt(total)}**.\n**Remaining Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
+
+  let roleNote = '';
+  if (guildItem.roleId && interaction.member) {
+    try {
+      await interaction.member.roles.add(guildItem.roleId);
+      roleNote = `\n**Role Granted:** <@&${guildItem.roleId}>`;
+    } catch {
+      roleNote = '\n-# Role could not be assigned — check bot permissions.';
+    }
+  }
+
+  return interaction.reply({ embeds: [successEmbed('Purchase Complete', `Bought **${guildItem.name}** x${qty} for **${sym}${fmt(total)}**.\n**Remaining Cash:** ${sym}${fmt(bal.cash)}${roleNote}`)], flags: 64 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -570,7 +570,7 @@ export async function handleEconomyMenu(interaction) {
       rob:       { title: 'Rob Settings',        id: 'economysetup_rob_modal',       fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.rob.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.rob.cooldown) }, { id: 'successrate', label: 'Success Rate % (1-100)', val: String(config.rob.successRate) }, { id: 'maxsteal', label: 'Max Steal % of target cash', val: String(config.rob.maxStealPercent) }] },
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
-      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
+      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }, { id: 'roleid', label: 'Reward Role ID (optional)', val: '', required: false }] },
       storeremove: null,
       storeedit: null,
       addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
@@ -701,6 +701,10 @@ export async function handleEconomyMenu(interaction) {
         new TextInputBuilder().setCustomId('description').setLabel('New Description (leave blank to keep current)').setStyle(TextInputStyle.Paragraph)
           .setRequired(false).setValue(item.description || '').setPlaceholder(item.description || 'Enter a description...')
       ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('roleid').setLabel('Reward Role ID (leave blank to keep current)').setStyle(TextInputStyle.Short)
+          .setRequired(false).setValue(item.roleId || '').setPlaceholder('Paste role ID or leave blank')
+      ),
     );
     return interaction.showModal(modal);
   }
@@ -712,17 +716,8 @@ export async function postIncomeBoard(guild, config) {
   const channel = guild.channels.cache.get(config.incomeChannelId);
   if (!channel) return;
 
-  const sym = config.currencySymbol || '$';
-  const incomeLines = (config.roleIncome || []).length
-    ? config.roleIncome.map(ri => `<@&${ri.roleId}> — +**${sym}${fmt(ri.amount)}** every ${ri.cooldown}h`).join('\n')
-    : '-# No income roles configured.';
-  const deductionLines = (config.roleDeductions || []).length
-    ? config.roleDeductions.map(rd => `<@&${rd.roleId}> — -**${sym}${fmt(rd.amount)}** every ${rd.cooldown}h *(${rd.label})*`).join('\n')
-    : null;
-
-  let desc = `### Income Roles\n${incomeLines}`;
-  if (deductionLines) desc += `\n\n### Deductions\n${deductionLines}`;
-  desc += '\n\n-# Click the button below to collect all available income and apply any deductions.';
+  let desc = 'Click the button below to collect all available income and apply any deductions to your balance.';
+  desc += '\n\n-# Your payout is based on the roles assigned to you. Cooldowns apply per role.';
 
   const embed = new EmbedBuilder()
     .setColor(0x2d2d2d)
@@ -1174,8 +1169,11 @@ export async function handleEconomyModal(interaction) {
     const desc  = interaction.fields.getTextInputValue('description');
     if (isNaN(price) || price < 1) return interaction.reply({ embeds: [errorEmbed('Invalid price.')], flags: 64 });
     if (await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } })) return interaction.reply({ embeds: [errorEmbed(`**${name}** already exists.`)], flags: 64 });
-    await EconomyStore.create({ guildId, name, price, description: desc, usable: false });
-    return interaction.reply({ embeds: [successEmbed('Item Added', `**${name}** added for ${sym}${fmt(price)}.\n-# ${desc}`)], flags: 64 });
+    const roleIdRaw = interaction.fields.getTextInputValue('roleid')?.trim() || null;
+    const rewardRoleId = roleIdRaw && /^\d+$/.test(roleIdRaw) ? roleIdRaw : null;
+    await EconomyStore.create({ guildId, name, price, description: desc, usable: false, roleId: rewardRoleId });
+    const roleNote = rewardRoleId ? `\n**Reward Role:** <@&${rewardRoleId}>` : '';
+    return interaction.reply({ embeds: [successEmbed('Item Added', `**${name}** added for ${sym}${fmt(price)}.${roleNote}\n-# ${desc}`)], flags: 64 });
   }
 
   if (customId.startsWith('economysetup_storeedit_modal_')) {
@@ -1184,10 +1182,13 @@ export async function handleEconomyModal(interaction) {
     if (!item) return interaction.reply({ embeds: [errorEmbed('Item not found.')], flags: 64 });
     const pr = parseInt(interaction.fields.getTextInputValue('price'));
     const ds = interaction.fields.getTextInputValue('description');
+    const ri = interaction.fields.getTextInputValue('roleid')?.trim();
     if (!isNaN(pr) && pr > 0) item.price = pr;
     if (ds?.trim()) item.description = ds.trim();
+    if (ri !== undefined) item.roleId = (ri && /^\d+$/.test(ri)) ? ri : null;
     await item.save();
-    return interaction.reply({ embeds: [successEmbed('Item Updated', `**${item.name}** updated.\n**Price:** ${config2?.currencySymbol || '$'}${fmt(item.price)}\n**Description:** ${item.description || 'None'}`)], flags: 64 });
+    const roleNote = item.roleId ? `\n**Reward Role:** <@&${item.roleId}>` : '';
+    return interaction.reply({ embeds: [successEmbed('Item Updated', `**${item.name}** updated.\n**Price:** ${config2?.currencySymbol || '$'}${fmt(item.price)}\n**Description:** ${item.description || 'None'}${roleNote}`)], flags: 64 });
   }
 
   if (customId === 'economysetup_addmoney_modal') {

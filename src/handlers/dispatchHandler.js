@@ -1234,29 +1234,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           await member.voice.setChannel(bestChannelId);
           await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, bestChannelId);
         }
-        // Post a traffic stop active notice with a 10-8 clear button in the dispatch channel
-        if (config.dispatchChannelId) {
-          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-          if (dispatchCh?.isTextBased()) {
-            const stopEmbed = new EmbedBuilder()
-              .setColor('#FF8C00')
-              .setTitle('Traffic Stop Active — 10-11')
-              .setDescription(
-                `**Officer:** <@${userId}>\n` +
-                `**Moved to:** <#${bestChannelId}>\n\n` +
-                `Officer **${officerName}** is on a **10-11**. They must return to patrol on their own.\n\n` +
-                `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in the patrol channel.`
-              )
-              .setFooter({ text: 'RPM • Dispatch' })
-              .setTimestamp();
-            const clearBtn = new ButtonBuilder()
-              .setCustomId(`dispatch_stop_clear_${userId}`)
-              .setLabel('10-8 — Stop Clear')
-              .setStyle(ButtonStyle.Success);
-            await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
-          }
-        }
+        // Status board will reflect the traffic stop — no separate embed posted
       } catch (err) {
         console.error('[Dispatch] Voice channel move error:', err.message);
       }
@@ -1304,10 +1282,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
 
-      // 10-99 — Panic alert: broadcast urgent all-units notice
-      if (parsed.code === '10-99') {
-        await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
-      }
+      // 10-99 — status board updated; no separate channel alert posted
 
       // 10-80 — Pursuit from traffic stop: broadcast to patrol and ask for backup
       if (parsed.code === '10-80') {
@@ -2022,11 +1997,8 @@ async function checkStatusReminders(guild) {
   }
 }
 
-export function startStatusReminderTimer(guild) {
-  if (statusReminderIntervals.has(guild.id)) return;
-  const interval = setInterval(() => checkStatusReminders(guild), STATUS_REMINDER_MS);
-  statusReminderIntervals.set(guild.id, interval);
-  console.log(`[Dispatch] Status reminder timer started for ${guild.name}`);
+export function startStatusReminderTimer(_guild) {
+  // Status reminders disabled — no periodic announcements
 }
 
 // ────────────────────────────────────────────────────────────────────────────
