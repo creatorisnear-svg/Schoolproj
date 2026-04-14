@@ -1,7 +1,7 @@
 import TicketConfig from '../models/TicketConfig.js';
 import Ticket from '../models/Ticket.js';
 import Staff from '../models/Staff.js';
-import { EmbedBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { EmbedBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, OverwriteType } from 'discord.js';
 import { infoEmbed, successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 // Store pending ticket type creation data
@@ -43,6 +43,10 @@ function getButtonStyle(color) {
     'Danger': ButtonStyle.Danger,
   };
   return styles[color] || ButtonStyle.Primary;
+}
+
+function isDiscordSnowflake(id) {
+  return typeof id === 'string' && /^\d{17,20}$/.test(id);
 }
 
 export async function handleTicketSetupMenu(interaction) {
@@ -769,14 +773,17 @@ export async function handleTicketCreationModal(interaction) {
     const permissionOverwrites = [
       {
         id: guild.id,
+        type: OverwriteType.Role,
         deny: [PermissionFlagsBits.ViewChannel],
       },
       {
         id: user.id,
+        type: OverwriteType.Member,
         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
       },
-      ...ticketType.allowedRoleIds.map(roleId => ({
+      ...(ticketType.allowedRoleIds || []).filter(isDiscordSnowflake).map(roleId => ({
         id: roleId,
+        type: OverwriteType.Role,
         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
       })),
     ];
@@ -788,17 +795,19 @@ export async function handleTicketCreationModal(interaction) {
       for (const staffMember of staffMembers) {
         if (staffMember.type === 'user' && staffMember.userId) {
           // Check if user permission already exists
-          if (!permissionOverwrites.some(p => p.id === staffMember.userId)) {
+          if (isDiscordSnowflake(staffMember.userId) && !permissionOverwrites.some(p => p.id === staffMember.userId)) {
             permissionOverwrites.push({
               id: staffMember.userId,
+              type: OverwriteType.Member,
               allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
             });
           }
         } else if (staffMember.type === 'role' && staffMember.roleId) {
           // Check if role permission already exists
-          if (!permissionOverwrites.some(p => p.id === staffMember.roleId)) {
+          if (isDiscordSnowflake(staffMember.roleId) && !permissionOverwrites.some(p => p.id === staffMember.roleId)) {
             permissionOverwrites.push({
               id: staffMember.roleId,
+              type: OverwriteType.Role,
               allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
             });
           }
