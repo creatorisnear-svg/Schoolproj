@@ -29,6 +29,17 @@ const TEN_CODES = {
 
 const pendingStopMoveRequests = new Map();
 
+function getPendingStopMoveKey(guildId, officerId) {
+  return `${guildId}:${officerId}`;
+}
+
+function detectStopMoveAnswer(text) {
+  const lower = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/\b(?:yes|yeah|yep|affirmative|10\s*4|ten\s*four|copy|move\s+(?:us|me|them)|go\s+ahead|do\s+it)\b/i.test(lower)) return true;
+  if (/\b(?:no|negative|stay|hold|do\s+not\s+move|don'?t\s+move|stay\s+here|keep\s+us\s+here)\b/i.test(lower)) return false;
+  return null;
+}
+
 /**
  * Returns an AI client + provider info.
  * Prefers GROQ_API_KEY (free). Falls back to OPENAI_API_KEY (paid).
@@ -506,6 +517,117 @@ async function transcribeAudio(wavBuffer) {
   }
 }
 
+async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcript) {
+  const key = getPendingStopMoveKey(guild.id, member.id);
+  const request = pendingStopMoveRequests.get(key);
+  if (!request) return false;
+
+  if (Date.now() > request.expiresAt) {
+    pendingStopMoveRequests.delete(key);
+    return false;
+  }
+
+  const approve = detectStopMoveAnswer(transcript);
+  if (approve === null) return false;
+
+  pendingStopMoveRequests.delete(key);
+
+  const civMember = request.targetId
+    ? await guild.members.fetch(request.targetId).catch(() => null)
+    : await findMemberByName(guild, request.targetName);
+
+  const dispatchCh = request.dispatchChannelId
+    ? guild.channels.cache.get(request.dispatchChannelId) || await guild.channels.fetch(request.dispatchChannelId).catch(() => null)
+    : null;
+
+  if (!approve) {
+    if (dispatchCh?.isTextBased() && request.messageId) {
+      const msg = await dispatchCh.messages.fetch(request.messageId).catch(() => null);
+      if (msg) {
+        const declinedEmbed = EmbedBuilder.from(msg.embeds[0])
+          .setTitle('Traffic Stop Active')
+          .setDescription(
+            `**Officer:** <@${request.officerId}>\n` +
+            `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
+            `**Move:** Declined by voice\n\n` +
+            `Traffic stop was logged, but no one was moved.`
+          )
+          .setTimestamp();
+        await msg.edit({ embeds: [declinedEmbed], components: [] }).catch(() => {});
+      }
+    }
+
+    if (config?.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsBuffer = await generateDispatchTTS(`Copy ${request.officerName}, keeping you where you are.`);
+        playDispatchVoice(guild.id, ttsBuffer);
+      } catch (err) {
+        console.error('[Dispatch TTS] Stop move decline error:', err.message);
+      }
+    }
+
+    await rebuildStatusBoard(guild, config);
+    return true;
+  }
+
+  if (member.voice?.channelId) {
+    await member.voice.setChannel(request.channelId).catch(() => {});
+  }
+
+  if (civMember?.voice?.channelId && civMember.voice.channelId !== request.channelId) {
+    await civMember.voice.setChannel(request.channelId).catch(() => {});
+  }
+
+  await updateOfficerStatus(
+    guild.id,
+    request.officerId,
+    request.officerName,
+    '10-11',
+    { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: request.targetName, location: null, rawText: request.transcript },
+    null,
+    request.channelId
+  );
+
+  await rebuildStatusBoard(guild, config);
+
+  if (dispatchCh?.isTextBased() && request.messageId) {
+    const msg = await dispatchCh.messages.fetch(request.messageId).catch(() => null);
+    if (msg) {
+      const movedEmbed = EmbedBuilder.from(msg.embeds[0])
+        .setTitle('Traffic Stop Active')
+        .setDescription(
+          `**Officer:** <@${request.officerId}>\n` +
+          `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
+          `**Moved to:** <#${request.channelId}>\n\n` +
+          `Both parties have been moved to the traffic stop channel.\n` +
+          `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
+        )
+        .setTimestamp();
+
+      const clearBtn = new ButtonBuilder()
+        .setCustomId(`dispatch_stop_clear_${request.officerId}`)
+        .setLabel('10-8 — Stop Clear')
+        .setStyle(ButtonStyle.Success);
+
+      await msg.edit({ embeds: [movedEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
+    }
+  }
+
+  if (config?.aiEnabled && hasAIKey()) {
+    try {
+      const { playDispatchVoice } = await import('../utils/voiceListener.js');
+      const civName = civMember?.displayName || civMember?.user?.username || request.targetName;
+      const ttsBuffer = await generateDispatchTTS(`Copy ${request.officerName}, moving you and ${civName} to the traffic stop channel.`);
+      playDispatchVoice(guild.id, ttsBuffer);
+    } catch (err) {
+      console.error('[Dispatch TTS] Stop move confirmation error:', err.message);
+    }
+  }
+
+  return true;
+}
+
 const TTS_CACHE_DIR = join(tmpdir(), 'everlink_tts_cache');
 const ttsMemCache = new Map();
 const TTS_MEM_CACHE_MAX = 30;
@@ -687,6 +809,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (!transcript || transcript.trim().length < 3) return;
     console.log(`[Dispatch] Transcript: "${transcript}"`);
 
+    if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
+
     const words = transcript.trim().toLowerCase().split(/\s+/);
     const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === 'dispatch');
     if (dispatchIdx === -1 || dispatchIdx > 5) {
@@ -716,8 +840,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
 
       if (bestChannelId) {
-        const requestId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-        pendingStopMoveRequests.set(requestId, {
+        const requestKey = getPendingStopMoveKey(guild.id, userId);
+        pendingStopMoveRequests.set(requestKey, {
           guildId: guild.id,
           officerId: userId,
           officerName,
@@ -726,8 +850,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           channelId: bestChannelId,
           transcript,
           createdAt: Date.now(),
+          expiresAt: Date.now() + 5 * 60 * 1000,
+          dispatchChannelId: null,
+          messageId: null,
         });
-        setTimeout(() => pendingStopMoveRequests.delete(requestId), 5 * 60 * 1000);
+        setTimeout(() => pendingStopMoveRequests.delete(requestKey), 5 * 60 * 1000);
 
         await updateOfficerStatus(guild.id, userId, officerName, '10-11',
           { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
@@ -748,23 +875,18 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               `**Officer:** <@${userId}>\n` +
               `**With:** ${civLine}\n` +
               `**Suggested Channel:** <#${bestChannelId}>\n\n` +
-              `<@${userId}>, would you like to move yourself and the civilian to the traffic stop channel?`
+              `Awaiting a voice response from <@${userId}>. Say **yes** to move both parties, or **no** to stay where you are.`
             )
             .addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
             .setFooter({ text: 'RPM' })
             .setTimestamp();
 
-          const moveBtn = new ButtonBuilder()
-            .setCustomId(`dispatch_stop_move_yes_${requestId}`)
-            .setLabel('Yes, Move Us')
-            .setStyle(ButtonStyle.Success);
-
-          const stayBtn = new ButtonBuilder()
-            .setCustomId(`dispatch_stop_move_no_${requestId}`)
-            .setLabel('No, Stay Here')
-            .setStyle(ButtonStyle.Secondary);
-
-          await dispatchCh.send({ embeds: [stopEmbed], components: [new ActionRowBuilder().addComponents(moveBtn, stayBtn)] }).catch(() => {});
+          const msg = await dispatchCh.send({ embeds: [stopEmbed], components: [] }).catch(() => null);
+          const pending = pendingStopMoveRequests.get(requestKey);
+          if (pending && msg) {
+            pending.dispatchChannelId = dispatchCh.id;
+            pending.messageId = msg.id;
+          }
         }
 
         if (config.aiEnabled && hasAIKey()) {
@@ -1957,106 +2079,6 @@ export async function handleStopStillButton(interaction) {
     await interaction.update({ embeds: [embed], components: [] });
   } catch (err) {
     console.error('[Dispatch] Stop still button error:', err.message);
-    interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
-  }
-}
-
-export async function handleStopMoveButton(interaction) {
-  try {
-    const approve = interaction.customId.startsWith('dispatch_stop_move_yes_');
-    const requestId = interaction.customId.replace(/^dispatch_stop_move_(?:yes|no)_/, '');
-    const request = pendingStopMoveRequests.get(requestId);
-
-    if (!request || request.guildId !== interaction.guildId) {
-      return interaction.reply({
-        embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('This move request has expired.').setFooter({ text: 'RPM' })],
-        flags: 64,
-      });
-    }
-
-    const isOfficer = interaction.user.id === request.officerId;
-    const isAdmin = interaction.member.permissions.has('Administrator');
-    if (!isOfficer && !isAdmin) {
-      return interaction.reply({
-        embeds: [errorEmbed('Only the officer who requested the stop or an administrator can answer this.')],
-        flags: 64,
-      });
-    }
-
-    const officerMember = await interaction.guild.members.fetch(request.officerId).catch(() => null);
-    const civMember = request.targetId
-      ? await interaction.guild.members.fetch(request.targetId).catch(() => null)
-      : await findMemberByName(interaction.guild, request.targetName);
-    const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
-
-    pendingStopMoveRequests.delete(requestId);
-
-    if (!approve) {
-      const declinedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setTitle('Traffic Stop Active')
-        .setDescription(
-          `**Officer:** <@${request.officerId}>\n` +
-          `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
-          `**Move:** Declined\n\n` +
-          `Traffic stop was logged, but no one was moved.`
-        )
-        .setTimestamp();
-
-      await interaction.update({ embeds: [declinedEmbed], components: [] });
-      await rebuildStatusBoard(interaction.guild, config);
-      return;
-    }
-
-    if (officerMember?.voice?.channelId) {
-      await officerMember.voice.setChannel(request.channelId).catch(() => {});
-    }
-
-    if (civMember?.voice?.channelId && civMember.voice.channelId !== request.channelId) {
-      await civMember.voice.setChannel(request.channelId).catch(() => {});
-    }
-
-    await updateOfficerStatus(
-      interaction.guildId,
-      request.officerId,
-      request.officerName,
-      '10-11',
-      { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: request.targetName, location: null, rawText: request.transcript },
-      null,
-      request.channelId
-    );
-
-    await rebuildStatusBoard(interaction.guild, config);
-
-    const movedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setTitle('Traffic Stop Active')
-      .setDescription(
-        `**Officer:** <@${request.officerId}>\n` +
-        `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
-        `**Moved to:** <#${request.channelId}>\n\n` +
-        `Both parties have been moved to the traffic stop channel.\n` +
-        `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
-      )
-      .setTimestamp();
-
-    const clearBtn = new ButtonBuilder()
-      .setCustomId(`dispatch_stop_clear_${request.officerId}`)
-      .setLabel('10-8 — Stop Clear')
-      .setStyle(ButtonStyle.Success);
-
-    await interaction.update({ embeds: [movedEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] });
-
-    if (config?.aiEnabled && hasAIKey()) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const civName = civMember?.displayName || civMember?.user?.username || request.targetName;
-        const ttsBuffer = await generateDispatchTTS(`Copy ${request.officerName}, moving you and ${civName} to the traffic stop channel.`);
-        playDispatchVoice(interaction.guildId, ttsBuffer);
-      } catch (err) {
-        console.error('[Dispatch TTS] Stop move confirmation error:', err.message);
-      }
-    }
-  } catch (err) {
-    console.error('[Dispatch] Stop move button error:', err.message);
     interaction.reply({ content: 'An error occurred.', flags: 64 }).catch(() => {});
   }
 }
