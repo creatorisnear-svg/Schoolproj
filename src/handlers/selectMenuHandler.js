@@ -3082,13 +3082,7 @@ async function handleDispatchPatrolChannelSelect(interaction) {
 
         const options = {
           onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
-          userFilter: async (uid) => {
-            if (!leoRoleIds.length) return true;
-            const member = await interaction.guild.members.fetch({ user: uid, force: true }).catch(() => null);
-            if (!member) return false;
-            if (member.roles.cache.size <= 1) return true;
-            return member.roles.cache.some(r => leoRoleIds.includes(r.id));
-          },
+          userFilter: async () => true,
         };
 
         addPatrolChannel(interaction.guildId, channelId, options);
