@@ -780,6 +780,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dispatch_stop_still_')) {
         const { handleStopStillButton } = await import('./handlers/dispatchHandler.js');
         await handleStopStillButton(interaction);
+      } else if (interaction.customId.startsWith('dispatch_stop_move_yes_') || interaction.customId.startsWith('dispatch_stop_move_no_')) {
+        const { handleStopMoveButton } = await import('./handlers/dispatchHandler.js');
+        await handleStopMoveButton(interaction);
       } else if (interaction.customId.startsWith('dispatch_panic_ack_')) {
         const { handlePanicAckButton } = await import('./handlers/dispatchHandler.js');
         await handlePanicAckButton(interaction);
