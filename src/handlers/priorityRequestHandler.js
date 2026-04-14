@@ -3,6 +3,56 @@ import PriorityRequest from '../models/PriorityRequest.js';
 import Priority from '../models/Priority.js';
 import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
 
+const PRIORITY_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+// ── Auto-expiry timer per guild ───────────────────────────────────────────────
+const autoExpireTimers = new Map(); // guildId -> timeoutId
+
+function schedulePriorityAutoExpiry(guildId, guild) {
+  cancelPriorityAutoExpiry(guildId);
+  const timeout = setTimeout(() => autoExpirePriority(guildId, guild), PRIORITY_DURATION_MS);
+  autoExpireTimers.set(guildId, timeout);
+  console.log(`[Priority] Auto-expiry scheduled for guild ${guildId} in 10 minutes`);
+}
+
+function cancelPriorityAutoExpiry(guildId) {
+  const existing = autoExpireTimers.get(guildId);
+  if (existing) {
+    clearTimeout(existing);
+    autoExpireTimers.delete(guildId);
+  }
+}
+
+async function autoExpirePriority(guildId, guild) {
+  autoExpireTimers.delete(guildId);
+  try {
+    const priority = await Priority.findOne({ guildId });
+    if (!priority || !priority.priorityActive) return;
+
+    priority.priorityActive = false;
+    priority.priorityIssuedBy = null;
+    priority.hostUserId = null;
+    priority.requestedByUserId = null;
+    await priority.save();
+
+    if (priority.messageId && priority.channelId) {
+      const panelChannel = guild.channels.cache.get(priority.channelId) ||
+        await guild.channels.fetch(priority.channelId).catch(() => null);
+      if (panelChannel?.isTextBased()) {
+        const panelMessage = await panelChannel.messages.fetch(priority.messageId).catch(() => null);
+        if (panelMessage) {
+          await panelMessage.edit({ embeds: [buildPriorityEmbed(priority)], components: [] }).catch(() => {});
+        }
+      }
+    }
+
+    console.log(`[Priority] Auto-expired priority for guild ${guildId}`);
+  } catch (err) {
+    console.error('[Priority] Auto-expire error:', err.message);
+  }
+}
+
+// ── Submit request ────────────────────────────────────────────────────────────
 export async function handlePriorityRequestCommand(interaction, sceneType, sceneReason, member, host) {
   try {
     const priority = await Priority.findOne({ guildId: interaction.guildId });
@@ -13,7 +63,6 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
       });
     }
 
-    // Send to the channel where the command was used
     const channel = interaction.channel;
     if (!channel || !channel.isTextBased()) {
       return interaction.reply({
@@ -22,7 +71,6 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
       });
     }
 
-    // Create priority request embed
     const embed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Priority Request')
@@ -37,25 +85,13 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
       .setFooter({ text: 'RPM' })
       .setTimestamp();
 
-    // Create approve/deny buttons
-    const row = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('priority_approve')
-          .setLabel('Approve')
-          .setStyle(ButtonStyle.Success)
-          ,
-        new ButtonBuilder()
-          .setCustomId('priority_deny')
-          .setLabel('Deny')
-          .setStyle(ButtonStyle.Danger)
-          
-      );
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('priority_approve').setLabel('Approve').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('priority_deny').setLabel('Deny').setStyle(ButtonStyle.Danger),
+    );
 
-    // Send to the channel where user submitted the command
     const message = await channel.send({ embeds: [embed], components: [row] });
 
-    // Store in database
     await PriorityRequest.create({
       guildId: interaction.guildId,
       userId: interaction.user.id,
@@ -81,6 +117,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
   }
 }
 
+// ── Approve / deny button ─────────────────────────────────────────────────────
 export async function handlePriorityRequestButton(interaction, client) {
   try {
     const isAdminUser = await isAdmin(interaction.member);
@@ -112,58 +149,52 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     const isApprove = interaction.customId === 'priority_approve';
 
-    // Update request status
     request.status = isApprove ? 'approved' : 'denied';
     request[isApprove ? 'approvedBy' : 'deniedBy'] = interaction.user.tag;
     await request.save();
 
-    // Update embed
     const oldEmbed = interaction.message.embeds[0];
     const newEmbed = new EmbedBuilder(oldEmbed.data)
       .setColor(isApprove ? 0x43b581 : 0xf04747)
       .setDescription(isApprove ? '> Approved' : '> Denied')
-      .addFields(
-        { name: isApprove ? 'Approved By' : 'Denied By', value: `<@${interaction.user.id}>`, inline: true }
-      );
+      .addFields({ name: isApprove ? 'Approved By' : 'Denied By', value: `<@${interaction.user.id}>`, inline: true });
 
     await interaction.message.edit({ embeds: [newEmbed], components: [] });
 
-    // If approved, update the priority panel
     if (isApprove) {
       const priority = await Priority.findOne({ guildId: interaction.guildId });
       if (priority) {
+        const expiresAt = new Date(Date.now() + PRIORITY_DURATION_MS);
         priority.priorityActive = true;
         priority.priorityIssuedBy = `Priority Scene - ${request.username}`;
         priority.activatedAt = new Date();
+        priority.expiresAt = expiresAt;
         priority.requestedByUserId = request.userId;
         const hostMatch = request.hostPing.match(/^<@!?(\d+)>$/);
         priority.hostUserId = hostMatch ? hostMatch[1] : null;
         await priority.save();
 
-        // Update priority panel embed with Stop button
         if (priority.messageId && priority.channelId) {
           const panelChannel = await interaction.guild.channels.fetch(priority.channelId).catch(() => null);
-          if (panelChannel && panelChannel.isTextBased()) {
+          if (panelChannel?.isTextBased()) {
             try {
               const panelMessage = await panelChannel.messages.fetch(priority.messageId);
-              const panelEmbed = buildPriorityEmbed(priority);
               const stopRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                  .setCustomId('priority_stop')
-                  .setLabel('Stop Priority')
-                  .setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId('priority_stop').setLabel('Stop Priority').setStyle(ButtonStyle.Danger)
               );
-              await panelMessage.edit({ embeds: [panelEmbed], components: [stopRow] });
+              await panelMessage.edit({ embeds: [buildPriorityEmbed(priority)], components: [stopRow] });
             } catch (err) {
               console.log('Could not update priority panel:', err.message);
             }
           }
         }
+
+        schedulePriorityAutoExpiry(interaction.guildId, interaction.guild);
       }
     }
 
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor(isApprove ? '#43b581' : '#f04747').setDescription(`Priority request **${isApprove ? 'approved' : 'denied'}**.`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor(isApprove ? '#43b581' : '#f04747').setDescription(`Priority request **${isApprove ? 'approved — auto-expires in 10 minutes' : 'denied'}**.`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
@@ -175,6 +206,7 @@ export async function handlePriorityRequestButton(interaction, client) {
   }
 }
 
+// ── Stop button ───────────────────────────────────────────────────────────────
 export async function handlePriorityStop(interaction) {
   try {
     const isAdminUser = await isAdmin(interaction.member);
@@ -205,19 +237,21 @@ export async function handlePriorityStop(interaction) {
       });
     }
 
+    cancelPriorityAutoExpiry(interaction.guildId);
+
     priority.priorityActive = false;
     priority.priorityIssuedBy = null;
     priority.hostUserId = null;
     priority.requestedByUserId = null;
+    priority.expiresAt = null;
     await priority.save();
 
     if (priority.messageId && priority.channelId) {
       const panelChannel = await interaction.guild.channels.fetch(priority.channelId).catch(() => null);
-      if (panelChannel && panelChannel.isTextBased()) {
+      if (panelChannel?.isTextBased()) {
         try {
           const panelMessage = await panelChannel.messages.fetch(priority.messageId);
-          const panelEmbed = buildPriorityEmbed(priority);
-          await panelMessage.edit({ embeds: [panelEmbed], components: [] });
+          await panelMessage.edit({ embeds: [buildPriorityEmbed(priority)], components: [] });
         } catch (err) {
           console.log('Could not update priority panel on stop:', err.message);
         }
@@ -237,6 +271,7 @@ export async function handlePriorityStop(interaction) {
   }
 }
 
+// ── Panel embed builder ───────────────────────────────────────────────────────
 function buildPriorityEmbed(priority) {
   let cooldownText = 'None';
   let cooldownBy = 'N/A';
@@ -250,10 +285,16 @@ function buildPriorityEmbed(priority) {
   }
 
   const isActive = priority.priorityActive;
-  const statusLine = isActive ? ' **Priority is ACTIVE**' : 'Priority is inactive';
+  const statusLine = isActive ? '**Priority is ACTIVE**' : 'Priority is inactive';
 
   let description = `${statusLine}\n\n`;
   description += `**Issued By:** ${priority.priorityIssuedBy || 'N/A'}\n`;
+
+  if (isActive && priority.expiresAt) {
+    const expiryUnix = Math.floor(new Date(priority.expiresAt).getTime() / 1000);
+    description += `**Auto-expires:** <t:${expiryUnix}:R>\n`;
+  }
+
   description += `**Cooldown:** ${cooldownText}\n`;
   description += `**Cooldown By:** ${cooldownBy}`;
 

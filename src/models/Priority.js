@@ -46,6 +46,10 @@ const prioritySchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  expiresAt: {
+    type: Date,
+    default: null,
+  },
   hostUserId: {
     type: String,
     default: null,
