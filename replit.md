@@ -37,6 +37,7 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - **Reaction Role System:** Up to 5 emoji-role pairs per message, configurable for any message.
 - **Ticket Support System:** Custom ticket types with role access control and automatic channel creation. Ticket opening modals use the persistent ticket type ID and reload configuration from MongoDB on submit, avoiding in-memory session expiry during ticket creation.
 - **Role Request System:** Allows members to request roles and staff to approve/deny via DMs.
+- **Welcome System:** Sends configured channel and DM embeds when new members join via the `guildMemberAdd` listener in `src/index.js`.
 - **Status Heartbeat System:** Background system for monitoring bot status, sending periodic messages to a support server.
 - **Database Integration:** Mongoose schemas ensure per-server data isolation and persistence.
 - **AI Voice Dispatch System:** Officers speak in monitored voice channels; the bot captures their audio via `@discordjs/voice`, transcribes it using OpenAI Whisper, parses 10-codes (10-4, 10-8, 10-11, 10-80, etc.), generates a realistic GTA5 RP dispatcher response via GPT-4o-mini, posts a branded embed to the dispatch channel, automatically moves officers to a traffic stop voice channel on 10-11, and maintains a live status board. Configured per-guild via `/dispatchsetup` (admin only). Requires `OPENAI_API_KEY` environment variable. Models: `DispatchConfig`, `OfficerStatus`. Utils: `src/utils/voiceListener.js`. Handler: `src/handlers/dispatchHandler.js`.

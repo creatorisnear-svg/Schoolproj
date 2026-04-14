@@ -18,6 +18,7 @@ import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
 import Priority from './models/Priority.js';
 import DispatchConfig from './models/DispatchConfig.js';
+import Welcome from './models/Welcome.js';
 
 dotenv.config();
 
@@ -316,6 +317,68 @@ client.on('guildCreate', async (guild) => {
     }
   } catch (err) {
     console.error('[guildCreate] Failed to send welcome message:', err.message);
+  }
+});
+
+client.on('guildMemberAdd', async (member) => {
+  try {
+    if (!member?.guild || member.user?.bot) return;
+
+    const welcome = await Welcome.findOne({ guildId: member.guild.id });
+    if (!welcome?.enabled) return;
+
+    const replacements = {
+      '{user}': `<@${member.id}>`,
+      '{username}': member.user.username,
+      '{server}': member.guild.name,
+      '{memberCount}': member.guild.memberCount?.toString() || '',
+    };
+
+    const formatMessage = (message) => {
+      let formatted = message || '';
+      for (const [key, value] of Object.entries(replacements)) {
+        formatted = formatted.split(key).join(value);
+      }
+      return formatted;
+    };
+
+    if (welcome.channelId) {
+      const channel = await member.guild.channels.fetch(welcome.channelId).catch(() => null);
+      if (channel?.isTextBased()) {
+        const channelMessage = formatMessage(welcome.welcomeMessage || 'Welcome to the server, {user}! We\'re glad to have you here.');
+        const embed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Welcome')
+          .setDescription(channelMessage)
+          .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+          .setFooter({ text: 'RPM' })
+          .setTimestamp();
+
+        await channel.send({ embeds: [embed] }).catch((err) => {
+          console.error(`[WELCOME] Failed to send channel welcome in ${member.guild.name}:`, err.message);
+        });
+      } else {
+        console.error(`[WELCOME] Welcome channel not found or not text-based for ${member.guild.name}`);
+      }
+    }
+
+    if (welcome.welcomeDM) {
+      const dmMessage = formatMessage(welcome.welcomeDM);
+      if (dmMessage.trim().length > 0) {
+        const dmEmbed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle(`Welcome to ${member.guild.name}`)
+          .setDescription(dmMessage)
+          .setFooter({ text: 'RPM' })
+          .setTimestamp();
+
+        await member.send({ embeds: [dmEmbed] }).catch((err) => {
+          console.log(`[WELCOME] Could not DM ${member.user.tag}: ${err.message}`);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[WELCOME] guildMemberAdd error:', err.message);
   }
 });
 
