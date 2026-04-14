@@ -1,7 +1,21 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import Priority from '../models/Priority.js';
+import DispatchConfig from '../models/DispatchConfig.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+
+async function announceCooldownTTS(guildId, text) {
+  try {
+    const cfg = await DispatchConfig.findOne({ guildId });
+    if (!cfg?.aiEnabled) return;
+    const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
+    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+    const buf = await generateDispatchTTSPublic(text);
+    if (buf) playDispatchVoice(guildId, buf);
+  } catch (e) {
+    console.error('[PriorityCooldown] TTS error:', e.message);
+  }
+}
 
 export const data = new SlashCommandBuilder()
   .setName('prioritycooldown')
@@ -53,6 +67,12 @@ export async function execute(interaction) {
 
     scheduleCooldownExpiry(interaction.client, priority);
 
+    const minuteWord = minutes === 1 ? 'minute' : 'minutes';
+    announceCooldownTTS(
+      interaction.guildId,
+      `Attention all units, priority cooldown has been activated for ${minutes} ${minuteWord}. Priority events are restricted during this time.`
+    );
+
     return interaction.reply({
       embeds: [successEmbed('Cooldown Set', `Priority cooldown set to **${minutes}m**`)],
       flags: 64,
@@ -102,6 +122,11 @@ export function scheduleCooldownExpiry(client, priority) {
           )]
         : [];
       await message.edit({ embeds: [embed], components });
+
+      announceCooldownTTS(
+        guildId,
+        `Attention all units, the priority cooldown has ended. Priority events may now be activated.`
+      );
     } catch (err) {
       console.error('Error auto-expiring cooldown:', err);
     }
