@@ -11,6 +11,7 @@ import CADConfig from '../models/CADConfig.js';
 import EmergencyCall from '../models/EmergencyCall.js';
 import CADCharacter from '../models/CADCharacter.js';
 import BOLO from '../models/BOLO.js';
+import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 const TEN_CODES = {
@@ -769,15 +770,15 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
         messages: [
           {
             role: 'system',
-            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Keep responses to 1 short sentence. Use 10-codes. Only acknowledge what the officer said — no assumptions. If they mention running a plate or name, say "Copy, say again the plate number" or "say again the name". Do NOT make up 911 calls or incidents — only reference the active calls listed below. If there are no active calls listed, do not mention any.${callContext}`,
+            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Rules you must follow:\n1. Keep every response to exactly 1 short sentence.\n2. Use 10-codes in responses (ten four, ten eight, etc.).\n3. ONLY acknowledge what the officer explicitly said in this exact transmission. Never assume, infer, or add any information not present in their words.\n4. Never mention calls, locations, suspects, or incidents that the officer did not bring up themselves.\n5. If they mention running a plate or name, reply only: "Copy, say again the plate" or "Copy, say again the name".\n6. Do NOT reference any 911 calls unless listed below AND the officer mentioned responding to a call.\n7. If the officer's message is unclear, just say "Go ahead [name]" or ask them to repeat.\n${callContext ? `Active 911 calls you MAY reference only if the officer asks:\n${callContext}` : 'There are no active 911 calls. Do not mention any calls.'}`,
           },
           {
             role: 'user',
-            content: `Officer ${officerName}: "${callText}"`,
+            content: `Officer ${officerName} said: "${callText}"`,
           },
         ],
         max_tokens: 60,
-        temperature: 0.7,
+        temperature: 0.5,
       });
       return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
     } catch (err) {
@@ -1591,114 +1592,167 @@ export async function rebuildStatusBoard(guild, config) {
     status: 'active',
   }).sort({ timestamp: -1 });
 
+  let priorityData = null;
+  try { priorityData = await Priority.findOne({ guildId: guild.id }); } catch {}
+
+  let boloCount = 0;
+  try { boloCount = await BOLO.countDocuments({ guildId: guild.id, active: true }); } catch {}
+
   const embeds = [];
 
+  // Dynamic board color: red if any panic/pursuit is active, dark otherwise
+  const hasPanic    = officers.some(o => o.tenCode === '10-99');
+  const hasPursuit  = officers.some(o => o.tenCode === '10-80');
+  const boardColor  = hasPanic ? '#FF0000' : hasPursuit ? '#FF4500' : '#2d2d2d';
+
   const officerEmbed = new EmbedBuilder()
-    .setColor('#2d2d2d')
-    .setTitle('Officer Status Board')
-    .setFooter({ text: 'RPM' })
+    .setColor(boardColor)
+    .setTitle('📡  Officer Status Board')
+    .setFooter({ text: 'RPM • Live Dispatch' })
     .setTimestamp();
 
-  if (officers.length === 0) {
-    officerEmbed.setDescription('*No officers currently on duty.*');
-  } else {
-    // Group: On-Scene | Available/Busy | Other
-    const onScene  = officers.filter(o => SCENE_CODES.has(o.tenCode));
-    const available = officers.filter(o => o.tenCode === '10-8');
-    const busy     = officers.filter(o => BUSY_CODES.has(o.tenCode));
-    const other    = officers.filter(o =>
-      !SCENE_CODES.has(o.tenCode) && o.tenCode !== '10-8' && !BUSY_CODES.has(o.tenCode)
-    );
+  // ── Stats summary header ──────────────────────────────────────────────────
+  const onSceneCount    = officers.filter(o => SCENE_CODES.has(o.tenCode)).length;
+  const availableCount  = officers.filter(o => o.tenCode === '10-8').length;
+  const busyCount       = officers.filter(o => BUSY_CODES.has(o.tenCode)).length;
+  const totalDuty       = officers.length;
 
-    const buildRow = (o) => {
-      const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
-      const prefix = CODE_PREFIX[o.tenCode] || `[${o.tenCode}]`;
-      const since = `<t:${Math.floor(new Date(o.updatedAt).getTime() / 1000)}:R>`;
+  const statLine = [
+    `🟢 **Avail:** ${availableCount}`,
+    `🔴 **On Scene:** ${onSceneCount}`,
+    `⚫ **Busy/OOS:** ${busyCount}`,
+    `👮 **On Duty:** ${totalDuty}`,
+  ].join('  ·  ');
 
-      let line = `**${prefix}** <@${o.userId}> — **${codeLabel}**`;
+  const headerParts = [statLine];
 
-      // Subject (plate/person description)
-      if (o.subject) line += `\n   Subject: ${o.subject}`;
-      // Location
-      if (o.location) line += `\n   Location: ${o.location}`;
-      // Traffic stop channel link
-      if (o.trafficStopChannelId) line += `\n   Channel: <#${o.trafficStopChannelId}>`;
-      // Time on scene for active scene codes
-      if (SCENE_CODES.has(o.tenCode) && o.trafficStopStartAt) {
-        const mins = Math.floor((Date.now() - new Date(o.trafficStopStartAt).getTime()) / 60000);
-        if (mins > 0) line += `\n   On scene: ${mins} min`;
-      }
-      // Status updated time
-      line += `\n   Updated: ${since}`;
-
-      // Attached emergency call
-      const attachedCall = activeCalls.find(c =>
-        c.respondingLeoId === o.userId || c.attachedLeoIds?.includes(o.userId)
-      );
-      if (attachedCall) {
-        const role = attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED';
-        const num = attachedCall.callId?.split('-').pop() || '???';
-        line += `\n   Call #${num} [${role}]`;
-      }
-
-      return line;
-    };
-
-    const sections = [];
-    if (onScene.length > 0)   sections.push(`**— ON SCENE (${onScene.length}) —**\n` + onScene.map(buildRow).join('\n\n'));
-    if (available.length > 0) sections.push(`**— AVAILABLE (${available.length}) —**\n` + available.map(buildRow).join('\n\n'));
-    if (busy.length > 0)      sections.push(`**— BUSY / OOS (${busy.length}) —**\n` + busy.map(buildRow).join('\n\n'));
-    if (other.length > 0)     sections.push(`**— OTHER (${other.length}) —**\n` + other.map(buildRow).join('\n\n'));
-
-    const fullDesc = sections.join('\n\n');
-    // Discord embed description limit: 4096 chars
-    officerEmbed.setDescription(fullDesc.slice(0, 4096));
+  // Priority panel alert
+  if (priorityData?.priorityActive) {
+    const since = priorityData.activatedAt
+      ? `<t:${Math.floor(new Date(priorityData.activatedAt).getTime() / 1000)}:R>`
+      : '';
+    headerParts.push(`🚨  **PRIORITY ACTIVE** — ${priorityData.priorityIssuedBy || 'Unknown'}${since ? ` · activated ${since}` : ''}`);
   }
+
+  // Priority cooldown
+  if (priorityData?.cooldownEndsAt && new Date(priorityData.cooldownEndsAt) > new Date()) {
+    const remaining = Math.ceil((new Date(priorityData.cooldownEndsAt) - Date.now()) / 60000);
+    headerParts.push(`⏳  **Priority Cooldown:** ${remaining} min remaining — issued by ${priorityData.cooldownIssuedBy || 'Unknown'}`);
+  }
+
+  // Active BOLO count
+  if (boloCount > 0) {
+    headerParts.push(`⚠️  **${boloCount} Active BOLO${boloCount !== 1 ? 's' : ''}** on file`);
+  }
+
+  // Unresponded 911 warnings
+  const unresponded = activeCalls.filter(c => !c.respondingLeoId && (!c.attachedLeoIds || c.attachedLeoIds.length === 0));
+  if (unresponded.length > 0) {
+    headerParts.push(`🆘  **${unresponded.length} UNRESPONDED CALL${unresponded.length !== 1 ? 'S' : ''}** — Units needed!`);
+  }
+
+  // ── Officer rows ──────────────────────────────────────────────────────────
+  const buildRow = (o) => {
+    const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
+    const prefix    = CODE_PREFIX[o.tenCode] || `[${o.tenCode}]`;
+    const since     = `<t:${Math.floor(new Date(o.updatedAt).getTime() / 1000)}:R>`;
+
+    let line = `**${prefix}** <@${o.userId}> — **${codeLabel}**`;
+    if (o.subject)              line += `\n   ╟ Subject: ${o.subject}`;
+    if (o.location)             line += `\n   ╟ Location: ${o.location}`;
+    if (o.trafficStopChannelId) line += `\n   ╟ Channel: <#${o.trafficStopChannelId}>`;
+
+    if (SCENE_CODES.has(o.tenCode) && o.trafficStopStartAt) {
+      const mins = Math.floor((Date.now() - new Date(o.trafficStopStartAt).getTime()) / 60000);
+      if (mins > 0) line += `\n   ╟ On scene: **${mins} min**`;
+    }
+
+    line += `\n   ╙ Updated: ${since}`;
+
+    const attachedCall = activeCalls.find(c =>
+      c.respondingLeoId === o.userId || c.attachedLeoIds?.includes(o.userId)
+    );
+    if (attachedCall) {
+      const role = attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED';
+      const num  = attachedCall.callId?.split('-').pop() || '???';
+      line += `  ·  📞 Call #${num} [${role}]`;
+    }
+
+    return line;
+  };
+
+  const onScene   = officers.filter(o => SCENE_CODES.has(o.tenCode));
+  const available = officers.filter(o => o.tenCode === '10-8');
+  const busy      = officers.filter(o => BUSY_CODES.has(o.tenCode));
+  const other     = officers.filter(o =>
+    !SCENE_CODES.has(o.tenCode) && o.tenCode !== '10-8' && !BUSY_CODES.has(o.tenCode)
+  );
+
+  const sections = [];
+  if (onScene.length > 0)   sections.push(`**━━ ON SCENE (${onScene.length}) ━━**\n` + onScene.map(buildRow).join('\n\n'));
+  if (available.length > 0) sections.push(`**━━ AVAILABLE (${available.length}) ━━**\n` + available.map(buildRow).join('\n\n'));
+  if (busy.length > 0)      sections.push(`**━━ BUSY / OOS (${busy.length}) ━━**\n` + busy.map(buildRow).join('\n\n'));
+  if (other.length > 0)     sections.push(`**━━ OTHER (${other.length}) ━━**\n` + other.map(buildRow).join('\n\n'));
+
+  const officerSection = sections.length > 0 ? sections.join('\n\n') : '*No officers currently on duty.*';
+  const fullDesc = headerParts.join('\n') + '\n\n' + officerSection;
+  officerEmbed.setDescription(fullDesc.slice(0, 4096));
   embeds.push(officerEmbed);
 
+  // ── Active 911 Calls embed ────────────────────────────────────────────────
   if (activeCalls.length > 0) {
     const callEmbed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle('Active 911 Calls')
+      .setColor(unresponded.length > 0 ? '#FF4500' : '#2d2d2d')
+      .setTitle(`📞  Active 911 Calls (${activeCalls.length})`)
       .setTimestamp();
 
     const callRows = activeCalls.map(c => {
-      const since = `<t:${Math.floor(new Date(c.timestamp).getTime() / 1000)}:R>`;
+      const since   = `<t:${Math.floor(new Date(c.timestamp).getTime() / 1000)}:R>`;
       const callNum = c.callId?.split('-').pop() || '???';
-      let line = `**Call #${callNum}** · ${since}`;
-      if (c.issue) line += `\n┗ ${c.issue}`;
-      if (c.location) line += ` @ ${c.location}`;
+      const noUnits = !c.respondingLeoId && (!c.attachedLeoIds || c.attachedLeoIds.length === 0);
 
-      if (c.respondingLeoId) {
-        line += `\n┗ Primary: <@${c.respondingLeoId}>`;
-      }
-      if (c.attachedLeoIds?.length > 0) {
-        const attached = c.attachedLeoIds.filter(id => id !== c.respondingLeoId);
-        if (attached.length > 0) {
-          line += `\n┗ Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
-        }
-      }
-      if (!c.respondingLeoId && c.attachedLeoIds?.length === 0) {
-        line += `\n┗ **NO UNITS RESPONDING**`;
-      }
+      let line = `**Call #${callNum}**${noUnits ? ' 🆘' : ''} · ${since}`;
+      if (c.issue)    line += `\n┗ ${c.issue}`;
+      if (c.location) line += ` @ ${c.location}`;
+      if (c.suspectsDescription) line += `\n┗ Suspects: ${c.suspectsDescription}`;
+
+      if (c.respondingLeoId)    line += `\n┗ Primary: <@${c.respondingLeoId}>`;
+      const attached = (c.attachedLeoIds || []).filter(id => id !== c.respondingLeoId);
+      if (attached.length > 0)  line += `\n┗ Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
+      if (noUnits)               line += `\n┗ **⚠ NO UNITS RESPONDING**`;
 
       return line;
     });
-    callEmbed.setDescription(callRows.join('\n\n'));
+
+    callEmbed.setDescription(callRows.join('\n\n').slice(0, 4096));
     embeds.push(callEmbed);
   }
 
-  const clearButtons = officers.slice(0, 20).map((o) =>
+  // ── Action buttons ────────────────────────────────────────────────────────
+  const components = [];
+
+  // Quick-status row (always shown)
+  const quickRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('dispatch_quick_10_8')
+      .setLabel('10-8 — Available')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('dispatch_quick_10_6')
+      .setLabel('10-6 — Busy')
+      .setStyle(ButtonStyle.Secondary),
+  );
+  components.push(quickRow);
+
+  // Clear-status buttons for each on-duty officer (up to 4 per row, max 3 rows = 12 officers)
+  const clearButtons = officers.slice(0, 12).map((o) =>
     new ButtonBuilder()
       .setCustomId(`dispatch_clear_status_${o.userId}`)
-      .setLabel(o.username.slice(0, 20))
-      .setStyle(ButtonStyle.Secondary)
-      
+      .setLabel(`✕ ${o.username.slice(0, 18)}`)
+      .setStyle(ButtonStyle.Danger)
   );
-
-  const components = [];
-  for (let i = 0; i < clearButtons.length; i += 5) {
-    components.push(new ActionRowBuilder().addComponents(clearButtons.slice(i, i + 5)));
+  for (let i = 0; i < clearButtons.length; i += 4) {
+    components.push(new ActionRowBuilder().addComponents(clearButtons.slice(i, i + 4)));
   }
 
   try {
@@ -1835,6 +1889,73 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
     }
 
     console.log(`[Dispatch] 10-99 PANIC ALERT triggered for ${officerName} in ${guild.name}`);
+
+    // ── Auto-activate priority board ──────────────────────────────────────
+    try {
+      const priority = await Priority.findOne({ guildId: guild.id });
+      if (priority?.channelId) {
+        const wasAlreadyActive = priority.priorityActive;
+        priority.priorityActive = true;
+        priority.priorityIssuedBy = `${officerName} (Auto — 10-99)`;
+        priority.activatedAt = new Date();
+        await priority.save();
+
+        const { buildPriorityEmbed } = await import('./priorityTrackerHandler.js');
+        const prEmbed = await buildPriorityEmbed(priority);
+        const prCh = guild.channels.cache.get(priority.channelId) ||
+          await guild.channels.fetch(priority.channelId).catch(() => null);
+        if (prCh?.isTextBased() && priority.messageId) {
+          const prMsg = await prCh.messages.fetch(priority.messageId).catch(() => null);
+          if (prMsg) await prMsg.edit({ embeds: [prEmbed] }).catch(() => {});
+        }
+
+        console.log(`[Dispatch] Priority board activated for 10-99 in ${guild.name} (was already active: ${wasAlreadyActive})`);
+
+        // Auto-reset after 5 minutes
+        setTimeout(async () => {
+          try {
+            const pr = await Priority.findOne({ guildId: guild.id });
+            if (pr && pr.priorityIssuedBy?.includes('Auto — 10-99')) {
+              pr.priorityActive = false;
+              pr.priorityIssuedBy = null;
+              pr.activatedAt = null;
+              await pr.save();
+
+              const { buildPriorityEmbed: buildEmbed } = await import('./priorityTrackerHandler.js');
+              const resetEmbed = await buildEmbed(pr);
+              const ch = guild.channels.cache.get(pr.channelId) ||
+                await guild.channels.fetch(pr.channelId).catch(() => null);
+              if (ch?.isTextBased() && pr.messageId) {
+                const msg = await ch.messages.fetch(pr.messageId).catch(() => null);
+                if (msg) await msg.edit({ embeds: [resetEmbed] }).catch(() => {});
+              }
+
+              // Rebuild status board to reflect priority cleared
+              const cfg = await DispatchConfig.findOne({ guildId: guild.id });
+              await rebuildStatusBoard(guild, cfg);
+
+              console.log(`[Dispatch] Priority board auto-reset after 10-99 in ${guild.name}`);
+
+              // Announce via TTS that priority is cleared
+              if (cfg?.aiEnabled && hasAIKey()) {
+                try {
+                  const { playDispatchVoice } = await import('../utils/voiceListener.js');
+                  const ttsBuf = await generateDispatchTTS(`Attention all units, the ten ninety nine alert has been standing down. Priority is now deactivated. All units please update your status.`);
+                  playDispatchVoice(guild.id, ttsBuf);
+                } catch {}
+              }
+            }
+          } catch (e) {
+            console.error('[Dispatch] 10-99 priority auto-reset error:', e.message);
+          }
+        }, 5 * 60 * 1000);
+      }
+    } catch (e) {
+      console.error('[Dispatch] 10-99 priority board update error:', e.message);
+    }
+
+    // Rebuild status board now (will show red + priority active)
+    await rebuildStatusBoard(guild, config);
   } catch (err) {
     console.error('[Dispatch] triggerPanicAlert error:', err.message);
   }
