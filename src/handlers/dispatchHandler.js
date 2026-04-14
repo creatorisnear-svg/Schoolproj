@@ -1898,11 +1898,8 @@ async function checkTrafficStops(guild) {
   }
 }
 
-export function startTrafficStopCheckTimer(guild) {
-  if (trafficStopCheckIntervals.has(guild.id)) return;
-  const interval = setInterval(() => checkTrafficStops(guild), 60 * 1000);
-  trafficStopCheckIntervals.set(guild.id, interval);
-  console.log(`[Dispatch] Traffic stop check-in timer started for ${guild.name}`);
+export function startTrafficStopCheckTimer(_guild) {
+  // Traffic stop check-in messages disabled
 }
 
 export async function handleStopStillButton(interaction) {
