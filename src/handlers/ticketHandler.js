@@ -785,23 +785,37 @@ export async function handleTicketCreation(interaction) {
 }
 
 export async function handleTicketCreationModal(interaction) {
-  const customIdParts = interaction.customId.split('_');
-  const tempId = customIdParts[customIdParts.length - 1];
+  const customId = interaction.customId;
   const description = interaction.fields.getTextInputValue('ticket_description');
 
   try {
-    const pending = pendingTicketCreations.get(tempId);
+    let ticketType;
+    let tempId = null;
 
-    if (!pending) {
-      return interaction.reply({
-        content: 'Session expired. Please try again.',
-        flags: 64,
-      });
+    if (customId.startsWith('ticketsupport_create_ticket_')) {
+      // Path via handleTicketButtonClick — look up from pending map
+      const parts = customId.split('_');
+      tempId = parts[parts.length - 1];
+      const pending = pendingTicketCreations.get(tempId);
+      if (!pending) {
+        return interaction.reply({ content: 'Session expired. Please try again.', flags: 64 });
+      }
+      ticketType = pending.ticketType;
+    } else {
+      // Path via handleTicketCreation (ticket_modal_<ticketTypeId>) — load from DB
+      const ticketTypeId = customId.replace('ticket_modal_', '');
+      const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
+      if (!ticketConfig) {
+        return interaction.reply({ content: 'Ticket system not configured.', flags: 64 });
+      }
+      ticketType = ticketConfig.ticketTypes.find(t => t.id === ticketTypeId);
+      if (!ticketType) {
+        return interaction.reply({ content: 'Ticket type not found.', flags: 64 });
+      }
     }
 
     const guild = interaction.guild;
     const user = interaction.user;
-    const ticketType = pending.ticketType;
 
     // Generate unique ticket ID
     const ticketCount = await Ticket.countDocuments({ guildId: interaction.guildId });
@@ -897,7 +911,7 @@ export async function handleTicketCreationModal(interaction) {
       components: [buttonRow],
     });
 
-    pendingTicketCreations.delete(tempId);
+    if (tempId) pendingTicketCreations.delete(tempId);
 
     // Reply to user
     await interaction.reply({
