@@ -1,7 +1,21 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import PriorityRequest from '../models/PriorityRequest.js';
 import Priority from '../models/Priority.js';
+import DispatchConfig from '../models/DispatchConfig.js';
 import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
+
+async function announcePriorityTTS(guildId, text) {
+  try {
+    const cfg = await DispatchConfig.findOne({ guildId });
+    if (!cfg?.aiEnabled) return;
+    const { generateDispatchTTSPublic } = await import('./dispatchHandler.js');
+    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+    const buf = await generateDispatchTTSPublic(text);
+    if (buf) playDispatchVoice(guildId, buf);
+  } catch (e) {
+    console.error('[PriorityRequest] TTS error:', e.message);
+  }
+}
 
 const PRIORITY_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -190,6 +204,13 @@ export async function handlePriorityRequestButton(interaction, client) {
         }
 
         schedulePriorityAutoExpiry(interaction.guildId, interaction.guild);
+
+        const requesterName = request.username?.split('#')[0] || 'an officer';
+        announcePriorityTTS(
+          interaction.guildId,
+          `Attention all units, a priority scene requested by ${requesterName} has been approved and is now active. ` +
+          `All units please respond and begin roleplay. This scene will auto-expire in ten minutes.`
+        );
       }
     }
 
