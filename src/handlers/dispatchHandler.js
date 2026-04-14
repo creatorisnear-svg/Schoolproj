@@ -432,6 +432,7 @@ function parseTranscript(text) {
 
   // Location: "at PLACE", "on STREET", "near AREA", "by PLACE", "off STREET"
   const locationMatch = lower.match(/\b(?:at|on|near|by|off)\s+(.{2,40}?)(?:\s+with|\s*$)/i);
+  let location = locationMatch ? locationMatch[1].trim() : null;
 
   // Fallback: "show me [code]" pattern (after normalization handles the number)
   const showMeMatch = lower.match(/show\s+me\s+(?:(?:in|on|as|a)\s+)?(\d{2}[-\s]\d{1,2})/i);
@@ -439,6 +440,16 @@ function parseTranscript(text) {
     const raw = showMeMatch[1].replace(/\s/, '-');
     const candidate = `10-${raw.split('-')[1] || raw}`;
     if (TEN_CODES[candidate]) detectedCode = candidate;
+  }
+
+  if (!location && !detectedCode) {
+    const showMeLocationMatch = lower.match(/\bshow\s+me\s+(?!(?:10|ten)\b)(?:at\s+|on\s+|near\s+|by\s+|off\s+|in\s+)?([a-z0-9][a-z0-9/'&\-\s]{1,40}?)(?:\s*$)/i);
+    if (showMeLocationMatch) {
+      const candidate = showMeLocationMatch[1].trim();
+      if (!/^(?:available|busy|out\s+of\s+service|on\s+scene|clear|back|copy|responding|en\s+route)$/i.test(candidate)) {
+        location = candidate;
+      }
+    }
   }
 
   if (detectedCode) {
@@ -451,7 +462,7 @@ function parseTranscript(text) {
     code: detectedCode,
     codeInfo: detectedCode ? TEN_CODES[detectedCode] : null,
     subject: withMatch ? withMatch[1].trim() : null,
-    location: locationMatch ? locationMatch[1].trim() : null,
+    location,
     rawText: text.trim(),
   };
 }
@@ -1297,6 +1308,22 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           await triggerPursuitBroadcast(guild, config, userId, officerName, currentBotChannelId);
           clearExtendedStay(guild.id);
         }
+      }
+    } else if (parsed.location) {
+      const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
+      if (existing?.tenCode) {
+        await OfficerStatus.updateOne(
+          { guildId: guild.id, userId },
+          {
+            $set: {
+              username: officerName,
+              location: parsed.location,
+              rawCall: parsed.rawText,
+              updatedAt: new Date(),
+            },
+          }
+        );
+        console.log(`[Dispatch] Updated location only for ${officerName}: ${parsed.location}`);
       }
     }
 
