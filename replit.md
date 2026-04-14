@@ -35,7 +35,7 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - **Sticky Messages:** Auto-reposts every 1 message with a "__**Stickied Message:**__" prefix.
 - **Anti-Promoting System:** Detects and removes non-whitelisted Discord invite links with a staff bypass option.
 - **Reaction Role System:** Up to 5 emoji-role pairs per message, configurable for any message.
-- **Ticket Support System:** Custom ticket types with role access control and automatic channel creation.
+- **Ticket Support System:** Custom ticket types with role access control and automatic channel creation. Ticket opening modals use the persistent ticket type ID and reload configuration from MongoDB on submit, avoiding in-memory session expiry during ticket creation.
 - **Role Request System:** Allows members to request roles and staff to approve/deny via DMs.
 - **Status Heartbeat System:** Background system for monitoring bot status, sending periodic messages to a support server.
 - **Database Integration:** Mongoose schemas ensure per-server data isolation and persistence.

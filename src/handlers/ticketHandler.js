@@ -688,61 +688,7 @@ async function sendTicketPanel(interaction, ticketConfig, selectedTypeIds = null
 }
 
 export async function handleTicketButtonClick(interaction) {
-  const customId = interaction.customId;
-
-  if (!customId.startsWith('ticket_create_')) {
-    return;
-  }
-
-  const ticketTypeId = customId.replace('ticket_create_', '');
-
-  try {
-    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
-
-    if (!ticketConfig) {
-      return interaction.reply({
-        content: 'Ticket system is not configured.',
-        flags: 64,
-      });
-    }
-
-    const ticketType = ticketConfig.ticketTypes.find(t => t.id === ticketTypeId);
-
-    if (!ticketType) {
-      return interaction.reply({
-        content: 'Ticket type not found.',
-        flags: 64,
-      });
-    }
-
-    // Store pending ticket creation and show description modal
-    const tempId = Date.now().toString();
-    pendingTicketCreations.set(tempId, { ticketType, guildId: interaction.guildId, userId: interaction.user.id });
-
-    const modal = new ModalBuilder()
-      .setCustomId(`ticketsupport_create_ticket_${tempId}`)
-      .setTitle(`Create ${ticketType.label} Ticket`)
-      .addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('ticket_description')
-            .setLabel('Description')
-            .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('Describe your issue...')
-            .setMinLength(10)
-            .setMaxLength(1000)
-            .setRequired(true)
-        )
-      );
-
-    return interaction.showModal(modal);
-  } catch (error) {
-    console.error('Error handling ticket button:', error);
-    await interaction.reply({
-      content: 'An error occurred while creating the ticket.',
-      flags: 64,
-    });
-  }
+  return handleTicketCreation(interaction);
 }
 
 export async function handleTicketCreation(interaction) {
@@ -793,24 +739,22 @@ export async function handleTicketCreationModal(interaction) {
     let tempId = null;
 
     if (customId.startsWith('ticketsupport_create_ticket_')) {
-      // Path via handleTicketButtonClick — look up from pending map
       const parts = customId.split('_');
       tempId = parts[parts.length - 1];
       const pending = pendingTicketCreations.get(tempId);
       if (!pending) {
-        return interaction.reply({ content: 'Session expired. Please try again.', flags: 64 });
+        return interaction.reply({ embeds: [errorEmbed('This ticket form is outdated. Please click the ticket panel button again.')], flags: 64 });
       }
       ticketType = pending.ticketType;
     } else {
-      // Path via handleTicketCreation (ticket_modal_<ticketTypeId>) — load from DB
       const ticketTypeId = customId.replace('ticket_modal_', '');
       const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
       if (!ticketConfig) {
-        return interaction.reply({ content: 'Ticket system not configured.', flags: 64 });
+        return interaction.reply({ embeds: [errorEmbed('Ticket system not configured.')], flags: 64 });
       }
       ticketType = ticketConfig.ticketTypes.find(t => t.id === ticketTypeId);
       if (!ticketType) {
-        return interaction.reply({ content: 'Ticket type not found.', flags: 64 });
+        return interaction.reply({ embeds: [errorEmbed('Ticket type not found.')], flags: 64 });
       }
     }
 
@@ -920,10 +864,15 @@ export async function handleTicketCreationModal(interaction) {
     });
   } catch (error) {
     console.error('Error creating ticket:', error);
-    await interaction.reply({
-      content: 'An error occurred while creating the ticket.',
+    const payload = {
+      embeds: [errorEmbed('An error occurred while creating the ticket.')],
       flags: 64,
-    });
+    };
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(payload).catch(() => {});
+    } else {
+      await interaction.reply(payload).catch(() => {});
+    }
   }
 }
 
