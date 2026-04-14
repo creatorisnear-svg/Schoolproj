@@ -643,7 +643,7 @@ const TTS_MEM_CACHE_MAX = 30;
 
 try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
 
-const TTS_VOICE = 'tara';
+const TTS_VOICE = 'autumn';
 
 function ttsCacheKey(text) {
   return createHash('md5').update(`${TTS_VOICE}:${text.toLowerCase().trim()}`).digest('hex');
