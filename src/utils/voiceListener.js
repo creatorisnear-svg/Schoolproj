@@ -447,7 +447,7 @@ function _setupReceiver(connection, guild, state, guildId) {
     let stream;
     try {
       stream = receiver.subscribe(userId, {
-        end: { behavior: EndBehaviorType.AfterSilence, duration: 2000 },
+        end: { behavior: EndBehaviorType.AfterSilence, duration: 2500 },
       });
     } catch (err) {
       clearTimeout(safetyTimeout);
@@ -475,7 +475,7 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      if (pcmChunks.length < 4) return;
+      if (pcmChunks.length < 2) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         try { await onTranscription(wav, userId, guild); }
@@ -534,61 +534,92 @@ export function leaveDispatchChannel(guildId) {
 
 /**
  * Play a TTS audio buffer through the guild's active voice connection.
- * Stops any currently playing audio first so the dispatcher never overlaps itself.
+ * Uses a per-guild queue so responses never cut each other off mid-sentence.
  * Only plays if the connection is in the Ready state.
  */
 export async function playDispatchVoice(guildId, audioBuffer) {
   const state = dispatchState.get(guildId);
-  const conn = state?.connection;
-  if (!conn) {
-    console.error('[Dispatch TTS] No active connection for guild:', guildId);
+  if (!state) {
+    console.error('[Dispatch TTS] No state for guild:', guildId);
     return;
   }
 
-  const connStatus = conn.state?.status;
-  if (connStatus !== VoiceConnectionStatus.Ready) {
-    console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) — waiting for Ready state`);
-    try {
-      await entersState(conn, VoiceConnectionStatus.Ready, 30_000);
-    } catch {
-      console.error('[Dispatch TTS] Connection never reached Ready — skipping audio');
-      return;
-    }
-    if (state.connection !== conn) return;
+  if (!state.audioQueue) state.audioQueue = [];
+  state.audioQueue.push(audioBuffer);
+
+  if (state.audioPlaying) {
+    console.log(`[Dispatch TTS] Queued audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+    return;
   }
 
-  try {
-    if (state.audioPlayer) {
-      try { state.audioPlayer.stop(true); } catch {}
+  await _drainAudioQueue(guildId);
+}
+
+async function _drainAudioQueue(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state || !state.audioQueue?.length) return;
+
+  state.audioPlaying = true;
+
+  while (state.audioQueue?.length > 0) {
+    const audioBuffer = state.audioQueue.shift();
+
+    const conn = state.connection;
+    if (!conn) {
+      console.error('[Dispatch TTS] No active connection — clearing queue');
+      state.audioQueue = [];
+      break;
     }
 
-    const player = createAudioPlayer();
-    state.audioPlayer = player;
+    const connStatus = conn.state?.status;
+    if (connStatus !== VoiceConnectionStatus.Ready) {
+      console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) — waiting`);
+      try {
+        await entersState(conn, VoiceConnectionStatus.Ready, 15_000);
+      } catch {
+        console.error('[Dispatch TTS] Connection never reached Ready — dropping clip');
+        continue;
+      }
+      if (state.connection !== conn) break;
+    }
 
-    const bufferStream = new Readable();
-    bufferStream.push(audioBuffer);
-    bufferStream.push(null);
+    await new Promise((resolve) => {
+      try {
+        const player = createAudioPlayer();
+        state.audioPlayer = player;
 
-    const isOgg = audioBuffer.length >= 4 && audioBuffer.toString('ascii', 0, 4) === 'OggS';
-    const resource = createAudioResource(bufferStream, {
-      inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+        const bufferStream = new Readable();
+        bufferStream.push(audioBuffer);
+        bufferStream.push(null);
+
+        const isOgg = audioBuffer.length >= 4 && audioBuffer.toString('ascii', 0, 4) === 'OggS';
+        const resource = createAudioResource(bufferStream, {
+          inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+        });
+
+        conn.subscribe(player);
+        player.play(resource);
+
+        console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+
+        player.on('error', err => {
+          console.error('[Dispatch TTS] Audio player error:', err.message);
+          if (state.audioPlayer === player) state.audioPlayer = null;
+          resolve();
+        });
+
+        player.on(AudioPlayerStatus.Idle, () => {
+          if (state.audioPlayer === player) state.audioPlayer = null;
+          resolve();
+        });
+      } catch (err) {
+        console.error('[Dispatch TTS] Failed to play voice:', err.message);
+        resolve();
+      }
     });
-
-    conn.subscribe(player);
-    player.play(resource);
-
-    console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
-
-    player.on('error', err => {
-      console.error('[Dispatch TTS] Audio player error:', err.message);
-    });
-
-    player.on(AudioPlayerStatus.Idle, () => {
-      if (state.audioPlayer === player) state.audioPlayer = null;
-    });
-  } catch (err) {
-    console.error('[Dispatch TTS] Failed to play voice:', err.message);
   }
+
+  state.audioPlaying = false;
 }
 
 // ── Extended Stay Tracking ──────────────────────────────────────────────────

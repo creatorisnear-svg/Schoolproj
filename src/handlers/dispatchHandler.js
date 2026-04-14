@@ -642,8 +642,10 @@ const TTS_MEM_CACHE_MAX = 30;
 
 try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
 
+const TTS_VOICE = 'tara';
+
 function ttsCacheKey(text) {
-  return createHash('md5').update(text.toLowerCase().trim()).digest('hex');
+  return createHash('md5').update(`${TTS_VOICE}:${text.toLowerCase().trim()}`).digest('hex');
 }
 
 /**
@@ -699,7 +701,7 @@ async function generateDispatchTTS(text) {
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
     const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
-    const voice = provider === 'groq' ? 'diana' : 'nova';
+    const voice = provider === 'groq' ? TTS_VOICE : 'nova';
     try {
       if (attempt === 0) console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
       const response = await client.audio.speech.create({
