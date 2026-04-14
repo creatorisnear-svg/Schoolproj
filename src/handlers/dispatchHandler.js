@@ -2188,8 +2188,11 @@ export async function initDispatchForGuild(guild, client) {
       onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
       userFilter: async (userId) => {
         if (!leoRoleIds.length) return true;
-        const member = await guild.members.fetch(userId).catch(() => null);
-        return member?.roles.cache.some(r => leoRoleIds.includes(r.id)) ?? false;
+        const member = await guild.members.fetch({ user: userId, force: true }).catch(() => null);
+        if (!member) return false;
+        // If roles are not populated (cache miss), allow through to avoid false rejects
+        if (member.roles.cache.size <= 1) return true;
+        return member.roles.cache.some(r => leoRoleIds.includes(r.id));
       },
     };
 
