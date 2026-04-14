@@ -534,7 +534,11 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
 
   const civMember = request.targetId
     ? await guild.members.fetch(request.targetId).catch(() => null)
-    : await findMemberByName(guild, request.targetName);
+    : request.targetName
+      ? await findMemberByName(guild, request.targetName)
+      : null;
+
+  const hasCiv = !!(civMember || request.targetName);
 
   const dispatchCh = request.dispatchChannelId
     ? guild.channels.cache.get(request.dispatchChannelId) || await guild.channels.fetch(request.dispatchChannelId).catch(() => null)
@@ -544,14 +548,14 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
     if (dispatchCh?.isTextBased() && request.messageId) {
       const msg = await dispatchCh.messages.fetch(request.messageId).catch(() => null);
       if (msg) {
+        let declinedDesc = `**Officer:** <@${request.officerId}>\n`;
+        if (hasCiv) {
+          declinedDesc += `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n`;
+        }
+        declinedDesc += `**Move:** Declined by voice\n\nTraffic stop was logged, but no one was moved.`;
         const declinedEmbed = EmbedBuilder.from(msg.embeds[0])
           .setTitle('Traffic Stop Active')
-          .setDescription(
-            `**Officer:** <@${request.officerId}>\n` +
-            `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
-            `**Move:** Declined by voice\n\n` +
-            `Traffic stop was logged, but no one was moved.`
-          )
+          .setDescription(declinedDesc)
           .setTimestamp();
         await msg.edit({ embeds: [declinedEmbed], components: [] }).catch(() => {});
       }
@@ -584,7 +588,7 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
     request.officerId,
     request.officerName,
     '10-11',
-    { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: request.targetName, location: null, rawText: request.transcript },
+    { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: request.targetName || null, location: null, rawText: request.transcript },
     null,
     request.channelId
   );
@@ -594,31 +598,35 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
   if (dispatchCh?.isTextBased() && request.messageId) {
     const msg = await dispatchCh.messages.fetch(request.messageId).catch(() => null);
     if (msg) {
+      let movedDesc = `**Officer:** <@${request.officerId}>\n`;
+      if (hasCiv) {
+        movedDesc += `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n`;
+      }
+      movedDesc += `**Moved to:** <#${request.channelId}>\n\n`;
+      movedDesc += hasCiv
+        ? `Both parties have been moved to the traffic stop channel.\nSay *"10-8"* when the stop is clear.`
+        : `Officer has been moved to the traffic stop channel.\nSay *"10-8"* when the stop is clear.`;
+
       const movedEmbed = EmbedBuilder.from(msg.embeds[0])
         .setTitle('Traffic Stop Active')
-        .setDescription(
-          `**Officer:** <@${request.officerId}>\n` +
-          `**With:** ${civMember ? `<@${civMember.id}> (${civMember.displayName || civMember.user.username})` : `**${request.targetName}**`}\n` +
-          `**Moved to:** <#${request.channelId}>\n\n` +
-          `Both parties have been moved to the traffic stop channel.\n` +
-          `Press **"10-8 — Stop Clear"** when the stop is finished, or the officer can say *"10-8"* when back in patrol.`
-        )
+        .setDescription(movedDesc)
         .setTimestamp();
 
-      const clearBtn = new ButtonBuilder()
-        .setCustomId(`dispatch_stop_clear_${request.officerId}`)
-        .setLabel('10-8 — Stop Clear')
-        .setStyle(ButtonStyle.Success);
-
-      await msg.edit({ embeds: [movedEmbed], components: [new ActionRowBuilder().addComponents(clearBtn)] }).catch(() => {});
+      await msg.edit({ embeds: [movedEmbed], components: [] }).catch(() => {});
     }
   }
 
   if (config?.aiEnabled && hasAIKey()) {
     try {
       const { playDispatchVoice } = await import('../utils/voiceListener.js');
-      const civName = civMember?.displayName || civMember?.user?.username || request.targetName;
-      const ttsBuffer = await generateDispatchTTS(`Copy ${request.officerName}, moving you and ${civName} to the traffic stop channel.`);
+      let ttsText;
+      if (hasCiv) {
+        const civName = civMember?.displayName || civMember?.user?.username || request.targetName;
+        ttsText = `Copy ${request.officerName}, moving you and ${civName} to the traffic stop channel.`;
+      } else {
+        ttsText = `Copy ${request.officerName}, moving you to the traffic stop channel. Ten four.`;
+      }
+      const ttsBuffer = await generateDispatchTTS(ttsText);
       playDispatchVoice(guild.id, ttsBuffer);
     } catch (err) {
       console.error('[Dispatch TTS] Stop move confirmation error:', err.message);
@@ -1372,11 +1380,64 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           const count = ch.members.filter(m => !m.user.bot).size;
           if (count < bestCount) { bestCount = count; bestChannelId = id; }
         }
+
         if (bestChannelId && member.voice?.channelId) {
-          await member.voice.setChannel(bestChannelId);
-          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, bestChannelId);
+          // Ask via voice before moving — wait for a spoken yes or no
+          const requestKey = getPendingStopMoveKey(guild.id, userId);
+          pendingStopMoveRequests.set(requestKey, {
+            guildId: guild.id,
+            officerId: userId,
+            officerName,
+            targetName: null,
+            targetId: null,
+            channelId: bestChannelId,
+            transcript,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 5 * 60 * 1000,
+            dispatchChannelId: null,
+            messageId: null,
+          });
+          setTimeout(() => pendingStopMoveRequests.delete(requestKey), 5 * 60 * 1000);
+
+          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, null);
+
+          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+          if (dispatchCh?.isTextBased()) {
+            const stopEmbed = new EmbedBuilder()
+              .setColor('#2d2d2d')
+              .setTitle('Traffic Stop Move Request')
+              .setDescription(
+                `**Officer:** <@${userId}>\n` +
+                `**Suggested Channel:** <#${bestChannelId}>\n\n` +
+                `Awaiting a voice response from <@${userId}>. Say **yes** to move to the stop channel, or **no** to stay where you are.`
+              )
+              .addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
+              .setFooter({ text: 'RPM' })
+              .setTimestamp();
+
+            const msg = await dispatchCh.send({ embeds: [stopEmbed], components: [] }).catch(() => null);
+            const pending = pendingStopMoveRequests.get(requestKey);
+            if (pending && msg) {
+              pending.dispatchChannelId = dispatchCh.id;
+              pending.messageId = msg.id;
+            }
+          }
+
+          if (config.aiEnabled && hasAIKey()) {
+            try {
+              const { playDispatchVoice } = await import('../utils/voiceListener.js');
+              const ttsText = `Copy ${officerName}, showing you in on a ten eleven. Would you like me to move you to the traffic stop channel?`;
+              const ttsBuffer = await generateDispatchTTS(ttsText);
+              playDispatchVoice(guild.id, ttsBuffer);
+            } catch (err) {
+              console.error('[Dispatch TTS] Traffic stop voice question error:', err.message);
+            }
+          }
+
+          await rebuildStatusBoard(guild, config);
         }
-        // Status board will reflect the traffic stop — no separate embed posted
       } catch (err) {
         console.error('[Dispatch] Voice channel move error:', err.message);
       }
