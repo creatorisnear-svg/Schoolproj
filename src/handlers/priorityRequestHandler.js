@@ -152,7 +152,6 @@ export async function handlePriorityRequestButton(interaction, client) {
                   .setCustomId('priority_stop')
                   .setLabel('Stop Priority')
                   .setStyle(ButtonStyle.Danger)
-                  .setEmoji('')
               );
               await panelMessage.edit({ embeds: [panelEmbed], components: [stopRow] });
             } catch (err) {

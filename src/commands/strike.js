@@ -21,17 +21,16 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction) {
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command.')],
-      flags: 64,
-    });
-  }
-
   const targetUser = interaction.options.getUser('user');
   const reason = interaction.options.getString('reason');
 
   try {
+    if (!await checkStaffPermission(interaction)) {
+      return interaction.reply({
+        embeds: [errorEmbed('You do not have permission to use this command.')],
+        flags: 64,
+      });
+    }
     const strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
 
     if (!strikeConfig || !strikeConfig.enabled) {
