@@ -833,12 +833,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     let skipWords = 1;
 
     if (config.nsfwMode) {
-      // Trigger phrase: "autumn start"
-      const autumnIdx = words.findIndex((w, i) => w === 'autumn' && words[i + 1] === 'start');
-      if (autumnIdx !== -1 && autumnIdx <= 5) {
-        triggerIdx = autumnIdx;
-        skipWords = 2; // skip both "autumn" and "start"
-      }
+      const autumnIdx = words.findIndex(w => w === 'autumn');
+      if (autumnIdx !== -1 && autumnIdx <= 5) triggerIdx = autumnIdx;
     } else {
       const idx = words.findIndex(w => w === 'dispatch');
       if (idx !== -1 && idx <= 5) triggerIdx = idx;
