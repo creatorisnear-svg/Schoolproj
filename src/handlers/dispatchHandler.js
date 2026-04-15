@@ -724,6 +724,12 @@ async function generateDispatchTTS(text) {
 
 const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 
+// ── NSFW mode custom prompt ───────────────────────────────────────────────────
+// Set your custom system prompt below. It will be used when NSFW mode is
+// enabled via /dispatchsetup → Toggle NSFW Mode.
+const NSFW_SYSTEM_PROMPT = ``;
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function generateDispatchResponse(officerName, parsed, guildId) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
@@ -747,6 +753,17 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
   } catch {}
 
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
+
+  let nsfwMode = false;
+  try {
+    const cfg = await DispatchConfig.findOne({ guildId }).lean();
+    nsfwMode = !!(cfg?.nsfwMode && NSFW_SYSTEM_PROMPT);
+  } catch {}
+
+  const standardPrompt = `You are a police radio dispatcher in a GTA 5 FiveM RP community. Rules you must follow:\n1. Keep every response to exactly 1 short sentence.\n2. Use 10-codes in responses (ten four, ten eight, etc.).\n3. ONLY acknowledge what the officer explicitly said in this exact transmission. Never assume, infer, or add any information not present in their words.\n4. Never mention calls, locations, suspects, or incidents that the officer did not bring up themselves.\n5. If they mention running a plate or name, reply only: "Copy, say again the plate" or "Copy, say again the name".\n6. Do NOT reference any 911 calls unless listed below AND the officer mentioned responding to a call.\n7. If the officer's message is unclear, just say "Go ahead [name]" or ask them to repeat.\n${callContext ? `Active 911 calls you MAY reference only if the officer asks:\n${callContext}` : 'There are no active 911 calls. Do not mention any calls.'}`;
+
+  const systemPrompt = nsfwMode ? NSFW_SYSTEM_PROMPT : standardPrompt;
+
   let lastErr;
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
@@ -758,7 +775,7 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
         messages: [
           {
             role: 'system',
-            content: `You are a police radio dispatcher in a GTA 5 FiveM RP community. Rules you must follow:\n1. Keep every response to exactly 1 short sentence.\n2. Use 10-codes in responses (ten four, ten eight, etc.).\n3. ONLY acknowledge what the officer explicitly said in this exact transmission. Never assume, infer, or add any information not present in their words.\n4. Never mention calls, locations, suspects, or incidents that the officer did not bring up themselves.\n5. If they mention running a plate or name, reply only: "Copy, say again the plate" or "Copy, say again the name".\n6. Do NOT reference any 911 calls unless listed below AND the officer mentioned responding to a call.\n7. If the officer's message is unclear, just say "Go ahead [name]" or ask them to repeat.\n${callContext ? `Active 911 calls you MAY reference only if the officer asks:\n${callContext}` : 'There are no active 911 calls. Do not mention any calls.'}`,
+            content: systemPrompt,
           },
           {
             role: 'user',
