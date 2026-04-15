@@ -832,13 +832,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     let triggerIdx = -1;
     let skipWords = 1;
 
-    if (config.nsfwMode) {
-      const autumnIdx = words.findIndex(w => w === 'autumn');
-      if (autumnIdx !== -1 && autumnIdx <= 5) triggerIdx = autumnIdx;
-    } else {
-      const idx = words.findIndex(w => w === 'dispatch');
-      if (idx !== -1 && idx <= 5) triggerIdx = idx;
-    }
+    const idx = words.findIndex(w => w === 'dispatch');
+    if (idx !== -1 && idx <= 5) triggerIdx = idx;
 
     if (triggerIdx === -1) {
       console.log(`[Dispatch] Ignored — officer did not use the trigger phrase`);
