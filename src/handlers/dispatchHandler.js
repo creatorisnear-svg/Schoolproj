@@ -828,9 +828,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
 
     const words = transcript.trim().toLowerCase().split(/\s+/);
-    const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === 'dispatch');
+    const triggerWord = config.nsfwMode ? 'autumn' : 'dispatch';
+    const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === triggerWord);
     if (dispatchIdx === -1 || dispatchIdx > 5) {
-      console.log(`[Dispatch] Ignored — officer did not address dispatch (word index: ${dispatchIdx})`);
+      console.log(`[Dispatch] Ignored — officer did not address ${triggerWord} (word index: ${dispatchIdx})`);
       return;
     }
     const cleanedTranscript = words.slice(dispatchIdx + 1).join(' ');
