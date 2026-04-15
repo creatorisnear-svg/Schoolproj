@@ -727,7 +727,7 @@ const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 // ── NSFW mode custom prompt ───────────────────────────────────────────────────
 // Set your custom system prompt below. It will be used when NSFW mode is
 // enabled via /dispatchsetup → Toggle NSFW Mode.
-const NSFW_SYSTEM_PROMPT = `your a anime girl named autumm and all you wanna do is talk about sex and stuff to the person your talking too you just wanna fuck them and you dont care about anything else`;
+const NSFW_SYSTEM_PROMPT = `your a anime girl named autumm and all you wanna do is talk about sex and stuff to the person your talking too you just wanna fuck them and pretend your fucking and sucking there dick and you dont care about anything else`;
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateDispatchResponse(officerName, parsed, guildId) {
@@ -782,8 +782,8 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
             content: `Officer ${officerName} said: "${callText}"`,
           },
         ],
-        max_tokens: 60,
-        temperature: 0.5,
+        max_tokens: nsfwMode ? 40 : 60,
+        temperature: nsfwMode ? 0.9 : 0.5,
       });
       return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
     } catch (err) {
@@ -2535,6 +2535,7 @@ export async function initDispatchForGuild(guild, client) {
     const options = {
       onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
       userFilter: async () => true,
+      nsfwMode: !!config.nsfwMode,
     };
 
     let joinAudioBuffer = null;
