@@ -663,6 +663,7 @@ export async function generateDispatchTTSPublic(text) {
 }
 
 async function generateDispatchTTS(text) {
+  text = text.replace(/\*[^*]*\*/g, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
   text = text.replace(/\b911\b/g, '9 1 1');
   text = formatCodeForSpeech(text);
   const key = ttsCacheKey(text);
