@@ -827,22 +827,20 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
 
-    const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
-
-    let triggerIdx = -1;
-    let skipWords = 1;
-
-    const idx = words.findIndex(w => w === 'dispatch');
-    if (idx !== -1 && idx <= 5) triggerIdx = idx;
-
-    if (triggerIdx === -1) {
-      console.log(`[Dispatch] Ignored — officer did not use the trigger phrase`);
-      return;
+    if (config.nsfwMode) {
+      // In NSFW mode — no trigger word needed, respond to everything
+      console.log(`[Dispatch] NSFW mode — processing all speech without trigger`);
+    } else {
+      const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
+      const idx = words.findIndex(w => w === 'dispatch');
+      if (idx === -1 || idx > 5) {
+        console.log(`[Dispatch] Ignored — officer did not address dispatch (word index: ${idx})`);
+        return;
+      }
+      transcript = words.slice(idx + 1).join(' ');
+      if (transcript.length < 2) return;
+      console.log(`[Dispatch] Cleaned transcript: "${transcript}"`);
     }
-    const cleanedTranscript = words.slice(triggerIdx + skipWords).join(' ');
-    if (cleanedTranscript.length < 2) return;
-    transcript = cleanedTranscript;
-    console.log(`[Dispatch] Cleaned transcript: "${transcript}"`);
 
     // --- "Show me in / show me on" join-stop detection ---
     const joinTargetName = detectJoinStop(transcript);
