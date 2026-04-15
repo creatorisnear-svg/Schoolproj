@@ -763,7 +763,7 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
   const standardPrompt = `You are a police radio dispatcher in a GTA 5 FiveM RP community. Rules you must follow:\n1. Keep every response to exactly 1 short sentence.\n2. Use 10-codes in responses (ten four, ten eight, etc.).\n3. ONLY acknowledge what the officer explicitly said in this exact transmission. Never assume, infer, or add any information not present in their words.\n4. Never mention calls, locations, suspects, or incidents that the officer did not bring up themselves.\n5. If they mention running a plate or name, reply only: "Copy, say again the plate" or "Copy, say again the name".\n6. Do NOT reference any 911 calls unless listed below AND the officer mentioned responding to a call.\n7. If the officer's message is unclear, just say "Go ahead [name]" or ask them to repeat.\n${callContext ? `Active 911 calls you MAY reference only if the officer asks:\n${callContext}` : 'There are no active 911 calls. Do not mention any calls.'}`;
 
   const systemPrompt = nsfwMode
-    ? `${NSFW_SYSTEM_PROMPT}\n\nIMPORTANT: Keep every reply to 5 words or fewer. Be direct and punchy.`
+    ? `${NSFW_SYSTEM_PROMPT}\n\nIMPORTANT: Reply in exactly 2 short sentences. Be direct and expressive.`
     : standardPrompt;
 
   let lastErr;
@@ -784,7 +784,7 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
             content: `Officer ${officerName} said: "${callText}"`,
           },
         ],
-        max_tokens: nsfwMode ? 40 : 60,
+        max_tokens: nsfwMode ? 80 : 60,
         temperature: nsfwMode ? 0.9 : 0.5,
       });
       return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
