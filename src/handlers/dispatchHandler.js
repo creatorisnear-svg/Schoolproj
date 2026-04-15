@@ -827,14 +827,28 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
 
-    const words = transcript.trim().toLowerCase().split(/\s+/);
-    const triggerWord = config.nsfwMode ? 'autumn' : 'dispatch';
-    const dispatchIdx = words.findIndex(w => w.replace(/[^a-z]/g, '') === triggerWord);
-    if (dispatchIdx === -1 || dispatchIdx > 5) {
-      console.log(`[Dispatch] Ignored — officer did not address ${triggerWord} (word index: ${dispatchIdx})`);
+    const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
+
+    let triggerIdx = -1;
+    let skipWords = 1;
+
+    if (config.nsfwMode) {
+      // Trigger phrase: "autumn start"
+      const autumnIdx = words.findIndex((w, i) => w === 'autumn' && words[i + 1] === 'start');
+      if (autumnIdx !== -1 && autumnIdx <= 5) {
+        triggerIdx = autumnIdx;
+        skipWords = 2; // skip both "autumn" and "start"
+      }
+    } else {
+      const idx = words.findIndex(w => w === 'dispatch');
+      if (idx !== -1 && idx <= 5) triggerIdx = idx;
+    }
+
+    if (triggerIdx === -1) {
+      console.log(`[Dispatch] Ignored — officer did not use the trigger phrase`);
       return;
     }
-    const cleanedTranscript = words.slice(dispatchIdx + 1).join(' ');
+    const cleanedTranscript = words.slice(triggerIdx + skipWords).join(' ');
     if (cleanedTranscript.length < 2) return;
     transcript = cleanedTranscript;
     console.log(`[Dispatch] Cleaned transcript: "${transcript}"`);
