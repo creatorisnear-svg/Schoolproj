@@ -533,6 +533,21 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
 
   pendingStopMoveRequests.delete(key);
 
+  // ── Acknowledge IMMEDIATELY so officer hears it without any processing delay ──
+  if (config?.aiEnabled && hasAIKey()) {
+    try {
+      const { playDispatchVoice } = await import('../utils/voiceListener.js');
+      const ackText = approve
+        ? `Copy ${request.officerName}, ten four — moving you now.`
+        : `Copy ${request.officerName}, ten four — keeping you where you are.`;
+      const ackBuffer = await generateDispatchTTS(ackText);
+      playDispatchVoice(guild.id, ackBuffer);
+    } catch (err) {
+      console.error('[Dispatch TTS] Stop move immediate ack error:', err.message);
+    }
+  }
+
+  // ── Now do all the processing ─────────────────────────────────────────────
   const civMember = request.targetId
     ? await guild.members.fetch(request.targetId).catch(() => null)
     : request.targetName
@@ -559,16 +574,6 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
           .setDescription(declinedDesc)
           .setTimestamp();
         await msg.edit({ embeds: [declinedEmbed], components: [] }).catch(() => {});
-      }
-    }
-
-    if (config?.aiEnabled && hasAIKey()) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsBuffer = await generateDispatchTTS(`Copy ${request.officerName}, keeping you where you are.`);
-        playDispatchVoice(guild.id, ttsBuffer);
-      } catch (err) {
-        console.error('[Dispatch TTS] Stop move decline error:', err.message);
       }
     }
 
@@ -614,23 +619,6 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
         .setTimestamp();
 
       await msg.edit({ embeds: [movedEmbed], components: [] }).catch(() => {});
-    }
-  }
-
-  if (config?.aiEnabled && hasAIKey()) {
-    try {
-      const { playDispatchVoice } = await import('../utils/voiceListener.js');
-      let ttsText;
-      if (hasCiv) {
-        const civName = civMember?.displayName || civMember?.user?.username || request.targetName;
-        ttsText = `Copy ${request.officerName}, moving you and ${civName} to the traffic stop channel.`;
-      } else {
-        ttsText = `Copy ${request.officerName}, moving you to the traffic stop channel. Ten four.`;
-      }
-      const ttsBuffer = await generateDispatchTTS(ttsText);
-      playDispatchVoice(guild.id, ttsBuffer);
-    } catch (err) {
-      console.error('[Dispatch TTS] Stop move confirmation error:', err.message);
     }
   }
 
