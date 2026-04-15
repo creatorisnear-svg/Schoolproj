@@ -663,7 +663,15 @@ export async function generateDispatchTTSPublic(text) {
 }
 
 async function generateDispatchTTS(text) {
-  text = text.replace(/\*[^*]*\*/g, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  // Strip all action/emote descriptions regardless of bracket style: *text*, (text), [text], <text>
+  text = text
+    .replace(/\*\*[^*]*\*\*/g, '')   // **double asterisk**
+    .replace(/\*[^*]*\*/g, '')        // *single asterisk*
+    .replace(/\([^)]*\)/g, '')        // (parentheses)
+    .replace(/\[[^\]]*\]/g, '')       // [square brackets]
+    .replace(/<[^>]*>/g, '')          // <angle brackets>
+    .replace(/\s+/g, ' ')
+    .trim();
   text = text.replace(/\b911\b/g, '9 1 1');
   text = formatCodeForSpeech(text);
   const key = ttsCacheKey(text);
