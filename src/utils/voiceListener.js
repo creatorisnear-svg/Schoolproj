@@ -446,7 +446,7 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      const silenceDuration = state.options?.nsfwMode ? 800 : 2500;
+      const silenceDuration = state.options?.nsfwMode ? 500 : 2500;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });

@@ -784,7 +784,7 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
             content: `Officer ${officerName} said: "${callText}"`,
           },
         ],
-        max_tokens: nsfwMode ? 20 : 60,
+        max_tokens: nsfwMode ? 40 : 60,
         temperature: nsfwMode ? 0.9 : 0.5,
       });
       return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
