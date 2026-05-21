@@ -769,7 +769,7 @@ export async function handleEconomyButton(interaction) {
     const items = await EconomyStore.find({ guildId });
     if (!items.length) return interaction.update({ embeds: [errorEmbed('The store is empty.')], components: [backBtn()], content: '' });
     return interaction.update({
-      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
       components: [buildStoreMenu(items, sym, 'browse')],
       content: '',
     });

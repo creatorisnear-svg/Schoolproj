@@ -4,7 +4,6 @@ const dispatchConfigSchema = new mongoose.Schema({
   guildId: { type: String, required: true, unique: true },
   enabled: { type: Boolean, default: false },
   aiEnabled: { type: Boolean, default: true },
-  nsfwMode: { type: Boolean, default: false },
   dispatchChannelId: { type: String, default: null },
   statusBoardChannelId: { type: String, default: null },
   statusBoardMessageId: { type: String, default: null },

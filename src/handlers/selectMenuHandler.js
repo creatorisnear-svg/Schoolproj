@@ -2829,7 +2829,6 @@ function buildDispatchSetupMenu() {
         { label: 'Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
         { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
         { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
-        { label: 'Toggle NSFW Mode', value: 'toggle_nsfw', description: 'Enable or disable NSFW mode for AI dispatch' },
         { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
         { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
         { label: 'Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
@@ -2948,17 +2947,6 @@ async function handleDispatchSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'toggle_nsfw') {
-      const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
-      config.nsfwMode = !config.nsfwMode;
-      await config.save();
-      const status = config.nsfwMode ? '**Enabled**' : '**Disabled**';
-      return interaction.update({
-        embeds: [successEmbed('NSFW Mode Toggle', `NSFW mode is now ${status}.\n\nSelect your next option below.`)],
-        components: [buildDispatchSetupMenu()],
-      });
-    }
-
     if (choice === 'remove_patrol_channel') {
       const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
       if (!config || config.patrolChannelIds.length === 0) {
@@ -3011,7 +2999,6 @@ async function handleDispatchSetupMenu(interaction) {
           { name: 'Patrol Channels', value: patrol, inline: false },
           { name: 'Traffic Stop Channels', value: stopCh, inline: false },
           { name: 'AI Responses', value: config.aiEnabled ? 'Enabled' : 'Disabled', inline: true },
-          { name: 'NSFW Mode', value: config.nsfwMode ? 'Enabled' : 'Disabled', inline: true },
           { name: 'System', value: config.enabled ? 'Enabled' : 'Disabled', inline: true },
           { name: 'Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
         )

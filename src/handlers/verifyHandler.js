@@ -2,6 +2,7 @@ import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, Embed
 import Verification from '../models/Verification.js';
 import PendingVerification from '../models/PendingVerification.js';
 import Config from '../models/Config.js';
+import AuthorizedUser from '../models/AuthorizedUser.js';
 import { errorEmbed, successEmbed, infoEmbed } from '../utils/embedBuilder.js';
 
 export async function handleVerifyModal(interaction) {

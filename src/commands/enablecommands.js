@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { isAdmin } from '../utils/permissions.js';
-import { checkStaffPermission } from '../utils/permissions.js';
+import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
+import { errorEmbed } from '../utils/embedBuilder.js';
 import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
@@ -12,13 +12,8 @@ export async function execute(interaction) {
   const isStaffUser = await checkStaffPermission(interaction);
 
   if (!isAdminUser && !isStaffUser) {
-    const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setDescription('You do not have permission to use this command.')
-      .setFooter({ text: 'RPM' });
-    
     return interaction.reply({
-      embeds: [embed],
+      embeds: [errorEmbed('This command is restricted to staff and administrators.')],
       flags: 64,
     });
   }
@@ -31,9 +26,9 @@ export async function execute(interaction) {
         .setColor('#2d2d2d')
         .setTitle('Setup Required')
         .setDescription(
-          'Before managing features, you need to complete initial setup.\n\n' +
+          'Before managing features, complete initial setup.\n\n' +
           '`1.` Run `/setlogchannel` to set a log channel\n' +
-          '`2.` Run `/addstaff` to add bot staff\n' +
+          '`2.` Run `/staff add` to add staff members\n' +
           '`3.` Return here to manage features'
         )
         .setFooter({ text: 'RPM' });
@@ -70,13 +65,8 @@ export async function execute(interaction) {
 
   } catch (error) {
     console.error('Error in enablecommands:', error);
-    const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setDescription('An error occurred.')
-      .setFooter({ text: 'RPM' });
-    
     return interaction.reply({
-      embeds: [embed],
+      embeds: [errorEmbed('Something went wrong. Please try again.')],
       flags: 64,
     });
   }

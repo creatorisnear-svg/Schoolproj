@@ -13,6 +13,6 @@ export async function execute(interaction) {
 
   return interaction.reply({
     embeds: [embed],
-    ephemeral: true
+    flags: 64,
   });
 }

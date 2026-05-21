@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setlogchannel')
-  .setDescription('Set the log channel - Must add staff first using /addstaff (Admin/Staff)');
+  .setDescription('Set the channel where logs and moderation events are posted (Admin/Staff)');
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
@@ -21,7 +21,7 @@ export async function execute(interaction) {
   
   if (staffCount === 0) {
     return interaction.reply({
-      embeds: [errorEmbed('You must add staff or staff roles first using `/addstaff` before setting up the log channel.')],
+      embeds: [errorEmbed('You must add at least one staff member first using `/staff add` before setting up the log channel.')],
       flags: 64,
     });
   }
@@ -35,7 +35,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: 'Select a channel to receive logs and anti-promoting reports:',
+    content: 'Select a text channel to receive all moderation logs and reports:',
     components: [menu],
     flags: 64,
   });

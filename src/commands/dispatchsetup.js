@@ -39,7 +39,6 @@ export async function execute(interaction) {
         { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel for 10-11 moves' },
         { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn dispatch on or off' },
         { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI responses' },
-        { label: 'Toggle NSFW Mode', value: 'toggle_nsfw', description: 'Enable or disable NSFW mode for AI dispatch' },
         { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a channel' },
         { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
         { label: 'Done', value: 'setup_done', description: 'Close setup' }
