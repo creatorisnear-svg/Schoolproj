@@ -22,6 +22,7 @@ import Welcome from './models/Welcome.js';
 import { handleVerifyModal, handleVerifyModalSubmit } from './handlers/verifyHandler.js';
 import { handleSelectMenu } from './handlers/selectMenuHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
+import { isMaintenanceMode } from './utils/maintenanceMode.js';
 
 dotenv.config();
 
@@ -751,6 +752,18 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isChatInputCommand()) {
       console.log(`[COMMAND] ${interaction.user.tag} (${interaction.user.id}) used /${interaction.commandName} in ${interaction.guild?.name || 'DM'}`);
+
+      if (isMaintenanceMode()) {
+        const isAdmin = interaction.member?.permissions?.has('Administrator');
+        if (!isAdmin) {
+          const maintenanceEmbed = new EmbedBuilder()
+            .setColor('#f04747')
+            .setDescription('**Bot Maintenance**\nThe bot is currently undergoing maintenance. Please try again shortly.')
+            .setFooter({ text: 'RPM' });
+          return interaction.reply({ embeds: [maintenanceEmbed], flags: 64 }).catch(() => {});
+        }
+      }
+
       const command = client.commands.get(interaction.commandName);
       if (command) {
         try {

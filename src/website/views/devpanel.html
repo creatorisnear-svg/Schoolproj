@@ -298,6 +298,7 @@
     <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
     <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
     <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
+    <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
   </div>
 
   <div id="panel-features" class="panel active">
@@ -393,6 +394,27 @@
     <div id="videos-list"><div class="empty">Loading...</div></div>
   </div>
 
+  <div id="panel-maintenance" class="panel">
+    <div class="impact-notice" style="border-color:#f04747;background:#2a1a1a;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f04747" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong style="color:#f04747;">Bot-wide setting.</strong>
+        When enabled, all Discord commands return a maintenance message to non-admin members immediately. Admins bypass maintenance and can still use all commands.
+      </div>
+    </div>
+    <div class="section-label">Bot Maintenance Mode</div>
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Maintenance Mode</div>
+        <div id="maintenance-status-text" style="font-size:13px;color:#888;">Loading...</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+        <span id="maintenance-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;"></span>
+        <button id="maintenance-toggle-btn" class="btn btn-primary" onclick="toggleMaintenance()" style="min-width:110px;">Loading...</button>
+      </div>
+    </div>
+  </div>
+
   <div id="panel-broadcast" class="panel">
     <div class="add-form">
       <h3>Broadcast to Server Owners</h3>
@@ -412,7 +434,7 @@
 </div>
 
 <script>
-  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast'];
+  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance'];
 
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -707,6 +729,61 @@
     }
   }
 
+  async function loadMaintenance() {
+    try {
+      var status = await api('GET', '/maintenance');
+      renderMaintenanceStatus(status);
+    } catch (e) {
+      document.getElementById('maintenance-status-text').textContent = 'Failed to load status.';
+    }
+  }
+
+  function renderMaintenanceStatus(status) {
+    var btn = document.getElementById('maintenance-toggle-btn');
+    var badge = document.getElementById('maintenance-badge');
+    var text = document.getElementById('maintenance-status-text');
+    if (status.active) {
+      btn.textContent = 'Disable Maintenance';
+      btn.style.background = '#2a2a2a';
+      btn.style.borderColor = '#444';
+      btn.style.color = '#ccc';
+      badge.textContent = 'Active';
+      badge.style.background = 'rgba(240,71,71,0.15)';
+      badge.style.color = '#f04747';
+      badge.style.border = '1px solid rgba(240,71,71,0.3)';
+      badge.style.display = '';
+      text.textContent = status.since
+        ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' — all non-admin commands blocked.'
+        : 'Active — all non-admin commands are blocked.';
+      text.style.color = '#f04747';
+    } else {
+      btn.textContent = 'Enable Maintenance';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      badge.style.display = 'none';
+      text.textContent = 'Inactive — all commands working normally.';
+      text.style.color = '#888';
+    }
+  }
+
+  async function toggleMaintenance() {
+    var btn = document.getElementById('maintenance-toggle-btn');
+    var currentText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    try {
+      var current = await api('GET', '/maintenance');
+      var result = await api('POST', '/maintenance', { active: !current.active });
+      renderMaintenanceStatus(result);
+      showAlert(result.active ? 'Maintenance mode enabled.' : 'Maintenance mode disabled.', result.active ? 'error' : 'success');
+    } catch (e) {
+      showAlert('Failed to toggle maintenance mode.', 'error');
+      btn.textContent = currentText;
+    }
+    btn.disabled = false;
+  }
+
   async function init() {
     var check = await fetch('/dev/check').then(function(r) { return r.json(); });
     if (!check.authorized) { window.location.href = '/dev/login'; return; }
@@ -714,6 +791,7 @@
     loadAnnouncements();
     loadChangelogs();
     loadVideos();
+    loadMaintenance();
   }
 
   init();

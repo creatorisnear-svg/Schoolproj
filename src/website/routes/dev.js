@@ -8,6 +8,7 @@ import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { clearFeatureFlagCache } from '../../utils/premiumCheck.js';
+import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -258,6 +259,17 @@ export function createDevRouter(client) {
     }
 
     res.json({ total: guilds.length, sent, failed, errors });
+  });
+
+  router.get('/maintenance', devAuth, (req, res) => {
+    res.json(getMaintenanceStatus());
+  });
+
+  router.post('/maintenance', devAuth, (req, res) => {
+    const { active } = req.body;
+    if (typeof active !== 'boolean') return res.status(400).json({ error: 'active must be boolean' });
+    setMaintenanceMode(active);
+    res.json(getMaintenanceStatus());
   });
 
   router.patch('/features/:feature', devAuth, async (req, res) => {
