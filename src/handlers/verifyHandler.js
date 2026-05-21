@@ -27,10 +27,12 @@ export async function handleVerifyModal(interaction) {
 
     modal.addComponents(new ActionRowBuilder().addComponents(psnXboxInput));
 
-    if (verification.customQuestions && verification.customQuestions.length > 0) {
+    const questionText = verification.customQuestion ||
+      (verification.customQuestions && verification.customQuestions.length > 0 ? verification.customQuestions[0] : null);
+    if (questionText) {
       const customInput = new TextInputBuilder()
         .setCustomId('custom_question')
-        .setLabel(verification.customQuestions[0])
+        .setLabel(questionText.slice(0, 45))
         .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
       modal.addComponents(new ActionRowBuilder().addComponents(customInput));

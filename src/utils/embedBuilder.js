@@ -12,7 +12,7 @@ export function createEmbed(options = {}) {
   const embed = new EmbedBuilder()
     .setColor(options.color ?? COLORS.info)
     .setTimestamp()
-    .setFooter({ text: 'EverLink' });
+    .setFooter({ text: 'RPM' });
 
   if (options.title) embed.setTitle(options.title);
   if (options.description) embed.setDescription(options.description);

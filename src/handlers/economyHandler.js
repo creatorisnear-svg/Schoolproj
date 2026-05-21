@@ -113,22 +113,22 @@ export function getEconomyMenu() {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder().setCustomId('economy_main_menu').setPlaceholder('Choose an action...')
           .addOptions([
-            { label: '💰 Balance',      value: 'balance',      description: 'Check your cash and bank balance' },
-            { label: '🏆 Leaderboard',  value: 'leaderboard',  description: 'Top 10 richest members' },
-            { label: '🏦 Deposit',      value: 'deposit',      description: 'Deposit cash into your bank' },
-            { label: '💵 Withdraw',     value: 'withdraw',     description: 'Withdraw cash from your bank' },
-            { label: '🎁 Give Money',   value: 'give',         description: 'Send cash to another member' },
-            { label: '💼 Work',         value: 'work',         description: 'Work to earn money' },
-            { label: '🔫 Crime',        value: 'crime',        description: 'Commit a crime (risky)' },
-            { label: '🦹 Rob',          value: 'rob',          description: 'Rob another user' },
-            { label: '💵 Income',       value: 'income',       description: 'Collect your role-based income' },
-            { label: '🛒 Store',        value: 'store',        description: 'Browse the server store' },
-            { label: '🎒 Inventory',    value: 'inventory',    description: 'View your inventory' },
-            { label: '🛍️ Buy Item',    value: 'buy',          description: 'Purchase an item from the store' },
-            { label: '💱 Sell Item',    value: 'sell',         description: 'Sell an item (50% value)' },
-            { label: '⚡ Use Item',     value: 'use',          description: 'Use an item from your inventory' },
-            { label: '📦 Give Item',    value: 'giveitems',    description: 'Give an item to another member' },
-            { label: '🎰 Gambling',     value: 'gambling',     description: 'Play casino games' },
+            { label: 'Balance',      value: 'balance',      description: 'Check your cash and bank balance' },
+            { label: 'Leaderboard',  value: 'leaderboard',  description: 'Top 10 richest members' },
+            { label: 'Deposit',      value: 'deposit',      description: 'Deposit cash into your bank' },
+            { label: 'Withdraw',     value: 'withdraw',     description: 'Withdraw cash from your bank' },
+            { label: 'Give Money',   value: 'give',         description: 'Send cash to another member' },
+            { label: 'Work',         value: 'work',         description: 'Work to earn money' },
+            { label: 'Crime',        value: 'crime',        description: 'Commit a crime (risky)' },
+            { label: 'Rob',          value: 'rob',          description: 'Rob another user' },
+            { label: 'Income',       value: 'income',       description: 'Collect your role-based income' },
+            { label: 'Store',        value: 'store',        description: 'Browse the server store' },
+            { label: 'Inventory',    value: 'inventory',    description: 'View your inventory' },
+            { label: 'Buy Item',     value: 'buy',          description: 'Purchase an item from the store' },
+            { label: 'Sell Item',    value: 'sell',         description: 'Sell an item (50% value)' },
+            { label: 'Use Item',     value: 'use',          description: 'Use an item from your inventory' },
+            { label: 'Give Item',    value: 'giveitems',    description: 'Give an item to another member' },
+            { label: 'Gambling',     value: 'gambling',     description: 'Play casino games' },
           ])
       ),
     ],
@@ -143,30 +143,30 @@ export function getEconomySetupMenu() {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder().setCustomId('economysetup_main_menu').setPlaceholder('Choose a setting...')
           .addOptions([
-            { label: '✅ Enable Economy',          value: 'enable',           description: 'Turn on the economy system' },
-            { label: '❌ Disable Economy',         value: 'disable',          description: 'Turn off the economy system' },
-            { label: '👁️ View Config',            value: 'view',             description: 'See current economy settings' },
-            { label: '💱 Currency Settings',       value: 'currency',         description: 'Symbol, starting balance, max' },
-            { label: '💼 Work Settings',           value: 'work',             description: 'Configure the work command' },
-            { label: '🔫 Crime Settings',          value: 'crime',            description: 'Configure the crime command' },
-            { label: '🦹 Rob Settings',            value: 'rob',              description: 'Configure the rob command' },
-            { label: '🎰 Gambling Settings',       value: 'gambling',         description: 'Configure gambling limits' },
-            { label: '💬 Chat Money',              value: 'chatmoney',        description: 'Earn money by chatting' },
-            { label: '👑 Role Income — Add',       value: 'roleincome',         description: 'Grant income to a role' },
-            { label: '🗑️ Role Income — Remove',   value: 'removeroleincome',   description: 'Remove income from a role' },
-            { label: '📉 Role Deduction — Add',   value: 'rolededuction',      description: 'Deduct money from a role on income collect' },
-            { label: '🗑️ Role Deduction — Remove', value: 'removerolededuction', description: 'Remove a deduction from a role' },
-            { label: '➕ Store — Add Item',        value: 'storeadd',         description: 'Add an item to the store' },
-            { label: '➖ Store — Remove Item',     value: 'storeremove',      description: 'Remove an item from the store' },
-            { label: '✏️ Store — Edit Item',      value: 'storeedit',        description: 'Edit an existing store item' },
-            { label: '📋 Store — View All',        value: 'storelist',        description: 'See all store items' },
-            { label: '💰 Add Money',               value: 'addmoney',         description: 'Add money to a user' },
-            { label: '💸 Remove Money',            value: 'removemoney',      description: 'Remove money from a user' },
-            { label: '🔄 Reset Balance',           value: 'resetmoney',       description: "Reset a user's balance" },
-            { label: '📋 Set Log Channel',         value: 'setlogchannel',    description: 'Economy transaction log channel' },
-            { label: '🏦 Income Tax',              value: 'incometax',        description: 'Set tax rate deducted from income (%)' },
-            { label: '📢 Income Board',            value: 'incomeboard',      description: 'Post income redemption embed to a channel' },
-            { label: '✅ Done',                    value: 'done',             description: 'Close this menu' },
+            { label: 'Enable Economy',           value: 'enable',              description: 'Turn on the economy system' },
+            { label: 'Disable Economy',          value: 'disable',             description: 'Turn off the economy system' },
+            { label: 'View Config',              value: 'view',                description: 'See current economy settings' },
+            { label: 'Currency Settings',        value: 'currency',            description: 'Symbol, starting balance, max' },
+            { label: 'Work Settings',            value: 'work',                description: 'Configure the work command' },
+            { label: 'Crime Settings',           value: 'crime',               description: 'Configure the crime command' },
+            { label: 'Rob Settings',             value: 'rob',                 description: 'Configure the rob command' },
+            { label: 'Gambling Settings',        value: 'gambling',            description: 'Configure gambling limits' },
+            { label: 'Chat Money',               value: 'chatmoney',           description: 'Earn money by chatting' },
+            { label: 'Role Income — Add',        value: 'roleincome',          description: 'Grant income to a role' },
+            { label: 'Role Income — Remove',     value: 'removeroleincome',    description: 'Remove income from a role' },
+            { label: 'Role Deduction — Add',     value: 'rolededuction',       description: 'Deduct money from a role on income collect' },
+            { label: 'Role Deduction — Remove',  value: 'removerolededuction', description: 'Remove a deduction from a role' },
+            { label: 'Store — Add Item',         value: 'storeadd',            description: 'Add an item to the store' },
+            { label: 'Store — Remove Item',      value: 'storeremove',         description: 'Remove an item from the store' },
+            { label: 'Store — Edit Item',        value: 'storeedit',           description: 'Edit an existing store item' },
+            { label: 'Store — View All',         value: 'storelist',           description: 'See all store items' },
+            { label: 'Add Money',                value: 'addmoney',            description: 'Add money to a user' },
+            { label: 'Remove Money',             value: 'removemoney',         description: 'Remove money from a user' },
+            { label: 'Reset Balance',            value: 'resetmoney',          description: "Reset a user's balance" },
+            { label: 'Set Log Channel',          value: 'setlogchannel',       description: 'Economy transaction log channel' },
+            { label: 'Income Tax',               value: 'incometax',           description: 'Set tax rate deducted from income (%)' },
+            { label: 'Income Board',             value: 'incomeboard',         description: 'Post income redemption embed to a channel' },
+            { label: 'Done',                     value: 'done',                description: 'Close this menu' },
           ])
       ),
     ],
@@ -181,13 +181,13 @@ function gamblingMenu() {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder().setCustomId('economy_gambling_menu').setPlaceholder('Choose a game...')
           .addOptions([
-            { label: '🃏 Blackjack',         value: 'blackjack',       description: 'Play a hand of blackjack' },
-            { label: '🎡 Roulette',           value: 'roulette',        description: 'Spin the wheel (red/black/green)' },
-            { label: '🎰 Slots',             value: 'slots',           description: 'Pull the slot machine' },
-            { label: '🎲 Dice Roll',         value: 'roll',            description: 'Roll dice — higher wins' },
-            { label: '🔫 Russian Roulette',  value: 'russianroulette', description: '1/6 chance of losing all cash' },
-            { label: '🐓 Cock Fight',        value: 'cockfight',       description: '50/50 for 1.8x payout' },
-            { label: '← Back',              value: 'back',            description: 'Return to economy menu' },
+            { label: 'Blackjack',        value: 'blackjack',       description: 'Play a hand of blackjack' },
+            { label: 'Roulette',         value: 'roulette',        description: 'Spin the wheel (red/black/green)' },
+            { label: 'Slots',            value: 'slots',           description: 'Pull the slot machine' },
+            { label: 'Dice Roll',        value: 'roll',            description: 'Roll dice — higher wins' },
+            { label: 'Russian Roulette', value: 'russianroulette', description: '1/6 chance of losing all cash' },
+            { label: 'Cock Fight',       value: 'cockfight',       description: '50/50 for 1.8x payout' },
+            { label: 'Back',             value: 'back',            description: 'Return to economy menu' },
           ])
       ),
     ],
@@ -207,7 +207,7 @@ function backBtn(type = 'economy') {
 function buildStoreMenu(items, sym, mode, query = null) {
   const customId = mode === 'buy' ? 'economy_buy_item_select' : 'economy_store_browse_menu';
   const opts = [
-    { label: '🔍 Search items...', value: '__search__', description: 'Filter items by name' },
+    { label: 'Search items...', value: '__search__', description: 'Filter items by name' },
   ];
   const displayed = query
     ? items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
@@ -348,7 +348,7 @@ export async function handleEconomyMenu(interaction) {
       const items = await EconomyStore.find({ guildId });
       if (!items.length) return interaction.update({ embeds: [errorEmbed('The store has no items yet.')], components: [backBtn()], content: '' });
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛒 Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
         components: [buildStoreMenu(items, sym, 'browse')],
         content: '',
       });
@@ -364,7 +364,7 @@ export async function handleEconomyMenu(interaction) {
       const items = await EconomyStore.find({ guildId });
       if (!items.length) return interaction.update({ embeds: [errorEmbed('The store has no items yet.')], components: [backBtn()], content: '' });
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('🛍️ Buy Item').setDescription(`Select an item to purchase. You have **${sym}${fmt(bal.cash)}** in cash.`).setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Buy Item').setDescription(`Select an item to purchase. You have **${sym}${fmt(bal.cash)}** in cash.`).setFooter({ text: 'RPM' })],
         components: [buildStoreMenu(items, sym, 'buy')],
         content: '',
       });
@@ -564,7 +564,7 @@ export async function handleEconomyMenu(interaction) {
 
     // Modal-based setup actions
     const setupModals = {
-      currency:  { title: 'Currency Settings',  id: 'economysetup_currency_modal',  fields: [{ id: 'symbol',      label: 'Currency Symbol (e.g. $ or 💰)', val: config.currencySymbol }, { id: 'starting', label: 'Starting Balance', val: String(config.startingBalance) }, { id: 'max', label: 'Max Balance', val: String(config.maxBalance) }] },
+      currency:  { title: 'Currency Settings',  id: 'economysetup_currency_modal',  fields: [{ id: 'symbol',      label: 'Currency Symbol (e.g. $ or #)', val: config.currencySymbol }, { id: 'starting', label: 'Starting Balance', val: String(config.startingBalance) }, { id: 'max', label: 'Max Balance', val: String(config.maxBalance) }] },
       work:      { title: 'Work Settings',       id: 'economysetup_work_modal',      fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.work.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.work.cooldown) }, { id: 'minpay', label: 'Min Payout', val: String(config.work.minPayout) }, { id: 'maxpay', label: 'Max Payout', val: String(config.work.maxPayout) }] },
       crime:     { title: 'Crime Settings',      id: 'economysetup_crime_modal',     fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.crime.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.crime.cooldown) }, { id: 'successrate', label: 'Success Rate % (1-100)', val: String(config.crime.successRate) }, { id: 'minpay', label: 'Min Payout', val: String(config.crime.minPayout) }, { id: 'maxpay', label: 'Max Payout', val: String(config.crime.maxPayout) }] },
       rob:       { title: 'Rob Settings',        id: 'economysetup_rob_modal',       fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.rob.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.rob.cooldown) }, { id: 'successrate', label: 'Success Rate % (1-100)', val: String(config.rob.successRate) }, { id: 'maxsteal', label: 'Max Steal % of target cash', val: String(config.rob.maxStealPercent) }] },
@@ -589,7 +589,7 @@ export async function handleEconomyMenu(interaction) {
       }));
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-          .setTitle(value === 'storeremove' ? '➖ Remove Store Item' : '✏️ Edit Store Item')
+          .setTitle(value === 'storeremove' ? 'Remove Store Item' : 'Edit Store Item')
           .setDescription(`Select an item to ${action}. Showing **${items.length}** item${items.length !== 1 ? 's' : ''}.`)
           .setFooter({ text: 'RPM' })],
         components: [
@@ -806,7 +806,7 @@ export async function handleEconomyModal(interaction) {
     const mode = customId === 'economy_store_search_buy_modal' ? 'buy' : 'browse';
     const filtered = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
     if (!filtered.length) return interaction.reply({ embeds: [errorEmbed(`No items matched **"${query}"**.`)], flags: 64 });
-    const title = mode === 'buy' ? '🛍️ Buy Item' : '🛒 Server Store';
+    const title = mode === 'buy' ? 'Buy Item' : 'Server Store';
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle(title).setDescription(`Showing **${filtered.length}** result${filtered.length !== 1 ? 's' : ''} for **"${query}"**.`).setFooter({ text: 'RPM' })],
       components: [buildStoreMenu(items, sym, mode, query)],

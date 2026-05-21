@@ -79,7 +79,7 @@ export async function execute(interaction) {
       embeds: [
         new EmbedBuilder()
           .setColor('#43b581')
-          .setTitle('📢  Dispatch Announcement Sent')
+          .setTitle('Dispatch Announcement Sent')
           .setDescription(`> ${message}`)
           .addFields({ name: 'Channel', value: channelLine, inline: true })
           .setFooter({ text: `Announced by ${interaction.user.tag} • RPM` })

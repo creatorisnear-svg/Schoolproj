@@ -377,7 +377,7 @@ export async function runShop(interaction, query) {
     for (let i = 0; i < lines.length; i += 20) chunks.push(lines.slice(i, i + 20).join('\n'));
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-        .setTitle(`🔍 Search: "${query}"`)
+        .setTitle(`Search: "${query}"`)
         .setDescription(`Found **${filtered.length}** item${filtered.length !== 1 ? 's' : ''}.\n\n${chunks[0]}`)
         .setFooter({ text: 'Use /buy to purchase · RPM' })],
       flags: 64,
@@ -395,7 +395,7 @@ export async function runShop(interaction, query) {
   );
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-      .setTitle('🛒 Server Store')
+      .setTitle('Server Store')
       .setDescription(
         `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
         `Items without a price must be priced by staff first.\n\n` +
@@ -426,7 +426,7 @@ export async function handleShopMainButton(interaction) {
   );
   return interaction.update({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-      .setTitle('🛒 Server Store')
+      .setTitle('Server Store')
       .setDescription(
         `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
         `Items without a price must be priced by staff first.\n\n` +
@@ -458,7 +458,7 @@ export async function handleShopCategoryButton(interaction) {
     const lines = shopItemLines(guildItems.map(i => ({ name: i.name, price: i.price, description: i.description })), sym);
     return interaction.update({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-        .setTitle('🛒 Custom Items')
+        .setTitle('Custom Items')
         .setDescription(lines.join('\n'))
         .setFooter({ text: `${guildItems.length} items · Use /buy to purchase · RPM` })],
       components: [backRow], content: '',
@@ -477,7 +477,7 @@ export async function handleShopCategoryButton(interaction) {
   const pricedHere = displayItems.filter(i => i.price != null).length;
   return interaction.update({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-      .setTitle(`🚗 ${cat} Vehicles`)
+      .setTitle(`${cat} Vehicles`)
       .setDescription(`**${vehicles.length}** vehicles — **${pricedHere}** priced.\n\n${chunks[0]}`)
       .setFooter({ text: 'Use /buy to purchase · RPM' })],
     components: [backRow], content: '',
@@ -671,7 +671,7 @@ export async function runBlackjack(interaction, bet) {
   bal.gamblingCooldown = new Date();
   await bal.save();
   const color = winnings > 0 ? 0x43b581 : winnings < 0 ? 0xf04747 : 0x2d2d2d;
-  const titles = { blackjack: '🃏 Blackjack!', dealer_blackjack: '🃏 Dealer Blackjack', bust: '🃏 Bust!', dealer_bust: '🃏 Dealer Bust — You Win!', win: '🃏 You Win!', lose: '🃏 Dealer Wins', push: '🃏 Push — Tie' };
+  const titles = { blackjack: 'Blackjack!', dealer_blackjack: 'Dealer Blackjack', bust: 'Bust!', dealer_bust: 'Dealer Bust — You Win!', win: 'You Win!', lose: 'Dealer Wins', push: 'Push — Tie' };
   return interaction.reply({ embeds: [new EmbedBuilder().setColor(color).setTitle(titles[result]).addFields({ name: 'Your Hand', value: `${handStr(player)} **(${handTotal(player)})**`, inline: true }, { name: 'Dealer Hand', value: `${handStr(dealer)} **(${handTotal(dealer)})**`, inline: true }).setDescription(winnings >= 0 ? `You won **${sym}${fmt(Math.abs(winnings))}**!\n**Cash:** ${sym}${fmt(bal.cash)}` : `You lost **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
@@ -691,9 +691,8 @@ export async function runRoulette(interaction, bet, choice) {
   bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
   bal.gamblingCooldown = new Date();
   await bal.save();
-  const emoji = { red: '🔴', black: '⚫', green: '🟢' };
   const won = winnings > 0;
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('🎡 Roulette').setDescription(`The ball landed on **${emoji[resultColor]} ${resultColor} (${spin})**.\nYou bet on **${emoji[c]} ${c}**.\n\n${won ? `You won **${sym}${fmt(Math.abs(winnings))}**!` : winnings === 0 ? 'Push — your bet returned.' : `You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Roulette').setDescription(`The ball landed on **${resultColor} (${spin})**.\nYou bet on **${c}**.\n\n${won ? `You won **${sym}${fmt(Math.abs(winnings))}**!` : winnings === 0 ? 'Push — your bet returned.' : `You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runSlots(interaction, bet) {
@@ -709,7 +708,7 @@ export async function runSlots(interaction, bet) {
   bal.gamblingCooldown = new Date();
   await bal.save();
   const won = winnings >= 0;
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('🎰 Slots').setDescription(`**${reels.join(' | ')}**\n\n${won ? `${mult}x — You won **${sym}${fmt(Math.abs(winnings))}**!` : `No match — You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Slots').setDescription(`**${reels.join(' | ')}**\n\n${won ? `${mult}x — You won **${sym}${fmt(Math.abs(winnings))}**!` : `No match — You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runDiceRoll(interaction, bet) {
@@ -726,7 +725,7 @@ export async function runDiceRoll(interaction, bet) {
   bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
   bal.gamblingCooldown = new Date();
   await bal.save();
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : tied ? 0x2d2d2d : 0xf04747).setTitle('🎲 Dice Roll').setDescription(`**You rolled:** ${player}\n**Dealer rolled:** ${dealer}\n\n${won ? `You win **${sym}${fmt(bet)}**!` : tied ? 'Tie — no change.' : `You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : tied ? 0x2d2d2d : 0xf04747).setTitle('Dice Roll').setDescription(`**You rolled:** ${player}\n**Dealer rolled:** ${dealer}\n\n${won ? `You win **${sym}${fmt(bet)}**!` : tied ? 'Tie — no change.' : `You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runRussianRoulette(interaction, bet) {
@@ -742,7 +741,7 @@ export async function runRussianRoulette(interaction, bet) {
   bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
   bal.gamblingCooldown = new Date();
   await bal.save();
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(survived ? 0x43b581 : 0xf04747).setTitle('🔫 Russian Roulette').setDescription(survived ? `*Click.* You survived!\nYou win **${sym}${fmt(bet)}**.\n**Cash:** ${sym}${fmt(bal.cash)}` : `*BANG.* You lose everything.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(survived ? 0x43b581 : 0xf04747).setTitle('Russian Roulette').setDescription(survived ? `*Click.* You survived!\nYou win **${sym}${fmt(bet)}**.\n**Cash:** ${sym}${fmt(bal.cash)}` : `*BANG.* You lose everything.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runCockFight(interaction, bet) {
@@ -756,7 +755,7 @@ export async function runCockFight(interaction, bet) {
   bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
   bal.gamblingCooldown = new Date();
   await bal.save();
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('🐓 Cock Fight').setDescription(won ? `Your rooster won!\nYou gain **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}` : `Your rooster lost.\nYou lose **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Cock Fight').setDescription(won ? `Your rooster won!\nYou gain **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}` : `Your rooster lost.\nYou lose **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

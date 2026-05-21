@@ -1625,7 +1625,7 @@ export async function rebuildStatusBoard(guild, config) {
 
   const officerEmbed = new EmbedBuilder()
     .setColor(boardColor)
-    .setTitle('📡  Officer Status Board')
+    .setTitle('Officer Status Board')
     .setFooter({ text: 'RPM • Live Dispatch' })
     .setTimestamp();
 
@@ -1636,10 +1636,10 @@ export async function rebuildStatusBoard(guild, config) {
   const totalDuty       = officers.length;
 
   const statLine = [
-    `🟢 **Avail:** ${availableCount}`,
-    `🔴 **On Scene:** ${onSceneCount}`,
-    `⚫ **Busy/OOS:** ${busyCount}`,
-    `👮 **On Duty:** ${totalDuty}`,
+    `Avail: ${availableCount}`,
+    `On Scene: ${onSceneCount}`,
+    `Busy/OOS: ${busyCount}`,
+    `On Duty: ${totalDuty}`,
   ].join('  ·  ');
 
   const headerParts = [statLine];
@@ -1649,24 +1649,24 @@ export async function rebuildStatusBoard(guild, config) {
     const since = priorityData.activatedAt
       ? `<t:${Math.floor(new Date(priorityData.activatedAt).getTime() / 1000)}:R>`
       : '';
-    headerParts.push(`🚨  **PRIORITY ACTIVE** — ${priorityData.priorityIssuedBy || 'Unknown'}${since ? ` · activated ${since}` : ''}`);
+    headerParts.push(`**PRIORITY ACTIVE** — ${priorityData.priorityIssuedBy || 'Unknown'}${since ? ` · activated ${since}` : ''}`);
   }
 
   // Priority cooldown
   if (priorityData?.cooldownEndsAt && new Date(priorityData.cooldownEndsAt) > new Date()) {
     const remaining = Math.ceil((new Date(priorityData.cooldownEndsAt) - Date.now()) / 60000);
-    headerParts.push(`⏳  **Priority Cooldown:** ${remaining} min remaining — issued by ${priorityData.cooldownIssuedBy || 'Unknown'}`);
+    headerParts.push(`**Priority Cooldown:** ${remaining} min remaining — issued by ${priorityData.cooldownIssuedBy || 'Unknown'}`);
   }
 
   // Active BOLO count
   if (boloCount > 0) {
-    headerParts.push(`⚠️  **${boloCount} Active BOLO${boloCount !== 1 ? 's' : ''}** on file`);
+    headerParts.push(`**${boloCount} Active BOLO${boloCount !== 1 ? 's' : ''}** on file`);
   }
 
   // Unresponded 911 warnings
   const unresponded = activeCalls.filter(c => !c.respondingLeoId && (!c.attachedLeoIds || c.attachedLeoIds.length === 0));
   if (unresponded.length > 0) {
-    headerParts.push(`🆘  **${unresponded.length} UNRESPONDED CALL${unresponded.length !== 1 ? 'S' : ''}** — Units needed!`);
+    headerParts.push(`**${unresponded.length} UNRESPONDED CALL${unresponded.length !== 1 ? 'S' : ''}** — Units needed!`);
   }
 
   // ── Officer rows ──────────────────────────────────────────────────────────
@@ -1693,7 +1693,7 @@ export async function rebuildStatusBoard(guild, config) {
     if (attachedCall) {
       const role = attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED';
       const num  = attachedCall.callId?.split('-').pop() || '???';
-      line += `  ·  📞 Call #${num} [${role}]`;
+      line += `  ·  Call #${num} [${role}]`;
     }
 
     return line;
@@ -1721,7 +1721,7 @@ export async function rebuildStatusBoard(guild, config) {
   if (activeCalls.length > 0) {
     const callEmbed = new EmbedBuilder()
       .setColor(unresponded.length > 0 ? '#FF4500' : '#2d2d2d')
-      .setTitle(`📞  Active 911 Calls (${activeCalls.length})`)
+      .setTitle(`Active 911 Calls (${activeCalls.length})`)
       .setTimestamp();
 
     const callRows = activeCalls.map(c => {
@@ -1873,7 +1873,7 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
 
     const panicEmbed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('🚨 10-99 — OFFICER NEEDS ASSISTANCE 🚨')
+      .setTitle('10-99 — OFFICER NEEDS ASSISTANCE')
       .setDescription(
         `**ALL UNITS — RESPOND IMMEDIATELY**\n\n` +
         `**Officer:** <@${userId}> (${officerName})\n` +
@@ -1986,10 +1986,10 @@ export async function handlePanicAckButton(interaction) {
 
     const updatedEmbed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('🚨 10-99 — OFFICER NEEDS ASSISTANCE 🚨')
+      .setTitle('10-99 — OFFICER NEEDS ASSISTANCE')
       .setDescription(
         (interaction.message.embeds[0]?.description || '') +
-        `\n\n✅ **<@${interaction.user.id}> (${responderName}) is en route.**`
+        `\n\n**<@${interaction.user.id}> (${responderName}) is en route.**`
       )
       .setFooter({ text: 'RPM • PANIC ALERT' })
       .setTimestamp();
@@ -2121,7 +2121,7 @@ export async function handlePursuitRespondButton(interaction) {
     const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
       .setDescription(
         (interaction.message.embeds[0]?.description || '') +
-        `\n\n✅ **<@${interaction.user.id}> (${responderName}) is responding — moved to pursuit channel.**`
+        `\n\n**<@${interaction.user.id}> (${responderName}) is responding — moved to pursuit channel.**`
       );
 
     const disabledBtn = new ButtonBuilder()

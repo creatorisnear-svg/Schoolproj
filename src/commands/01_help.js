@@ -2,12 +2,12 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('View all EverLink commands and features');
+  .setDescription('View all RolePlayManager commands and features');
 
 export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle('EverLink — Command Reference')
+    .setTitle('RolePlayManager — Command Reference')
     .setDescription('A complete list of all available commands, organized by category.')
     .addFields(
       {
@@ -56,7 +56,7 @@ export async function execute(interaction) {
         inline: true,
       }
     )
-    .setFooter({ text: 'EverLink — type / to browse commands' })
+    .setFooter({ text: 'RPM — type / to browse commands' })
     .setTimestamp();
 
   return interaction.reply({

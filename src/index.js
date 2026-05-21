@@ -19,6 +19,9 @@ import AutoJoin from './models/AutoJoin.js';
 import Priority from './models/Priority.js';
 import DispatchConfig from './models/DispatchConfig.js';
 import Welcome from './models/Welcome.js';
+import { handleVerifyModal, handleVerifyModalSubmit } from './handlers/verifyHandler.js';
+import { handleSelectMenu } from './handlers/selectMenuHandler.js';
+import { handleModalSubmit } from './handlers/modalHandler.js';
 
 dotenv.config();
 
@@ -285,28 +288,28 @@ client.on('guildCreate', async (guild) => {
       .setTitle('Thanks for adding RolePlayManager!')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
-        `Hey there! RolePlayManager is now in **${guild.name}**.\n\n` +
+        `RolePlayManager is now in **${guild.name}**.\n\n` +
         `Here's everything you can set up:\n\n` +
-        `🚨 **911 System** — \`/roleplaycommandsetup\`\n` +
-        `🪪 **Verification** — \`/verifysystemsetup\`\n` +
-        `🎟️ **Ticket Support** — \`/ticketsupportsetup\`\n` +
-        `⚡ **Priority Tracker** — \`/prioritytrackersetup\`\n` +
-        `👋 **Welcome System** — \`/welcomesystemsetup\`\n` +
-        `🚫 **Strike System** — \`/strikesystemsetup\`\n` +
-        `📅 **RP Calendar** — \`/roleplaycalendersetup\`\n` +
-        `🎙️ **AI Voice Dispatch** — \`/dispatchsetup\` *(Premium)*`
+        `**911 System** — \`/roleplaycommandsetup\`\n` +
+        `**Verification** — \`/verifysystemsetup\`\n` +
+        `**Ticket Support** — \`/ticketsupportsetup\`\n` +
+        `**Priority Tracker** — \`/prioritytrackersetup\`\n` +
+        `**Welcome System** — \`/welcomesystemsetup\`\n` +
+        `**Strike System** — \`/strikesystemsetup\`\n` +
+        `**RP Calendar** — \`/roleplaycalendersetup\`\n` +
+        `**AI Voice Dispatch** — \`/dispatchsetup\` *(Premium)*`
       )
       .addFields(
         {
-          name: '💡 Recommended: Use the Web Dashboard',
+          name: 'Web Dashboard',
           value: 'The easiest way to set everything up is through our website dashboard. Enable features, configure channels, manage roles — all without touching Discord commands.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
         },
         {
-          name: '🆘 Need Help?',
+          name: 'Need Help?',
           value: 'Join our support server: **[discord.gg/m4dZsWq6m](https://discord.gg/m4dZsWq6m)**\nOr email us: **creatorisnear@gmail.com**',
         }
       )
-      .setFooter({ text: 'RolePlayManager • roleplaymanager.xyz' });
+      .setFooter({ text: 'RPM • roleplaymanager.xyz' });
 
     const systemChannel = guild.systemChannel;
     if (systemChannel?.permissionsFor(guild.members.me)?.has('SendMessages')) {
@@ -757,13 +760,11 @@ client.on('interactionCreate', async interaction => {
         const { handleEconomyMenu } = await import('./handlers/economyHandler.js');
         await handleEconomyMenu(interaction);
       } else {
-        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
       }
     } else if (interaction.isButton()) {
       console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_button') {
-        const { handleVerifyModal } = await import('./handlers/verifyHandler.js');
         await handleVerifyModal(interaction);
       } else if (interaction.customId === 'priority_approve' || interaction.customId === 'priority_deny') {
         const { handlePriorityRequestButton } = await import('./handlers/priorityRequestHandler.js');
@@ -800,13 +801,11 @@ client.on('interactionCreate', async interaction => {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);
       } else {
-        const { handleSelectMenu } = await import('./handlers/selectMenuHandler.js');
         await handleSelectMenu(interaction);
       }
     } else if (interaction.isModalSubmit()) {
       console.log(`[MODAL] ${interaction.user.tag} submitted ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_modal') {
-        const { handleVerifyModalSubmit } = await import('./handlers/verifyHandler.js');
         await handleVerifyModalSubmit(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
@@ -863,7 +862,7 @@ connectDatabase().then(() => {
 
           const embed = new EmbedBuilder()
             .setColor('#00ff00')
-            .setTitle('💓 RolePlayManager Status Heartbeat')
+            .setTitle('RolePlayManager — Status')
             .setDescription(`The bot is online and operational.\n\n**Server:** ${guild.name}\n**Latency:** ${client.ws.ping}ms\n**Last Update:** <t:${Math.floor(Date.now() / 1000)}:R>`)
             .setFooter({ text: 'RPM' })
             .setTimestamp();
