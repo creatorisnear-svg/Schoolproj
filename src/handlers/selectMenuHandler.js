@@ -207,14 +207,6 @@ export async function handleSelectMenu(interaction) {
     await handleStickyListDelete(interaction);
   }
 
-  if (interaction.customId === 'status_main_menu') {
-    await handleStatusMainMenu(interaction);
-  }
-
-  if (interaction.customId === 'status_heartbeat_channel_select') {
-    await handleStatusChannelSelect(interaction);
-  }
-
   if (interaction.customId.startsWith('ticket_create_')) {
     const { handleTicketCreation } = await import('./ticketHandler.js');
     return await handleTicketCreation(interaction);
@@ -2443,121 +2435,6 @@ async function handleStickyListDelete(interaction) {
     console.error('Error deleting sticky:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred while deleting the sticky message.')],
-      flags: 64,
-    });
-  }
-}
-
-async function handleStatusMainMenu(interaction) {
-  const { default: StatusHeartbeat } = await import('../models/StatusHeartbeat.js');
-  const choice = interaction.values[0];
-
-  try {
-    let statusConfig = await StatusHeartbeat.findOne({ guildId: interaction.guildId });
-    if (!statusConfig) {
-      statusConfig = await StatusHeartbeat.create({ guildId: interaction.guildId });
-    }
-
-    if (choice === 'enable') {
-      statusConfig.enabled = true;
-      await statusConfig.save();
-      return interaction.reply({
-        embeds: [successEmbed('Status Heartbeat Enabled', 'The heartbeat monitoring system is now active and will send messages every 8 minutes.')],
-        flags: 64,
-      });
-    }
-
-    if (choice === 'disable') {
-      statusConfig.enabled = false;
-      await statusConfig.save();
-      return interaction.reply({
-        embeds: [successEmbed('Status Heartbeat Disabled', 'The heartbeat monitoring system has been turned off.')],
-        flags: 64,
-      });
-    }
-
-    if (choice === 'set_channel') {
-      const channelSelect = new ChannelSelectMenuBuilder()
-        .setCustomId('status_heartbeat_channel_select')
-        .setPlaceholder('Select the heartbeat channel...')
-        .setChannelTypes(ChannelType.GuildText);
-
-      const row = new ActionRowBuilder().addComponents(channelSelect);
-
-      return interaction.reply({
-        content: 'Select the channel where heartbeat messages will be sent:',
-        components: [row],
-        flags: 64,
-      });
-    }
-
-    if (choice === 'set_interval') {
-      const modal = new ModalBuilder()
-        .setCustomId('status_set_interval_modal')
-        .setTitle('Set Heartbeat Interval')
-        .addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('interval_minutes')
-              .setLabel('Interval (minutes)')
-              .setStyle(TextInputStyle.Short)
-              .setPlaceholder('e.g., 8')
-              .setRequired(true)
-          )
-        );
-
-      return interaction.showModal(modal);
-    }
-
-    if (choice === 'view_config') {
-      const channelText = statusConfig.heartbeatChannelId ? `<#${statusConfig.heartbeatChannelId}>` : 'Not set';
-      const statusText = statusConfig.enabled ? 'Enabled' : 'Disabled';
-
-      return interaction.reply({
-        embeds: [{
-          color: 0x0099ff,
-          title: 'Status Heartbeat Configuration',
-          fields: [
-            { name: 'Status', value: statusText, inline: true },
-            { name: 'Channel', value: channelText, inline: true },
-            { name: 'Interval', value: `${statusConfig.intervalMinutes} minutes`, inline: true },
-            { name: 'Auto-delete', value: `${statusConfig.deleteAfterSeconds} seconds`, inline: true }
-          ],
-          footer: { text: 'RPM' }
-        }],
-        flags: 64,
-      });
-    }
-  } catch (error) {
-    console.error('Error in status main menu:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      flags: 64,
-    });
-  }
-}
-
-async function handleStatusChannelSelect(interaction) {
-  const { default: StatusHeartbeat } = await import('../models/StatusHeartbeat.js');
-  const channelId = interaction.values[0];
-
-  try {
-    let statusConfig = await StatusHeartbeat.findOne({ guildId: interaction.guildId });
-    if (!statusConfig) {
-      statusConfig = await StatusHeartbeat.create({ guildId: interaction.guildId });
-    }
-
-    statusConfig.heartbeatChannelId = channelId;
-    await statusConfig.save();
-
-    return interaction.reply({
-      embeds: [successEmbed('Channel Set', `Heartbeat messages will now be sent to <#${channelId}>`)],
-      flags: 64,
-    });
-  } catch (error) {
-    console.error('Error in status channel select:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
       flags: 64,
     });
   }

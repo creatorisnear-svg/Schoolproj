@@ -63,6 +63,15 @@ export function createApiRouter(client) {
     res.json({ servers, users });
   });
 
+  router.get('/bot-status', (req, res) => {
+    const online = client.isReady();
+    res.json({
+      online,
+      ping: online ? client.ws.ping : -1,
+      guilds: online ? client.guilds.cache.size : 0,
+    });
+  });
+
   router.get('/public/announcements', async (req, res) => {
     try {
       const items = await Announcement.find({ active: true }).sort({ createdAt: -1 }).limit(5);
