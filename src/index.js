@@ -141,7 +141,7 @@ app.get('/dashboard', (req, res) => {
 });
 
 app.use('/dashboard', createAuthRouter());
-app.use('/dev', createDevRouter());
+app.use('/dev', createDevRouter(client));
 
 app.get('/auth/site/callback', async (req, res) => {
   const { code, state } = req.query;

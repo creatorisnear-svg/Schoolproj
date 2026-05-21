@@ -45,7 +45,7 @@ function devAuth(req, res, next) {
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
-export function createDevRouter() {
+export function createDevRouter(client) {
   const router = Router();
 
   router.get('/login', (req, res) => {
@@ -235,6 +235,29 @@ export function createDevRouter() {
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch feature flags' });
     }
+  });
+
+  router.post('/broadcast', devAuth, async (req, res) => {
+    const { message } = req.body;
+    if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
+    if (!client || !client.isReady()) return res.status(503).json({ error: 'Bot is not connected to Discord' });
+
+    const guilds = [...client.guilds.cache.values()];
+    let sent = 0, failed = 0;
+    const errors = [];
+
+    for (const guild of guilds) {
+      try {
+        const owner = await guild.fetchOwner();
+        await owner.send(message.trim());
+        sent++;
+      } catch (err) {
+        failed++;
+        errors.push({ guild: guild.name, reason: err.message });
+      }
+    }
+
+    res.json({ total: guilds.length, sent, failed, errors });
   });
 
   router.patch('/features/:feature', devAuth, async (req, res) => {

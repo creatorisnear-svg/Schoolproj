@@ -297,6 +297,7 @@
     <button class="tab" onclick="switchTab('announcements')">Announcements</button>
     <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
     <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
+    <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
   </div>
 
   <div id="panel-features" class="panel active">
@@ -392,10 +393,26 @@
     <div id="videos-list"><div class="empty">Loading...</div></div>
   </div>
 
+  <div id="panel-broadcast" class="panel">
+    <div class="add-form">
+      <h3>Broadcast to Server Owners</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to every server owner the bot is currently in. Write it like a normal message — not a bot response.</p>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="bc-message" rows="6" placeholder="Hey, just wanted to give you a heads up..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="sendBroadcast()" id="bc-btn">Send to All Owners</button>
+        <span id="bc-status" style="font-size:13px;color:#888;"></span>
+      </div>
+    </div>
+    <div id="bc-result" style="display:none;margin-top:20px;"></div>
+  </div>
+
 </div>
 
 <script>
-  var TABS = ['features', 'announcements', 'changelogs', 'videos'];
+  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast'];
 
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -643,6 +660,50 @@
       if (track) track.setAttribute('onclick', onclick);
     } else {
       showAlert('Failed to update feature.', 'error');
+    }
+  }
+
+  async function sendBroadcast() {
+    var msg = document.getElementById('bc-message').value.trim();
+    if (!msg) { showAlert('Write a message first.', 'error'); return; }
+    var btn = document.getElementById('bc-btn');
+    var status = document.getElementById('bc-status');
+    var resultBox = document.getElementById('bc-result');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    status.textContent = 'This may take a moment...';
+    resultBox.style.display = 'none';
+    try {
+      var res = await api('POST', '/broadcast', { message: msg });
+      btn.disabled = false;
+      btn.textContent = 'Send to All Owners';
+      if (res && res.total !== undefined) {
+        status.textContent = '';
+        var failHtml = '';
+        if (res.errors && res.errors.length) {
+          failHtml = '<div style="margin-top:10px;"><div class="section-label" style="margin-bottom:8px;">Failed (' + res.errors.length + ')</div>' +
+            res.errors.map(function(e) {
+              return '<div style="font-size:12px;color:#888;padding:4px 0;border-bottom:1px solid #1a1a1a;">' +
+                '<strong style="color:#ccc;">' + esc(e.guild) + '</strong> — ' + esc(e.reason) + '</div>';
+            }).join('') + '</div>';
+        }
+        resultBox.style.display = 'block';
+        resultBox.innerHTML =
+          '<div class="impact-notice" style="border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.05);">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' +
+          '<div><strong style="color:#4ade80;">Broadcast complete</strong> &mdash; ' +
+          res.sent + ' of ' + res.total + ' delivered' +
+          (res.failed ? ', ' + res.failed + ' failed (DMs closed)' : '') + '.</div></div>' + failHtml;
+        showAlert('Sent to ' + res.sent + ' owner' + (res.sent !== 1 ? 's' : '') + '.', 'success');
+      } else {
+        status.textContent = '';
+        showAlert(res && res.error ? res.error : 'Something went wrong.', 'error');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Send to All Owners';
+      status.textContent = '';
+      showAlert('Request failed: ' + e.message, 'error');
     }
   }
 
