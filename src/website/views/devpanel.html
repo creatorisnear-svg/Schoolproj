@@ -259,9 +259,23 @@
 
     @media (max-width: 600px) {
       .form-row { grid-template-columns: 1fr; }
-      header { padding: 12px 16px; }
-      .container { padding: 20px 16px; }
-      .feature-card { flex-wrap: wrap; }
+      header { padding: 12px 16px; gap: 8px; }
+      header .user-info { display: none; }
+      .container { padding: 16px 12px; }
+      .feature-card { flex-wrap: wrap; gap: 12px; }
+      .feature-card-info { min-width: 0; width: 100%; }
+      .card-header { flex-wrap: wrap; gap: 8px; }
+      .actions { flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+      .tab { padding: 8px 12px; font-size: 12px; }
+      .add-form { padding: 16px; }
+      .btn { font-size: 12px; }
+      .video-thumb { aspect-ratio: 16/9; }
+      .card { padding: 14px; }
+    }
+    @media (max-width: 400px) {
+      header .brand { font-size: 13px; }
+      .sign-out-btn { padding: 4px 8px; font-size: 11px; }
+      .container { padding: 12px 10px; }
     }
   </style>
 </head>

@@ -9,36 +9,36 @@ export const data = new SlashCommandBuilder()
   .setDescription('LEO Database - Search characters, vehicles, and more');
 
 export async function execute(interaction) {
+  let deferred = false;
   try {
+    // Defer early — three DB queries run before replying and could exceed 3s under load
+    await interaction.deferReply({ flags: 64 });
+    deferred = true;
+
     // Check if roleplay commands are enabled
-    const roleplayConfig = await RoleplayCommands.findOne({ guildId: interaction.guildId });
+    const [roleplayConfig, isStaff, cadConfig] = await Promise.all([
+      RoleplayCommands.findOne({ guildId: interaction.guildId }),
+      checkStaffPermission(interaction),
+      CADConfig.findOne({ guildId: interaction.guildId }),
+    ]);
 
     if (!roleplayConfig || !roleplayConfig.enabled) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('Roleplay commands are not enabled on this server.')],
-        flags: 64,
       });
     }
-
-    // Check if user is staff (staff/admins can bypass role restrictions)
-    const isStaff = await checkStaffPermission(interaction);
-
-    // Check if user has LEO role
-    const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
 
     if (!cadConfig || !cadConfig.leoRoleIds || cadConfig.leoRoleIds.length === 0) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('LEO database is not configured.')],
-        flags: 64,
       });
     }
 
-    const hasLeoRole = cadConfig && cadConfig.leoRoleIds && cadConfig.leoRoleIds.length > 0 && interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
+    const hasLeoRole = interaction.member.roles.cache.some(role => cadConfig.leoRoleIds.includes(role.id));
 
     if (!hasLeoRole && !isStaff) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [errorEmbed('You do not have LEO access.')],
-        flags: 64,
       });
     }
 
@@ -59,16 +59,16 @@ export async function execute(interaction) {
           )
       );
 
-    return interaction.reply({
+    return interaction.editReply({
       content: '**LEO DATABASE**\n\nSelect an action:',
       components: [menu],
-      flags: 64,
     });
   } catch (error) {
     console.error('Error executing leodatabase:', error);
-    return interaction.reply({
+    const respond = deferred ? interaction.editReply.bind(interaction) : interaction.reply.bind(interaction);
+    return respond({
       embeds: [errorEmbed('An error occurred.')],
-      flags: 64,
+      flags: deferred ? undefined : 64,
     });
   }
 }

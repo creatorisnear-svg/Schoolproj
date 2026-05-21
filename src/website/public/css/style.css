@@ -593,7 +593,21 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
 @media (max-width: 480px) {
   .container { padding: 0 16px; }
   .hero h1 { font-size: 26px; }
+  .hero-buttons { flex-direction: column; align-items: center; }
+  .hero-buttons .btn { width: 100%; max-width: 280px; justify-content: center; }
   .dash-grid { grid-template-columns: 1fr; }
   .config-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .server-list { grid-template-columns: 1fr; }
+  select.config-select, select.config-action, input.config-input { font-size: 16px; }
+  .toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
+  .cta-box { padding: 24px 16px; }
+  .contact-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 360px) {
+  .hero h1 { font-size: 22px; }
+  .hero p { font-size: 13px; }
+  .module-card { padding: 10px 12px; }
+  .dash-card { padding: 12px; }
+  .dash-card .dash-value { font-size: 18px; }
 }

@@ -18,6 +18,7 @@ export async function execute(interaction) {
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
   const amount = interaction.options.getInteger('amount');
+  let deferred = false;
 
   try {
     // Check if user is staff or admin
@@ -36,7 +37,7 @@ export async function execute(interaction) {
     }
 
     if (!isAdmin && !isStaff) {
-      return interaction.reply({
+      return await interaction.reply({
         embeds: [errorEmbed('Only admins and staff can use this command.')],
         flags: 64,
       });
@@ -44,6 +45,7 @@ export async function execute(interaction) {
 
     // Defer the reply since deletion can take a moment
     await interaction.deferReply({ flags: 64 });
+    deferred = true;
 
     // Fetch messages to delete
     const messages = await interaction.channel.messages.fetch({ limit: amount });
@@ -82,9 +84,10 @@ export async function execute(interaction) {
     });
   } catch (error) {
     console.error('Error in clear command:', error);
-    return interaction.reply({
+    const respond = deferred ? interaction.editReply.bind(interaction) : interaction.reply.bind(interaction);
+    return respond({
       embeds: [errorEmbed('An error occurred while clearing messages.')],
-      flags: 64,
+      flags: deferred ? undefined : 64,
     });
   }
 }
