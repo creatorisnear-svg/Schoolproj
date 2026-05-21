@@ -80,8 +80,21 @@
         <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
         <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
       </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="#features" onclick="closeMobileNav()">Features</a>
+    <a href="#premium" onclick="closeMobileNav()">Premium</a>
+    <a href="#commands" onclick="closeMobileNav()">Commands</a>
+    <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+    <a href="#contact" onclick="closeMobileNav()">Support</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+    <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
+  </div>
 
   <div id="announcements-bar" style="display:none;"></div>
 
@@ -212,8 +225,8 @@
         </div>
       </div>
       <div style="text-align:center; margin-top:32px;">
-        <a href="https://discord.gg/m4dZsWq6m" target="_blank" class="btn btn-primary">Get Premium &rarr;</a>
-        <p style="color:#555; font-size:12px; margin-top:12px;">Join the support server to get a key, then use <code style="background:#111; padding:2px 6px; border-radius:4px;">/activatepremium</code> or activate directly from the Dashboard</p>
+        <a href="https://discord.gg/m4dZsWq6m" target="_blank" class="btn btn-discord" style="font-size:14px;padding:12px 28px;">Join Support Server to Get Premium &rarr;</a>
+        <p style="color:#555; font-size:12px; margin-top:12px;">Join our Discord, get a key, then use <code style="background:#111; padding:2px 6px; border-radius:4px;">/activatepremium</code> or activate it directly from the web Dashboard</p>
       </div>
     </div>
   </section>
@@ -550,6 +563,22 @@
           '</div>';
       }).join('');
     }).catch(function() {});
+
+    function toggleMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var isOpen = overlay.classList.contains('open');
+      overlay.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      document.body.style.overflow = isOpen ? '' : 'hidden';
+    }
+    function closeMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      overlay.classList.remove('open');
+      btn.classList.remove('open');
+      document.body.style.overflow = '';
+    }
   </script>
 </body>
 </html>
