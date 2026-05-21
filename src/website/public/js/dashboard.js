@@ -6,6 +6,7 @@ var currentGuild = null;
 var guilds = [];
 var pendingChanges = {};
 var sidebarOpen = false;
+var featureFlags = {};
 
 /* ── Toast ── */
 function toast(msg, type) {
@@ -134,9 +135,19 @@ function renderServerSelect() {
     '</div></div>';
 }
 
+function isFlagPremium(featureKey) {
+  if (featureKey in featureFlags) return featureFlags[featureKey] === true;
+  return featureKey === 'dispatch';
+}
+
 function selectServer(guildId) {
   app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading server...</div></div>';
-  api('/guild/' + guildId).then(function(data) {
+  Promise.all([
+    api('/guild/' + guildId),
+    fetch('/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+  ]).then(function(results) {
+    var data = results[0];
+    featureFlags = results[1] || {};
     if (!data) { renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
@@ -155,7 +166,7 @@ var FEATURES = [
   { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: null },
   { key: 'verifyEnabled',       feature: 'verification',  name: 'Verification',      icon: 'ID',  desc: 'Member verification gate',        mod: 'verification' },
   { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
-  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch', premium: true },
+  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
 ];
 
@@ -202,8 +213,8 @@ function renderDashboard() {
   var config = g.config || {};
 
   var enabledCount = 0;
-  var totalCount = FEATURES.filter(function(f) { return !f.premium; }).length;
-  FEATURES.forEach(function(f) { if (!f.premium && config[f.key]) enabledCount++; });
+  var totalCount = FEATURES.filter(function(f) { return !isFlagPremium(f.feature); }).length;
+  FEATURES.forEach(function(f) { if (!isFlagPremium(f.feature) && config[f.key]) enabledCount++; });
 
   var html = '<div class="dashboard-layout">' + renderSidebar('overview') +
     '<div class="dashboard-content">' +
@@ -236,7 +247,7 @@ function renderDashboard() {
       '<div class="module-icon">' + f.icon + '</div>' +
       '<div style="min-width:0;">' +
       '<div class="module-name">' + f.name +
-      (f.premium ? ' <span class="premium-tag">Premium</span>' : '') +
+      (isFlagPremium(f.feature) ? ' <span class="premium-tag">Premium</span>' : '') +
       '</div><div class="module-desc">' + f.desc + '</div></div>' +
       '</div>' +
       '<div class="module-actions">' +
@@ -314,6 +325,14 @@ function activatePremium() {
 }
 
 function renderPremiumSection(g) {
+  var premiumItems = [];
+  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch — officers talk, bot responds');
+  premiumItems.push('Blackjack & Roulette gambling games');
+  premiumItems.push('Top-25 leaderboard (free: top 10)');
+  premiumItems.push('Unlimited ticket types (free: 3)');
+  premiumItems.push('Unlimited role income entries (free: 2)');
+  premiumItems.push('Unlimited CAD, vehicles, BOLOs & stickies');
+
   if (g.premium) {
     return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(52,211,153,0.3);">' +
       '<div class="config-section-header"><h3>Premium</h3>' +
@@ -321,7 +340,7 @@ function renderPremiumSection(g) {
       '</div>' +
       '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
       '<div><span class="config-label">Premium is active on this server.</span>' +
-      '<div class="config-sublabel">AI Voice Dispatch, Blackjack, Roulette, unlimited ticket types, role income, and more are unlocked.</div></div>' +
+      '<div class="config-sublabel">' + premiumItems.join(', ') + ' — all unlocked.</div></div>' +
       '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
       '</div></div>';
   }
@@ -331,14 +350,11 @@ function renderPremiumSection(g) {
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;width:100%;">' +
-    premFeatureItem('AI Voice Dispatch — officers talk, bot responds') +
-    premFeatureItem('Blackjack & Roulette gambling games') +
-    premFeatureItem('Top-25 leaderboard (free: top 10)') +
-    premFeatureItem('Unlimited ticket types (free: 3)') +
-    premFeatureItem('Unlimited role income entries (free: 2)') +
-    premFeatureItem('Unlimited CAD, vehicles, BOLOs & stickies') +
-    '</div>' +
+    (premiumItems.length > 0
+      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;width:100%;">' +
+        premiumItems.map(function(t) { return premFeatureItem(t); }).join('') +
+        '</div>'
+      : '') +
     '<div style="border-top:1px solid var(--border);padding-top:12px;width:100%;">' +
     '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key by joining our Discord support server, then enter it below.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
@@ -455,9 +471,44 @@ function renderDispatchExtras(data) {
     return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
   }).join('');
 
+  var patrolCount = (data.currentPatrolChannels || []).length;
+  var trafficCount = (data.currentTrafficChannels || []).length;
+  var leoCount = (data.leoRoles || []).length;
+
+  html += '<div class="config-section" style="margin-top:14px;background:rgba(88,101,242,0.03);">' +
+    '<div class="config-section-header"><h3>How AI Dispatch Works</h3></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;width:100%;">' +
+    dispatchStep('1', 'Set patrol channels below', 'The bot joins these voice channels to listen to officers', patrolCount > 0 ? 'var(--green)' : 'var(--text-dim)') +
+    dispatchStep('2', 'Assign LEO roles', 'Only members with these roles can trigger dispatch responses', leoCount > 0 ? 'var(--green)' : 'var(--text-dim)') +
+    dispatchStep('3', 'Enable AI Responses', 'Toggle it on above so the bot generates realistic dispatcher replies', null) +
+    dispatchStep('4', 'Set a dispatch channel', 'AI responses and logs are posted in this text channel', null) +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:10px;width:100%;">' +
+    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels — the bot transcribes the audio, ' +
+    'generates an AI dispatcher reply, and reads it back in the channel. On a 10-11, the officer is automatically moved to a traffic stop channel.' +
+    '</div>' +
+    '</div></div>';
+
+  var statusItems = [
+    { label: 'Patrol channels', count: patrolCount, ok: patrolCount > 0 },
+    { label: 'Traffic stop channels', count: trafficCount, ok: true },
+    { label: 'LEO roles', count: leoCount, ok: leoCount > 0 },
+  ];
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Configuration Status</h3></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:0 16px 12px;">';
+  statusItems.forEach(function(s) {
+    html += '<div style="background:var(--bg-secondary);border:1px solid ' + (s.ok ? 'rgba(52,211,153,0.25)' : 'var(--border)') + ';border-radius:8px;padding:10px 12px;">' +
+      '<div style="font-size:18px;font-weight:700;color:' + (s.ok ? 'var(--green)' : 'var(--text-dim)') + ';">' + s.count + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + esc(s.label) + '</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+
   html += '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>Patrol Voice Channels</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Channels where officers are listened to</span></div>';
+    '<span style="font-size:11px;color:var(--text-dim);">Bot listens here for officer speech</span></div>';
 
   var patrolTags = (data.currentPatrolChannels || []).map(function(id) {
     var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
@@ -467,15 +518,15 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet.</span>') + '</div>' +
+    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet — add at least one so the bot can listen.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<select class="config-select" id="patrol-channel-select"><option value="">Pick a channel...</option>' + voiceOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add Channel</button>' +
+    '<select class="config-select" id="patrol-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button>' +
     '</div></div></div>';
 
   html += '<div class="config-section" style="margin-top:14px;">' +
-    '<div class="config-section-header"><h3>Traffic Stop Voice Channels</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Officers moved here on 10-11</span></div>';
+    '<div class="config-section-header"><h3>Traffic Stop Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Officers auto-moved here on 10-11</span></div>';
 
   var trafficTags = (data.currentTrafficChannels || []).map(function(id) {
     var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
@@ -485,15 +536,15 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet.</span>') + '</div>' +
+    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional — officers move here when they call a 10-11.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<select class="config-select" id="traffic-channel-select"><option value="">Pick a channel...</option>' + voiceOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add Channel</button>' +
+    '<select class="config-select" id="traffic-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button>' +
     '</div></div></div>';
 
   html += '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>LEO Roles</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Roles permitted to use dispatch</span></div>';
+    '<span style="font-size:11px;color:var(--text-dim);">Roles that can activate dispatch</span></div>';
 
   var roleOpts = (data.roles || []).map(function(r) {
     return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
@@ -507,13 +558,21 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added yet.</span>') + '</div>' +
+    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added — add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<select class="config-select" id="leo-role-select"><option value="">Pick a role...</option>' + roleOpts + '</select>' +
+    '<select class="config-select" id="leo-role-select"><option value="">Select a role...</option>' + roleOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button>' +
     '</div></div></div>';
 
   return html;
+}
+
+function dispatchStep(num, title, desc, dotColor) {
+  return '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+    '<div style="width:22px;height:22px;border-radius:50%;background:var(--bg-secondary);border:1px solid ' + (dotColor || 'var(--border)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:' + (dotColor || 'var(--text-dim)') + ';flex-shrink:0;margin-top:1px;">' + num + '</div>' +
+    '<div><div style="font-size:12px;font-weight:600;color:var(--text);">' + esc(title) + '</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + esc(desc) + '</div></div>' +
+    '</div>';
 }
 
 /* Dispatch channel add/remove helpers */

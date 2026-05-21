@@ -173,21 +173,35 @@ export function createDevRouter() {
 
   router.post('/videos', devAuth, upload.single('video'), async (req, res) => {
     try {
-      const { title, description, aspectRatio, order } = req.body;
+      const { title, description, aspectRatio, order, videoUrl } = req.body;
       if (!title) return res.status(400).json({ error: 'Title required' });
-      if (!req.file) return res.status(400).json({ error: 'Video file required' });
-      const item = await PreviewVideo.create({
+      if (!req.file && !videoUrl) return res.status(400).json({ error: 'Video file or YouTube URL required' });
+      const createData = {
         title,
         description: description || '',
-        videoData: req.file.buffer,
-        mimeType: req.file.mimetype,
         aspectRatio: aspectRatio || '16:9',
         order: parseInt(order) || 0,
-      });
-      res.json({ _id: item._id, title: item.title, description: item.description, aspectRatio: item.aspectRatio, order: item.order, createdAt: item.createdAt });
+      };
+      if (req.file) {
+        createData.videoData = req.file.buffer;
+        createData.mimeType = req.file.mimetype;
+      } else {
+        createData.videoUrl = videoUrl;
+      }
+      const item = await PreviewVideo.create(createData);
+      res.json({ _id: item._id, title: item.title, description: item.description, aspectRatio: item.aspectRatio, order: item.order, videoUrl: item.videoUrl, createdAt: item.createdAt });
     } catch (err) {
       res.status(500).json({ error: err.message || 'Upload failed' });
     }
+  });
+
+  router.get('/videos/:id/file', devAuth, async (req, res) => {
+    try {
+      const item = await PreviewVideo.findById(req.params.id).select('videoData mimeType');
+      if (!item || !item.videoData) return res.status(404).send('Not found');
+      res.setHeader('Content-Type', item.mimeType || 'video/mp4');
+      res.send(item.videoData);
+    } catch { res.status(500).send('Error'); }
   });
 
   router.patch('/videos/:id', devAuth, async (req, res) => {

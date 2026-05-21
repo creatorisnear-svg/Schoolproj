@@ -9,65 +9,269 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: #0d0d0d; color: #e0e0e0; min-height: 100vh; }
-    header { background: #111; border-bottom: 1px solid #222; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
-    header img { height: 32px; }
-    header span { font-size: 18px; font-weight: 700; color: #fff; }
-    header .user-info { margin-left: auto; font-size: 13px; color: #888; }
-    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 32px; border-bottom: 1px solid #222; padding-bottom: 0; }
-    .tab { padding: 10px 20px; border: none; background: none; color: #888; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; font-family: inherit; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
+
+    header {
+      background: #111;
+      border-bottom: 1px solid #1e1e1e;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header img { height: 28px; }
+    header .brand { font-size: 15px; font-weight: 700; color: #fff; }
+    header .brand span { color: #5865f2; }
+    header .user-info { margin-left: auto; font-size: 12px; color: #555; }
+    .sign-out-btn {
+      margin-left: 12px;
+      font-size: 12px;
+      color: #666;
+      text-decoration: none;
+      padding: 5px 12px;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      transition: color .15s, border-color .15s;
+    }
+    .sign-out-btn:hover { color: #ccc; border-color: #444; }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid #1e1e1e;
+      padding-bottom: 0;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 9px 18px;
+      border: none;
+      background: none;
+      color: #666;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all .15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
     .tab.active { color: #fff; border-bottom-color: #5865f2; }
-    .tab:hover:not(.active) { color: #ccc; }
+    .tab:hover:not(.active) { color: #aaa; }
+
     .panel { display: none; }
     .panel.active { display: block; }
-    .card { background: #161616; border: 1px solid #222; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
-    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .card-title { font-size: 15px; font-weight: 700; color: #fff; }
-    .card-meta { font-size: 12px; color: #666; margin-top: 4px; }
-    .card-content { font-size: 13px; color: #aaa; line-height: 1.6; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+
+    .card {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+      transition: border-color .15s;
+    }
+    .card:hover { border-color: #2a2a2a; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .card-title { font-size: 14px; font-weight: 700; color: #fff; }
+    .card-meta { font-size: 12px; color: #555; margin-top: 3px; }
+    .card-content { font-size: 13px; color: #999; line-height: 1.6; margin-top: 10px; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
     .badge-info { background: #1a2a4a; color: #5b9cf6; }
     .badge-update { background: #1a3a2a; color: #4ade80; }
     .badge-warning { background: #3a2a1a; color: #f59e0b; }
-    .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
-    .btn:hover { opacity: 0.8; }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s, transform .08s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.97); }
     .btn-primary { background: #5865f2; color: #fff; }
     .btn-danger { background: #ef4444; color: #fff; }
-    .btn-ghost { background: #222; color: #ccc; }
+    .btn-ghost { background: #1e1e1e; color: #ccc; border: 1px solid #2a2a2a; }
     .btn-sm { padding: 5px 12px; font-size: 12px; }
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 13px; font-weight: 600; color: #ccc; margin-bottom: 6px; }
-    input, textarea, select { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #e0e0e0; font-size: 13px; padding: 10px 12px; font-family: inherit; outline: none; transition: border-color .15s; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #999; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+    input, textarea, select {
+      width: 100%;
+      background: #0d0d0d;
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 13px;
+      padding: 9px 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
     input:focus, textarea:focus, select:focus { border-color: #5865f2; }
     textarea { resize: vertical; min-height: 80px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .add-form { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; margin-bottom: 28px; }
-    .add-form h3 { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 18px; }
-    .section-label { font-size: 13px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; }
-    .empty { text-align: center; color: #555; padding: 40px 0; font-size: 14px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .add-form {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 24px;
+    }
+    .add-form h3 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 12px;
+    }
+
+    .empty { text-align: center; color: #444; padding: 40px 0; font-size: 13px; }
+
     .changes-list { list-style: none; margin-top: 8px; }
-    .changes-list li { font-size: 13px; color: #aaa; padding: 3px 0 3px 14px; position: relative; }
+    .changes-list li { font-size: 12px; color: #999; padding: 3px 0 3px 14px; position: relative; }
     .changes-list li::before { content: '•'; position: absolute; left: 0; color: #5865f2; }
+
     .tag-inactive { opacity: 0.4; }
-    .actions { display: flex; gap: 8px; }
-    .toggle-btn { background: #1a2a1a; color: #4ade80; border: none; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
-    .toggle-btn.off { background: #2a1a1a; color: #888; }
-    .video-thumb { width: 100%; border-radius: 8px; margin-top: 10px; background: #111; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: #555; font-size: 13px; overflow: hidden; }
-    .video-thumb iframe { width: 100%; height: 100%; border: none; border-radius: 8px; }
-    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
-    .alert-success { background: #1a3a2a; color: #4ade80; }
-    .alert-error { background: #3a1a1a; color: #ef4444; }
-    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } header { padding: 12px 16px; } .container { padding: 24px 16px; } }
+    .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .feature-card {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color .15s;
+    }
+    .feature-card:hover { border-color: #2a2a2a; }
+    .feature-card-info { flex: 1; min-width: 0; }
+    .feature-card-name { font-size: 14px; font-weight: 700; color: #fff; }
+    .feature-card-impact { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.5; }
+    .feature-badge-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(88,101,242,0.15);
+      color: #7b8cec;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .feature-badge-free {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #1a1a1a;
+      color: #555;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle-track {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .toggle-track.on { background: #5865f2; border-color: #5865f2; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+    .toggle-track.on .toggle-thumb { left: 23px; }
+
+    .impact-notice {
+      background: rgba(88,101,242,0.08);
+      border: 1px solid rgba(88,101,242,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #aaa;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .impact-notice svg { flex-shrink: 0; color: #5865f2; margin-top: 1px; }
+
+    .alert { padding: 11px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    .alert-success { background: #0d2a1a; color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+    .alert-error { background: #2a0d0d; color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+
+    .video-thumb { width: 100%; border-radius: 8px; margin-top: 10px; background: #0d0d0d; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: #444; font-size: 13px; overflow: hidden; }
+    .video-thumb iframe, .video-thumb video { width: 100%; height: 100%; border: none; border-radius: 8px; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      header { padding: 12px 16px; }
+      .container { padding: 20px 16px; }
+      .feature-card { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
 
 <header>
   <img src="/img/logo.png" alt="RPM">
-  <span>Developer Panel</span>
-  <div class="user-info" id="user-info">Developer Panel</div>
-  <a href="/dev/logout" style="margin-left:16px;font-size:13px;color:#888;text-decoration:none;padding:6px 14px;border:1px solid #333;border-radius:8px;">Sign Out</a>
+  <span class="brand">RPM <span>Dev</span></span>
+  <div class="user-info" id="user-info"></div>
+  <a href="/dev/logout" class="sign-out-btn">Sign Out</a>
 </header>
 
 <div class="container">
@@ -75,21 +279,25 @@
   <div id="alert-box" style="display:none;"></div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('announcements')">Announcements</button>
+    <button class="tab active" onclick="switchTab('features')">Premium Features</button>
+    <button class="tab" onclick="switchTab('announcements')">Announcements</button>
     <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
     <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
-    <button class="tab" onclick="switchTab('features')">Premium Features</button>
   </div>
 
-  <div id="panel-features" class="panel">
-    <div style="margin-bottom:20px;">
-      <div class="section-label">Feature Premium Status</div>
-      <p style="font-size:13px;color:#888;margin-bottom:20px;">Toggle which features show as "Premium" on the website and dashboard. Changes take effect immediately for all visitors.</p>
+  <div id="panel-features" class="panel active">
+    <div class="impact-notice">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong style="color:#7b8cec;">Changes take effect immediately.</strong>
+        Toggling a feature here updates the website, dashboard, and bot in real time — "Premium" badges appear or disappear for visitors automatically.
+      </div>
     </div>
+    <div class="section-label">Feature Premium Status</div>
     <div id="features-list"><div class="empty">Loading...</div></div>
   </div>
 
-  <div id="panel-announcements" class="panel active">
+  <div id="panel-announcements" class="panel">
     <div class="add-form">
       <h3>New Announcement</h3>
       <div class="form-row">
@@ -153,12 +361,16 @@
         </div>
       </div>
       <div class="form-group">
-        <label>YouTube URL or Embed URL</label>
+        <label>YouTube URL</label>
         <input type="text" id="vid-url" placeholder="https://www.youtube.com/watch?v=...">
       </div>
       <div class="form-group">
         <label>Description (optional)</label>
         <input type="text" id="vid-desc" placeholder="Short description of this video">
+      </div>
+      <div class="form-group">
+        <label>Or upload a video file</label>
+        <input type="file" id="vid-file" accept="video/*">
       </div>
       <button class="btn btn-primary" onclick="createVideo()">Add Video</button>
     </div>
@@ -169,64 +381,69 @@
 </div>
 
 <script>
+  var TABS = ['features', 'announcements', 'changelogs', 'videos'];
+
   function switchTab(name) {
-    const names = ['announcements', 'changelogs', 'videos', 'features'];
-    document.querySelectorAll('.tab').forEach((t, i) => {
-      t.classList.toggle('active', names[i] === name);
+    document.querySelectorAll('.tab').forEach(function(t, i) {
+      t.classList.toggle('active', TABS[i] === name);
     });
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('panel-' + name).classList.add('active');
   }
 
   function showAlert(msg, type) {
-    const box = document.getElementById('alert-box');
+    var box = document.getElementById('alert-box');
     box.className = 'alert alert-' + type;
     box.textContent = msg;
     box.style.display = 'block';
-    setTimeout(() => box.style.display = 'none', 3000);
+    setTimeout(function() { box.style.display = 'none'; }, 4000);
   }
 
   function toEmbedUrl(url) {
     if (!url) return '';
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?\s]+)/);
+    var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?\s]+)/);
     if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0';
     return url;
   }
 
   async function api(method, path, body) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch('/dev' + path, opts);
+    var res = await fetch('/dev' + path, opts);
     return res.json();
   }
 
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   async function loadAnnouncements() {
-    const items = await api('GET', '/announcements');
-    const el = document.getElementById('announcements-list');
+    var items = await api('GET', '/announcements');
+    var el = document.getElementById('announcements-list');
     if (!items.length) { el.innerHTML = '<div class="empty">No announcements yet.</div>'; return; }
-    el.innerHTML = items.map(a => `
-      <div class="card ${a.active ? '' : 'tag-inactive'}">
-        <div class="card-header">
-          <div>
-            <div class="card-title">${esc(a.title)} <span class="badge badge-${a.type}">${a.type}</span></div>
-            <div class="card-meta">${new Date(a.createdAt).toLocaleDateString()} &middot; by ${esc(a.createdBy || 'unknown')}</div>
-          </div>
-          <div class="actions">
-            <button class="toggle-btn ${a.active ? '' : 'off'}" onclick="toggleAnnouncement('${a._id}', ${!a.active})">${a.active ? 'Active' : 'Hidden'}</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('announcements', '${a._id}', loadAnnouncements)">Delete</button>
-          </div>
-        </div>
-        <div class="card-content">${esc(a.content)}</div>
-      </div>
-    `).join('');
+    el.innerHTML = items.map(function(a) {
+      return '<div class="card ' + (a.active ? '' : 'tag-inactive') + '">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(a.title) + ' <span class="badge badge-' + a.type + '">' + a.type + '</span></div>' +
+        '<div class="card-meta">' + new Date(a.createdAt).toLocaleDateString() + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-ghost btn-sm" onclick="toggleAnnouncement(\'' + a._id + '\',' + !a.active + ')">' + (a.active ? 'Hide' : 'Show') + '</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'announcements\',\'' + a._id + '\',loadAnnouncements)">Delete</button>' +
+        '</div></div>' +
+        '<div class="card-content">' + esc(a.content) + '</div>' +
+        '</div>';
+    }).join('');
   }
 
   async function createAnnouncement() {
-    const title = document.getElementById('ann-title').value.trim();
-    const content = document.getElementById('ann-content').value.trim();
-    const type = document.getElementById('ann-type').value;
+    var title = document.getElementById('ann-title').value.trim();
+    var content = document.getElementById('ann-content').value.trim();
+    var type = document.getElementById('ann-type').value;
     if (!title || !content) { showAlert('Title and content are required.', 'error'); return; }
-    await api('POST', '/announcements', { title, content, type });
+    await api('POST', '/announcements', { title: title, content: content, type: type });
     document.getElementById('ann-title').value = '';
     document.getElementById('ann-content').value = '';
     showAlert('Announcement posted!', 'success');
@@ -234,37 +451,37 @@
   }
 
   async function toggleAnnouncement(id, active) {
-    await api('PATCH', '/announcements/' + id, { active });
+    await api('PATCH', '/announcements/' + id, { active: active });
     loadAnnouncements();
   }
 
   async function loadChangelogs() {
-    const items = await api('GET', '/changelogs');
-    const el = document.getElementById('changelogs-list');
+    var items = await api('GET', '/changelogs');
+    var el = document.getElementById('changelogs-list');
     if (!items.length) { el.innerHTML = '<div class="empty">No changelogs yet.</div>'; return; }
-    el.innerHTML = items.map(c => `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">${esc(c.version)} &mdash; ${esc(c.title)}</div>
-            <div class="card-meta">${new Date(c.date).toLocaleDateString()} &middot; by ${esc(c.createdBy || 'unknown')}</div>
-          </div>
-          <div class="actions">
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('changelogs', '${c._id}', loadChangelogs)">Delete</button>
-          </div>
-        </div>
-        <ul class="changes-list">${(c.changes || []).map(ch => `<li>${esc(ch)}</li>`).join('')}</ul>
-      </div>
-    `).join('');
+    el.innerHTML = items.map(function(c) {
+      var changes = (c.changes || []).map(function(ch) { return '<li>' + esc(ch) + '</li>'; }).join('');
+      return '<div class="card">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(c.version) + ' &mdash; ' + esc(c.title) + '</div>' +
+        '<div class="card-meta">' + new Date(c.date).toLocaleDateString() + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'changelogs\',\'' + c._id + '\',loadChangelogs)">Delete</button>' +
+        '</div></div>' +
+        '<ul class="changes-list">' + changes + '</ul>' +
+        '</div>';
+    }).join('');
   }
 
   async function createChangelog() {
-    const version = document.getElementById('cl-version').value.trim();
-    const title = document.getElementById('cl-title').value.trim();
-    const changesRaw = document.getElementById('cl-changes').value.trim();
+    var version = document.getElementById('cl-version').value.trim();
+    var title = document.getElementById('cl-title').value.trim();
+    var changesRaw = document.getElementById('cl-changes').value.trim();
     if (!version || !title) { showAlert('Version and title are required.', 'error'); return; }
-    const changes = changesRaw.split('\n').map(s => s.trim()).filter(Boolean);
-    await api('POST', '/changelogs', { version, title, changes });
+    var changes = changesRaw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+    await api('POST', '/changelogs', { version: version, title: title, changes: changes });
     document.getElementById('cl-version').value = '';
     document.getElementById('cl-title').value = '';
     document.getElementById('cl-changes').value = '';
@@ -273,39 +490,68 @@
   }
 
   async function loadVideos() {
-    const items = await api('GET', '/videos');
-    const el = document.getElementById('videos-list');
+    var items = await api('GET', '/videos');
+    var el = document.getElementById('videos-list');
     if (!items.length) { el.innerHTML = '<div class="empty">No preview videos yet.</div>'; return; }
-    el.innerHTML = items.map(v => `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">${esc(v.title)}</div>
-            <div class="card-meta">Order: ${v.order} &middot; ${esc(v.description || '')}</div>
-          </div>
-          <div class="actions">
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('videos', '${v._id}', loadVideos)">Delete</button>
-          </div>
-        </div>
-        <div class="video-thumb">
-          <iframe src="${esc(toEmbedUrl(v.videoUrl))}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </div>
-      </div>
-    `).join('');
+    el.innerHTML = items.map(function(v) {
+      var embedSrc = v.videoUrl ? toEmbedUrl(v.videoUrl) : null;
+      var fileSrc = !v.videoUrl ? ('/dev/videos/' + v._id + '/file') : null;
+      var mediaHtml = embedSrc
+        ? '<iframe src="' + esc(embedSrc) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+        : (fileSrc ? '<video src="' + esc(fileSrc) + '" controls preload="metadata"></video>' : '<div style="color:#444;font-size:12px;">No preview</div>');
+      return '<div class="card">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(v.title) + '</div>' +
+        '<div class="card-meta">Order: ' + v.order + (v.description ? ' &middot; ' + esc(v.description) : '') + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'videos\',\'' + v._id + '\',loadVideos)">Delete</button>' +
+        '</div></div>' +
+        '<div class="video-thumb">' + mediaHtml + '</div>' +
+        '</div>';
+    }).join('');
   }
 
   async function createVideo() {
-    const title = document.getElementById('vid-title').value.trim();
-    const videoUrl = document.getElementById('vid-url').value.trim();
-    const description = document.getElementById('vid-desc').value.trim();
-    const order = parseInt(document.getElementById('vid-order').value) || 0;
-    if (!title || !videoUrl) { showAlert('Title and video URL are required.', 'error'); return; }
-    await api('POST', '/videos', { title, videoUrl, description, order });
+    var title = document.getElementById('vid-title').value.trim();
+    var videoUrl = document.getElementById('vid-url').value.trim();
+    var description = document.getElementById('vid-desc').value.trim();
+    var order = parseInt(document.getElementById('vid-order').value) || 0;
+    var fileInput = document.getElementById('vid-file');
+    var file = fileInput && fileInput.files && fileInput.files[0];
+
+    if (!title) { showAlert('Title is required.', 'error'); return; }
+
+    if (file) {
+      var formData = new FormData();
+      formData.append('video', file);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('order', order);
+      var res = await fetch('/dev/videos', { method: 'POST', body: formData });
+      var result = await res.json();
+      if (result._id) {
+        showAlert('Video uploaded!', 'success');
+      } else {
+        showAlert(result.error || 'Upload failed.', 'error'); return;
+      }
+    } else if (videoUrl) {
+      var result2 = await api('POST', '/videos', { title: title, videoUrl: videoUrl, description: description, order: order });
+      if (result2._id || result2.ok) {
+        showAlert('Video added!', 'success');
+      } else {
+        showAlert(result2.error || 'Failed to add video.', 'error'); return;
+      }
+    } else {
+      showAlert('Provide a YouTube URL or upload a video file.', 'error'); return;
+    }
+
     document.getElementById('vid-title').value = '';
     document.getElementById('vid-url').value = '';
     document.getElementById('vid-desc').value = '';
     document.getElementById('vid-order').value = '0';
-    showAlert('Video added!', 'success');
+    if (fileInput) fileInput.value = '';
     loadVideos();
   }
 
@@ -316,62 +562,83 @@
     reload();
   }
 
-  function esc(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  var FEATURE_IMPACTS = {
+    dispatch: 'Controls "Premium" badge on AI Voice Dispatch module card, dashboard upsell, and commands page. Bot will also require premium to enable dispatch.',
+    roleplay: 'Controls "Premium" badge on Roleplay Commands module card and dashboard upsell.',
+    priority: 'Controls "Premium" badge on Priority Tracker module card and dashboard upsell.',
+    strike: 'Controls "Premium" badge on Strike System module card and dashboard upsell.',
+    calendar: 'Controls "Premium" badge on RP Calendar module card and dashboard upsell.',
+    ticket: 'Controls "Premium" badge on Ticket Support module card and dashboard upsell.',
+    antipromote: 'Controls "Premium" badge on Anti-Promoting module card and dashboard upsell.',
+    rolerequest: 'Controls "Premium" badge on Role Request module card and dashboard upsell.',
+    verification: 'Controls "Premium" badge on Verification module card and dashboard upsell.',
+    welcome: 'Controls "Premium" badge on Welcome System module card and dashboard upsell.',
+  };
 
   async function loadFeatures() {
-    const el = document.getElementById('features-list');
-    const items = await api('GET', '/features');
+    var el = document.getElementById('features-list');
+    var items = await api('GET', '/features');
     if (!Array.isArray(items) || !items.length) {
       el.innerHTML = '<div class="empty">No features found.</div>';
       return;
     }
-    el.innerHTML = items.map(f => `
-      <div class="card" id="feature-card-${f.feature}">
-        <div class="card-header" style="margin-bottom:0;">
-          <div>
-            <div class="card-title">${esc(f.label)}</div>
-            <div class="card-meta" style="margin-top:4px;">
-              ${f.premium
-                ? '<span style="background:#1a1a3a;color:#5865f2;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;">Premium</span>'
-                : '<span style="background:#1a1a1a;color:#666;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;">Free</span>'
-              }
-            </div>
-          </div>
-          <div class="actions">
-            <button
-              id="feature-btn-${f.feature}"
-              class="toggle-btn ${f.premium ? '' : 'off'}"
-              onclick="toggleFeaturePremium('${f.feature}', ${!f.premium})"
-            >${f.premium ? 'Mark Free' : 'Mark Premium'}</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
+    el.innerHTML = items.map(function(f) {
+      var impact = FEATURE_IMPACTS[f.feature] || 'Controls premium gating for this feature across the website and bot.';
+      return '<div class="feature-card" id="feature-card-' + f.feature + '">' +
+        '<div class="feature-card-info">' +
+        '<div class="feature-card-name">' + esc(f.label) + '</div>' +
+        '<div class="feature-card-impact">' + esc(impact) + '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">' +
+        '<div id="feature-badge-' + f.feature + '" class="' + (f.premium ? 'feature-badge-premium' : 'feature-badge-free') + '">' +
+        (f.premium ? 'Premium' : 'Free') +
+        '</div>' +
+        '<div class="toggle-switch">' +
+        '<div class="toggle-track ' + (f.premium ? 'on' : '') + '" id="feature-toggle-' + f.feature + '" onclick="toggleFeaturePremium(\'' + f.feature + '\',' + !f.premium + ')">' +
+        '<div class="toggle-thumb"></div>' +
+        '</div>' +
+        '<span style="font-size:11px;color:#555;" id="feature-label-' + f.feature + '">' + (f.premium ? 'Mark Free' : 'Mark Premium') + '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }).join('');
   }
 
   async function toggleFeaturePremium(feature, premium) {
-    const btn = document.getElementById('feature-btn-' + feature);
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-    const result = await api('PATCH', '/features/' + feature, { premium });
+    var track = document.getElementById('feature-toggle-' + feature);
+    var badge = document.getElementById('feature-badge-' + feature);
+    var label = document.getElementById('feature-label-' + feature);
+    if (track) { track.style.opacity = '0.5'; track.style.pointerEvents = 'none'; }
+    var result = await api('PATCH', '/features/' + feature, { premium: premium });
+    if (track) { track.style.opacity = ''; track.style.pointerEvents = ''; }
     if (result && result.ok !== undefined) {
-      showAlert((premium ? 'Marked as Premium: ' : 'Marked as Free: ') + feature, 'success');
-      loadFeatures();
+      showAlert((premium ? 'Marked as Premium' : 'Marked as Free') + ': ' + feature + '. Website updated instantly.', 'success');
+      if (track) track.classList.toggle('on', premium);
+      if (badge) {
+        badge.className = premium ? 'feature-badge-premium' : 'feature-badge-free';
+        badge.textContent = premium ? 'Premium' : 'Free';
+      }
+      if (label) label.textContent = premium ? 'Mark Free' : 'Mark Premium';
+      var card = document.getElementById('feature-card-' + feature);
+      if (card) {
+        card.style.transition = 'border-color .3s';
+        card.style.borderColor = premium ? 'rgba(88,101,242,0.5)' : 'rgba(74,222,128,0.3)';
+        setTimeout(function() { card.style.borderColor = ''; }, 1500);
+      }
+      var onclick = 'toggleFeaturePremium(\'' + feature + '\',' + !premium + ')';
+      if (track) track.setAttribute('onclick', onclick);
     } else {
-      if (btn) { btn.disabled = false; }
       showAlert('Failed to update feature.', 'error');
     }
   }
 
   async function init() {
-    const check = await fetch('/dev/check').then(r => r.json());
+    var check = await fetch('/dev/check').then(function(r) { return r.json(); });
     if (!check.authorized) { window.location.href = '/dev/login'; return; }
+    loadFeatures();
     loadAnnouncements();
     loadChangelogs();
     loadVideos();
-    loadFeatures();
   }
 
   init();

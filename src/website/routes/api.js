@@ -5,7 +5,7 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
-import { checkFeatureAccess } from '../../utils/premiumCheck.js';
+import { checkFeatureAccess, isFeaturePremiumGated } from '../../utils/premiumCheck.js';
 
 const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
 
@@ -507,8 +507,8 @@ export function createApiRouter(client) {
 
         case 'dispatch': {
           result.name = 'AI Voice Dispatch';
-          result.description = 'AI-powered voice dispatch for law enforcement roleplay (Premium)';
-          result.premium = true;
+          result.description = 'AI-powered voice dispatch for law enforcement roleplay';
+          result.premium = await isFeaturePremiumGated('dispatch');
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
           const dc = await DispatchConfig.findOne({ guildId: guild.id });
           result.fields = [

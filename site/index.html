@@ -197,7 +197,7 @@
         <p>One key unlocks everything below for your entire server</p>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px;">
-        <div style="background:#161616; border:1px solid #5865f2; border-radius:14px; padding:28px;">
+        <div style="background:#161616; border:1px solid #5865f2; border-radius:14px; padding:28px;" data-premium-block="dispatch">
           <div style="font-size:13px; font-weight:700; color:#5865f2; text-transform:uppercase; letter-spacing:.06em; margin-bottom:16px;">AI Voice Dispatch</div>
           <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
             <li style="font-size:14px; color:#ccc; padding-left:18px; position:relative;"><span style="position:absolute;left:0;color:#5865f2;">→</span> Bot joins your patrol voice channels and listens</li>
@@ -317,10 +317,10 @@
           </div>
         </div>
 
-        <div style="background:#161616; border:1px solid #5865f2; border-radius:12px; padding:22px;">
-          <div style="font-size:12px; font-weight:700; color:#5865f2; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;">Premium ✦</div>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div><span style="font-family:monospace; font-size:13px; color:#fff; background:#111; padding:2px 8px; border-radius:4px;">/dispatchsetup</span> <span style="font-size:12px; color:#888; margin-left:6px;">Configure AI Voice Dispatch</span></div>
+        <div style="background:#161616; border:1px solid #5865f2; border-radius:12px; padding:22px;" id="premium-commands-card">
+          <div style="font-size:12px; font-weight:700; color:#5865f2; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;">Premium</div>
+          <div style="display:flex; flex-direction:column; gap:8px;" id="premium-commands-list">
+            <div data-premium-feature="dispatch"><span style="font-family:monospace; font-size:13px; color:#fff; background:#111; padding:2px 8px; border-radius:4px;">/dispatchsetup</span> <span style="font-size:12px; color:#888; margin-left:6px;">Configure AI Voice Dispatch</span></div>
             <div><span style="font-family:monospace; font-size:13px; color:#fff; background:#111; padding:2px 8px; border-radius:4px;">/gamble blackjack</span> <span style="font-size:12px; color:#888; margin-left:6px;">Blackjack (Premium)</span></div>
             <div><span style="font-family:monospace; font-size:13px; color:#fff; background:#111; padding:2px 8px; border-radius:4px;">/gamble roulette</span> <span style="font-size:12px; color:#888; margin-left:6px;">Roulette (Premium)</span></div>
             <div><span style="font-family:monospace; font-size:13px; color:#fff; background:#111; padding:2px 8px; border-radius:4px;">/activatepremium</span> <span style="font-size:12px; color:#888; margin-left:6px;">Activate your premium key</span></div>
@@ -473,13 +473,40 @@
     }).catch(function() {});
 
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
+      function isFlagPremium(feat) {
+        if (feat in flags) return flags[feat] === true;
+        return feat === 'dispatch';
+      }
+
       document.querySelectorAll('.feature-card[data-feature]').forEach(function(card) {
         var feature = card.getAttribute('data-feature');
         var tag = card.querySelector('.feature-premium-tag');
         if (!tag) return;
-        var isPremium = flags[feature] === true || (flags[feature] === undefined && feature === 'dispatch');
-        tag.style.display = isPremium ? '' : 'none';
+        tag.style.display = isFlagPremium(feature) ? '' : 'none';
       });
+
+      document.querySelectorAll('[data-premium-feature]').forEach(function(row) {
+        var feat = row.getAttribute('data-premium-feature');
+        if (!isFlagPremium(feat)) {
+          row.style.display = 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+
+      var card = document.getElementById('premium-commands-card');
+      if (card) {
+        var visibleRows = card.querySelectorAll('#premium-commands-list > div:not([style*="display: none"]):not([style*="display:none"])');
+        if (visibleRows.length === 0) card.style.display = 'none';
+      }
+
+      var premiumSection = document.getElementById('premium');
+      if (premiumSection) {
+        var dispatchCard = premiumSection.querySelector('[data-premium-block="dispatch"]');
+        if (dispatchCard) {
+          dispatchCard.style.display = isFlagPremium('dispatch') ? '' : 'none';
+        }
+      }
     }).catch(function() {
       document.querySelectorAll('.feature-card[data-feature="dispatch"] .feature-premium-tag').forEach(function(t) {
         t.style.display = '';
