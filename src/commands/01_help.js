@@ -1,14 +1,23 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { isPremiumGuild } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
   .setDescription('View all RolePlayManager commands and features');
 
 export async function execute(interaction) {
+  await interaction.deferReply({ flags: 64 });
+
+  const premium = await isPremiumGuild(interaction.guildId);
+  const pTag = premium ? '' : ' ★';
+
   const helpEmbed = new EmbedBuilder()
     .setColor(0x2d2d2d)
     .setTitle('RolePlayManager — Command Reference')
-    .setDescription('All available commands organized by category. Commands marked **Admin/Staff** require elevated permissions.')
+    .setDescription(
+      'All available commands organized by category. Commands marked **Admin/Staff** require elevated permissions.\n' +
+      (premium ? '-# Premium is active on this server.' : `-# **★ = Premium feature** — use \`/premium\` to learn more.`)
+    )
     .addFields(
       {
         name: 'Staff Management',
@@ -42,27 +51,27 @@ export async function execute(interaction) {
       },
       {
         name: 'Tickets & Roles',
-        value: '`/ticketsupportsetup` Configure ticket system\n`/rolerequestadd` Add requestable roles\n`/rolerequest` Request a role\n`/manageroles` Approve/deny role requests',
+        value: `\`/ticketsupportsetup\` Configure ticket system${pTag}\n\`/rolerequestadd\` Add requestable roles\n\`/rolerequest\` Request a role\n\`/manageroles\` Approve/deny role requests`,
         inline: true,
       },
       {
         name: 'Economy',
-        value: '`/economysetup` Configure economy\n`/balance` Check your balance\n`/work` `/crime` `/rob` Earn money\n`/shop` `/buy` `/sell` `/inventory` Store\n`/gamble` Gambling games\n`/leaderboard` Top balances',
+        value: `\`/economysetup\` Configure economy\n\`/balance\` Check your balance\n\`/work\` \`/crime\` \`/rob\` Earn money\n\`/shop\` \`/buy\` \`/sell\` \`/inventory\` Store\n\`/gamble\` Games (Blackjack/Roulette${pTag})\n\`/leaderboard\` Top ${premium ? '25' : '10'} balances${pTag}`,
         inline: true,
       },
       {
         name: 'Community Tools',
-        value: '`/reactionrolemessage` Set up reaction roles\n`/sticky` Pin a sticky message\n`/stickylist` View sticky messages\n`/antipromotingsetup` Block invite links\n`/setlogchannel` Set log channel',
+        value: `\`/reactionrolemessage\` Set up reaction roles\n\`/sticky\` Pin a sticky message${pTag}\n\`/stickylist\` View sticky messages\n\`/antipromotingsetup\` Block invite links\n\`/setlogchannel\` Set log channel`,
         inline: true,
       },
       {
-        name: 'AI Dispatch',
+        name: `AI Dispatch${pTag}`,
         value: '`/dispatchsetup` Configure AI voice dispatch\n`/dispatchannounce` Send a dispatch announcement',
         inline: true,
       },
       {
         name: 'Utility',
-        value: '`/enablecommands` Enable or disable modules\n`/reloadconfig` Reload configuration\n`/clear` Bulk delete messages\n`/embed` Send a custom embed\n`/invite` Get the bot invite link\n`/activatepremium` Activate a premium key',
+        value: '`/enablecommands` Enable or disable modules\n`/reloadconfig` Reload configuration\n`/clear` Bulk delete messages\n`/embed` Send a custom embed\n`/invite` Get the bot invite link\n`/activatepremium` Activate a premium key\n`/premium` View premium features',
         inline: true,
       },
       {
@@ -74,8 +83,5 @@ export async function execute(interaction) {
     .setFooter({ text: 'RPM — type / to browse all commands' })
     .setTimestamp();
 
-  return interaction.reply({
-    embeds: [helpEmbed],
-    flags: 64,
-  });
+  return interaction.editReply({ embeds: [helpEmbed] });
 }

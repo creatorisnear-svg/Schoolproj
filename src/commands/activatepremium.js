@@ -56,12 +56,14 @@ export async function execute(interaction) {
         description:
           'This server now has **Premium** access.\n\n' +
           '**Unlocked:**\n' +
-          '> AI Voice Dispatch\n' +
-          '> Unlimited Characters\n' +
-          '> Unlimited Vehicles\n' +
-          '> Unlimited Firearms\n' +
-          '> Unlimited BOLOs\n' +
-          '> Unlimited Stickies',
+          '> AI Voice Dispatch (`/dispatchsetup`)\n' +
+          '> Blackjack & Roulette (`/gamble`)\n' +
+          '> Unlimited CAD characters, vehicles, firearms & BOLOs\n' +
+          '> Unlimited sticky messages\n' +
+          '> Unlimited ticket types\n' +
+          '> Unlimited role income entries\n' +
+          '> Extended leaderboard (top 25)\n\n' +
+          '-# Use `/premium` to view your premium status at any time.',
         timestamp: true,
       }),
     ],

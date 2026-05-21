@@ -376,6 +376,20 @@ export async function handleTicketSetupModal(interaction) {
       });
     }
 
+    // Enforce ticket type limit
+    const { getGuildLimits } = await import('../utils/premiumCheck.js');
+    const limits = await getGuildLimits(interaction.guildId);
+    if (ticketConfig.ticketTypes.length >= limits.ticketTypes) {
+      return interaction.reply({
+        embeds: [errorEmbed(
+          'Ticket Type Limit Reached',
+          `This server can have up to **${limits.ticketTypes} ticket types** on the free plan.\n` +
+          `Upgrade to **Premium** with \`/activatepremium\` for unlimited ticket types.`
+        )],
+        flags: 64,
+      });
+    }
+
     // Store pending type and ask for button color first
     const tempId = Date.now().toString();
     pendingTicketTypes.set(tempId, { label: ticketTypeName, guildId: interaction.guildId });

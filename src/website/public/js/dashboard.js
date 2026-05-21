@@ -22,6 +22,16 @@ function api(path, opts) {
     if (res.status === 401) { window.location.href = '/dashboard/login'; return null; }
     if (!res.ok) {
       return res.json().catch(function() { return {}; }).then(function(err) {
+        if (err.error === 'premium_required') {
+          toast('Premium required — scroll down to activate a premium key.', 'error');
+          var premSection = document.getElementById('premium-section');
+          if (premSection) {
+            premSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            premSection.style.outline = '2px solid #5865f2';
+            setTimeout(function() { premSection.style.outline = ''; }, 2000);
+          }
+          return { __premium_required: true };
+        }
         toast(err.error || 'Something went wrong', 'error');
         return null;
       });

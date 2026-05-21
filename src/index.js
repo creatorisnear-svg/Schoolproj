@@ -150,7 +150,11 @@ app.get('/auth/site/callback', async (req, res) => {
   if (!code) return res.redirect(siteRedirect);
 
   try {
-    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const domain = process.env.DOMAIN;
+    if (!domain) {
+      console.error('[SITE AUTH] DOMAIN env var not set — cannot build redirect URI');
+      return res.redirect(siteRedirect + '#error=no_domain');
+    }
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
     const redirectUri = `https://${cleanDomain}/auth/site/callback`;
 
@@ -180,7 +184,11 @@ app.get('/callback', async (req, res) => {
   if (!code) return res.send('No code provided');
 
   try {
-    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const domain = process.env.DOMAIN;
+    if (!domain) {
+      console.error('[OAUTH CALLBACK] DOMAIN env var not set — cannot build redirect URI');
+      return res.status(500).send('Server misconfigured: DOMAIN environment variable not set.');
+    }
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
     const redirectUri = `https://${cleanDomain}/callback`;
     console.log(`[OAUTH CALLBACK] Using Redirect URI: ${redirectUri}`);

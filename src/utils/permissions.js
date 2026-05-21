@@ -1,9 +1,18 @@
 import Staff from '../models/Staff.js';
 
-export async function isStaff(userId, guildId) {
+export async function isStaff(userId, guildId, memberRoleIds = []) {
   try {
-    const staff = await Staff.findOne({ guildId, type: 'user', userId });
-    return staff !== null;
+    const userStaff = await Staff.findOne({ guildId, type: 'user', userId });
+    if (userStaff) return true;
+    if (memberRoleIds.length > 0) {
+      const roleStaff = await Staff.countDocuments({
+        guildId,
+        type: 'role',
+        roleId: { $in: memberRoleIds },
+      });
+      if (roleStaff > 0) return true;
+    }
+    return false;
   } catch (error) {
     console.error('Error checking staff status:', error);
     return false;

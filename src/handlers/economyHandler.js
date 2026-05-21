@@ -1144,6 +1144,20 @@ export async function handleEconomyModal(interaction) {
     if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Invalid amount.')], flags: 64 });
     if (isNaN(cooldownH) || cooldownH < 1) return interaction.reply({ embeds: [errorEmbed('Invalid cooldown.')], flags: 64 });
     const ex = config2.roleIncome.find(r => r.roleId === roleId);
+    if (!ex) {
+      const { getGuildLimits } = await import('../utils/premiumCheck.js');
+      const limits = await getGuildLimits(interaction.guildId);
+      if (config2.roleIncome.length >= limits.roleIncomeRoles) {
+        return interaction.reply({
+          embeds: [errorEmbed(
+            'Role Income Limit Reached',
+            `This server can have up to **${limits.roleIncomeRoles} role income** entries on the free plan.\n` +
+            `Upgrade to **Premium** with \`/activatepremium\` for unlimited role income entries.`
+          )],
+          flags: 64,
+        });
+      }
+    }
     if (ex) { ex.amount = amount; ex.cooldown = cooldownH; } else config2.roleIncome.push({ roleId, amount, cooldown: cooldownH });
     config2.markModified('roleIncome'); await config2.save();
     return interaction.reply({ embeds: [successEmbed('Role Income Set', `<@&${roleId}>: ${sym}${fmt(amount)} every ${cooldownH}h`)], flags: 64 });

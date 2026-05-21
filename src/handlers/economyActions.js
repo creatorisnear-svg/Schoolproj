@@ -113,18 +113,20 @@ export async function runBalance(interaction) {
 // ─────────────────────────────────────────────────────────────────────────────
 // LEADERBOARD
 // ─────────────────────────────────────────────────────────────────────────────
-export async function runLeaderboard(interaction) {
+export async function runLeaderboard(interaction, size = 10) {
   const config = await getConfigOrFail(interaction);
   if (!config) return;
   const sym = config.currencySymbol;
-  const top = await EconomyBalance.find({ guildId: interaction.guildId }).limit(20);
+  const fetchLimit = Math.max(size, 25);
+  const top = await EconomyBalance.find({ guildId: interaction.guildId }).limit(fetchLimit);
   const sorted = top.sort((a, b) => (b.cash + b.bank) - (a.cash + a.bank));
-  const lines = sorted.slice(0, 10).map((e, i) => `**${i + 1}.** <@${e.userId}> — ${sym}${fmt(e.cash + e.bank)}`);
+  const lines = sorted.slice(0, size).map((e, i) => `**${i + 1}.** <@${e.userId}> — ${sym}${fmt(e.cash + e.bank)}`);
+  const footerText = size > 10 ? `RPM • Premium — Top ${size}` : 'RPM';
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
       .setTitle('Economy Leaderboard')
       .setDescription(lines.join('\n') || 'No data yet.')
-      .setFooter({ text: 'RPM' })],
+      .setFooter({ text: footerText })],
     flags: 64,
   });
 }
