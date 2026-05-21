@@ -2,42 +2,62 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('View all commands and features');
+  .setDescription('View all EverLink commands and features');
 
 export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
-    .setColor('#2d2d2d')
-    .setTitle('RolePlayManager')
-    .setDescription(
-      '### Staff\n' +
-      '`/addstaff` `/removestaff` `/stafflist`\n\n' +
-      '### Verification\n' +
-      '`/verifysystemsetup` `/verify`\n\n' +
-      '### Strikes\n' +
-      '`/strikesystemsetup` `/strike` `/removestrike`\n\n' +
-      '### Priority Tracker\n' +
-      '`/prioritytrackersetup` `/activepriority` `/deactivatepriority` `/prioritycooldown`\n\n' +
-      '### Roleplay\n' +
-      '`/roleplaycommandsetup` `/civiliandatabase` `/leodatabase` `/firedepartmentdatabase`\n\n' +
-      '### RP Events\n' +
-      '`/setrp` `/unsetrp` `/roleplaycalendersetup`\n\n' +
-      '### Tickets & Roles\n' +
-      '`/ticketsupportsetup` `/rolerequestadd` `/rolerequest` `/manageroles`\n\n' +
-      '### Community\n' +
-      '`/reactionrolemessage` `/sticky` `/stickylist` `/antipromotingsetup` `/setlogchannel`\n\n' +
-      '### Economy — Setup (Staff)\n' +
-      '`/economysetup`\n\n' +
-      '### Economy — Members\n' +
-      '`/balance` `/leaderboard` `/deposit` `/withdraw` `/give`\n' +
-      '`/work` `/crime` `/rob` `/income`\n' +
-      '`/shop` `/buy` `/sell` `/use` `/inventory` `/giveitems`\n' +
-      '`/gamble blackjack` `/gamble roulette` `/gamble slots` `/gamble dice` `/gamble russianroulette` `/gamble cockfight`\n\n' +
-      '### AI Dispatch — *Premium*\n' +
-      '`/dispatchsetup` `/activatepremium`\n\n' +
-      '### Utility\n' +
-      '`/enablecommands` `/reloadconfig` `/clear` `/embed` `/help`'
+    .setColor(0x5865F2)
+    .setTitle('EverLink — Command Reference')
+    .setDescription('A complete list of all available commands, organized by category.')
+    .addFields(
+      {
+        name: 'Staff Management',
+        value: '`/addstaff` Add a staff member\n`/removestaff` Remove a staff member\n`/stafflist` View all staff',
+        inline: true,
+      },
+      {
+        name: 'Verification',
+        value: '`/verifysystemsetup` Configure verification\n`/verify` Verify as a member',
+        inline: true,
+      },
+      {
+        name: 'Strike System',
+        value: '`/strikesystemsetup` Configure strikes\n`/strike` Issue a strike\n`/removestrike` Remove a strike',
+        inline: true,
+      },
+      {
+        name: 'Priority Tracker',
+        value: '`/prioritytrackersetup` Configure priorities\n`/activepriority` Activate an event\n`/deactivatepriority` Deactivate event\n`/prioritycooldown` Set cooldown',
+        inline: true,
+      },
+      {
+        name: 'Roleplay Systems',
+        value: '`/roleplaycommandsetup` Enable RP features\n`/civiliandatabase` Civilian records\n`/leodatabase` LEO records\n`/firedepartmentdatabase` FD records',
+        inline: true,
+      },
+      {
+        name: 'Roleplay Events',
+        value: '`/setrp` Create an RP event\n`/unsetrp` Delete an RP event\n`/roleplaycalendersetup` Calendar setup',
+        inline: true,
+      },
+      {
+        name: 'Tickets & Roles',
+        value: '`/ticketsupportsetup` Configure tickets\n`/rolerequestadd` Add requestable roles\n`/rolerequest` Request a role\n`/manageroles` Manage role requests',
+        inline: true,
+      },
+      {
+        name: 'Community Tools',
+        value: '`/reactionrolemessage` Reaction roles\n`/sticky` Sticky message\n`/stickylist` View stickies\n`/antipromotingsetup` Block invites\n`/setlogchannel` Set log channel',
+        inline: true,
+      },
+      {
+        name: 'Utility',
+        value: '`/enablecommands` Enable or disable features\n`/reloadconfig` Reload configuration\n`/clear` Delete messages\n`/embed` Send a custom embed',
+        inline: true,
+      }
     )
-    .setFooter({ text: 'RPM' });
+    .setFooter({ text: 'EverLink — type / to browse commands' })
+    .setTimestamp();
 
   return interaction.reply({
     embeds: [helpEmbed],

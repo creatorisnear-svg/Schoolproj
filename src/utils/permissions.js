@@ -10,44 +10,29 @@ export async function isStaff(userId, guildId) {
   }
 }
 
-export async function isManager(userId, guildId) {
-  try {
-    const manager = await Staff.findOne({ guildId, type: 'user', userId, position: 'manager' });
-    return manager !== null;
-  } catch (error) {
-    console.error('Error checking manager status:', error);
-    return false;
-  }
-}
-
 export async function isAdmin(member) {
   return member.permissions.has('Administrator');
 }
 
 export async function isAdminOrManager(interaction) {
-  const adminMember = await isAdmin(interaction.member);
-  const isManagerUser = await isManager(interaction.user.id, interaction.guildId);
-  
-  return adminMember || isManagerUser;
+  return interaction.member.permissions.has('Administrator') ||
+    interaction.member.permissions.has('ManageGuild');
 }
 
 export async function checkStaffPermission(interaction) {
+  const adminCheck = await isAdmin(interaction.member);
+  if (adminCheck) return true;
+
   const directStaff = await isStaff(interaction.user.id, interaction.guildId);
-  const adminOrManager = await isAdminOrManager(interaction);
-  
-  if (directStaff || adminOrManager) {
-    return true;
-  }
-  
+  if (directStaff) return true;
+
   try {
     const memberRoleIds = interaction.member.roles.cache.map(role => role.id);
-    
     const staffRoleCount = await Staff.countDocuments({
       guildId: interaction.guildId,
       type: 'role',
-      roleId: { $in: memberRoleIds }
+      roleId: { $in: memberRoleIds },
     });
-    
     return staffRoleCount > 0;
   } catch (error) {
     console.error('Error checking staff role permissions:', error);

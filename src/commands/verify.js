@@ -11,43 +11,41 @@ export async function execute(interaction) {
     const verification = await Verification.findOne({ guildId: interaction.guildId });
 
     if (!verification || !verification.enabled) {
-      return interaction.reply({
-        embeds: [errorEmbed('The verification system is not enabled. Please contact an administrator.')],
+      const replyFn = interaction.replied || interaction.deferred ? 'followUp' : 'reply';
+      return interaction[replyFn]({
+        embeds: [errorEmbed('Verification Unavailable', 'The verification system is not set up. Please contact an administrator.')],
         flags: 64,
       });
     }
 
     if (!verification.verifyChannelId) {
-      return interaction.reply({
-        embeds: [errorEmbed('Verification system is not fully configured. Please contact an administrator.')],
+      const replyFn = interaction.replied || interaction.deferred ? 'followUp' : 'reply';
+      return interaction[replyFn]({
+        embeds: [errorEmbed('Not Configured', 'The verification system is not fully configured. Please contact an administrator.')],
         flags: 64,
       });
     }
 
-    // Ensure customQuestions is initialized for older documents
-    if (!verification.customQuestions) {
-      verification.customQuestions = [];
-    }
-
     const modal = new ModalBuilder()
       .setCustomId('verify_modal')
-      .setTitle('Verification');
+      .setTitle('Server Verification');
 
     const psnXboxInput = new TextInputBuilder()
       .setCustomId('psnxbox')
-      .setLabel('PSN / XBOX Username')
+      .setLabel('PSN / Xbox Username')
       .setStyle(TextInputStyle.Short)
+      .setPlaceholder('Your PSN or Xbox gamertag')
       .setRequired(true);
 
     const row1 = new ActionRowBuilder().addComponents(psnXboxInput);
     modal.addComponents(row1);
 
-    // Add custom questions if they exist
-    if (verification.customQuestions && verification.customQuestions.length > 0) {
-      // Take the first question for now (modal can only have one custom question field)
+    const customQuestion = verification.customQuestion || (verification.customQuestions?.[0] ?? null);
+
+    if (customQuestion) {
       const customInput = new TextInputBuilder()
         .setCustomId('custom_question')
-        .setLabel(verification.customQuestions[0])
+        .setLabel(customQuestion.substring(0, 45))
         .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
 
@@ -58,9 +56,12 @@ export async function execute(interaction) {
     await interaction.showModal(modal);
   } catch (error) {
     console.error('Error showing verify modal:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred while opening the verification form.')],
-      flags: 64,
-    });
+    try {
+      const replyFn = interaction.replied || interaction.deferred ? 'followUp' : 'reply';
+      return interaction[replyFn]({
+        embeds: [errorEmbed('Something went wrong', 'An error occurred while opening the verification form. Please try again.')],
+        flags: 64,
+      });
+    } catch (_) {}
   }
 }
