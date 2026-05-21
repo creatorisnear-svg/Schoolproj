@@ -40,14 +40,29 @@
 
     .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
 
+    .tabs-wrapper {
+      position: relative;
+      margin-bottom: 28px;
+    }
+    .tabs-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 1px;
+      width: 48px;
+      background: linear-gradient(to right, transparent, #0a0a0a);
+      pointer-events: none;
+    }
     .tabs {
       display: flex;
       gap: 4px;
-      margin-bottom: 28px;
       border-bottom: 1px solid #1e1e1e;
       padding-bottom: 0;
       overflow-x: auto;
+      scrollbar-width: none;
     }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab {
       padding: 9px 18px;
       border: none;
@@ -292,13 +307,15 @@
 
   <div id="alert-box" style="display:none;"></div>
 
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('features')">Premium Features</button>
-    <button class="tab" onclick="switchTab('announcements')">Announcements</button>
-    <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
-    <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
-    <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
-    <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
+  <div class="tabs-wrapper">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('features')">Premium Features</button>
+      <button class="tab" onclick="switchTab('announcements')">Announcements</button>
+      <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
+      <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
+      <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
+      <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
+    </div>
   </div>
 
   <div id="panel-features" class="panel active">
