@@ -107,6 +107,13 @@
         <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Discord</a>
         <a href="/dashboard/" class="btn btn-secondary">Open Dashboard</a>
       </div>
+      <style>@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.35}}</style>
+      <div style="display:flex;justify-content:center;margin-top:20px;">
+        <div id="bot-status-badge" style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid transparent;opacity:0;transition:opacity 0.3s;">
+          <span id="bot-status-dot" style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>
+          <span id="bot-status-text">Checking...</span>
+        </div>
+      </div>
       <div class="hero-stats">
         <div class="stat">
           <div class="stat-value" id="stat-servers">&mdash;</div>
@@ -471,6 +478,32 @@
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
       document.getElementById('stat-users').textContent = data.users || '\u2014';
     }).catch(function() {});
+
+    fetch(API_BASE + '/api/bot-status').then(function(r) { return r.json(); }).then(function(data) {
+      var badge = document.getElementById('bot-status-badge');
+      var dot = document.getElementById('bot-status-dot');
+      var text = document.getElementById('bot-status-text');
+      if (data.online) {
+        badge.style.background = 'rgba(52,211,153,0.1)';
+        badge.style.borderColor = 'rgba(52,211,153,0.25)';
+        badge.style.color = '#34d399';
+        dot.style.animation = 'pulse-dot 2s infinite';
+        text.textContent = data.ping > 0 ? 'Bot Online \u2014 ' + data.ping + 'ms' : 'Bot Online';
+      } else {
+        badge.style.background = 'rgba(248,113,113,0.1)';
+        badge.style.borderColor = 'rgba(248,113,113,0.25)';
+        badge.style.color = '#f87171';
+        text.textContent = 'Bot Offline';
+      }
+      badge.style.opacity = '1';
+    }).catch(function() {
+      var badge = document.getElementById('bot-status-badge');
+      badge.style.background = 'rgba(248,113,113,0.1)';
+      badge.style.borderColor = 'rgba(248,113,113,0.25)';
+      badge.style.color = '#f87171';
+      document.getElementById('bot-status-text').textContent = 'Status Unknown';
+      badge.style.opacity = '1';
+    });
 
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
       function isFlagPremium(feat) {
