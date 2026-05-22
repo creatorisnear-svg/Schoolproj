@@ -26,6 +26,10 @@ const TEN_CODES = {
   '10-80': { label: '10-80 Pursuit', action: null },
   '10-97': { label: '10-97 On Scene', action: null },
   '10-99': { label: '10-99 Officer Down', action: null },
+  '10-19': { label: '10-19 Return to Station', action: null },
+  '10-50': { label: '10-50 Accident', action: null },
+  '10-52': { label: '10-52 EMS Requested', action: null },
+  '10-31': { label: '10-31 Crime in Progress', action: null },
 };
 
 const pendingStopMoveRequests = new Map();
@@ -284,6 +288,70 @@ async function runCADLookup(guildId, lookup) {
   return { found: false, ttsResponse: 'Unable to process lookup request.' };
 }
 
+function detectWarrantCheck(text) {
+  const lower = text.toLowerCase().trim();
+  const patterns = [
+    /(?:check|run|do\s+we\s+have|any|pull)\s+warrants?\s+(?:on|for)\s+(.+)/i,
+    /warrants?\s+(?:on|for)\s+(.+)/i,
+    /is\s+(.+?)\s+wanted/i,
+  ];
+  for (const p of patterns) {
+    const m = lower.match(p);
+    if (m?.[1]) return m[1].trim().replace(/[.,!?]+$/g, '');
+  }
+  return null;
+}
+
+function detectSerialLookup(text) {
+  const lower = text.toLowerCase().trim();
+  const patterns = [
+    /run\s+(?:the\s+)?(?:gun\s+)?serial\s+(?:number\s+)?([a-z0-9]{2,15})/i,
+    /check\s+(?:the\s+)?(?:gun\s+)?serial\s+(?:number\s+)?([a-z0-9]{2,15})/i,
+    /serial\s+(?:number\s+)?(?:is\s+)?([a-z0-9]{2,15})\s+(?:run|check|look)/i,
+    /(?:run|check)\s+(?:a\s+)?(?:gun\s+)?serial\s+([a-z0-9]{2,15})/i,
+  ];
+  for (const p of patterns) {
+    const m = lower.match(p);
+    if (m?.[1]) {
+      const serial = m[1].trim().toUpperCase();
+      if (serial.length >= 2 && serial.length <= 15) return serial;
+    }
+  }
+  return null;
+}
+
+function detectBackupRequest(text) {
+  const lower = text.toLowerCase().trim();
+  if (/\b(?:need(?:ing)?\s+backup|requesting\s+(?:backup|additional\s+units?)|request\s+(?:a\s+)?backup|send\s+(?:backup|additional\s+units?|another\s+unit)|i\s+need\s+(?:another\s+unit|additional\s+units?)|need\s+additional\s+units?)\b/i.test(lower)) {
+    const locMatch = lower.match(/\bat\s+(.{2,40}?)(?:\s*$)/i);
+    return { requested: true, location: locMatch?.[1]?.trim() || null };
+  }
+  return null;
+}
+
+function detectCodeFour(text) {
+  return /\b(?:code\s+(?:4|four)|all\s+clear|scene\s+is\s+(?:clear|secure|all\s+clear)|everything(?:'s|\s+is)\s+(?:clear|code\s+(?:4|four))|i(?:'m|m)\s+(?:clear|code\s+(?:4|four))|we(?:'re|\s+are)\s+(?:clear|code\s+(?:4|four)))\b/i.test(text);
+}
+
+function detectUnitsCheck(text) {
+  return /\b(?:how\s+many\s+(?:units?|officers?)|(?:who(?:'s|\s+is)\s+)?(?:units?\s+)?available\??|what\s+units?\s+(?:are\s+)?(?:available|on\s+duty)|(?:list|show\s+me)\s+(?:available\s+)?(?:units?|officers?)|units?\s+on\s+duty|who(?:'s|\s+is)\s+on\s+duty|how\s+many\s+(?:cops?|units?)\s+(?:are\s+)?(?:out|on\s+duty))\b/i.test(text);
+}
+
+function detectEMSRequest(text) {
+  const lower = text.toLowerCase().trim();
+  const withLoc = lower.match(/\b(?:send|need|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire(?:\s+department)?|fire(?:men|fighters)?))\s+(?:to|at)\s+(.{2,40}?)(?:\s*$)/i);
+  if (withLoc) {
+    const type = /fire/i.test(withLoc[1]) ? 'fire' : 'ems';
+    return { type, location: withLoc[2].trim() };
+  }
+  const withoutLoc = lower.match(/\b(?:need|send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic|fire))\b/i);
+  if (withoutLoc) {
+    const type = /fire/i.test(withoutLoc[1]) ? 'fire' : 'ems';
+    return { type, location: null };
+  }
+  return null;
+}
+
 /**
  * Simple name similarity scorer (0–1).
  * Strips non-alphanumeric, checks exact, substring, and token-overlap matches.
@@ -400,6 +468,14 @@ const PHRASE_ALIASES = [
   [/\b(?:on\s+scene|arrived?\s+(?:on\s+)?(?:scene|location)|i(?:'m|m)\s+(?:on\s+scene|at\s+the\s+scene|on\s+location))\b/i, '10-97'],
   // 10-99 — Officer Down / Emergency
   [/\b(?:officer\s+down|shots?\s+fired|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|mayday|emergency)\b/i, '10-99'],
+  // 10-19 — Return to Station
+  [/\b(?:returning\s+to\s+(?:the\s+)?station|heading\s+back\s+to\s+(?:the\s+)?station|going\s+(?:back\s+to\s+)?(?:the\s+)?station|back\s+to\s+(?:the\s+)?station)\b/i, '10-19'],
+  // 10-50 — Accident
+  [/\b(?:vehicle\s+accident|traffic\s+accident|crash(?:ed)?|accident\s+(?:at|on|near)|we\s+have\s+an?\s+accident|reporting\s+an?\s+accident)\b/i, '10-50'],
+  // 10-52 — EMS Requested (natural phrases without a location)
+  [/\b(?:need\s+(?:an?\s+)?(?:ambulance|ems|medic(?:al)?)|requesting\s+(?:an?\s+)?(?:ambulance|ems|medics?)|send\s+(?:an?\s+)?(?:ambulance|ems|medics?))\b/i, '10-52'],
+  // 10-31 — Crime in Progress
+  [/\b(?:crime\s+in\s+progress|robbery\s+in\s+progress|shots?\s+fired\s+(?:at|on|near)|burglary\s+in\s+progress|suspect\s+is\s+(?:running|fleeing|armed))\b/i, '10-31'],
 ];
 
 function normalizeSpokenCodes(text) {
@@ -482,9 +558,10 @@ function parseTranscript(text) {
 }
 
 const WHISPER_PROMPT =
-  'Police radio communication. Common terms: dispatch, 10-4, 10-7, 10-8, 10-11, 10-20, 10-80, 10-97, 10-99, ' +
+  'Police radio communication. Common terms: dispatch, 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-31, 10-50, 10-52, 10-78, 10-80, 10-97, 10-99, ' +
   'traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, run the plate, run the name, ' +
-  'pulling over, backing up, requesting backup, officer down, copy that.';
+  'check warrants on, run serial number, requesting backup, need backup, units available, code four, all clear, ' +
+  'send EMS, send fire, accident on scene, crime in progress, pulling over, officer down, copy that.';
 
 async function transcribeAudio(wavBuffer) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
@@ -644,9 +721,10 @@ function ttsCacheKey(text) {
 const CODE_TO_SPEECH = {
   '10-4': 'ten four', '10-6': 'ten six', '10-7': 'ten seven', '10-8': 'ten eight',
   '10-11': 'ten eleven', '10-12': 'ten twelve', '10-15': 'ten fifteen',
-  '10-17': 'ten seventeen', '10-20': 'ten twenty', '10-76': 'ten seventy six',
-  '10-78': 'ten seventy eight', '10-80': 'ten eighty', '10-97': 'ten ninety seven',
-  '10-99': 'ten ninety nine',
+  '10-17': 'ten seventeen', '10-19': 'ten nineteen', '10-20': 'ten twenty',
+  '10-31': 'ten thirty one', '10-50': 'ten fifty', '10-52': 'ten fifty two',
+  '10-76': 'ten seventy six', '10-78': 'ten seventy eight', '10-80': 'ten eighty',
+  '10-97': 'ten ninety seven', '10-99': 'ten ninety nine',
 };
 
 function formatCodeForSpeech(text) {
@@ -1157,6 +1235,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
             `Say dispatch attach me to followed by an officer name to move yourself to that officer's traffic stop channel.`,
             `Say ten eighty if you initiate a pursuit and I will broadcast an all units alert and find you backup.`,
             `Say ten ninety nine or officer down and I will send an immediate panic alert to all units.`,
+            `Say dispatch check warrants on followed by a name to run a warrant check.`,
+            `Say dispatch run serial followed by the serial number to check a firearm registration.`,
+            `Say dispatch requesting backup to broadcast an all units backup alert.`,
+            `Say dispatch code four or all clear to mark yourself ten eight from a scene.`,
+            `Say dispatch units available to hear how many officers are on duty and who is free.`,
+            `Say dispatch send EMS to or dispatch send fire to followed by a location to request emergency services.`,
             `I will check on you every minute while you are on scene and call out any officers every ten minutes who have not updated their status.`,
           ].join(' ');
           const ttsBuffer = await generateDispatchTTS(ttsText);
@@ -1321,6 +1405,265 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
     }
     // --- End stay-with-me detection ---
+
+    // --- Warrant check detection ---
+    const warrantTarget = detectWarrantCheck(transcript);
+    if (warrantTarget) {
+      console.log(`[Dispatch] Warrant check detected for "${warrantTarget}" by ${officerName}`);
+      const result = await runCADLookup(guild.id, { type: 'name', query: warrantTarget });
+
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Warrant Check')
+          .setFooter({ text: 'RPM' })
+          .setTimestamp()
+          .addFields(
+            { name: 'Requested By', value: `<@${userId}>`, inline: true },
+            { name: 'Subject', value: warrantTarget, inline: true },
+          );
+        if (result.found) {
+          const isWanted = result.embed.status === 'WANTED';
+          embed.addFields(
+            { name: 'Name', value: result.embed.name, inline: true },
+            { name: 'Warrant Status', value: isWanted ? '**WANTED** — Active warrants on file' : 'No active warrants', inline: false },
+            { name: 'License', value: result.embed.license || 'Unknown', inline: true },
+          );
+          if (result.embed.age) embed.addFields({ name: 'Age', value: `${result.embed.age}`, inline: true });
+          if (result.embed.hasBolo) embed.addFields({ name: 'Active BOLO', value: result.embed.boloReason, inline: false });
+        } else {
+          embed.addFields({ name: 'Result', value: 'No records found in system', inline: false });
+        }
+        embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      let tts;
+      if (!result.found) {
+        tts = `Negative ${officerName}, no records found for ${warrantTarget} in the system.`;
+      } else if (result.embed.status === 'WANTED') {
+        tts = `${officerName}, ${result.embed.name} is showing WANTED. Active warrants on file. Use caution.`;
+        if (result.embed.hasBolo) tts += ` Active BOLO on file: ${result.embed.boloReason}.`;
+      } else {
+        tts = `${officerName}, ${result.embed.name} comes back clear, no active warrants.`;
+        if (result.embed.hasBolo) tts += ` Note: active BOLO on this individual. ${result.embed.boloReason}.`;
+      }
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(tts);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] Warrant check error:', err.message); }
+      }
+      return;
+    }
+    // --- End warrant check ---
+
+    // --- Firearm serial lookup ---
+    const serialQuery = detectSerialLookup(transcript);
+    if (serialQuery) {
+      console.log(`[Dispatch] Serial lookup: "${serialQuery}" by ${officerName}`);
+      const escapedSerial = serialQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const character = await CADCharacter.findOne({
+        guildId: guild.id,
+        'firearms.serialNumber': { $regex: new RegExp(`^${escapedSerial}$`, 'i') },
+      });
+
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+      let tts;
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Firearm Serial Lookup')
+          .setFooter({ text: 'RPM' })
+          .setTimestamp()
+          .addFields(
+            { name: 'Requested By', value: `<@${userId}>`, inline: true },
+            { name: 'Serial', value: serialQuery, inline: true },
+          );
+        if (character) {
+          const firearm = character.firearms?.find(f => f.serialNumber?.toUpperCase() === serialQuery);
+          const fa = firearm ? `${firearm.make || ''} ${firearm.model || ''}`.trim() || 'Unknown' : 'Unknown';
+          embed.addFields(
+            { name: 'Registered Owner', value: character.characterName, inline: true },
+            { name: 'Firearm', value: fa, inline: true },
+            { name: 'Owner Status', value: character.status === 'wanted' ? '**WANTED**' : 'Clean', inline: true },
+          );
+          tts = `Serial ${serialQuery.split('').join(' ')} comes back registered to ${character.characterName}, ${fa}.`;
+          if (character.status === 'wanted') tts += ` Caution, owner is showing WANTED.`;
+        } else {
+          embed.addFields({ name: 'Result', value: 'No records found — serial not registered in system', inline: false });
+          tts = `Serial ${serialQuery.split('').join(' ')} comes back with no records. Firearm is not registered in the system. Use caution.`;
+        }
+        embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+      if (tts && config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(tts);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] Serial lookup error:', err.message); }
+      }
+      return;
+    }
+    // --- End serial lookup ---
+
+    // --- Backup request detection ---
+    const backupReq = detectBackupRequest(transcript);
+    if (backupReq) {
+      console.log(`[Dispatch] Backup requested by ${officerName}${backupReq.location ? ` at ${backupReq.location}` : ''}`);
+      const allStatuses = await OfficerStatus.find({ guildId: guild.id });
+      const available = allStatuses.filter(s => s.tenCode === '10-8' && s.userId !== userId);
+
+      await updateOfficerStatus(guild.id, userId, officerName, '10-78',
+        { code: '10-78', codeInfo: TEN_CODES['10-78'], subject: null, location: backupReq.location, rawText: transcript },
+        null, null);
+
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+      if (dispatchCh?.isTextBased()) {
+        const availText = available.length > 0 ? available.map(o => o.username).join(', ') : 'None showing available';
+        const embed = new EmbedBuilder()
+          .setColor('#f04747')
+          .setTitle('10-78 — Backup Requested')
+          .setDescription(
+            `**Officer:** <@${userId}>\n` +
+            (backupReq.location ? `**Location:** ${backupReq.location}\n` : '') +
+            `**Available Units:** ${availText}\n\n` +
+            `All available units please respond to <@${userId}>'s location. Say **10-76** to respond.`
+          )
+          .setFooter({ text: 'RPM • Dispatch' })
+          .setTimestamp();
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      let tts = `All units, all units. ${officerName} is requesting backup`;
+      if (backupReq.location) tts += ` at ${backupReq.location}`;
+      tts += '.';
+      if (available.length > 0) {
+        tts += ` Available units: ${available.map(o => o.username).join(', ')}. Please respond.`;
+      } else {
+        tts += ' No units currently showing available.';
+      }
+      tts += ' Say ten seventy six to respond.';
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(tts);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] Backup request error:', err.message); }
+      }
+      await rebuildStatusBoard(guild, config);
+      return;
+    }
+    // --- End backup request ---
+
+    // --- Code 4 / scene clear detection ---
+    if (detectCodeFour(transcript)) {
+      console.log(`[Dispatch] Code 4 / all clear from ${officerName}`);
+      await updateOfficerStatus(guild.id, userId, officerName, '10-8',
+        { code: '10-8', codeInfo: TEN_CODES['10-8'], subject: null, location: null, rawText: transcript },
+        null, null);
+
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor('#43b581')
+          .setTitle('Code 4 — Scene Clear')
+          .setDescription(`**Officer:** <@${userId}>\nScene is code four. Showing **10-8 Available**.`)
+          .setFooter({ text: 'RPM • Dispatch' })
+          .setTimestamp();
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsText = `Copy ${officerName}, code four, scene is clear. Marking you ten eight, available.`;
+          const ttsBuffer = await generateDispatchTTS(ttsText);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] Code 4 error:', err.message); }
+      }
+      await rebuildStatusBoard(guild, config);
+      return;
+    }
+    // --- End code 4 ---
+
+    // --- Units available check ---
+    if (detectUnitsCheck(transcript)) {
+      console.log(`[Dispatch] Units check requested by ${officerName}`);
+      const allStatuses = await OfficerStatus.find({ guildId: guild.id });
+      const available = allStatuses.filter(s => s.tenCode === '10-8');
+      const onStop = allStatuses.filter(s => s.tenCode === '10-11');
+      const inPursuit = allStatuses.filter(s => s.tenCode === '10-80');
+      const total = allStatuses.length;
+
+      let tts = `${officerName}, showing ${total} unit${total !== 1 ? 's' : ''} on duty. `;
+      if (available.length > 0) {
+        tts += `${available.length} available: ${available.map(o => o.username).join(', ')}. `;
+      } else {
+        tts += 'No units currently showing available. ';
+      }
+      if (onStop.length > 0) tts += `${onStop.length} on traffic stop. `;
+      if (inPursuit.length > 0) tts += `${inPursuit.length} in pursuit. `;
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(tts);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] Units check error:', err.message); }
+      }
+      return;
+    }
+    // --- End units check ---
+
+    // --- EMS / Fire request ---
+    const emsReq = detectEMSRequest(transcript);
+    if (emsReq) {
+      console.log(`[Dispatch] ${emsReq.type.toUpperCase()} request by ${officerName}${emsReq.location ? ` at ${emsReq.location}` : ''}`);
+      const serviceLabel = emsReq.type === 'fire' ? 'Fire Department' : 'EMS';
+      const serviceColor = emsReq.type === 'fire' ? '#f59e0b' : '#5b9cf6';
+
+      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      if (dispatchCh?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor(serviceColor)
+          .setTitle(`${serviceLabel} Requested`)
+          .setDescription(
+            `**Requesting Officer:** <@${userId}>\n` +
+            (emsReq.location ? `**Location:** ${emsReq.location}\n` : '') +
+            `\n${serviceLabel} has been requested by <@${userId}>. Please respond to the scene.`
+          )
+          .setFooter({ text: 'RPM • Dispatch' })
+          .setTimestamp();
+        await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+      }
+
+      let tts = `Copy ${officerName}, requesting ${serviceLabel}`;
+      if (emsReq.location) tts += ` to ${emsReq.location}`;
+      tts += `. ${serviceLabel}, please respond.`;
+
+      if (config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(tts);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) { console.error('[Dispatch TTS] EMS/Fire error:', err.message); }
+      }
+      return;
+    }
+    // --- End EMS / Fire request ---
 
     const parsed = parseTranscript(transcript);
 
