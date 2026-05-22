@@ -1031,6 +1031,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         let ttsRelease = `Copy ${ttsName}, stop is released`;
         if (stopMins > 0) ttsRelease += `. Stop duration was ${stopMins} minute${stopMins !== 1 ? 's' : ''}`;
         ttsRelease += `. Showing you ten eight, available.`;
+        addToRadioLog(guild.id, cleanNameForTTS(officerName), transcript, ttsRelease);
         const ttsPRelease = startTTS(ttsRelease, config);
 
         if (dispatchCh?.isTextBased()) {
@@ -1147,6 +1148,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
         const ttsJoin = `Copy ${ttsName}, showing you ten eleven on the traffic stop with ${civName}. Would you like me to move both parties to the traffic stop channel?`;
+        addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsJoin);
         const ttsPJoin = startTTS(ttsJoin, config);
 
         await rebuildStatusBoard(guild, config);
@@ -1157,7 +1159,9 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
           null, null);
         const civNameFb = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
-        const ttsPFb = startTTS(`Copy ${ttsName}, showing you ten eleven on the stop with ${civNameFb}. No stop channels available right now.`, config);
+        const ttsFb = `Copy ${ttsName}, showing you ten eleven on the stop with ${civNameFb}. No stop channels available right now.`;
+        addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsFb);
+        const ttsPFb = startTTS(ttsFb, config);
         await rebuildStatusBoard(guild, config);
         await playTTS(ttsPFb, guild.id);
       }
@@ -1277,10 +1281,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         if (!call) {
           console.log('[Dispatch] No active 911 calls to attach to');
+          const ttsNoCall = `Negative ${ttsName}, there are no active 911 calls at this time.`;
+          addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsNoCall);
           if (config.aiEnabled && hasAIKey()) {
-            const ttsText = `Negative ${ttsName}, there are no active 911 calls at this time.`;
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsBuffer = await generateDispatchTTS(ttsText);
+            const ttsBuffer = await generateDispatchTTS(ttsNoCall);
             playDispatchVoice(guild.id, ttsBuffer);
           }
           return;
@@ -1292,10 +1297,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         if (alreadyAttached || isPrimary) {
           console.log(`[Dispatch] ${officerName} already on call #${callNum}`);
+          const ttsAlready = `${ttsName}, you are already ${isPrimary ? 'primary responder' : 'attached'} on call number ${callNum}.`;
+          addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsAlready);
           if (config.aiEnabled && hasAIKey()) {
-            const ttsText = `${ttsName}, you are already ${isPrimary ? 'primary responder' : 'attached'} on call number ${callNum}.`;
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsBuffer = await generateDispatchTTS(ttsText);
+            const ttsBuffer = await generateDispatchTTS(ttsAlready);
             playDispatchVoice(guild.id, ttsBuffer);
           }
           return;
@@ -1365,11 +1371,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           }
         }
 
+        const ttsAttach = `Copy ${ttsName}, showing you as ${role} on call number ${callNum}. ${call.issue || ''} at ${call.location || 'unknown location'}.`;
+        addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsAttach);
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = `Copy ${ttsName}, showing you as ${role} on call number ${callNum}. ${call.issue || ''} at ${call.location || 'unknown location'}.`;
-            const ttsBuffer = await generateDispatchTTS(ttsText);
+            const ttsBuffer = await generateDispatchTTS(ttsAttach);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch (err) {
             console.error('[Dispatch TTS] Attach voice error:', err.message);
@@ -1620,6 +1627,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         tts = `${ttsName}, ${result.embed.name} comes back clear, no active warrants.`;
         if (result.embed.hasBolo) tts += ` Note: active BOLO on this individual. ${result.embed.boloReason}.`;
       }
+      addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, tts);
       if (config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
@@ -1672,12 +1680,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
-      if (tts && config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsBuffer = await generateDispatchTTS(tts);
-          playDispatchVoice(guild.id, ttsBuffer);
-        } catch (err) { console.error('[Dispatch TTS] Serial lookup error:', err.message); }
+      if (tts) {
+        addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, tts);
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsBuffer = await generateDispatchTTS(tts);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) { console.error('[Dispatch TTS] Serial lookup error:', err.message); }
+        }
       }
       return;
     }
@@ -1706,6 +1717,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         ttsBackup += ' No units currently showing available.';
       }
       ttsBackup += ' Say ten seventy six to respond.';
+      addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsBackup);
       const ttsPBackup = startTTS(ttsBackup, config);
 
       if (dispatchCh?.isTextBased()) {
@@ -1749,11 +1761,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
 
+      const ttsCode4 = `Copy ${ttsName}, code four, scene is clear. Marking you ten eight, available.`;
+      addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsCode4);
       if (config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsText = `Copy ${ttsName}, code four, scene is clear. Marking you ten eight, available.`;
-          const ttsBuffer = await generateDispatchTTS(ttsText);
+          const ttsBuffer = await generateDispatchTTS(ttsCode4);
           playDispatchVoice(guild.id, ttsBuffer);
         } catch (err) { console.error('[Dispatch TTS] Code 4 error:', err.message); }
       }
@@ -1773,13 +1786,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
       let tts = `${ttsName}, showing ${total} unit${total !== 1 ? 's' : ''} on duty. `;
       if (available.length > 0) {
-        tts += `${available.length} available: ${available.map(o => o.username).join(', ')}. `;
+        tts += `${available.length} available: ${available.map(o => cleanNameForTTS(o.username)).join(', ')}. `;
       } else {
         tts += 'No units currently showing available. ';
       }
       if (onStop.length > 0) tts += `${onStop.length} on traffic stop. `;
       if (inPursuit.length > 0) tts += `${inPursuit.length} in pursuit. `;
-
+      addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, tts);
       if (config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
@@ -1803,6 +1816,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       let ttsEms = `Copy ${ttsName}, requesting ${serviceLabel}`;
       if (emsReq.location) ttsEms += ` to ${emsReq.location}`;
       ttsEms += `. ${serviceLabel}, please respond.`;
+      addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsEms);
       const ttsPEms = startTTS(ttsEms, config);
 
       if (dispatchCh?.isTextBased()) {
