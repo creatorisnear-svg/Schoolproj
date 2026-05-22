@@ -446,7 +446,7 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      const silenceDuration = 2500;
+      const silenceDuration = 1500;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });
@@ -476,7 +476,8 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      if (pcmChunks.length < 2) return;
+      // Require at least 10 chunks (~200ms) to filter out noise bursts and pops
+      if (pcmChunks.length < 10) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         try { await onTranscription(wav, userId, guild); }
@@ -747,10 +748,35 @@ export function getCurrentChannelId(guildId) {
   return dispatchState.get(guildId)?.currentChannelId ?? null;
 }
 
+/**
+ * Downsample 48kHz stereo 16-bit PCM → 16kHz mono 16-bit PCM.
+ * Whisper is trained on 16kHz mono — this is the single biggest accuracy gain.
+ * Ratio 3:1 (48000 / 16000). Average L+R → mono, then take every 3rd sample.
+ */
+function downsampleTo16kMono(pcmData) {
+  const RATIO = 3;
+  const numInputFrames = Math.floor(pcmData.length / 4); // 2ch * 2bytes
+  const numOutputSamples = Math.floor(numInputFrames / RATIO);
+  const out = Buffer.alloc(numOutputSamples * 2);
+  for (let i = 0; i < numOutputSamples; i++) {
+    let sum = 0;
+    for (let j = 0; j < RATIO; j++) {
+      const src = (i * RATIO + j) * 4;
+      if (src + 3 >= pcmData.length) break;
+      const left  = pcmData.readInt16LE(src);
+      const right = pcmData.readInt16LE(src + 2);
+      sum += (left + right) >> 1;
+    }
+    out.writeInt16LE(Math.round(sum / RATIO), i * 2);
+  }
+  return out;
+}
+
 function createWavBuffer(pcmChunks) {
-  const pcmData = Buffer.concat(pcmChunks);
-  const numChannels = 2;
-  const sampleRate = 48000;
+  const rawPcm = Buffer.concat(pcmChunks);
+  const pcmData = downsampleTo16kMono(rawPcm);
+  const numChannels = 1;
+  const sampleRate = 16000;
   const bitsPerSample = 16;
   const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
   const blockAlign = (numChannels * bitsPerSample) / 8;

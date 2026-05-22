@@ -899,6 +899,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (!transcript || transcript.trim().length < 3) return;
     console.log(`[Dispatch] Transcript: "${transcript}"`);
 
+    // Dedup: ignore identical transcripts from the same user within 8 seconds
+    const dedupKey = `${guild.id}:${userId}`;
+    const now = Date.now();
+    const lastEntry = _transcriptDedup.get(dedupKey);
+    const normalized = transcript.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+    if (lastEntry && (now - lastEntry.ts < 8000) && lastEntry.text === normalized) {
+      console.log(`[Dispatch] Dedup — ignoring repeated transcript from ${officerName}`);
+      return;
+    }
+    _transcriptDedup.set(dedupKey, { ts: now, text: normalized });
+
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
 
     {
@@ -1906,18 +1917,26 @@ async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, l
   );
 }
 
+// Per-user transcript dedup map { guildId:userId → { ts, text } }
+const _transcriptDedup = new Map();
+
 // Status category helpers for the board
-const SCENE_CODES = new Set(['10-11', '10-97', '10-78', '10-80', '10-99']);
-const BUSY_CODES  = new Set(['10-6', '10-7']);
+const SCENE_CODES = new Set(['10-11', '10-97', '10-50', '10-31', '10-52']);
+const BUSY_CODES  = new Set(['10-6', '10-7', '10-19']);
+const ALERT_CODES = new Set(['10-99', '10-80', '10-78']);
 const CODE_PREFIX = {
   '10-8':  '[AVL]',
   '10-11': '[STOP]',
   '10-97': '[SCENE]',
   '10-80': '[PURSUIT]',
   '10-99': '[PANIC]',
-  '10-78': '[ASSIST]',
+  '10-78': '[BACKUP]',
   '10-6':  '[BUSY]',
   '10-7':  '[OOS]',
+  '10-19': '[RTB]',
+  '10-50': '[ACCIDENT]',
+  '10-52': '[EMS REQ]',
+  '10-31': '[CRIME]',
 };
 
 export async function rebuildStatusBoard(guild, config) {
@@ -1946,10 +1965,11 @@ export async function rebuildStatusBoard(guild, config) {
 
   const embeds = [];
 
-  // Dynamic board color: red if any panic/pursuit is active, dark otherwise
+  // Dynamic board color: red if panic active, orange if pursuit, dark otherwise
   const hasPanic    = officers.some(o => o.tenCode === '10-99');
   const hasPursuit  = officers.some(o => o.tenCode === '10-80');
-  const boardColor  = hasPanic ? '#FF0000' : hasPursuit ? '#FF4500' : '#2d2d2d';
+  const hasBackup   = officers.some(o => o.tenCode === '10-78');
+  const boardColor  = hasPanic ? '#FF0000' : hasPursuit ? '#FF4500' : hasBackup ? '#f59e0b' : '#2d2d2d';
 
   const officerEmbed = new EmbedBuilder()
     .setColor(boardColor)
@@ -1958,16 +1978,22 @@ export async function rebuildStatusBoard(guild, config) {
     .setTimestamp();
 
   // ── Stats summary header ──────────────────────────────────────────────────
-  const onSceneCount    = officers.filter(o => SCENE_CODES.has(o.tenCode)).length;
-  const availableCount  = officers.filter(o => o.tenCode === '10-8').length;
-  const busyCount       = officers.filter(o => BUSY_CODES.has(o.tenCode)).length;
-  const totalDuty       = officers.length;
+  const panicOfficers   = officers.filter(o => o.tenCode === '10-99');
+  const pursuitOfficers = officers.filter(o => o.tenCode === '10-80');
+  const backupOfficers  = officers.filter(o => o.tenCode === '10-78');
+  const sceneOfficers   = officers.filter(o => SCENE_CODES.has(o.tenCode));
+  const availOfficers   = officers.filter(o => o.tenCode === '10-8');
+  const busyOfficers    = officers.filter(o => BUSY_CODES.has(o.tenCode));
+  const otherOfficers   = officers.filter(o =>
+    !ALERT_CODES.has(o.tenCode) && !SCENE_CODES.has(o.tenCode) &&
+    o.tenCode !== '10-8' && !BUSY_CODES.has(o.tenCode)
+  );
 
   const statLine = [
-    `Avail: ${availableCount}`,
-    `On Scene: ${onSceneCount}`,
-    `Busy/OOS: ${busyCount}`,
-    `On Duty: ${totalDuty}`,
+    `Avail: **${availOfficers.length}**`,
+    `On Scene: **${sceneOfficers.length}**`,
+    `Busy: **${busyOfficers.length}**`,
+    `On Duty: **${officers.length}**`,
   ].join('  ·  ');
 
   const headerParts = [statLine];
@@ -1997,7 +2023,7 @@ export async function rebuildStatusBoard(guild, config) {
     headerParts.push(`**${unresponded.length} UNRESPONDED CALL${unresponded.length !== 1 ? 'S' : ''}** — Units needed!`);
   }
 
-  // ── Officer rows ──────────────────────────────────────────────────────────
+  // ── Officer row builder ───────────────────────────────────────────────────
   const buildRow = (o) => {
     const codeLabel = TEN_CODES[o.tenCode]?.label || o.tenCode;
     const prefix    = CODE_PREFIX[o.tenCode] || `[${o.tenCode}]`;
@@ -2008,7 +2034,7 @@ export async function rebuildStatusBoard(guild, config) {
     if (o.location)             line += `\n   ╟ Location: ${o.location}`;
     if (o.trafficStopChannelId) line += `\n   ╟ Channel: <#${o.trafficStopChannelId}>`;
 
-    if (SCENE_CODES.has(o.tenCode) && o.trafficStopStartAt) {
+    if ((SCENE_CODES.has(o.tenCode) || ALERT_CODES.has(o.tenCode)) && o.trafficStopStartAt) {
       const mins = Math.floor((Date.now() - new Date(o.trafficStopStartAt).getTime()) / 60000);
       if (mins > 0) line += `\n   ╟ On scene: **${mins} min**`;
     }
@@ -2027,18 +2053,42 @@ export async function rebuildStatusBoard(guild, config) {
     return line;
   };
 
-  const onScene   = officers.filter(o => SCENE_CODES.has(o.tenCode));
-  const available = officers.filter(o => o.tenCode === '10-8');
-  const busy      = officers.filter(o => BUSY_CODES.has(o.tenCode));
-  const other     = officers.filter(o =>
-    !SCENE_CODES.has(o.tenCode) && o.tenCode !== '10-8' && !BUSY_CODES.has(o.tenCode)
-  );
-
+  // ── Build sections in priority order ─────────────────────────────────────
   const sections = [];
-  if (onScene.length > 0)   sections.push(`**━━ ON SCENE (${onScene.length}) ━━**\n` + onScene.map(buildRow).join('\n\n'));
-  if (available.length > 0) sections.push(`**━━ AVAILABLE (${available.length}) ━━**\n` + available.map(buildRow).join('\n\n'));
-  if (busy.length > 0)      sections.push(`**━━ BUSY / OOS (${busy.length}) ━━**\n` + busy.map(buildRow).join('\n\n'));
-  if (other.length > 0)     sections.push(`**━━ OTHER (${other.length}) ━━**\n` + other.map(buildRow).join('\n\n'));
+
+  if (panicOfficers.length > 0)
+    sections.push(`**━━ OFFICER DOWN / PANIC (${panicOfficers.length}) ━━**\n` + panicOfficers.map(buildRow).join('\n\n'));
+
+  if (pursuitOfficers.length > 0)
+    sections.push(`**━━ PURSUIT ACTIVE (${pursuitOfficers.length}) ━━**\n` + pursuitOfficers.map(buildRow).join('\n\n'));
+
+  if (backupOfficers.length > 0)
+    sections.push(`**━━ BACKUP REQUESTED (${backupOfficers.length}) ━━**\n` + backupOfficers.map(buildRow).join('\n\n'));
+
+  const accidentOfficers = sceneOfficers.filter(o => o.tenCode === '10-50');
+  if (accidentOfficers.length > 0)
+    sections.push(`**━━ ACCIDENT SCENE (${accidentOfficers.length}) ━━**\n` + accidentOfficers.map(buildRow).join('\n\n'));
+
+  const crimeOfficers = sceneOfficers.filter(o => o.tenCode === '10-31');
+  if (crimeOfficers.length > 0)
+    sections.push(`**━━ CRIME IN PROGRESS (${crimeOfficers.length}) ━━**\n` + crimeOfficers.map(buildRow).join('\n\n'));
+
+  const emsReqOfficers = sceneOfficers.filter(o => o.tenCode === '10-52');
+  if (emsReqOfficers.length > 0)
+    sections.push(`**━━ EMS REQUESTED (${emsReqOfficers.length}) ━━**\n` + emsReqOfficers.map(buildRow).join('\n\n'));
+
+  const generalSceneOfficers = sceneOfficers.filter(o => !['10-50', '10-31', '10-52'].includes(o.tenCode));
+  if (generalSceneOfficers.length > 0)
+    sections.push(`**━━ ON SCENE (${generalSceneOfficers.length}) ━━**\n` + generalSceneOfficers.map(buildRow).join('\n\n'));
+
+  if (availOfficers.length > 0)
+    sections.push(`**━━ AVAILABLE (${availOfficers.length}) ━━**\n` + availOfficers.map(buildRow).join('\n\n'));
+
+  if (busyOfficers.length > 0)
+    sections.push(`**━━ BUSY / OOS (${busyOfficers.length}) ━━**\n` + busyOfficers.map(buildRow).join('\n\n'));
+
+  if (otherOfficers.length > 0)
+    sections.push(`**━━ OTHER (${otherOfficers.length}) ━━**\n` + otherOfficers.map(buildRow).join('\n\n'));
 
   const officerSection = sections.length > 0 ? sections.join('\n\n') : '*No officers currently on duty.*';
   const fullDesc = headerParts.join('\n') + '\n\n' + officerSection;
@@ -2056,22 +2106,61 @@ export async function rebuildStatusBoard(guild, config) {
       const since   = `<t:${Math.floor(new Date(c.timestamp).getTime() / 1000)}:R>`;
       const callNum = c.callId?.split('-').pop() || '???';
       const noUnits = !c.respondingLeoId && (!c.attachedLeoIds || c.attachedLeoIds.length === 0);
+      const ageMinutes = Math.floor((Date.now() - new Date(c.timestamp).getTime()) / 60000);
 
-      let line = `**Call #${callNum}**${noUnits ? ' 🆘' : ''} · ${since}`;
-      if (c.issue)    line += `\n┗ ${c.issue}`;
-      if (c.location) line += ` @ ${c.location}`;
-      if (c.suspectsDescription) line += `\n┗ Suspects: ${c.suspectsDescription}`;
+      let line = `**Call #${callNum}** · ${since}${noUnits ? ' — **NO UNITS**' : ''}`;
+      if (ageMinutes > 0) line += ` · **${ageMinutes}m old**`;
+      if (c.issue)    line += `\n┣ Issue: ${c.issue}`;
+      if (c.location) line += `\n┣ Location: ${c.location}`;
+      if (c.suspectsDescription) line += `\n┣ Suspects: ${c.suspectsDescription}`;
 
-      if (c.respondingLeoId)    line += `\n┗ Primary: <@${c.respondingLeoId}>`;
+      if (c.respondingLeoId)    line += `\n┣ Primary: <@${c.respondingLeoId}>`;
       const attached = (c.attachedLeoIds || []).filter(id => id !== c.respondingLeoId);
-      if (attached.length > 0)  line += `\n┗ Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
-      if (noUnits)               line += `\n┗ **⚠ NO UNITS RESPONDING**`;
+      if (attached.length > 0)  line += `\n┣ Attached: ${attached.map(id => `<@${id}>`).join(', ')}`;
+      if (noUnits)               line += `\n┗ No units responding`;
+      else                       line += `\n┗ Units on scene`;
 
       return line;
     });
 
     callEmbed.setDescription(callRows.join('\n\n').slice(0, 4096));
     embeds.push(callEmbed);
+  }
+
+  // ── Active BOLOs embed ────────────────────────────────────────────────────
+  if (boloCount > 0) {
+    let activeBOLOs = [];
+    try {
+      activeBOLOs = await BOLO.find({ guildId: guild.id, active: true })
+        .sort({ createdAt: -1 }).limit(8);
+    } catch {}
+
+    if (activeBOLOs.length > 0) {
+      const boloEmbed = new EmbedBuilder()
+        .setColor('#faa61a')
+        .setTitle(`Active BOLOs (${boloCount})`)
+        .setFooter({ text: 'RPM • CAD' })
+        .setTimestamp();
+
+      const boloRows = activeBOLOs.map(b => {
+        const num     = b.boloId?.split('-').pop() || '???';
+        const issued  = `<t:${Math.floor(new Date(b.createdAt).getTime() / 1000)}:R>`;
+        let line = `**BOLO #${num}** — **${b.characterName}** · ${issued}`;
+        line += `\n┣ Reason: ${b.reason}`;
+        if (b.description) line += `\n┣ Description: ${b.description}`;
+        const veh = b.vehicles?.[0];
+        if (veh) {
+          const vehStr = [veh.year, veh.color, veh.make, veh.model].filter(Boolean).join(' ');
+          line += `\n┣ Vehicle: ${vehStr}${veh.licensePlate ? ` (${veh.licensePlate})` : ''}`;
+        }
+        line += `\n┗ Issued by: ${b.issuedBy}`;
+        return line;
+      });
+
+      if (boloCount > 8) boloRows.push(`*...and ${boloCount - 8} more*`);
+      boloEmbed.setDescription(boloRows.join('\n\n').slice(0, 4096));
+      embeds.push(boloEmbed);
+    }
   }
 
   // ── Action buttons ────────────────────────────────────────────────────────
