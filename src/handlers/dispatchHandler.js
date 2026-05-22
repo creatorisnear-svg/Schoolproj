@@ -1576,9 +1576,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         // Check for call sign at the very start — e.g. "1 Adam 22, show me 10-8"
         const callSignResult = detectCallSign(raw);
 
-        // Check for "dispatch" / "dispatcher" / "command" / "control" / "central" anywhere in first 10 words
-        const words = raw.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
-        const dispatchIdx = words.findIndex((w, i) => i <= 10 && (
+        // Split into original words (preserves numbers/punctuation for commandText)
+        // and alpha-only words (for trigger detection only)
+        const rawWords = raw.split(/\s+/);
+        const alphaWords = rawWords.map(w => w.toLowerCase().replace(/[^a-z]/g, ''));
+
+        const dispatchIdx = alphaWords.findIndex((w, i) => i <= 10 && (
           w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
           w === 'command' || w === 'control' || w === 'central'
         ));
@@ -1589,21 +1592,20 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (callSignResult && callSignResult.remainder.trim().length > 2) {
           // Officer opened with their call sign — the remainder is the command for dispatch
           detectedCallSign = callSignResult.callSign;
-          preContext = '';
           commandText = callSignResult.remainder.trim();
           console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
         } else if (dispatchIdx !== -1) {
-          // Classic "dispatch, ..." trigger
-          preContext = words.slice(0, dispatchIdx).join(' ').trim();
-          commandText = words.slice(dispatchIdx + 1).join(' ');
-          console.log(`[Dispatch] Trigger "${words[dispatchIdx]}" found at word ${dispatchIdx}`);
+          // Use ORIGINAL rawWords to preserve ten-codes / numbers in the command
+          preContext = rawWords.slice(0, dispatchIdx).join(' ').trim();
+          commandText = rawWords.slice(dispatchIdx + 1).join(' ').trim();
+          console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} — command: "${commandText}"`);
         } else {
           console.log(`[Dispatch] Ignored — no trigger word or call sign found`);
           return;
         }
 
-        // If nothing came after "dispatch" but the officer said something before it (e.g. "One Adam 84 to dispatch"),
-        // treat the full transmission as context so the bot can at least acknowledge them.
+        // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
+        // use the pre-trigger context so the bot can acknowledge the officer.
         if (commandText.length < 2) {
           if (preContext.length > 2) {
             commandText = preContext;
