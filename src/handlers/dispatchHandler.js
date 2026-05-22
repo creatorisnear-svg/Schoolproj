@@ -1,7 +1,8 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { writeFileSync, unlinkSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { createReadStream } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
@@ -14,6 +15,15 @@ import BOLO from '../models/BOLO.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
+
+// Pre-load panic alert sound (MP3 played urgently over voice on 10-99)
+const _panicSoundPath = join(dirname(fileURLToPath(import.meta.url)), '../assets/panic_alert.mp3');
+const PANIC_SOUND_BUFFER = existsSync(_panicSoundPath) ? readFileSync(_panicSoundPath) : null;
+if (PANIC_SOUND_BUFFER) {
+  console.log(`[Dispatch] Panic alert sound loaded (${PANIC_SOUND_BUFFER.length} bytes)`);
+} else {
+  console.warn('[Dispatch] Panic alert sound not found — audio alert disabled');
+}
 
 const TEN_CODES = {
   '10-4':  { label: '10-4 Acknowledged', action: null },
@@ -3202,16 +3212,23 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
       components: [new ActionRowBuilder().addComponents(acknowledgeBtn)],
     }).catch(() => {});
 
-    // TTS panic broadcast
-    if (config.aiEnabled && hasAIKey()) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${cleanNameForTTS(officerName)} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
-        const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
-      } catch (err) {
-        console.error('[Dispatch TTS] Panic alert TTS error:', err.message);
+    // Play panic alert sound urgently (cuts through any queued audio)
+    try {
+      const { playDispatchVoice } = await import('../utils/voiceListener.js');
+      if (PANIC_SOUND_BUFFER) {
+        playDispatchVoice(guild.id, PANIC_SOUND_BUFFER, { urgent: true });
+        console.log(`[Dispatch] Panic sound playing for ${guild.name}`);
       }
+
+      // Queue the TTS broadcast immediately after the sound
+      if (config.aiEnabled && hasAIKey()) {
+        const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${cleanNameForTTS(officerName)} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
+        generateDispatchTTS(ttsText).then(ttsBuffer => {
+          playDispatchVoice(guild.id, ttsBuffer);
+        }).catch(err => console.error('[Dispatch TTS] Panic alert TTS error:', err.message));
+      }
+    } catch (err) {
+      console.error('[Dispatch] Panic alert audio error:', err.message);
     }
 
     console.log(`[Dispatch] 10-99 PANIC ALERT triggered for ${officerName} in ${guild.name}`);
