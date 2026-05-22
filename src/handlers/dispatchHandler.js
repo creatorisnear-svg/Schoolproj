@@ -869,13 +869,130 @@ async function playTTS(ttsPromise, guildId, { urgent = false } = {}) {
 const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 
 
-async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext) {
+// Fuzzy-match an officer name from the radio log to a status record
+function findOfficerByName(searchName, allStatuses) {
+  if (!searchName || !allStatuses?.length) return null;
+  const search = cleanNameForTTS(searchName).toLowerCase().trim();
+  // Exact full-name match
+  let match = allStatuses.find(s => cleanNameForTTS(s.username).toLowerCase() === search);
+  if (match) return match;
+  // First-name match
+  match = allStatuses.find(s => {
+    const first = cleanNameForTTS(s.username).toLowerCase().split(' ')[0];
+    return first === search || search === first;
+  });
+  if (match) return match;
+  // Partial contains
+  return allStatuses.find(s => {
+    const name = cleanNameForTTS(s.username).toLowerCase();
+    const first = name.split(' ')[0];
+    return name.includes(search) || search.includes(first);
+  }) || null;
+}
+
+// Execute actions the AI decided to take (move channels, update statuses, close calls, etc.)
+async function executeDispatchActions(actions, guild, config, allStatuses, speakingUserId) {
+  if (!actions?.length) return;
+  for (const action of actions) {
+    try {
+      const { name, args } = action;
+      console.log(`[Dispatch AI] Action: ${name}`, args);
+
+      if (name === 'move_to_traffic_stop') {
+        const target = findOfficerByName(args.officer_name, allStatuses)
+          ?? allStatuses.find(s => s.userId === speakingUserId);
+        if (!target) continue;
+        const targetMember = await guild.members.fetch(target.userId).catch(() => null);
+        if (!targetMember?.voice?.channelId) continue;
+        let bestId = null, bestCount = Infinity;
+        for (const id of (config.trafficStopChannelIds || [])) {
+          if (id === targetMember.voice.channelId) continue;
+          const ch = guild.channels.cache.get(id) || await guild.channels.fetch(id).catch(() => null);
+          if (!ch) continue;
+          const count = ch.members.filter(m => !m.user.bot).size;
+          if (count < bestCount) { bestCount = count; bestId = id; }
+        }
+        if (bestId) {
+          await targetMember.voice.setChannel(bestId).catch(() => {});
+          console.log(`[Dispatch AI] Moved ${target.username} to traffic stop channel`);
+        }
+      }
+
+      else if (name === 'move_to_patrol') {
+        const target = findOfficerByName(args.officer_name, allStatuses)
+          ?? allStatuses.find(s => s.userId === speakingUserId);
+        if (!target) continue;
+        const targetMember = await guild.members.fetch(target.userId).catch(() => null);
+        if (!targetMember?.voice?.channelId) continue;
+        const patrolChId = config.patrolChannelIds?.[0];
+        if (!patrolChId) continue;
+        const patrolCh = guild.channels.cache.get(patrolChId)
+          || await guild.channels.fetch(patrolChId).catch(() => null);
+        if (patrolCh) {
+          await targetMember.voice.setChannel(patrolCh).catch(() => {});
+          console.log(`[Dispatch AI] Moved ${target.username} to patrol`);
+        }
+      }
+
+      else if (name === 'update_officer_status') {
+        const target = findOfficerByName(args.officer_name, allStatuses)
+          ?? allStatuses.find(s => s.userId === speakingUserId);
+        if (!target) continue;
+        // Normalise spoken codes like "10-8", "108", "ten-eight" → "10-8"
+        let code = String(args.ten_code || '').trim().toUpperCase()
+          .replace(/^TEN[- ]?/i, '10-')
+          .replace(/^(\d{2,3})$/, '10-$1');
+        if (!code.startsWith('10-')) code = '10-' + code;
+        await updateOfficerStatus(guild.id, target.userId, target.username, code,
+          { code, codeInfo: TEN_CODES[code], rawText: 'AI dispatch action' }, null, null);
+        console.log(`[Dispatch AI] Status updated: ${target.username} → ${code}`);
+      }
+
+      else if (name === 'close_call') {
+        const num = String(args.call_number || '').trim();
+        const call = await EmergencyCall.findOne({
+          guildId: guild.id,
+          $or: [{ callId: { $regex: num + '$' } }, { callId: num }],
+          status: 'active',
+        });
+        if (call) {
+          call.status = 'resolved';
+          await call.save();
+          console.log(`[Dispatch AI] Closed call #${num}`);
+        }
+      }
+
+      else if (name === 'send_unit_to_call') {
+        const target = findOfficerByName(args.officer_name, allStatuses);
+        if (!target) continue;
+        const num = String(args.call_number || '').trim();
+        const call = await EmergencyCall.findOne({
+          guildId: guild.id,
+          $or: [{ callId: { $regex: num + '$' } }, { callId: num }],
+          status: 'active',
+        });
+        if (call
+          && call.respondingLeoId !== target.userId
+          && !call.attachedLeoIds?.includes(target.userId)) {
+          call.attachedLeoIds = call.attachedLeoIds || [];
+          call.attachedLeoIds.push(target.userId);
+          await call.save();
+          console.log(`[Dispatch AI] Attached ${target.username} to call #${num}`);
+        }
+      }
+    } catch (err) {
+      console.error(`[Dispatch AI] Action "${action.name}" failed:`, err.message);
+    }
+  }
+}
+
+async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext, guild, config) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
-    return `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`;
+    return { text: `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`, actions: [] };
   }
 
-  // Pull all context in parallel — calls, officer roster
+  // Pull all context in parallel — active calls + full officer roster
   let activeCalls = [], allStatuses = [];
   try {
     [activeCalls, allStatuses] = await Promise.all([
@@ -884,58 +1001,142 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     ]);
   } catch {}
 
-  // Build a human-readable officer roster
-  const otherOfficers = allStatuses.filter(s => s.userId !== undefined);
-  const rosterLines = otherOfficers.length > 0
-    ? otherOfficers.map(s => {
+  // Roster lines
+  const rosterLines = allStatuses.length > 0
+    ? allStatuses.map(s => {
         const name = cleanNameForTTS(s.username);
-        const detail = [
-          s.subject && `with ${s.subject}`,
-          s.location && `at ${s.location}`,
-        ].filter(Boolean).join(', ');
+        const detail = [s.subject && `with ${s.subject}`, s.location && `at ${s.location}`]
+          .filter(Boolean).join(', ');
         return `  ${name}: ${s.tenCode || '10-8'}${detail ? ` (${detail})` : ''}`;
       }).join('\n')
     : '  No units logged on.';
 
-  // Build active-call summary
+  // Active-call lines
   const callLines = activeCalls.map(c => {
     const callNum = c.callId?.split('-').pop() || '???';
     let line = `  Call #${callNum}: ${c.issue || 'unknown'}`;
     if (c.location) line += ` at ${c.location}`;
-    line += c.respondingLeoId ? ' (unit responding)' : ' (no units responding)';
+    const responder = allStatuses.find(s => s.userId === c.respondingLeoId);
+    line += responder ? ` — ${cleanNameForTTS(responder.username)} responding` : ' — UNATTENDED';
     return line;
   });
   const callContext = callLines.length > 0 ? callLines.join('\n') : '  None.';
 
+  // Channel names for AI awareness
+  const stopChannelNames = (config?.trafficStopChannelIds || [])
+    .map(id => guild?.channels.cache.get(id)?.name).filter(Boolean).join(', ');
+  const patrolChannelNames = (config?.patrolChannelIds || [])
+    .map(id => guild?.channels.cache.get(id)?.name).filter(Boolean).join(', ');
+
   const ttsOfficerName = cleanNameForTTS(officerName);
-  const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
+  const callText = parsed.rawText || parsed.code || 'unknown';
+  const userSaid = fullVoiceContext || callText;
 
   const systemPrompt =
-    `You are a GTA 5 FiveM RP police radio dispatcher. Your responses will be read aloud via text-to-speech.\n\n` +
-    `Units currently on duty:\n${rosterLines}\n\n` +
-    `Active 911 calls:\n${callContext}\n\n` +
-    `Instructions:\n` +
-    `- Respond in 1 to 2 short natural sentences maximum — you are on a police radio.\n` +
-    `- Spell out ten-codes as words: ten four, ten eleven, ten eighty, etc.\n` +
-    `- Address the officer by first name only (e.g. "Copy, Smith...").\n` +
-    `- You may reference other on-duty units by first name to coordinate (e.g. "I'll send Baker your way").\n` +
-    `- Do NOT add locations, suspects, or incidents the officer did not mention.\n` +
-    `- If the officer is running a plate or name via CAD, say only: "Copy, stand by." — the CAD result will follow separately.\n` +
-    `- If the transmission is unclear, say "Go ahead ${ttsOfficerName}" or ask them to repeat.\n` +
-    `- Keep language natural and realistic for a live GTA RP server.`;
+    `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
+    `Your voice is played live over police radio — stay concise and in character at all times.\n\n` +
+    `UNITS ON DUTY:\n${rosterLines}\n\n` +
+    `ACTIVE 911 CALLS:\n${callContext}\n\n` +
+    (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
+    (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
+    `\nRADIO PROTOCOL — follow every rule strictly:\n` +
+    `- Open EVERY response by addressing the officer first: "Copy [Name]," / "Dispatch copies, [Name]—" / "[Name], dispatch—"\n` +
+    `- Speak ten-codes as full words: "ten four", "ten eleven", "ten eighty", "ten ninety-seven", "ten eight", etc.\n` +
+    `- Maximum 1–2 short sentences. Radio is for essential info only — no filler, no repetition.\n` +
+    `- Reference other on-duty units by first name to coordinate. Reference open calls by number.\n` +
+    `- GTA RP setting: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, etc.\n` +
+    `- If transmision is unclear: "Say again, [Name]?" or "Go ahead, [Name]."\n` +
+    `- If officer asks about a previous call or transmission: answer from the conversation history above.\n\n` +
+    `FUNCTIONS YOU CAN CALL (use them proactively — do not just acknowledge, take action):\n` +
+    `- move_to_traffic_stop: officer initiates a stop, asks to be moved to stop channel, or goes ten-eleven\n` +
+    `- move_to_patrol: officer goes ten-eight, clears a scene, or asks to return to patrol\n` +
+    `- update_officer_status: officer verbally reports any status change\n` +
+    `- close_call: officer says code four on an active call, confirms scene is clear, or call is resolved\n` +
+    `- send_unit_to_call: officer requests backup, or an unattended call needs a unit assigned\n\n` +
+    `Always speak your radio response AS WELL AS calling any relevant functions. Never just call a function silently.`;
 
-  // Inject rolling session radio log as conversation history
-  // getRadioLog() only returns entries from the current voice session
-  // (cleared automatically when bot disconnects)
+  // Tool definitions — full function calling schema
+  const dispatchTools = [
+    {
+      type: 'function',
+      function: {
+        name: 'move_to_traffic_stop',
+        description: 'Move an officer to an available traffic stop voice channel',
+        parameters: {
+          type: 'object',
+          properties: {
+            officer_name: { type: 'string', description: 'Display name or first name of the officer' },
+          },
+          required: ['officer_name'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'move_to_patrol',
+        description: 'Move an officer back to the main patrol voice channel',
+        parameters: {
+          type: 'object',
+          properties: {
+            officer_name: { type: 'string', description: 'Display name or first name of the officer' },
+          },
+          required: ['officer_name'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'update_officer_status',
+        description: "Update an officer's ten-code on the status board",
+        parameters: {
+          type: 'object',
+          properties: {
+            officer_name: { type: 'string' },
+            ten_code: { type: 'string', description: 'e.g. 10-8, 10-11, 10-80, 10-97, 10-7' },
+          },
+          required: ['officer_name', 'ten_code'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'close_call',
+        description: 'Mark an active 911 call as resolved',
+        parameters: {
+          type: 'object',
+          properties: {
+            call_number: { type: 'string', description: 'Short call number, e.g. "42" or "1"' },
+          },
+          required: ['call_number'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'send_unit_to_call',
+        description: 'Attach an available officer to an active 911 call as backup or primary',
+        parameters: {
+          type: 'object',
+          properties: {
+            officer_name: { type: 'string' },
+            call_number: { type: 'string' },
+          },
+          required: ['officer_name', 'call_number'],
+        },
+      },
+    },
+  ];
+
+  // Rolling session history — cleared on disconnect, so no cross-shift bleed
   const radioLog = getRadioLog(guildId);
   const historyMessages = radioLog.flatMap(entry => [
     { role: 'user', content: `${entry.officer}: "${entry.said}"` },
     { role: 'assistant', content: entry.response },
-  ]).slice(-10); // last 5 full exchanges
-
-  // Use the full voice context (pre-dispatch words + post-dispatch command)
-  // so the AI sees everything the officer said, not just what came after the trigger word
-  const userSaid = fullVoiceContext || callText;
+  ]).slice(-10);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -947,19 +1148,29 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    // llama-3.3-70b-versatile: smarter multi-officer coordination; gpt-4o-mini fallback
     const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     try {
       const response = await client.chat.completions.create({
         model,
         messages,
-        max_tokens: 90,
-        temperature: 0.65,
+        tools: dispatchTools,
+        tool_choice: 'auto',
+        max_tokens: 150,
+        temperature: 0.55,
       });
-      const text = response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
-      // Log the full voice context (pre + post dispatch) so future exchanges have complete info
-      addToRadioLog(guildId, cleanNameForTTS(officerName), fullVoiceContext || callText, text);
-      return text;
+      const message = response.choices[0]?.message;
+      const text = message?.content?.trim() || '10-4, copy that.';
+
+      // Collect any tool calls the AI decided to make
+      const actions = [];
+      if (message?.tool_calls?.length) {
+        for (const tc of message.tool_calls) {
+          try { actions.push({ name: tc.function.name, args: JSON.parse(tc.function.arguments) }); } catch {}
+        }
+      }
+
+      addToRadioLog(guildId, ttsOfficerName, userSaid, text);
+      return { text, actions };
     } catch (err) {
       lastErr = err;
       if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
@@ -1843,15 +2054,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
 
     let dispatchResponse = null;
+    let aiActions = [];
     if (config.aiEnabled && hasAIKey()) {
       try {
-        dispatchResponse = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext);
+        const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config);
+        dispatchResponse = aiResult.text;
+        aiActions = aiResult.actions || [];
+        if (aiActions.length) console.log(`[Dispatch AI] ${aiActions.length} action(s) queued:`, aiActions.map(a => a.name).join(', '));
       } catch (err) {
         console.error('[Dispatch] AI response error:', err.message);
       }
     }
 
-    // Start TTS immediately — runs in background while embed is being built and sent
+    // Start TTS immediately — runs in background while embed is built and sent
     const ttsPMain = (dispatchResponse && !isSimpleAck) ? startTTS(dispatchResponse, config) : null;
 
     const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
@@ -1877,6 +2092,18 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         embed.addFields({ name: 'Dispatch Response', value: `*"${dispatchResponse}"*`, inline: false });
       }
 
+      if (aiActions.length) {
+        const actionSummary = aiActions.map(a => {
+          if (a.name === 'move_to_traffic_stop') return `Moved ${a.args.officer_name} to stop channel`;
+          if (a.name === 'move_to_patrol') return `Moved ${a.args.officer_name} to patrol`;
+          if (a.name === 'update_officer_status') return `Updated ${a.args.officer_name} → ${a.args.ten_code}`;
+          if (a.name === 'close_call') return `Closed call #${a.args.call_number}`;
+          if (a.name === 'send_unit_to_call') return `Sent ${a.args.officer_name} to call #${a.args.call_number}`;
+          return a.name;
+        }).join('\n');
+        embed.addFields({ name: 'Actions Taken', value: actionSummary, inline: false });
+      }
+
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
     }
 
@@ -1885,6 +2112,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (isSimpleAck) {
       console.log(`[Dispatch] Skipping TTS for simple ${parsed.code} acknowledgment (saving tokens)`);
+    }
+
+    // Execute AI-triggered actions (channel moves, status updates, call management)
+    if (aiActions.length) {
+      const statusSnapshot = await OfficerStatus.find({ guildId: guild.id }).lean().catch(() => []);
+      await executeDispatchActions(aiActions, guild, config, statusSnapshot, userId);
+      await rebuildStatusBoard(guild, config);
     }
 
     const voiceAction = parsed.codeInfo?.action;
