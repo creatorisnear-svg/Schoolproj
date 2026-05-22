@@ -446,7 +446,7 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      const silenceDuration = 1500;
+      const silenceDuration = 900;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });

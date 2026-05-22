@@ -607,7 +607,7 @@ async function transcribeAudio(wavBuffer) {
     const maxTries = Math.max(1, groqKeys.length);
     for (let attempt = 0; attempt < maxTries; attempt++) {
       const { client, provider } = getAIClient();
-      const model = provider === 'groq' ? 'whisper-large-v3' : 'whisper-1';
+      const model = provider === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1';
       try {
         const result = await client.audio.transcriptions.create({
           file: createReadStream(tempPath),
@@ -846,6 +846,23 @@ async function generateDispatchTTS(text) {
   return buf;
 }
 
+// ── Parallel TTS helpers ────────────────────────────────────────────────────
+// Call startTTS() as soon as you know the text, do other async work, then
+// await playTTS() — TTS is already generating in the background.
+function startTTS(text, config) {
+  if (!config?.aiEnabled || !hasAIKey()) return null;
+  return generateDispatchTTS(text).catch(() => null);
+}
+async function playTTS(ttsPromise, guildId) {
+  if (!ttsPromise) return;
+  try {
+    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+    const buf = await ttsPromise;
+    if (buf) playDispatchVoice(guildId, buf);
+  } catch {}
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 
 
@@ -965,6 +982,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
           await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+        let ttsRelease = `Copy ${ttsName}, stop is released`;
+        if (stopMins > 0) ttsRelease += `. Stop duration was ${stopMins} minute${stopMins !== 1 ? 's' : ''}`;
+        ttsRelease += `. Showing you ten eight, available.`;
+        const ttsPRelease = startTTS(ttsRelease, config);
+
         if (dispatchCh?.isTextBased()) {
           const embed = new EmbedBuilder()
             .setColor('#43b581')
@@ -979,16 +1001,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           await dispatchCh.send({ embeds: [embed] }).catch(() => {});
         }
 
-        if (config.aiEnabled && hasAIKey()) {
-          try {
-            const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            let tts = `Copy ${ttsName}, stop is released`;
-            if (stopMins > 0) tts += `. Stop duration was ${stopMins} minute${stopMins !== 1 ? 's' : ''}`;
-            tts += `. Showing you ten eight, available.`;
-            const ttsBuffer = await generateDispatchTTS(tts);
-            playDispatchVoice(guild.id, ttsBuffer);
-          } catch (err) { console.error('[Dispatch TTS] Release stop error:', err.message); }
-        }
+        await playTTS(ttsPRelease, guild.id);
         await rebuildStatusBoard(guild, config);
         return;
       }
@@ -1076,34 +1089,21 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           }
         }
 
-        if (config.aiEnabled && hasAIKey()) {
-          try {
-            const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
-            const ttsText = `Copy ${ttsName}, showing you ten eleven on the traffic stop with ${civName}. Would you like me to move both parties to the traffic stop channel?`;
-            const ttsBuffer = await generateDispatchTTS(ttsText);
-            playDispatchVoice(guild.id, ttsBuffer);
-          } catch (err) {
-            console.error('[Dispatch TTS] Join-stop voice error:', err.message);
-          }
-        }
+        const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
+        const ttsJoin = `Copy ${ttsName}, showing you ten eleven on the traffic stop with ${civName}. Would you like me to move both parties to the traffic stop channel?`;
+        const ttsPJoin = startTTS(ttsJoin, config);
 
         await rebuildStatusBoard(guild, config);
+        await playTTS(ttsPJoin, guild.id);
       } else {
         // No available stop channel — still log the stop and give TTS feedback
         await updateOfficerStatus(guild.id, userId, officerName, '10-11',
           { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
           null, null);
-        if (config.aiEnabled && hasAIKey()) {
-          try {
-            const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
-            const ttsText = `Copy ${ttsName}, showing you ten eleven on the stop with ${civName}. No stop channels available right now.`;
-            const ttsBuffer = await generateDispatchTTS(ttsText);
-            playDispatchVoice(guild.id, ttsBuffer);
-          } catch {}
-        }
+        const civNameFb = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
+        const ttsPFb = startTTS(`Copy ${ttsName}, showing you ten eleven on the stop with ${civNameFb}. No stop channels available right now.`, config);
         await rebuildStatusBoard(guild, config);
+        await playTTS(ttsPFb, guild.id);
       }
       return;
     }
@@ -1641,6 +1641,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
         await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
 
+      let ttsBackup = `All units, all units. ${ttsName} is requesting backup`;
+      if (backupReq.location) ttsBackup += ` at ${backupReq.location}`;
+      ttsBackup += '.';
+      if (available.length > 0) {
+        ttsBackup += ` Available units: ${available.map(o => cleanNameForTTS(o.username)).join(', ')}. Please respond.`;
+      } else {
+        ttsBackup += ' No units currently showing available.';
+      }
+      ttsBackup += ' Say ten seventy six to respond.';
+      const ttsPBackup = startTTS(ttsBackup, config);
+
       if (dispatchCh?.isTextBased()) {
         const availText = available.length > 0 ? available.map(o => o.username).join(', ') : 'None showing available';
         const embed = new EmbedBuilder()
@@ -1657,23 +1668,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
 
-      let tts = `All units, all units. ${ttsName} is requesting backup`;
-      if (backupReq.location) tts += ` at ${backupReq.location}`;
-      tts += '.';
-      if (available.length > 0) {
-        tts += ` Available units: ${available.map(o => o.username).join(', ')}. Please respond.`;
-      } else {
-        tts += ' No units currently showing available.';
-      }
-      tts += ' Say ten seventy six to respond.';
-
-      if (config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsBuffer = await generateDispatchTTS(tts);
-          playDispatchVoice(guild.id, ttsBuffer);
-        } catch (err) { console.error('[Dispatch TTS] Backup request error:', err.message); }
-      }
+      await playTTS(ttsPBackup, guild.id);
       await rebuildStatusBoard(guild, config);
       return;
     }
@@ -1749,6 +1744,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
       const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
         await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+      let ttsEms = `Copy ${ttsName}, requesting ${serviceLabel}`;
+      if (emsReq.location) ttsEms += ` to ${emsReq.location}`;
+      ttsEms += `. ${serviceLabel}, please respond.`;
+      const ttsPEms = startTTS(ttsEms, config);
+
       if (dispatchCh?.isTextBased()) {
         const embed = new EmbedBuilder()
           .setColor(serviceColor)
@@ -1763,22 +1763,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
 
-      let tts = `Copy ${ttsName}, requesting ${serviceLabel}`;
-      if (emsReq.location) tts += ` to ${emsReq.location}`;
-      tts += `. ${serviceLabel}, please respond.`;
-
-      if (config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsBuffer = await generateDispatchTTS(tts);
-          playDispatchVoice(guild.id, ttsBuffer);
-        } catch (err) { console.error('[Dispatch TTS] EMS/Fire error:', err.message); }
-      }
+      await playTTS(ttsPEms, guild.id);
       return;
     }
     // --- End EMS / Fire request ---
 
     const parsed = parseTranscript(transcript);
+
+    const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
 
     let dispatchResponse = null;
     if (config.aiEnabled && hasAIKey()) {
@@ -1788,6 +1780,9 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         console.error('[Dispatch] AI response error:', err.message);
       }
     }
+
+    // Start TTS immediately — runs in background while embed is being built and sent
+    const ttsPMain = (dispatchResponse && !isSimpleAck) ? startTTS(dispatchResponse, config) : null;
 
     const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
       await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
@@ -1815,16 +1810,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
     }
 
-    const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
-    if (dispatchResponse && config.aiEnabled && hasAIKey() && !isSimpleAck) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsBuffer = await generateDispatchTTS(dispatchResponse);
-        playDispatchVoice(guild.id, ttsBuffer);
-      } catch (err) {
-        console.error('[Dispatch TTS] Error generating or playing voice:', err.message);
-      }
-    } else if (isSimpleAck) {
+    // TTS was already generating — just play it now (usually already done)
+    await playTTS(ttsPMain, guild.id);
+
+    if (isSimpleAck) {
       console.log(`[Dispatch] Skipping TTS for simple ${parsed.code} acknowledgment (saving tokens)`);
     }
 
