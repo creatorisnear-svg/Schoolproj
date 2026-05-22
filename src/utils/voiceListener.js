@@ -9,9 +9,21 @@ import {
   StreamType,
 } from '@discordjs/voice';
 import { createSocket as createUdpSocket } from 'dgram';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { Readable } from 'stream';
 import prism from 'prism-media';
 import { clearRadioLog } from './radioSession.js';
+
+// Pre-load radio wave sound — played before every dispatch TTS response
+const _radioWavePath = join(dirname(fileURLToPath(import.meta.url)), '../assets/radio_wave.mp3');
+const RADIO_WAVE_BUFFER = existsSync(_radioWavePath) ? readFileSync(_radioWavePath) : null;
+if (RADIO_WAVE_BUFFER) {
+  console.log(`[Dispatch] Radio wave sound loaded (${RADIO_WAVE_BUFFER.length} bytes)`);
+} else {
+  console.warn('[Dispatch] Radio wave sound not found — playing TTS without prefix');
+}
 
 /**
  * Per-guild dispatch state.
@@ -547,7 +559,7 @@ export function leaveDispatchChannel(guildId) {
  *   urgent — clears any stale queued audio and stops the current clip so this
  *            plays immediately (use for 10-99 panic and 10-80 pursuit alerts).
  */
-export async function playDispatchVoice(guildId, audioBuffer, { urgent = false } = {}) {
+export async function playDispatchVoice(guildId, audioBuffer, { urgent = false, skipRadioWave = false } = {}) {
   const state = dispatchState.get(guildId);
   if (!state) {
     console.error('[Dispatch TTS] No state for guild:', guildId);
@@ -557,8 +569,10 @@ export async function playDispatchVoice(guildId, audioBuffer, { urgent = false }
   if (!state.audioQueue) state.audioQueue = [];
 
   if (urgent) {
-    // Discard all queued clips and stop current playback so this fires first
+    // Discard all queued clips and stop current playback so this fires first.
+    // Mark skipRadioWave so the panic/urgent sound plays raw without a radio prefix.
     state.audioQueue = [audioBuffer];
+    state.skipRadioWaveNext = skipRadioWave || true;
     if (state.audioPlayer) {
       try { state.audioPlayer.stop(true); } catch {}
     }
@@ -583,6 +597,28 @@ export async function playDispatchVoice(guildId, audioBuffer, { urgent = false }
   await _drainAudioQueue(guildId);
 }
 
+/** Play a single buffer on a connection, resolving when playback finishes. */
+function _playBuffer(conn, buffer) {
+  return new Promise((resolve) => {
+    try {
+      const player = createAudioPlayer();
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+      const isOgg = buffer.length >= 4 && buffer.toString('ascii', 0, 4) === 'OggS';
+      const resource = createAudioResource(stream, {
+        inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+      });
+      conn.subscribe(player);
+      player.play(resource);
+      player.on('error', () => resolve());
+      player.on(AudioPlayerStatus.Idle, () => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
+
 async function _drainAudioQueue(guildId) {
   const state = dispatchState.get(guildId);
   if (!state || !state.audioQueue?.length) return;
@@ -591,6 +627,10 @@ async function _drainAudioQueue(guildId) {
 
   while (state.audioQueue?.length > 0) {
     const audioBuffer = state.audioQueue.shift();
+
+    // Consume the skip flag (set by urgent calls like panic/pursuit sounds)
+    const skipRadioWave = state.skipRadioWaveNext ?? false;
+    state.skipRadioWaveNext = false;
 
     const conn = state.connection;
     if (!conn) {
@@ -609,6 +649,11 @@ async function _drainAudioQueue(guildId) {
         continue;
       }
       if (state.connection !== conn) break;
+    }
+
+    // Play radio wave prefix before every dispatch TTS response (not before raw alert sounds)
+    if (RADIO_WAVE_BUFFER && !skipRadioWave) {
+      await _playBuffer(conn, RADIO_WAVE_BUFFER);
     }
 
     await new Promise((resolve) => {

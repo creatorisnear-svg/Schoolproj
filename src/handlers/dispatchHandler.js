@@ -3366,15 +3366,23 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
     }
 
     // ── Broadcast via TTS in patrol channel ──────────────────────────────
-    if (config.aiEnabled && hasAIKey()) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsText = `Attention all units, Officer ${cleanNameForTTS(officerName)} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${cleanNameForTTS(officerName)}? Say ten four to respond or press the respond button in dispatch.`;
-        const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
-      } catch (err) {
-        console.error('[Dispatch TTS] Pursuit broadcast TTS error:', err.message);
+    try {
+      const { playDispatchVoice } = await import('../utils/voiceListener.js');
+
+      // Play panic alert sound urgently first (cuts through any queued audio)
+      if (PANIC_SOUND_BUFFER) {
+        playDispatchVoice(guild.id, PANIC_SOUND_BUFFER, { urgent: true });
       }
+
+      // Queue pursuit TTS immediately after the sound
+      if (config.aiEnabled && hasAIKey()) {
+        const ttsText = `Attention all units, Officer ${cleanNameForTTS(officerName)} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${cleanNameForTTS(officerName)}? Say ten four to respond or press the respond button in dispatch.`;
+        generateDispatchTTS(ttsText).then(ttsBuffer => {
+          playDispatchVoice(guild.id, ttsBuffer);
+        }).catch(err => console.error('[Dispatch TTS] Pursuit broadcast TTS error:', err.message));
+      }
+    } catch (err) {
+      console.error('[Dispatch] Pursuit broadcast audio error:', err.message);
     }
 
     // ── Post embed in dispatch channel with Respond button ───────────────
