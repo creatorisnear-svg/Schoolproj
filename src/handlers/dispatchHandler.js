@@ -3491,6 +3491,7 @@ function detectPursuitResponse(text) {
 // ────────────────────────────────────────────────────────────────────────────
 const trafficStopCheckIntervals = new Map();
 const trafficStopCheckinSent = new Map(); // key: guildId:userId — tracks last checkin msg time
+const trafficStopVisitInProgress = new Set(); // guildIds currently mid-visit (bot is in a stop channel)
 
 async function checkTrafficStops(guild) {
   try {
@@ -3500,15 +3501,28 @@ async function checkTrafficStops(guild) {
     const onStopOfficers = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
     if (onStopOfficers.length === 0) return;
 
+    // ── Busy guard: skip entirely if dispatch is already visiting a stop channel ──
+    if (trafficStopVisitInProgress.has(guild.id)) {
+      console.log(`[Dispatch] Skipping traffic stop check — visit already in progress for ${guild.name}`);
+      return;
+    }
+
+    // ── Busy guard: skip if dispatch is currently talking in the patrol channel ──
+    const { getDispatchState, getExtendedStay } = await import('../utils/voiceListener.js');
+    const dispState = getDispatchState(guild.id);
+    if (dispState?.audioPlaying) {
+      console.log(`[Dispatch] Skipping traffic stop check — dispatch currently talking in ${guild.name}`);
+      return;
+    }
+
     for (const officer of onStopOfficers) {
       const key = `${guild.id}:${officer.userId}`;
       const lastCheck = trafficStopCheckinSent.get(key) || 0;
 
-      // Only check in once per minute
+      // Only check in once per minute per officer
       if (Date.now() - lastCheck < 58 * 1000) continue;
 
       // Skip check-in if dispatch has an active extended stay for this guild
-      const { getExtendedStay } = await import('../utils/voiceListener.js');
       const stay = getExtendedStay(guild.id);
       if (stay) {
         console.log(`[Dispatch] Skipping traffic stop check-in for ${officer.username} — extended stay active`);
@@ -3524,6 +3538,10 @@ async function checkTrafficStops(guild) {
         await guild.channels.fetch(voiceChannelId).catch(() => null);
       if (!targetChannel) continue;
 
+      // Don't enter if the channel is empty (officer already left)
+      const membersInChannel = targetChannel.members?.filter(m => !m.user.bot).size ?? 0;
+      if (membersInChannel === 0) continue;
+
       trafficStopCheckinSent.set(key, Date.now());
 
       const minutesIn = officer.trafficStopStartAt
@@ -3534,19 +3552,24 @@ async function checkTrafficStops(guild) {
 
       // Speak the check-in into the traffic stop voice channel, then return to patrol
       if (config.aiEnabled && hasAIKey()) {
+        trafficStopVisitInProgress.add(guild.id);
         try {
           const { playTTSInChannelAndReturn } = await import('../utils/voiceListener.js');
           const subjectPart = officer.subject ? ` with ${officer.subject}` : '';
-          const minutesPart = minutesIn !== null ? ` You have been on scene for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.` : '';
-          const ttsText = `${officer.username}, are you still on scene${subjectPart}?${minutesPart} Please confirm your status or say ten eight when clear.`;
+          const minutesPart = minutesIn !== null && minutesIn > 0
+            ? ` You have been on this stop for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.`
+            : '';
+          const ttsText = `${officer.username}, this is dispatch checking in on your traffic stop${subjectPart}.${minutesPart} Do you need me to run a plate, look up a name, or stay in your channel? Say your request now, or ten eight when you are clear.`;
           const ttsBuffer = await generateDispatchTTS(ttsText);
           await playTTSInChannelAndReturn(targetChannel, ttsBuffer);
         } catch (err) {
           console.error('[Dispatch TTS] Traffic stop check-in TTS error:', err.message);
+        } finally {
+          trafficStopVisitInProgress.delete(guild.id);
         }
       }
 
-      // Also post a small text prompt with buttons in the dispatch channel so officers can respond
+      // Also post a text prompt with buttons in the dispatch channel
       if (config.dispatchChannelId) {
         const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
           await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
@@ -3555,8 +3578,8 @@ async function checkTrafficStops(guild) {
             .setColor('#FF8C00')
             .setTitle('Traffic Stop Check-In')
             .setDescription(
-              `<@${officer.userId}> — are you still on scene${officer.subject ? ` with **${officer.subject}**` : ''}?` +
-              (minutesIn !== null ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} on scene` : '')
+              `<@${officer.userId}> — dispatch checked in on your traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}.` +
+              (minutesIn !== null && minutesIn > 0 ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} on scene` : '')
             )
             .setFooter({ text: 'RPM • Dispatch' })
             .setTimestamp();
@@ -3578,9 +3601,12 @@ async function checkTrafficStops(guild) {
           }).catch(() => {});
         }
       }
+
+      // Only visit one officer per cycle to avoid overlapping channel visits
+      break;
     }
 
-    // Clean up stale keys
+    // Clean up stale keys for officers no longer on stop
     for (const [key] of trafficStopCheckinSent) {
       const [gId, uId] = key.split(':');
       if (gId !== guild.id) continue;
@@ -3588,16 +3614,17 @@ async function checkTrafficStops(guild) {
     }
   } catch (err) {
     console.error('[Dispatch] checkTrafficStops error:', err.message);
+    trafficStopVisitInProgress.delete(guild.id); // ensure flag is always cleared on error
   }
 }
 
-const TRAFFIC_STOP_CHECK_MS = 8 * 60 * 1000; // check every 8 minutes
+const TRAFFIC_STOP_CHECK_MS = 60 * 1000; // check every 1 minute
 
 export function startTrafficStopCheckTimer(guild) {
   if (trafficStopCheckIntervals.has(guild.id)) return;
   const interval = setInterval(() => checkTrafficStops(guild), TRAFFIC_STOP_CHECK_MS);
   trafficStopCheckIntervals.set(guild.id, interval);
-  console.log(`[Dispatch] Traffic stop check timer started for ${guild.name}`);
+  console.log(`[Dispatch] Traffic stop check timer started for ${guild.name} (60s interval)`);
 }
 
 export function stopTrafficStopCheckTimer(guildId) {
