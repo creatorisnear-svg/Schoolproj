@@ -1330,11 +1330,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const userSaid = fullVoiceContext || callText;
   const callSignLine = detectedCallSign ? `SPEAKING OFFICER CALL SIGN: ${detectedCallSign}\n` : '';
 
-  // Build speaking officer's current status block
   const ON_SCENE_STATUS_CODES = new Set(['10-11', '10-97', '10-50', '10-31', '10-52', '10-80', '10-78', '10-99']);
   let officerStatusBlock = '';
-  if (officerDbStatus) {
-    const code = officerDbStatus.tenCode || '10-8';
+  const hasKnownStatus = officerDbStatus?.tenCode;
+  if (officerDbStatus && hasKnownStatus) {
+    const code = officerDbStatus.tenCode;
     const codeLabel = TEN_CODES[code]?.label || code;
     const minsOnStatus = officerDbStatus.updatedAt
       ? Math.floor((now - new Date(officerDbStatus.updatedAt).getTime()) / 60000)
@@ -1342,33 +1342,51 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     const timeStr = minsOnStatus !== null ? ` for ${minsOnStatus} minute${minsOnStatus !== 1 ? 's' : ''}` : '';
     const subjectStr = officerDbStatus.subject ? ` with ${officerDbStatus.subject}` : '';
     const locationStr = officerDbStatus.location ? ` at ${officerDbStatus.location}` : '';
+    const longOnScene = ON_SCENE_STATUS_CODES.has(code) && minsOnStatus !== null && minsOnStatus >= 10;
     officerStatusBlock =
       `SPEAKING OFFICER CURRENT STATUS:\n` +
       `  ${ttsOfficerName}: ${code} — ${codeLabel}${subjectStr}${locationStr}${timeStr}\n` +
       (ON_SCENE_STATUS_CODES.has(code)
-        ? `  NOTE: This officer is currently on an active code. If their message does NOT include a status change, ` +
-          `ask them after handling their request: "Are you still showing ${code}${subjectStr}?"\n`
+        ? `  RULE: Officer is on an active code. After handling their request, ask: "Are you still showing ${code}${subjectStr}?" unless they just gave a status update.\n`
+        : '') +
+      (longOnScene
+        ? `  RULE: Officer has been on scene for ${minsOnStatus} minutes — if they ask about anything routine, mention the time and ask if they need anything.\n`
         : '') +
       `\n`;
+  } else {
+    // Officer has no known status — dispatch should ask
+    officerStatusBlock =
+      `SPEAKING OFFICER CURRENT STATUS:\n` +
+      `  ${ttsOfficerName}: NO STATUS ON FILE\n` +
+      `  RULE: This officer has no recorded status. After handling their immediate request (if any), ` +
+      `ask them for their current status: "[Name], what's your current status?" or "What are you showing?" — keep it brief.\n\n`;
   }
 
-  // Find unattended active calls for proactive briefing
+  // Available units (10-8) for dispatch to assign to calls
+  const availableOfficers = allStatuses.filter(s => !s.tenCode || s.tenCode === '10-8');
+  const availableNames = availableOfficers.map(s => cleanNameForTTS(s.username)).join(', ');
+
+  // Unattended active calls
   const unattendedCalls = activeCalls.filter(c => !c.respondingLeoId);
-  const unattendedLine = unattendedCalls.length > 0
-    ? unattendedCalls.map(c => {
-        const num = c.callId?.split('-').pop() || '?';
-        return `Call #${num}: ${c.issue || 'unknown'}${c.location ? ` at ${c.location}` : ''}`;
-      }).join('; ')
-    : null;
+  const unattendedLines = unattendedCalls.map(c => {
+    const num = c.callId?.split('-').pop() || '?';
+    return `Call #${num}: ${c.issue || 'unknown'}${c.location ? ` at ${c.location}` : ''}`;
+  });
+
+  // Officers on scene together (for coordination context)
+  const multiOfficerCalls = activeCalls.filter(c => c.respondingLeoId && (c.attachedLeoIds?.length ?? 0) > 0);
 
   const systemPrompt =
     `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
-    `Your voice is played live over police radio. Be professional, terse, and realistic.\n\n` +
+    `Your role is to ACTIVELY ORGANIZE and coordinate all units — not just respond to requests. ` +
+    `You are the hub of all radio traffic. Be professional, direct, and proactive.\n\n` +
     officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
+    `AVAILABLE UNITS (10-8): ${availableNames || 'None'}\n\n` +
     `ACTIVE 911 CALLS:\n${callContext}\n\n` +
     `ACTIVE PURSUIT:\n${pursuitLine}\n\n` +
     `ACTIVE BOLOs:\n${boloContext}\n\n` +
+    (unattendedLines.length > 0 ? `UNATTENDED CALLS NEEDING A UNIT:\n  ${unattendedLines.join('\n  ')}\n\n` : '') +
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
     callSignLine +
@@ -1376,20 +1394,22 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `- Address officer by name first: "Copy [Name]," or "[Name], dispatch—"\n` +
     `- If they used a call sign, address by call sign: "Copy 1-Adam-22, [Name]—"\n` +
     `- Speak all ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
-    `- Keep it to 1–2 short radio sentences. Terse. No filler, no pleasantries.\n` +
+    `- Keep it to 1–3 short radio sentences. Terse but complete. No filler, no pleasantries.\n` +
     `- If transmission is unclear or too short: "Say again, [Name]?"\n` +
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical Center, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci Beach, Del Perro, Vinewood, Rockford Hills, La Mesa.\n` +
     `- Divisions: LSPD (Los Santos PD), BCSO (Blaine County Sheriff), FIB, LSFD.\n` +
     `- Unit types: Adam (patrol), Boy (traffic), Charlie (K9), David (detective).\n\n` +
-    `PROACTIVE BEHAVIOR:\n` +
-    `- If the officer's current status is an on-scene code (ten-eleven, ten-ninety-seven, ten-fifty, ten-eighty, ten-seventy-eight) AND their message does not contain a status update, ` +
-    `after handling their request add: "Are you still showing [code]${officerDbStatus?.subject ? ` with ${officerDbStatus.subject}` : ''}?"\n` +
-    `- If the officer goes ten-eight and there are unattended calls, mention one: ` +
-    (unattendedLine
-      ? `"Heads up, we have an unattended call — ${unattendedLine}. Any unit respond?"\n`
-      : `there are no unattended calls right now so just acknowledge the ten-eight.\n`) +
-    `- If the officer has been on scene for more than 10 minutes and checks in about something routine, note the time: "You've been on scene for X minutes — do you need anything?"\n` +
-    `- If officer says something that doesn't match their current status (e.g. 10-8 but says they're still with someone), ask for clarification.\n\n` +
+    `PROACTIVE DISPATCH RULES — follow these every response:\n` +
+    `1. NO STATUS: If officer has no status on file, ask for it after handling their request: "[Name], what are you showing?"\n` +
+    `2. ON SCENE CHECK: If officer is on an active code and doesn't update their status, ask: "Are you still showing [code]?"\n` +
+    `3. GOING TEN-EIGHT: If officer clears and there are unattended calls, immediately assign them by name: ` +
+    (unattendedLines.length > 0
+      ? `"Copy [Name], ten-eight. Can you respond to ${unattendedLines[0]}?" and call send_unit_to_call.\n`
+      : `no unattended calls — just acknowledge ten-eight and note available unit count.\n`) +
+    `4. AVAILABLE UNITS + UNATTENDED CALLS: If there are unattended calls and available units, proactively suggest which available officer should respond — name them specifically.\n` +
+    `5. MULTI-UNIT SCENES: If multiple officers are on the same call, check who is primary and who is backup — ask if the primary officer needs the backup to clear.\n` +
+    `6. LONG ON SCENE: If officer has been on an active code for 10+ minutes without update, note it: "You've been on scene for X minutes — do you need anything?"\n` +
+    `7. BACKUP COORDINATION: If an officer calls for backup, look at available units and name a specific unit to respond: "Sending [AvailableOfficer] to your location."\n\n` +
     `CRITICAL — FUNCTION CALL RULES:\n` +
     `- Call functions silently via the tool system. NEVER write <function=...> or JSON in your radio response.\n` +
     `- Your spoken response must be ONLY natural radio dialogue — no brackets, no tags, no code.\n` +
@@ -1399,9 +1419,9 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `- move_to_patrol: officer clears scene or goes ten-eight\n` +
     `- update_officer_status: any verbal status change (ten-seventy-six, ten-ninety-seven, ten-fifteen, ten-fifty, etc.)\n` +
     `- close_call: officer says "code four" or clears an active call\n` +
-    `- send_unit_to_call: officer requests backup or asks a unit be assigned to a call\n` +
-    `- add_call_note: officer reports suspect description, vehicle info, or updates a call's location\n` +
-    `- flag_officer_needs_backup: officer explicitly says they need units — sets ten-seventy-eight\n` +
+    `- send_unit_to_call: when assigning or attaching an officer to a call\n` +
+    `- add_call_note: officer reports suspect description, vehicle info, or location update\n` +
+    `- flag_officer_needs_backup: officer explicitly calls for help — sets ten-seventy-eight\n` +
     `- create_bolo: officer puts out a BOLO on a suspect or vehicle over radio`;
 
   // Tool definitions
