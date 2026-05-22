@@ -1175,6 +1175,81 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
         console.log(`[Dispatch AI] Flagged ${target.username} as 10-78 backup needed`);
       }
 
+      else if (name === 'create_bolo') {
+        // Post a BOLO embed to the dispatch channel and attempt DB creation
+        const suspectName = String(args.suspect_name || 'Unknown').trim();
+        const reason = String(args.reason || '').trim();
+        const description = String(args.description || '').trim();
+        const lastSeen = String(args.last_seen || '').trim();
+
+        // Build vehicle line if provided
+        const vParts = [args.vehicle_color, args.vehicle_make, args.vehicle_model].filter(Boolean);
+        const vehicleLine = vParts.length > 0 ? vParts.join(' ') + (args.license_plate ? ` — Plate: ${args.license_plate}` : '') : null;
+
+        // Try to find a matching CAD character for DB linkage
+        let boloCharacter = null;
+        if (suspectName !== 'Unknown') {
+          try {
+            boloCharacter = await CADCharacter.findOne({
+              guildId: guild.id,
+              fullName: { $regex: new RegExp(suspectName.split(/\s+/)[0], 'i') },
+            }).lean();
+          } catch {}
+        }
+
+        // Post BOLO embed to dispatch channel
+        if (config.dispatchChannelId) {
+          const dispCh = guild.channels.cache.get(config.dispatchChannelId) ||
+            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+          if (dispCh?.isTextBased()) {
+            const boloDesc = [
+              `**Suspect:** ${suspectName}`,
+              `**Reason:** ${reason}`,
+              description ? `**Description:** ${description}` : null,
+              vehicleLine ? `**Vehicle:** ${vehicleLine}` : null,
+              lastSeen ? `**Last Seen:** ${lastSeen}` : null,
+            ].filter(Boolean).join('\n');
+
+            const boloEmbed = new EmbedBuilder()
+              .setColor('#faa61a')
+              .setTitle('BOLO Issued — Be On the Lookout')
+              .setDescription(boloDesc)
+              .setFooter({ text: 'RPM • Dispatch' })
+              .setTimestamp();
+
+            await dispCh.send({ content: '@here', embeds: [boloEmbed] }).catch(() => {});
+          }
+        }
+
+        // Create DB record if character was found
+        if (boloCharacter) {
+          try {
+            const { v4: uuidv4 } = await import('uuid');
+            const boloRecord = new BOLO({
+              guildId: guild.id,
+              boloId: `VOICE-${uuidv4().slice(0, 8).toUpperCase()}`,
+              characterId: boloCharacter._id,
+              characterName: boloCharacter.fullName,
+              reason,
+              description,
+              issuedBy: 'AI Dispatch',
+              vehicles: vehicleLine ? [{
+                color: args.vehicle_color || '',
+                make: args.vehicle_make || '',
+                model: args.vehicle_model || '',
+                licensePlate: args.license_plate || '',
+              }] : [],
+            });
+            await boloRecord.save();
+            console.log(`[Dispatch AI] BOLO created for ${boloCharacter.fullName} (DB record saved)`);
+          } catch (err) {
+            console.error('[Dispatch AI] BOLO DB save failed:', err.message);
+          }
+        }
+
+        console.log(`[Dispatch AI] BOLO issued for ${suspectName} — ${reason}`);
+      }
+
     } catch (err) {
       console.error(`[Dispatch AI] Action "${action.name}" failed:`, err.message);
     }
@@ -1187,35 +1262,62 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     return { text: `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`, actions: [] };
   }
 
-  // Pull all context in parallel — active calls + full officer roster
-  let activeCalls = [], allStatuses = [];
+  // Pull all context in parallel — active calls + full officer roster + active BOLOs
+  let activeCalls = [], allStatuses = [], activeBolos = [];
   try {
-    [activeCalls, allStatuses] = await Promise.all([
-      EmergencyCall.find({ guildId, status: 'active' }).sort({ timestamp: -1 }).limit(5).lean(),
+    [activeCalls, allStatuses, activeBolos] = await Promise.all([
+      EmergencyCall.find({ guildId, status: 'active' }).sort({ timestamp: -1 }).limit(8).lean(),
       OfficerStatus.find({ guildId }).sort({ updatedAt: -1 }).lean(),
+      BOLO.find({ guildId, active: true }).sort({ createdAt: -1 }).limit(5).lean(),
     ]);
   } catch {}
 
-  // Roster lines
+  // Roster — include shift time so dispatcher can reference it
+  const now = Date.now();
   const rosterLines = allStatuses.length > 0
     ? allStatuses.map(s => {
         const name = cleanNameForTTS(s.username);
+        const mins = s.updatedAt ? Math.floor((now - new Date(s.updatedAt).getTime()) / 60000) : null;
+        const shiftStr = mins !== null && mins < 600 ? ` (${mins}m ago)` : '';
         const detail = [s.subject && `with ${s.subject}`, s.location && `at ${s.location}`]
           .filter(Boolean).join(', ');
-        return `  ${name}: ${s.tenCode || '10-8'}${detail ? ` (${detail})` : ''}`;
+        return `  ${name}: ${s.tenCode || '10-8'}${detail ? ` (${detail})` : ''}${shiftStr}`;
       }).join('\n')
     : '  No units logged on.';
 
-  // Active-call lines
+  // Active calls — include attached officers and any notes
   const callLines = activeCalls.map(c => {
     const callNum = c.callId?.split('-').pop() || '???';
     let line = `  Call #${callNum}: ${c.issue || 'unknown'}`;
     if (c.location) line += ` at ${c.location}`;
+    if (c.suspectsDescription) line += ` — Suspect: ${c.suspectsDescription}`;
     const responder = allStatuses.find(s => s.userId === c.respondingLeoId);
-    line += responder ? ` — ${cleanNameForTTS(responder.username)} responding` : ' — UNATTENDED';
+    const attached = (c.attachedLeoIds || []).map(id => allStatuses.find(s => s.userId === id)?.username).filter(Boolean);
+    if (responder) line += ` — Primary: ${cleanNameForTTS(responder.username)}`;
+    if (attached.length) line += ` — Backup: ${attached.map(cleanNameForTTS).join(', ')}`;
+    if (!responder) line += ' — UNATTENDED';
     return line;
   });
   const callContext = callLines.length > 0 ? callLines.join('\n') : '  None.';
+
+  // Active BOLOs
+  const boloLines = activeBolos.map(b => {
+    let line = `  BOLO: ${b.characterName} — ${b.reason}`;
+    if (b.description) line += ` (${b.description})`;
+    if (b.vehicles?.length) {
+      const v = b.vehicles[0];
+      line += ` | Vehicle: ${[v.color, v.year, v.make, v.model].filter(Boolean).join(' ')}`;
+      if (v.licensePlate) line += ` plate ${v.licensePlate}`;
+    }
+    return line;
+  });
+  const boloContext = boloLines.length > 0 ? boloLines.join('\n') : '  None.';
+
+  // Active pursuit
+  const pursuitInfo = activePursuitAlerts.get(guildId);
+  const pursuitLine = pursuitInfo
+    ? `  ACTIVE PURSUIT: Officer ${cleanNameForTTS(pursuitInfo.officerName)} — started ${Math.floor((now - pursuitInfo.timestamp) / 60000)}m ago`
+    : '  None.';
 
   // Channel names for AI awareness
   const stopChannelNames = (config?.trafficStopChannelIds || [])
@@ -1226,45 +1328,52 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const ttsOfficerName = cleanNameForTTS(officerName);
   const callText = parsed.rawText || parsed.code || 'unknown';
   const userSaid = fullVoiceContext || callText;
+  const callSignLine = detectedCallSign ? `SPEAKING OFFICER CALL SIGN: ${detectedCallSign}\n` : '';
 
-  const ttsOfficerIdStr = detectedCallSign ? ` [Call sign: ${detectedCallSign}]` : '';
   const systemPrompt =
     `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
-    `Your voice is played live over police radio — keep responses tight, natural, and in character.\n\n` +
+    `Your voice is played live over police radio. Be professional, terse, and realistic.\n\n` +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `ACTIVE 911 CALLS:\n${callContext}\n\n` +
+    `ACTIVE PURSUIT:\n${pursuitLine}\n\n` +
+    `ACTIVE BOLOs:\n${boloContext}\n\n` +
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
-    (ttsOfficerIdStr ? `SPEAKING OFFICER CALL SIGN: ${ttsOfficerIdStr}\n` : '') +
+    callSignLine +
     `\nRADIO PROTOCOL:\n` +
-    `- Open every response addressing the officer: "Copy [Name]," or "[Name], dispatch—"\n` +
-    `- If they used a call sign, address them by it first: "Copy 1-Adam-22," then their name.\n` +
-    `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight".\n` +
-    `- Keep it to 1–2 short sentences. Radio is terse. No filler.\n` +
-    `- If asking officer to move to a traffic stop channel, say: "Do you want me to move you to a stop channel?"\n` +
-    `- GTA RP setting: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis.\n` +
-    `- If transmission is unclear: "Say again, [Name]?" Keep it brief.\n\n` +
-    `ACTIONS (call them proactively alongside your spoken response — never silently):\n` +
-    `- move_to_traffic_stop: officer goes ten-eleven or asks about moving to stop channel (ASK first, do not force)\n` +
-    `- move_to_patrol: officer goes ten-eight or clears scene\n` +
-    `- update_officer_status: any verbal status change (including ten-seventy-six en route, ten-ninety-seven on scene, ten-fifteen detained)\n` +
-    `- close_call: officer says code four on an active call\n` +
-    `- send_unit_to_call: officer requests backup or a unit needs to be assigned to a call\n` +
-    `- add_call_note: officer reports suspect description, vehicle info, or last-seen location about a specific active call — update the call with that detail\n` +
-    `- flag_officer_needs_backup: officer explicitly calls for backup or says they need units — sets them ten-seventy-eight\n\n` +
-    `Always include your spoken radio response. Never call a function without also speaking on the radio.`;
+    `- Address officer by name first: "Copy [Name]," or "[Name], dispatch—"\n` +
+    `- If they used a call sign, address by call sign: "Copy 1-Adam-22, [Name]—"\n` +
+    `- Speak all ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
+    `- Keep it to 1–2 short radio sentences. Terse. No filler, no pleasantries.\n` +
+    `- If transmission is unclear or too short: "Say again, [Name]?"\n` +
+    `- GTA V locations: Los Santos, Blaine County, Pillbox Medical Center, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci Beach, Del Perro, Vinewood, Rockford Hills, La Mesa.\n` +
+    `- Divisions: LSPD (Los Santos PD), BCSO (Blaine County Sheriff), FIB, LSFD.\n` +
+    `- Unit types: Adam (patrol), Boy (traffic), Charlie (K9), David (detective).\n\n` +
+    `CRITICAL — FUNCTION CALL RULES:\n` +
+    `- Call functions silently via the tool system. NEVER write <function=...> or JSON in your radio response.\n` +
+    `- Your spoken response must be ONLY natural radio dialogue — no brackets, no tags, no code.\n` +
+    `- Always speak on the radio AND call the relevant function together.\n\n` +
+    `WHEN TO CALL FUNCTIONS:\n` +
+    `- move_to_traffic_stop: officer reports ten-eleven OR asks to be moved to a stop channel (ask first — never force)\n` +
+    `- move_to_patrol: officer clears scene or goes ten-eight\n` +
+    `- update_officer_status: any verbal status change (ten-seventy-six, ten-ninety-seven, ten-fifteen, ten-fifty, etc.)\n` +
+    `- close_call: officer says "code four" or clears an active call\n` +
+    `- send_unit_to_call: officer requests backup or asks a unit be assigned to a call\n` +
+    `- add_call_note: officer reports suspect description, vehicle info, or updates a call's location\n` +
+    `- flag_officer_needs_backup: officer explicitly says they need units — sets ten-seventy-eight\n` +
+    `- create_bolo: officer puts out a BOLO on a suspect or vehicle over radio`;
 
-  // Tool definitions — full function calling schema
+  // Tool definitions
   const dispatchTools = [
     {
       type: 'function',
       function: {
         name: 'move_to_traffic_stop',
-        description: 'Move an officer to an available traffic stop voice channel',
+        description: 'Ask officer if they want to move to an available traffic stop voice channel (never force)',
         parameters: {
           type: 'object',
           properties: {
-            officer_name: { type: 'string', description: 'Display name or first name of the officer' },
+            officer_name: { type: 'string', description: 'First name or display name of the officer' },
           },
           required: ['officer_name'],
         },
@@ -1278,7 +1387,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         parameters: {
           type: 'object',
           properties: {
-            officer_name: { type: 'string', description: 'Display name or first name of the officer' },
+            officer_name: { type: 'string' },
           },
           required: ['officer_name'],
         },
@@ -1288,12 +1397,12 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'update_officer_status',
-        description: "Update an officer's ten-code on the status board",
+        description: "Update an officer's ten-code status on the board",
         parameters: {
           type: 'object',
           properties: {
             officer_name: { type: 'string' },
-            ten_code: { type: 'string', description: 'e.g. 10-8, 10-11, 10-80, 10-97, 10-7' },
+            ten_code: { type: 'string', description: 'e.g. 10-8, 10-11, 10-80, 10-97, 10-76, 10-15' },
           },
           required: ['officer_name', 'ten_code'],
         },
@@ -1303,11 +1412,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'close_call',
-        description: 'Mark an active 911 call as resolved',
+        description: 'Mark an active 911 call as resolved (code four)',
         parameters: {
           type: 'object',
           properties: {
-            call_number: { type: 'string', description: 'Short call number, e.g. "42" or "1"' },
+            call_number: { type: 'string', description: 'Short call number e.g. "42"' },
           },
           required: ['call_number'],
         },
@@ -1317,7 +1426,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'send_unit_to_call',
-        description: 'Attach an available officer to an active 911 call as backup or primary',
+        description: 'Attach an available officer to an active 911 call as backup or primary responder',
         parameters: {
           type: 'object',
           properties: {
@@ -1332,17 +1441,16 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'add_call_note',
-        description: 'Add or update a note on an active 911 call — use when officer reports suspect description, vehicle info, or new location detail over the radio',
+        description: 'Add or update a detail on an active 911 call — suspects, vehicle, location, or general note',
         parameters: {
           type: 'object',
           properties: {
-            call_number: { type: 'string', description: 'Short call number, e.g. "42"' },
+            call_number: { type: 'string' },
             note_type: {
               type: 'string',
               enum: ['suspects', 'location', 'vehicle', 'notes'],
-              description: 'Category of the new information',
             },
-            note: { type: 'string', description: 'The detail to record on the call' },
+            note: { type: 'string', description: 'The detail to record' },
           },
           required: ['call_number', 'note_type', 'note'],
         },
@@ -1352,44 +1460,72 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'flag_officer_needs_backup',
-        description: 'Set an officer to 10-78 (needs backup) — use when an officer explicitly calls for help or says they need units',
+        description: 'Set an officer to 10-78 (needs backup) when they explicitly call for units',
         parameters: {
           type: 'object',
           properties: {
-            officer_name: { type: 'string', description: 'Display name or call sign of the officer who needs backup' },
+            officer_name: { type: 'string' },
           },
           required: ['officer_name'],
         },
       },
     },
+    {
+      type: 'function',
+      function: {
+        name: 'create_bolo',
+        description: 'Create a BOLO (Be On the Lookout) based on what the officer says over radio',
+        parameters: {
+          type: 'object',
+          properties: {
+            suspect_name: { type: 'string', description: 'Name of the suspect if known, otherwise "Unknown"' },
+            reason: { type: 'string', description: 'Reason for the BOLO, e.g. "Armed robbery suspect"' },
+            description: { type: 'string', description: 'Physical description of the suspect' },
+            vehicle_color: { type: 'string' },
+            vehicle_make: { type: 'string' },
+            vehicle_model: { type: 'string' },
+            license_plate: { type: 'string' },
+            last_seen: { type: 'string', description: 'Last known location' },
+          },
+          required: ['suspect_name', 'reason'],
+        },
+      },
+    },
   ];
 
-  // Rolling session history — cleared on disconnect, so no cross-shift bleed
+  // Rolling session history — cleared on disconnect
   const radioLog = getRadioLog(guildId);
   const historyMessages = radioLog.flatMap(entry => [
     { role: 'user', content: `${entry.officer}: "${entry.said}"` },
     { role: 'assistant', content: entry.response },
-  ]).slice(-10);
+  ]).slice(-8);
 
   const messages = [
     { role: 'system', content: systemPrompt },
     ...historyMessages,
-    { role: 'user', content: `${ttsOfficerName}: "${userSaid}"` },
+    { role: 'user', content: `${ttsOfficerName}${detectedCallSign ? ` [${detectedCallSign}]` : ''}: "${userSaid}"` },
   ];
+
+  // Use the fast model for simple short queries, powerful model for complex ones
+  const wordCount = userSaid.trim().split(/\s+/).length;
+  const isComplexQuery = wordCount > 8 || /plate|name|bolo|backup|assist|pursuit|run|look.?up|describe/i.test(userSaid);
 
   let lastErr;
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
+    const model = provider === 'groq'
+      ? (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant')
+      : 'gpt-4o-mini';
+    const maxTokens = isComplexQuery ? 130 : 80;
     try {
       const response = await client.chat.completions.create({
         model,
         messages,
         tools: dispatchTools,
         tool_choice: 'auto',
-        max_tokens: 150,
-        temperature: 0.55,
+        max_tokens: maxTokens,
+        temperature: 0.5,
       });
       const message = response.choices[0]?.message;
       let rawText = message?.content?.trim() || '';
@@ -1638,6 +1774,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           // No trigger word or call sign — treat the entire utterance as the command.
           // Officers in a configured patrol channel are always talking to dispatch.
           commandText = raw;
+          // Require at least 3 words OR a ten-code, otherwise it's likely background noise
+          const wordCount = commandText.trim().split(/\s+/).filter(Boolean).length;
+          const hasTenCode = /\b10[-\s]?\d+\b/i.test(commandText);
+          if (wordCount < 3 && !hasTenCode) {
+            console.log(`[Dispatch] No trigger — too short (${wordCount} word${wordCount !== 1 ? 's' : ''}), ignoring`);
+            return;
+          }
           console.log(`[Dispatch] No trigger — processing full utterance: "${commandText}"`);
         }
 
@@ -2541,14 +2684,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
       if (aiActions.length) {
         const actionSummary = aiActions.map(a => {
-          if (a.name === 'move_to_traffic_stop') return `Moved ${a.args.officer_name} to stop channel`;
-          if (a.name === 'move_to_patrol') return `Moved ${a.args.officer_name} to patrol`;
-          if (a.name === 'update_officer_status') return `Updated ${a.args.officer_name} → ${a.args.ten_code}`;
-          if (a.name === 'close_call') return `Closed call #${a.args.call_number}`;
-          if (a.name === 'send_unit_to_call') return `Sent ${a.args.officer_name} to call #${a.args.call_number}`;
+          if (a.name === 'move_to_traffic_stop') return `Stop channel requested for ${a.args.officer_name}`;
+          if (a.name === 'move_to_patrol')        return `${a.args.officer_name} moved to patrol`;
+          if (a.name === 'update_officer_status') return `${a.args.officer_name} → ${a.args.ten_code}`;
+          if (a.name === 'close_call')            return `Call #${a.args.call_number} closed (Code 4)`;
+          if (a.name === 'send_unit_to_call')     return `${a.args.officer_name} attached to call #${a.args.call_number}`;
+          if (a.name === 'add_call_note')         return `Call #${a.args.call_number} updated — ${a.args.note_type}: ${a.args.note}`;
+          if (a.name === 'flag_officer_needs_backup') return `${a.args.officer_name} flagged 10-78 (backup needed)`;
+          if (a.name === 'create_bolo')           return `BOLO issued — ${a.args.suspect_name}: ${a.args.reason}${a.args.last_seen ? ` (last seen: ${a.args.last_seen})` : ''}`;
           return a.name;
         }).join('\n');
-        embed.addFields({ name: 'Actions Taken', value: actionSummary, inline: false });
+        embed.addFields({ name: 'Actions Taken', value: actionSummary.slice(0, 1024), inline: false });
       }
 
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
