@@ -404,14 +404,28 @@ const CALL_SIGN_PHONETICS = new Set([
   'tom','union','victor','william','xray','young','zebra',
 ]);
 
+// Spoken number words → digit strings (for call signs like "One Adam 84")
+const SPOKEN_NUM_TO_DIGIT = {
+  zero:'0', one:'1', two:'2', three:'3', four:'4',
+  five:'5', six:'6', seven:'7', eight:'8', nine:'9', ten:'10',
+};
+
+// Emergency phrases that always bypass the trigger requirement
+const EMERGENCY_BYPASS_RE = /\b(?:shots?\s+fired|officer\s+down|mayday|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|10[-\s]?99|we\s+have\s+shots|man\s+down|officer\s+needs\s+help)\b/i;
+
 /**
  * Detects a police call sign at the start of a transmission.
  * Returns { callSign, remainder } or null.
- * Handles: "1 Adam 22 ...", "Adam 22 ...", "2 Lincoln 40 ...", "Marshal Command ..."
+ * Handles: "1 Adam 22 ...", "One Adam 84 ...", "Adam 22 ...", "2 Lincoln 40 ...", "Marshal Command ..."
  */
 function detectCallSign(text) {
   const lower = text.trim().toLowerCase();
   const words = lower.split(/\s+/);
+
+  // Normalise first word from spoken number to digit (e.g. "one" → "1")
+  const normFirst = SPOKEN_NUM_TO_DIGIT[words[0]] ?? words[0];
+  // Normalise third word similarly
+  const normThird = words[2] ? (SPOKEN_NUM_TO_DIGIT[words[2]] ?? words[2]) : null;
 
   // Special command call signs: "Marshal Command", "County Command", "Central Dispatch"
   if (/^(?:marshal|county|central|command)\s*(?:command|dispatch|base|control)?/i.test(lower)) {
@@ -419,16 +433,24 @@ function detectCallSign(text) {
     if (remainder.length > 2) return { callSign: words.slice(0, 2).join(' '), remainder };
   }
 
-  // Pattern: [number] [phonetic] [number] — e.g. "1 Adam 22" or "2 Lincoln 40"
-  if (words.length >= 3 && /^\d+$/.test(words[0]) && CALL_SIGN_PHONETICS.has(words[1]) && /^\d+$/.test(words[2])) {
+  // Pattern: [number|word-number] [phonetic] [number|word-number] — e.g. "1 Adam 22", "One Adam 84"
+  if (
+    words.length >= 3 &&
+    /^\d+$/.test(normFirst) &&
+    CALL_SIGN_PHONETICS.has(words[1]) &&
+    normThird && /^\d+$/.test(normThird)
+  ) {
     const remainder = words.slice(3).join(' ').trim();
-    if (remainder.length > 1) return { callSign: `${words[0]}-${words[1]}-${words[2]}`, remainder };
+    if (remainder.length > 1) return { callSign: `${normFirst}-${words[1]}-${normThird}`, remainder };
   }
 
   // Pattern: [phonetic] [number] — e.g. "Adam 22" or "Lincoln 4"
-  if (words.length >= 2 && CALL_SIGN_PHONETICS.has(words[0]) && /^\d+$/.test(words[1])) {
-    const remainder = words.slice(2).join(' ').trim();
-    if (remainder.length > 1) return { callSign: `${words[0]}-${words[1]}`, remainder };
+  if (words.length >= 2 && CALL_SIGN_PHONETICS.has(words[0]) && /^\d+$/.test(normThird ?? words[1])) {
+    const numPart = SPOKEN_NUM_TO_DIGIT[words[1]] ?? words[1];
+    if (/^\d+$/.test(numPart)) {
+      const remainder = words.slice(2).join(' ').trim();
+      if (remainder.length > 1) return { callSign: `${words[0]}-${numPart}`, remainder };
+    }
   }
 
   return null;
@@ -1544,37 +1566,56 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     {
       const raw = transcript.trim();
 
-      // Check for call sign at the very start — e.g. "1 Adam 22, show me 10-8"
-      const callSignResult = detectCallSign(raw);
-
-      // Check for "dispatch" / "command" / "control" trigger anywhere in first 10 words
-      const words = raw.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
-      const dispatchTriggers = new Set(['dispatch', 'command', 'control', 'central']);
-      const dispatchIdx = words.findIndex((w, i) => i <= 10 && dispatchTriggers.has(w));
-
-      let preContext = '';
-      let commandText = '';
-
-      if (callSignResult && callSignResult.remainder.trim().length > 2) {
-        // Officer opened with their call sign — the remainder is the command for dispatch
-        detectedCallSign = callSignResult.callSign;
-        preContext = '';
-        commandText = callSignResult.remainder.trim();
-        console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
-      } else if (dispatchIdx !== -1) {
-        // Classic "dispatch, ..." trigger
-        preContext = words.slice(0, dispatchIdx).join(' ').trim();
-        commandText = words.slice(dispatchIdx + 1).join(' ');
-        console.log(`[Dispatch] Trigger "dispatch" found at word ${dispatchIdx}`);
+      // ── Emergency bypass — always process regardless of trigger word ──────
+      if (EMERGENCY_BYPASS_RE.test(raw)) {
+        transcript = raw;
+        fullVoiceContext = raw;
+        console.log(`[Dispatch] Emergency phrase detected — bypassing trigger requirement`);
+        // Fall through to processing below
       } else {
-        console.log(`[Dispatch] Ignored — no trigger word or call sign found`);
-        return;
-      }
+        // Check for call sign at the very start — e.g. "1 Adam 22, show me 10-8"
+        const callSignResult = detectCallSign(raw);
 
-      if (commandText.length < 2) return;
-      transcript = commandText;
-      fullVoiceContext = preContext ? `${preContext}, ${commandText}` : commandText;
-      console.log(`[Dispatch] Transcript ready: "${transcript}"${preContext ? ` (pre: "${preContext}")` : ''}${detectedCallSign ? ` (call sign: ${detectedCallSign})` : ''}`);
+        // Check for "dispatch" / "dispatcher" / "command" / "control" / "central" anywhere in first 10 words
+        const words = raw.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
+        const dispatchIdx = words.findIndex((w, i) => i <= 10 && (
+          w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
+          w === 'command' || w === 'control' || w === 'central'
+        ));
+
+        let preContext = '';
+        let commandText = '';
+
+        if (callSignResult && callSignResult.remainder.trim().length > 2) {
+          // Officer opened with their call sign — the remainder is the command for dispatch
+          detectedCallSign = callSignResult.callSign;
+          preContext = '';
+          commandText = callSignResult.remainder.trim();
+          console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
+        } else if (dispatchIdx !== -1) {
+          // Classic "dispatch, ..." trigger
+          preContext = words.slice(0, dispatchIdx).join(' ').trim();
+          commandText = words.slice(dispatchIdx + 1).join(' ');
+          console.log(`[Dispatch] Trigger "${words[dispatchIdx]}" found at word ${dispatchIdx}`);
+        } else {
+          console.log(`[Dispatch] Ignored — no trigger word or call sign found`);
+          return;
+        }
+
+        // If nothing came after "dispatch" but the officer said something before it (e.g. "One Adam 84 to dispatch"),
+        // treat the full transmission as context so the bot can at least acknowledge them.
+        if (commandText.length < 2) {
+          if (preContext.length > 2) {
+            commandText = preContext;
+            preContext = '';
+          } else {
+            return;
+          }
+        }
+        transcript = commandText;
+        fullVoiceContext = preContext ? `${preContext}, ${commandText}` : commandText;
+        console.log(`[Dispatch] Transcript ready: "${transcript}"${preContext ? ` (pre: "${preContext}")` : ''}${detectedCallSign ? ` (call sign: ${detectedCallSign})` : ''}`);
+      }
     }
 
     // --- "Show me in / show me on" join-stop detection ---
