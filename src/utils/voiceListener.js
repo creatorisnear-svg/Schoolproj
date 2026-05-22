@@ -11,6 +11,7 @@ import {
 import { createSocket as createUdpSocket } from 'dgram';
 import { Readable } from 'stream';
 import prism from 'prism-media';
+import { clearRadioLog } from './radioSession.js';
 
 /**
  * Per-guild dispatch state.
@@ -512,6 +513,8 @@ export function disconnectDispatchChannel(guildId) {
     state.connection = null;
     state.currentChannelId = null;
   }
+  // Clear session memory — AI starts fresh next time the bot joins
+  clearRadioLog(guildId);
 }
 
 /**
@@ -524,6 +527,7 @@ export function leaveDispatchChannel(guildId) {
   if (state.connection) {
     try { state.connection.destroy(); } catch {}
   }
+  clearRadioLog(guildId);
   dispatchState.delete(guildId);
   reconnectAttempts.delete(guildId);
   for (const key of [...logThrottleCounts.keys()]) {

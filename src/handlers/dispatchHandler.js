@@ -13,6 +13,7 @@ import CADCharacter from '../models/CADCharacter.js';
 import BOLO from '../models/BOLO.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
+import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
 
 const TEN_CODES = {
   '10-4': { label: '10-4 Acknowledged', action: null },
@@ -863,23 +864,12 @@ async function playTTS(ttsPromise, guildId, { urgent = false } = {}) {
 }
 // ───────────────────────────────────────────────────────────────────────────
 
-// ── Per-guild radio conversation log ───────────────────────────────────────
-// Rolling buffer of recent radio exchanges so the AI has multi-officer context
-const _radioLog = new Map(); // guildId → Array<{ officer, said, response }>
-const RADIO_LOG_MAX = 6;
-
-function addToRadioLog(guildId, officerName, said, response) {
-  if (!_radioLog.has(guildId)) _radioLog.set(guildId, []);
-  const log = _radioLog.get(guildId);
-  log.push({ officer: cleanNameForTTS(officerName), said, response });
-  if (log.length > RADIO_LOG_MAX) log.shift();
-}
-// ───────────────────────────────────────────────────────────────────────────
+// Radio log helpers are provided by ../utils/radioSession.js (imported above).
 
 const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 
 
-async function generateDispatchResponse(officerName, parsed, guildId) {
+async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
     return `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`;
@@ -934,17 +924,23 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
     `- If the transmission is unclear, say "Go ahead ${ttsOfficerName}" or ask them to repeat.\n` +
     `- Keep language natural and realistic for a live GTA RP server.`;
 
-  // Inject rolling radio log as conversation history so AI knows what other officers just said
-  const radioLog = _radioLog.get(guildId) || [];
+  // Inject rolling session radio log as conversation history
+  // getRadioLog() only returns entries from the current voice session
+  // (cleared automatically when bot disconnects)
+  const radioLog = getRadioLog(guildId);
   const historyMessages = radioLog.flatMap(entry => [
     { role: 'user', content: `${entry.officer}: "${entry.said}"` },
     { role: 'assistant', content: entry.response },
-  ]).slice(-8); // last 4 full exchanges
+  ]).slice(-10); // last 5 full exchanges
+
+  // Use the full voice context (pre-dispatch words + post-dispatch command)
+  // so the AI sees everything the officer said, not just what came after the trigger word
+  const userSaid = fullVoiceContext || callText;
 
   const messages = [
     { role: 'system', content: systemPrompt },
     ...historyMessages,
-    { role: 'user', content: `${ttsOfficerName}: "${callText}"` },
+    { role: 'user', content: `${ttsOfficerName}: "${userSaid}"` },
   ];
 
   let lastErr;
@@ -961,7 +957,8 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
         temperature: 0.65,
       });
       const text = response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
-      addToRadioLog(guildId, officerName, callText, text);
+      // Log the full voice context (pre + post dispatch) so future exchanges have complete info
+      addToRadioLog(guildId, cleanNameForTTS(officerName), fullVoiceContext || callText, text);
       return text;
     } catch (err) {
       lastErr = err;
@@ -1057,17 +1054,27 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End release stop ---
 
+    // fullVoiceContext = everything the officer said (pre + post "dispatch")
+    // transcript = only what came after the trigger word (used for command detection)
+    let fullVoiceContext = null;
     {
       const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
       const triggers = ['dispatch'];
       const idx = words.findIndex(w => triggers.includes(w));
-      if (idx === -1 || idx > 5) {
+      if (idx === -1 || idx > 10) {
         console.log(`[Dispatch] Ignored — no trigger word found`);
         return;
       }
+      // Save words said BEFORE "dispatch" — the AI needs that context too
+      // (e.g. "I got a suspect in a red car, dispatch, show me 10-80")
+      const preDispatchWords = words.slice(0, idx).join(' ').trim();
       transcript = words.slice(idx + 1).join(' ');
       if (transcript.length < 2) return;
-      console.log(`[Dispatch] Cleaned transcript: "${transcript}"`);
+      // Combine into full context for the AI, but keep post-dispatch for command parsing
+      fullVoiceContext = preDispatchWords
+        ? `${preDispatchWords}, ${transcript}`
+        : transcript;
+      console.log(`[Dispatch] Cleaned transcript: "${transcript}"${preDispatchWords ? ` (pre-context: "${preDispatchWords}")` : ''}`);
     }
 
     // --- "Show me in / show me on" join-stop detection ---
@@ -1824,7 +1831,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     let dispatchResponse = null;
     if (config.aiEnabled && hasAIKey()) {
       try {
-        dispatchResponse = await generateDispatchResponse(officerName, parsed, guild.id);
+        dispatchResponse = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext);
       } catch (err) {
         console.error('[Dispatch] AI response error:', err.message);
       }
