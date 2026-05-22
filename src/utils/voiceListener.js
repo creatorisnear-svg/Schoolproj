@@ -538,8 +538,12 @@ export function leaveDispatchChannel(guildId) {
  * Play a TTS audio buffer through the guild's active voice connection.
  * Uses a per-guild queue so responses never cut each other off mid-sentence.
  * Only plays if the connection is in the Ready state.
+ *
+ * Options:
+ *   urgent — clears any stale queued audio and stops the current clip so this
+ *            plays immediately (use for 10-99 panic and 10-80 pursuit alerts).
  */
-export async function playDispatchVoice(guildId, audioBuffer) {
+export async function playDispatchVoice(guildId, audioBuffer, { urgent = false } = {}) {
   const state = dispatchState.get(guildId);
   if (!state) {
     console.error('[Dispatch TTS] No state for guild:', guildId);
@@ -547,6 +551,24 @@ export async function playDispatchVoice(guildId, audioBuffer) {
   }
 
   if (!state.audioQueue) state.audioQueue = [];
+
+  if (urgent) {
+    // Discard all queued clips and stop current playback so this fires first
+    state.audioQueue = [audioBuffer];
+    if (state.audioPlayer) {
+      try { state.audioPlayer.stop(true); } catch {}
+    }
+    if (!state.audioPlaying) await _drainAudioQueue(guildId);
+    return;
+  }
+
+  // If queue is already backing up (≥3 pending), drop the oldest non-playing
+  // item so stale responses don't pile up when multiple officers talk at once
+  if (state.audioQueue.length >= 3) {
+    state.audioQueue.shift();
+    console.log(`[Dispatch TTS] Queue trimmed for guild ${guildId} (was ≥3 deep)`);
+  }
+
   state.audioQueue.push(audioBuffer);
 
   if (state.audioPlaying) {

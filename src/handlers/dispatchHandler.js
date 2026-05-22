@@ -853,13 +853,26 @@ function startTTS(text, config) {
   if (!config?.aiEnabled || !hasAIKey()) return null;
   return generateDispatchTTS(text).catch(() => null);
 }
-async function playTTS(ttsPromise, guildId) {
+async function playTTS(ttsPromise, guildId, { urgent = false } = {}) {
   if (!ttsPromise) return;
   try {
     const { playDispatchVoice } = await import('../utils/voiceListener.js');
     const buf = await ttsPromise;
-    if (buf) playDispatchVoice(guildId, buf);
+    if (buf) playDispatchVoice(guildId, buf, { urgent });
   } catch {}
+}
+// ───────────────────────────────────────────────────────────────────────────
+
+// ── Per-guild radio conversation log ───────────────────────────────────────
+// Rolling buffer of recent radio exchanges so the AI has multi-officer context
+const _radioLog = new Map(); // guildId → Array<{ officer, said, response }>
+const RADIO_LOG_MAX = 6;
+
+function addToRadioLog(guildId, officerName, said, response) {
+  if (!_radioLog.has(guildId)) _radioLog.set(guildId, []);
+  const log = _radioLog.get(guildId);
+  log.push({ officer: cleanNameForTTS(officerName), said, response });
+  if (log.length > RADIO_LOG_MAX) log.shift();
 }
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -872,48 +885,84 @@ async function generateDispatchResponse(officerName, parsed, guildId) {
     return `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`;
   }
 
-  let callContext = '';
+  // Pull all context in parallel — calls, officer roster
+  let activeCalls = [], allStatuses = [];
   try {
-    const activeCalls = await EmergencyCall.find({ guildId, status: 'active' }).sort({ timestamp: -1 }).limit(5).lean();
-    if (activeCalls.length > 0) {
-      const callLines = activeCalls.map(c => {
-        const callNum = c.callId?.split('-').pop() || '???';
-        let line = `Call #${callNum}: ${c.issue || 'unknown'}`;
-        if (c.location) line += ` at ${c.location}`;
-        if (c.respondingLeoId) line += ` (unit responding)`;
-        else line += ` (NO units responding)`;
-        return line;
-      });
-      callContext = `\nActive 911 calls:\n${callLines.join('\n')}`;
-    }
+    [activeCalls, allStatuses] = await Promise.all([
+      EmergencyCall.find({ guildId, status: 'active' }).sort({ timestamp: -1 }).limit(5).lean(),
+      OfficerStatus.find({ guildId }).sort({ updatedAt: -1 }).lean(),
+    ]);
   } catch {}
 
+  // Build a human-readable officer roster
+  const otherOfficers = allStatuses.filter(s => s.userId !== undefined);
+  const rosterLines = otherOfficers.length > 0
+    ? otherOfficers.map(s => {
+        const name = cleanNameForTTS(s.username);
+        const detail = [
+          s.subject && `with ${s.subject}`,
+          s.location && `at ${s.location}`,
+        ].filter(Boolean).join(', ');
+        return `  ${name}: ${s.tenCode || '10-8'}${detail ? ` (${detail})` : ''}`;
+      }).join('\n')
+    : '  No units logged on.';
+
+  // Build active-call summary
+  const callLines = activeCalls.map(c => {
+    const callNum = c.callId?.split('-').pop() || '???';
+    let line = `  Call #${callNum}: ${c.issue || 'unknown'}`;
+    if (c.location) line += ` at ${c.location}`;
+    line += c.respondingLeoId ? ' (unit responding)' : ' (no units responding)';
+    return line;
+  });
+  const callContext = callLines.length > 0 ? callLines.join('\n') : '  None.';
+
+  const ttsOfficerName = cleanNameForTTS(officerName);
   const callText = parsed.rawText || `${parsed.code || 'unknown status'}`;
 
-  const systemPrompt = `You are a police radio dispatcher in a GTA 5 FiveM RP community. Rules you must follow:\n1. Keep every response to exactly 1 short sentence.\n2. Use 10-codes in responses (ten four, ten eight, etc.).\n3. ONLY acknowledge what the officer explicitly said in this exact transmission. Never assume, infer, or add any information not present in their words.\n4. Never mention calls, locations, suspects, or incidents that the officer did not bring up themselves.\n5. If they mention running a plate or name, reply only: "Copy, say again the plate" or "Copy, say again the name".\n6. Do NOT reference any 911 calls unless listed below AND the officer mentioned responding to a call.\n7. If the officer's message is unclear, just say "Go ahead [name]" or ask them to repeat.\n${callContext ? `Active 911 calls you MAY reference only if the officer asks:\n${callContext}` : 'There are no active 911 calls. Do not mention any calls.'}`;
+  const systemPrompt =
+    `You are a GTA 5 FiveM RP police radio dispatcher. Your responses will be read aloud via text-to-speech.\n\n` +
+    `Units currently on duty:\n${rosterLines}\n\n` +
+    `Active 911 calls:\n${callContext}\n\n` +
+    `Instructions:\n` +
+    `- Respond in 1 to 2 short natural sentences maximum — you are on a police radio.\n` +
+    `- Spell out ten-codes as words: ten four, ten eleven, ten eighty, etc.\n` +
+    `- Address the officer by first name only (e.g. "Copy, Smith...").\n` +
+    `- You may reference other on-duty units by first name to coordinate (e.g. "I'll send Baker your way").\n` +
+    `- Do NOT add locations, suspects, or incidents the officer did not mention.\n` +
+    `- If the officer is running a plate or name via CAD, say only: "Copy, stand by." — the CAD result will follow separately.\n` +
+    `- If the transmission is unclear, say "Go ahead ${ttsOfficerName}" or ask them to repeat.\n` +
+    `- Keep language natural and realistic for a live GTA RP server.`;
+
+  // Inject rolling radio log as conversation history so AI knows what other officers just said
+  const radioLog = _radioLog.get(guildId) || [];
+  const historyMessages = radioLog.flatMap(entry => [
+    { role: 'user', content: `${entry.officer}: "${entry.said}"` },
+    { role: 'assistant', content: entry.response },
+  ]).slice(-8); // last 4 full exchanges
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...historyMessages,
+    { role: 'user', content: `${ttsOfficerName}: "${callText}"` },
+  ];
 
   let lastErr;
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
+    // llama-3.3-70b-versatile: smarter multi-officer coordination; gpt-4o-mini fallback
+    const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     try {
       const response = await client.chat.completions.create({
         model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: `Officer ${officerName} said: "${callText}"`,
-          },
-        ],
-        max_tokens: 60,
-        temperature: 0.5,
+        messages,
+        max_tokens: 90,
+        temperature: 0.65,
       });
-      return response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
+      const text = response.choices[0]?.message?.content?.trim() || '10-4, copy that.';
+      addToRadioLog(guildId, officerName, callText, text);
+      return text;
     } catch (err) {
       lastErr = err;
       if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
@@ -2408,7 +2457,7 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
         const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${cleanNameForTTS(officerName)} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
         const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer);
+        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
       } catch (err) {
         console.error('[Dispatch TTS] Panic alert TTS error:', err.message);
       }
@@ -2554,7 +2603,7 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
         const ttsText = `Attention all units, Officer ${cleanNameForTTS(officerName)} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${cleanNameForTTS(officerName)}? Say ten four to respond or press the respond button in dispatch.`;
         const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer);
+        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
       } catch (err) {
         console.error('[Dispatch TTS] Pursuit broadcast TTS error:', err.message);
       }
