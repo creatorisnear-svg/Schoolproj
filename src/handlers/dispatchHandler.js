@@ -1392,10 +1392,34 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         temperature: 0.55,
       });
       const message = response.choices[0]?.message;
-      const text = message?.content?.trim() || '10-4, copy that.';
+      let rawText = message?.content?.trim() || '';
 
-      // Collect any tool calls the AI decided to make
+      // Collect any tool calls the AI decided to make.
+      // Groq's llama model sometimes embeds function calls directly in the text
+      // as <function=name{...}</function> instead of proper tool_calls — parse
+      // those out and strip them from the spoken response.
       const actions = [];
+
+      // Parse inline function tags that some models emit in text
+      const inlineFnRe = /<function=(\w+)([\s\S]*?)<\/function>/gi;
+      let inlineMatch;
+      while ((inlineMatch = inlineFnRe.exec(rawText)) !== null) {
+        try {
+          const fnName = inlineMatch[1];
+          // Extract the JSON-like body between the function name and closing tag
+          const bodyStr = inlineMatch[2].replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+          const args = JSON.parse(bodyStr);
+          actions.push({ name: fnName, args });
+        } catch {}
+      }
+      // Strip ALL inline function tags from the spoken text
+      rawText = rawText
+        .replace(/<function=\w+[\s\S]*?<\/function>/gi, '')
+        .replace(/<\/?function[^>]*>/gi, '')
+        .trim();
+      const text = rawText || '10-4, copy that.';
+
+      // Also collect proper OpenAI-style tool_calls
       if (message?.tool_calls?.length) {
         for (const tc of message.tool_calls) {
           try { actions.push({ name: tc.function.name, args: JSON.parse(tc.function.arguments) }); } catch {}
@@ -1611,8 +1635,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           commandText = rawWords.slice(dispatchIdx + 1).join(' ').trim();
           console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} — command: "${commandText}"`);
         } else {
-          console.log(`[Dispatch] Ignored — no trigger word or call sign found`);
-          return;
+          // No trigger word or call sign — treat the entire utterance as the command.
+          // Officers in a configured patrol channel are always talking to dispatch.
+          commandText = raw;
+          console.log(`[Dispatch] No trigger — processing full utterance: "${commandText}"`);
         }
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
@@ -2666,7 +2692,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
       }
 
-      // 10-80 — Pursuit from traffic stop: broadcast to patrol and ask for backup
+      // 10-80 — Pursuit: always broadcast to patrol and play alert sound
       if (parsed.code === '10-80') {
         const { getCurrentChannelId, clearExtendedStay } = await import('../utils/voiceListener.js');
         const currentBotChannelId = getCurrentChannelId(guild.id);
@@ -2675,10 +2701,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           officerVoiceChannelId === currentBotChannelId &&
           !config.patrolChannelIds?.includes(currentBotChannelId);
 
-        if (isInStopChannel) {
-          await triggerPursuitBroadcast(guild, config, userId, officerName, currentBotChannelId);
-          clearExtendedStay(guild.id);
-        }
+        // Use the officer's current voice channel as the pursuit channel,
+        // fall back to wherever the bot currently is
+        const pursuitChannelId = officerVoiceChannelId || currentBotChannelId;
+        await triggerPursuitBroadcast(guild, config, userId, officerName, pursuitChannelId);
+
+        // If bot was in a stop channel with this officer, clear the extended stay
+        if (isInStopChannel) clearExtendedStay(guild.id);
       }
     } else if (parsed.location) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
