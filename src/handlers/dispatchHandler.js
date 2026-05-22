@@ -46,6 +46,42 @@ function detectStopMoveAnswer(text) {
 }
 
 /**
+ * Strips PSRP tags from a display name for clean TTS pronunciation.
+ * [LSPD] John Smith → John Smith
+ * Civ | Jane Doe   → Jane Doe
+ * John_Smith        → John Smith
+ * SGT. John Smith   → John Smith
+ */
+function cleanNameForTTS(name) {
+  if (!name) return 'officer';
+  let n = name;
+  // Strip leading [BRACKET] tags: [LSPD], [SASP], [DOC], etc.
+  n = n.replace(/^\s*(?:\[[^\]]+\]\s*)+/, '');
+  // Strip pipe-delimited sections — keep the longest segment (usually the real name)
+  if (n.includes('|')) {
+    const parts = n.split('|').map(p => p.trim()).filter(Boolean);
+    n = parts.reduce((a, b) => (b.length > a.length ? b : a), parts[0]);
+  }
+  // Strip common rank/role abbreviations at the start
+  n = n.replace(/^(?:sgt|cpl|pvt|pfc|civ|ofc|dep|lt|cpt|cmdr|det|lcpl|ssgt|msgt|spec|ens|chief|corp)\.?\s+/i, '');
+  // Replace underscores with spaces
+  n = n.replace(/_/g, ' ');
+  // Strip anything that isn't a letter, number, space, hyphen, or apostrophe
+  n = n.replace(/[^a-zA-Z0-9 '\-]/g, ' ');
+  // Collapse multiple spaces, trim, keep first 3 words
+  n = n.replace(/\s+/g, ' ').trim();
+  const words = n.split(' ').filter(Boolean).slice(0, 3);
+  return words.join(' ') || 'officer';
+}
+
+/**
+ * Detects when an officer is releasing/clearing a traffic stop.
+ */
+function detectReleaseStop(text) {
+  return /\b(?:releasing\s+(?:the\s+)?(?:stop|vehicle|car|suspect|driver|them|him|her)|letting\s+(?:them|him|her)\s+go|vehicle\s+(?:is\s+)?(?:released|clear)|stop\s+is\s+(?:clear|done|over|complete|finished)|clearing\s+(?:the\s+)?(?:traffic\s+)?stop|traffic\s+stop\s+(?:is\s+)?(?:clear|done|over|complete)|releasing\s+from\s+(?:my\s+)?stop|releasing\s+my\s+stop|clear\s+from\s+(?:the\s+)?stop|done\s+with\s+(?:the\s+)?stop)\b/i.test(text);
+}
+
+/**
  * Returns an AI client + provider info.
  * Prefers GROQ_API_KEY (free). Falls back to OPENAI_API_KEY (paid).
  */
@@ -595,7 +631,7 @@ async function transcribeAudio(wavBuffer) {
   }
 }
 
-async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcript) {
+async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcript, ttsName) {
   const key = getPendingStopMoveKey(guild.id, member.id);
   const request = pendingStopMoveRequests.get(key);
   if (!request) return false;
@@ -614,9 +650,10 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
   if (config?.aiEnabled && hasAIKey()) {
     try {
       const { playDispatchVoice } = await import('../utils/voiceListener.js');
+      const _reqTtsName = ttsName || cleanNameForTTS(request.officerName);
       const ackText = approve
-        ? `Copy ${request.officerName}, ten four — moving you now.`
-        : `Copy ${request.officerName}, ten four — keeping you where you are.`;
+        ? `Copy ${_reqTtsName}, ten four — moving you now.`
+        : `Copy ${_reqTtsName}, ten four — keeping you where you are.`;
       const ackBuffer = await generateDispatchTTS(ackText);
       playDispatchVoice(guild.id, ackBuffer);
     } catch (err) {
@@ -815,7 +852,7 @@ const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
 async function generateDispatchResponse(officerName, parsed, guildId) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
-    return `10-4 ${officerName}, copy ${label}.`;
+    return `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`;
   }
 
   let callContext = '';
@@ -886,7 +923,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     if (!isLeo) return;
 
     const officerName = member.displayName || member.user.username;
-    console.log(`[Dispatch] Processing audio from ${officerName} in ${guild.name}`);
+    const ttsName = cleanNameForTTS(officerName);
+    console.log(`[Dispatch] Processing audio from ${officerName} (TTS: "${ttsName}") in ${guild.name}`);
 
     let transcript = '';
     try {
@@ -910,7 +948,52 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     _transcriptDedup.set(dedupKey, { ts: now, text: normalized });
 
-    if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript)) return;
+    if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript, ttsName)) return;
+
+    // --- Release stop detection ---
+    // Must run before detectJoinStop so "releasing John Smith" isn't caught as a new stop
+    if (detectReleaseStop(transcript)) {
+      const officerStatus = await OfficerStatus.findOne({ guildId: guild.id, userId });
+      if (officerStatus?.tenCode === '10-11') {
+        const stopMins = officerStatus.trafficStopStartAt
+          ? Math.floor((Date.now() - new Date(officerStatus.trafficStopStartAt).getTime()) / 60000)
+          : 0;
+
+        await updateOfficerStatus(guild.id, userId, officerName, '10-8',
+          { code: '10-8', codeInfo: TEN_CODES['10-8'], subject: null, location: null, rawText: transcript },
+          null, null);
+
+        const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+        if (dispatchCh?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setColor('#43b581')
+            .setTitle('Traffic Stop Released')
+            .setDescription(
+              `**Officer:** <@${userId}>\n` +
+              (stopMins > 0 ? `**Stop Duration:** ${stopMins} minute${stopMins !== 1 ? 's' : ''}\n` : '') +
+              `Showing **10-8 Available**.`
+            )
+            .setFooter({ text: 'RPM • Dispatch' })
+            .setTimestamp();
+          await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+        }
+
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            let tts = `Copy ${ttsName}, stop is released`;
+            if (stopMins > 0) tts += `. Stop duration was ${stopMins} minute${stopMins !== 1 ? 's' : ''}`;
+            tts += `. Showing you ten eight, available.`;
+            const ttsBuffer = await generateDispatchTTS(tts);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) { console.error('[Dispatch TTS] Release stop error:', err.message); }
+        }
+        await rebuildStatusBoard(guild, config);
+        return;
+      }
+    }
+    // --- End release stop ---
 
     {
       const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
@@ -944,6 +1027,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
       if (bestChannelId) {
         const requestKey = getPendingStopMoveKey(guild.id, userId);
+        
         pendingStopMoveRequests.set(requestKey, {
           guildId: guild.id,
           officerId: userId,
@@ -995,8 +1079,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const civName = civMember?.displayName || civMember?.user?.username || joinTargetName;
-            const ttsText = `Copy ${officerName}, showing you in on the traffic stop with ${civName}. Would you like me to move both parties to the traffic stop channel?`;
+            const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
+            const ttsText = `Copy ${ttsName}, showing you ten eleven on the traffic stop with ${civName}. Would you like me to move both parties to the traffic stop channel?`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch (err) {
@@ -1004,6 +1088,21 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           }
         }
 
+        await rebuildStatusBoard(guild, config);
+      } else {
+        // No available stop channel — still log the stop and give TTS feedback
+        await updateOfficerStatus(guild.id, userId, officerName, '10-11',
+          { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
+          null, null);
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const civName = cleanNameForTTS(civMember?.displayName || civMember?.user?.username || joinTargetName);
+            const ttsText = `Copy ${ttsName}, showing you ten eleven on the stop with ${civName}. No stop channels available right now.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch {}
+        }
         await rebuildStatusBoard(guild, config);
       }
       return;
@@ -1123,7 +1222,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (!call) {
           console.log('[Dispatch] No active 911 calls to attach to');
           if (config.aiEnabled && hasAIKey()) {
-            const ttsText = `Negative ${officerName}, there are no active 911 calls at this time.`;
+            const ttsText = `Negative ${ttsName}, there are no active 911 calls at this time.`;
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
@@ -1138,7 +1237,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (alreadyAttached || isPrimary) {
           console.log(`[Dispatch] ${officerName} already on call #${callNum}`);
           if (config.aiEnabled && hasAIKey()) {
-            const ttsText = `${officerName}, you are already ${isPrimary ? 'primary responder' : 'attached'} on call number ${callNum}.`;
+            const ttsText = `${ttsName}, you are already ${isPrimary ? 'primary responder' : 'attached'} on call number ${callNum}.`;
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
@@ -1213,7 +1312,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = `Copy ${officerName}, showing you as ${role} on call number ${callNum}. ${call.issue || ''} at ${call.location || 'unknown location'}.`;
+            const ttsText = `Copy ${ttsName}, showing you as ${role} on call number ${callNum}. ${call.issue || ''} at ${call.location || 'unknown location'}.`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch (err) {
@@ -1236,7 +1335,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
           const ttsText = [
-            `Copy ${officerName}, here is what I can do as your AI dispatch.`,
+            `Copy ${ttsName}, here is what I can do as your AI dispatch.`,
             `Say ten eleven to initiate a traffic stop and I will move you to an open stop channel.`,
             `Say show me in a ten eleven with followed by a civilian name to start a stop on a specific person.`,
             `Say ten eight when your stop is clear and I will bring you back to patrol.`,
@@ -1310,16 +1409,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     // --- "Dispatch, attach me to [officer]'s stop" detection ---
     // The SPEAKER is the one being moved to the named officer's traffic stop channel
-    const attachStopPattern = /\b(?:attach|send|move|put)\s+me\s+(?:to|with)\s+(\w+)(?:'s?)?\s+(?:10[-\s]?11|stop|traffic\s+stop|pullover|scene)\b/i;
+    const attachStopPattern = /\b(?:attach|send|move|put)\s+me\s+(?:to|with)\s+([\w]+(?:\s+[\w]+)?)(?:'s?)?\s+(?:10[-\s]?11|stop|traffic\s+stop|pullover|scene)\b/i;
     const attachStopMatch = transcript.match(attachStopPattern);
     if (attachStopMatch) {
-      const sceneName = attachStopMatch[1].toLowerCase(); // officer on scene
+      const sceneName = attachStopMatch[1].toLowerCase().trim(); // officer on scene
 
-      // Find the scene officer's active stop channel
+      // Find the scene officer's active stop channel — match on cleaned name or first name
       const allStatuses = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
-      const sceneOfficer = allStatuses.find(s =>
-        s.username.toLowerCase().includes(sceneName) || sceneName.includes(s.username.toLowerCase())
-      );
+      const sceneOfficer = allStatuses.find(s => {
+        const cleanStored = cleanNameForTTS(s.username).toLowerCase();
+        const firstName = cleanStored.split(' ')[0];
+        return cleanStored.includes(sceneName) || sceneName.includes(cleanStored) ||
+          (firstName.length > 2 && sceneName.startsWith(firstName));
+      });
       const stopChannelId = sceneOfficer?.trafficStopChannelId;
 
       if (sceneOfficer && stopChannelId && member?.voice?.channelId) {
@@ -1332,7 +1434,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           if (config.aiEnabled && hasAIKey()) {
             try {
               const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsText = `Copy ${officerName}, moving you to ${sceneOfficer.username}'s traffic stop. Ten four.`;
+              const ttsText = `Copy ${ttsName}, moving you to ${cleanNameForTTS(sceneOfficer.username)}'s traffic stop. Ten four.`;
               const ttsBuffer = await generateDispatchTTS(ttsText);
               playDispatchVoice(guild.id, ttsBuffer);
             } catch {}
@@ -1343,7 +1445,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = `Unable to find an active traffic stop for ${sceneName}. Please verify the officer name and try again.`;
+            const ttsText = `Negative ${ttsName}, unable to find an active traffic stop for ${sceneName}. Please verify the officer name and try again.`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch {}
@@ -1387,7 +1489,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = `Copy ${officerName}, dispatch will stay on your channel for ${durationMin} minute${durationMin !== 1 ? 's' : ''}. Go ahead with your traffic stop.`;
+            const ttsText = `Copy ${ttsName}, dispatch will stay on your channel for ${durationMin} minute${durationMin !== 1 ? 's' : ''}. Go ahead with your traffic stop.`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch (err) {
@@ -1454,12 +1556,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
       let tts;
       if (!result.found) {
-        tts = `Negative ${officerName}, no records found for ${warrantTarget} in the system.`;
+        tts = `Negative ${ttsName}, no records found for ${warrantTarget} in the system.`;
       } else if (result.embed.status === 'WANTED') {
-        tts = `${officerName}, ${result.embed.name} is showing WANTED. Active warrants on file. Use caution.`;
+        tts = `${ttsName}, ${result.embed.name} is showing WANTED. Active warrants on file. Use caution.`;
         if (result.embed.hasBolo) tts += ` Active BOLO on file: ${result.embed.boloReason}.`;
       } else {
-        tts = `${officerName}, ${result.embed.name} comes back clear, no active warrants.`;
+        tts = `${ttsName}, ${result.embed.name} comes back clear, no active warrants.`;
         if (result.embed.hasBolo) tts += ` Note: active BOLO on this individual. ${result.embed.boloReason}.`;
       }
       if (config.aiEnabled && hasAIKey()) {
@@ -1555,7 +1657,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
 
-      let tts = `All units, all units. ${officerName} is requesting backup`;
+      let tts = `All units, all units. ${ttsName} is requesting backup`;
       if (backupReq.location) tts += ` at ${backupReq.location}`;
       tts += '.';
       if (available.length > 0) {
@@ -1599,7 +1701,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       if (config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsText = `Copy ${officerName}, code four, scene is clear. Marking you ten eight, available.`;
+          const ttsText = `Copy ${ttsName}, code four, scene is clear. Marking you ten eight, available.`;
           const ttsBuffer = await generateDispatchTTS(ttsText);
           playDispatchVoice(guild.id, ttsBuffer);
         } catch (err) { console.error('[Dispatch TTS] Code 4 error:', err.message); }
@@ -1618,7 +1720,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       const inPursuit = allStatuses.filter(s => s.tenCode === '10-80');
       const total = allStatuses.length;
 
-      let tts = `${officerName}, showing ${total} unit${total !== 1 ? 's' : ''} on duty. `;
+      let tts = `${ttsName}, showing ${total} unit${total !== 1 ? 's' : ''} on duty. `;
       if (available.length > 0) {
         tts += `${available.length} available: ${available.map(o => o.username).join(', ')}. `;
       } else {
@@ -1661,7 +1763,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await dispatchCh.send({ embeds: [embed] }).catch(() => {});
       }
 
-      let tts = `Copy ${officerName}, requesting ${serviceLabel}`;
+      let tts = `Copy ${ttsName}, requesting ${serviceLabel}`;
       if (emsReq.location) tts += ` to ${emsReq.location}`;
       tts += `. ${serviceLabel}, please respond.`;
 
@@ -1788,7 +1890,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           if (config.aiEnabled && hasAIKey()) {
             try {
               const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsText = `Copy ${officerName}, showing you in on a ten eleven. Would you like me to move you to the traffic stop channel?`;
+              const ttsText = `Copy ${ttsName}, showing you ten eleven. Would you like me to move you to the traffic stop channel?`;
               const ttsBuffer = await generateDispatchTTS(ttsText);
               playDispatchVoice(guild.id, ttsBuffer);
             } catch (err) {
@@ -1831,7 +1933,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           if (config.aiEnabled && hasAIKey()) {
             try {
               const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsBuffer = await generateDispatchTTS(`Copy ${officerName}, showing you ten eight. Stop is clear, returning you to patrol. Ten four.`);
+              const ttsBuffer = await generateDispatchTTS(`Copy ${ttsName}, showing you ten eight. Stop is clear, returning you to patrol. Ten four.`);
               playDispatchVoice(guild.id, ttsBuffer);
             } catch {}
           }
@@ -2315,7 +2417,7 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
     if (config.aiEnabled && hasAIKey()) {
       try {
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${officerName} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
+        const ttsText = `Ten ninety nine, ten ninety nine. All units, officer ${cleanNameForTTS(officerName)} needs immediate assistance. All available units respond immediately. This is a ten ninety nine emergency.`;
         const ttsBuffer = await generateDispatchTTS(ttsText);
         playDispatchVoice(guild.id, ttsBuffer);
       } catch (err) {
@@ -2461,7 +2563,7 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
     if (config.aiEnabled && hasAIKey()) {
       try {
         const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsText = `Attention all units, Officer ${officerName} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${officerName}? Say ten four to respond or press the respond button in dispatch.`;
+        const ttsText = `Attention all units, Officer ${cleanNameForTTS(officerName)} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${cleanNameForTTS(officerName)}? Say ten four to respond or press the respond button in dispatch.`;
         const ttsBuffer = await generateDispatchTTS(ttsText);
         playDispatchVoice(guild.id, ttsBuffer);
       } catch (err) {
