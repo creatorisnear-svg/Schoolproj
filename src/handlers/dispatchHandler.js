@@ -1256,7 +1256,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
   }
 }
 
-async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext, guild, config, detectedCallSign = null) {
+async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext, guild, config, detectedCallSign = null, officerDbStatus = null) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
     return { text: `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`, actions: [] };
@@ -1330,9 +1330,41 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const userSaid = fullVoiceContext || callText;
   const callSignLine = detectedCallSign ? `SPEAKING OFFICER CALL SIGN: ${detectedCallSign}\n` : '';
 
+  // Build speaking officer's current status block
+  const ON_SCENE_STATUS_CODES = new Set(['10-11', '10-97', '10-50', '10-31', '10-52', '10-80', '10-78', '10-99']);
+  let officerStatusBlock = '';
+  if (officerDbStatus) {
+    const code = officerDbStatus.tenCode || '10-8';
+    const codeLabel = TEN_CODES[code]?.label || code;
+    const minsOnStatus = officerDbStatus.updatedAt
+      ? Math.floor((now - new Date(officerDbStatus.updatedAt).getTime()) / 60000)
+      : null;
+    const timeStr = minsOnStatus !== null ? ` for ${minsOnStatus} minute${minsOnStatus !== 1 ? 's' : ''}` : '';
+    const subjectStr = officerDbStatus.subject ? ` with ${officerDbStatus.subject}` : '';
+    const locationStr = officerDbStatus.location ? ` at ${officerDbStatus.location}` : '';
+    officerStatusBlock =
+      `SPEAKING OFFICER CURRENT STATUS:\n` +
+      `  ${ttsOfficerName}: ${code} — ${codeLabel}${subjectStr}${locationStr}${timeStr}\n` +
+      (ON_SCENE_STATUS_CODES.has(code)
+        ? `  NOTE: This officer is currently on an active code. If their message does NOT include a status change, ` +
+          `ask them after handling their request: "Are you still showing ${code}${subjectStr}?"\n`
+        : '') +
+      `\n`;
+  }
+
+  // Find unattended active calls for proactive briefing
+  const unattendedCalls = activeCalls.filter(c => !c.respondingLeoId);
+  const unattendedLine = unattendedCalls.length > 0
+    ? unattendedCalls.map(c => {
+        const num = c.callId?.split('-').pop() || '?';
+        return `Call #${num}: ${c.issue || 'unknown'}${c.location ? ` at ${c.location}` : ''}`;
+      }).join('; ')
+    : null;
+
   const systemPrompt =
     `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
     `Your voice is played live over police radio. Be professional, terse, and realistic.\n\n` +
+    officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `ACTIVE 911 CALLS:\n${callContext}\n\n` +
     `ACTIVE PURSUIT:\n${pursuitLine}\n\n` +
@@ -1349,6 +1381,15 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical Center, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci Beach, Del Perro, Vinewood, Rockford Hills, La Mesa.\n` +
     `- Divisions: LSPD (Los Santos PD), BCSO (Blaine County Sheriff), FIB, LSFD.\n` +
     `- Unit types: Adam (patrol), Boy (traffic), Charlie (K9), David (detective).\n\n` +
+    `PROACTIVE BEHAVIOR:\n` +
+    `- If the officer's current status is an on-scene code (ten-eleven, ten-ninety-seven, ten-fifty, ten-eighty, ten-seventy-eight) AND their message does not contain a status update, ` +
+    `after handling their request add: "Are you still showing [code]${officerDbStatus?.subject ? ` with ${officerDbStatus.subject}` : ''}?"\n` +
+    `- If the officer goes ten-eight and there are unattended calls, mention one: ` +
+    (unattendedLine
+      ? `"Heads up, we have an unattended call — ${unattendedLine}. Any unit respond?"\n`
+      : `there are no unattended calls right now so just acknowledge the ten-eight.\n`) +
+    `- If the officer has been on scene for more than 10 minutes and checks in about something routine, note the time: "You've been on scene for X minutes — do you need anything?"\n` +
+    `- If officer says something that doesn't match their current status (e.g. 10-8 but says they're still with someone), ask for clarification.\n\n` +
     `CRITICAL — FUNCTION CALL RULES:\n` +
     `- Call functions silently via the tool system. NEVER write <function=...> or JSON in your radio response.\n` +
     `- Your spoken response must be ONLY natural radio dialogue — no brackets, no tags, no code.\n` +
@@ -2643,11 +2684,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
 
+    // Fetch the officer's current DB status — passed to AI so it knows their active code/scene
+    const officerDbStatus = await OfficerStatus.findOne({ guildId: guild.id, userId }).lean().catch(() => null);
+
     let dispatchResponse = null;
     let aiActions = [];
     if (config.aiEnabled && hasAIKey()) {
       try {
-        const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign);
+        const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign, officerDbStatus);
         dispatchResponse = aiResult.text;
         aiActions = aiResult.actions || [];
         if (aiActions.length) console.log(`[Dispatch AI] ${aiActions.length} action(s) queued:`, aiActions.map(a => a.name).join(', '));
