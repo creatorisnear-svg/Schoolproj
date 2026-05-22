@@ -702,14 +702,13 @@ function parseTranscript(text) {
 }
 
 const WHISPER_PROMPT =
-  'GTA V FiveM roleplay police radio. Officers address dispatch using their call sign like "1 Adam 22", "2 Lincoln 40", "Adam 22", "Lincoln 4", or just say "Dispatch". ' +
-  'Call signs use LAPD phonetic: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
-  'Other triggers: "Marshal Command", "County Command", "Central Dispatch". ' +
-  'Common terms: 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-31, 10-50, 10-52, 10-78, 10-80, 10-97, 10-99, ' +
-  'traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, run the plate, run the name, ' +
-  'check warrants, run serial, requesting backup, units available, code four, all clear, ' +
-  'roll a 32, roll me a 32, roll multiple units, respond, responding, en route, I will respond, I will take it, ' +
-  'send EMS, send fire, accident, crime in progress, pulling over, officer down, copy that.';
+  'GTA V FiveM police radio. Call signs: "1 Adam 22", "Lincoln 4", or "Dispatch". ' +
+  'LAPD phonetic: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
+  'Also: "Marshal Command", "County Command", "Central Dispatch". ' +
+  'Codes: 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-31, 10-50, 10-52, 10-78, 10-80, 10-97, 10-99. ' +
+  'Terms: traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, ' +
+  'run the plate, run the name, check warrants, run serial, requesting backup, units available, ' +
+  'code four, all clear, roll a 32, en route, I will respond, send EMS, send fire, officer down, copy that.';
 
 async function transcribeAudio(wavBuffer) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
