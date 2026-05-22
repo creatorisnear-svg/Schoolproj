@@ -35,6 +35,10 @@ const TEN_CODES = {
 
 const pendingStopMoveRequests = new Map();
 
+// Per-guild active call broadcasts waiting for officer voice responses
+// Map<guildId, { callId, callNum, issue, location, timestamp }>
+const activeBroadcastCalls = new Map();
+
 function getPendingStopMoveKey(guildId, officerId) {
   return `${guildId}:${officerId}`;
 }
@@ -389,6 +393,107 @@ function detectEMSRequest(text) {
   return null;
 }
 
+// ── Call sign & Voice-911 helpers ────────────────────────────────────────────
+
+const CALL_SIGN_PHONETICS = new Set([
+  'adam','boy','baker','charlie','charles','david','dog','edward',
+  'frank','george','henry','ida','john','king','lincoln',
+  'mary','nora','ned','ocean','paul','queen','robert','roger','sam',
+  'tom','union','victor','william','xray','young','zebra',
+]);
+
+/**
+ * Detects a police call sign at the start of a transmission.
+ * Returns { callSign, remainder } or null.
+ * Handles: "1 Adam 22 ...", "Adam 22 ...", "2 Lincoln 40 ...", "Marshal Command ..."
+ */
+function detectCallSign(text) {
+  const lower = text.trim().toLowerCase();
+  const words = lower.split(/\s+/);
+
+  // Special command call signs: "Marshal Command", "County Command", "Central Dispatch"
+  if (/^(?:marshal|county|central|command)\s*(?:command|dispatch|base|control)?/i.test(lower)) {
+    const remainder = words.slice(2).join(' ').trim();
+    if (remainder.length > 2) return { callSign: words.slice(0, 2).join(' '), remainder };
+  }
+
+  // Pattern: [number] [phonetic] [number] — e.g. "1 Adam 22" or "2 Lincoln 40"
+  if (words.length >= 3 && /^\d+$/.test(words[0]) && CALL_SIGN_PHONETICS.has(words[1]) && /^\d+$/.test(words[2])) {
+    const remainder = words.slice(3).join(' ').trim();
+    if (remainder.length > 1) return { callSign: `${words[0]}-${words[1]}-${words[2]}`, remainder };
+  }
+
+  // Pattern: [phonetic] [number] — e.g. "Adam 22" or "Lincoln 4"
+  if (words.length >= 2 && CALL_SIGN_PHONETICS.has(words[0]) && /^\d+$/.test(words[1])) {
+    const remainder = words.slice(2).join(' ').trim();
+    if (remainder.length > 1) return { callSign: `${words[0]}-${words[1]}`, remainder };
+  }
+
+  return null;
+}
+
+// Map spoken code numbers / slang to incident type labels for voice call creation
+const VOICE_CALL_CODE_MAP = {
+  '10': 'Suspicious Activity', '11': 'Animal Complaint', '30': 'Robbery',
+  '31': 'Crime in Progress', '32': 'Robbery in Progress', '33': 'Emergency',
+  '50': 'Vehicle Accident', '52': 'EMS Requested', '59': 'Stolen Vehicle',
+  '62': 'Grand Theft Auto', '80': 'Vehicle Pursuit', '87': 'Homicide',
+  '99': 'Officer Needs Assistance', '211': 'Robbery', '245': 'Assault',
+  '415': 'Disturbance', '459': 'Burglary', '487': 'Grand Theft',
+  '502': 'DUI', '503': 'Stolen Vehicle',
+};
+
+/**
+ * Detects a voice 911 call creation request.
+ * Returns { incident, location, count } or null.
+ * Handles: "roll me a 32 at Mirror Park", "roll multiple 32s", "I've got a robbery at [loc]"
+ */
+function detectVoiceCallCreation(text) {
+  const lower = text.toLowerCase().trim();
+
+  // "roll [me] [a|an|multiple|N] [code|incident] [at location]"
+  const rollMatch = lower.match(
+    /\broll(?:\s+(?:me|us))?\s+(?:a\s+|an\s+|multiple\s+|(?:(\d+)\s+))?(\d{2,3}|robbery|shooting|fight|assault|pursuit|burglary|domestic|fire|accident|disturbance|suspicious|welfare|overdose|gta|theft|homicide)(?:\s+(?:at|on|near|by|in)\s+(.{3,60}?))?(?:\s*$|\s+(?:please|now|asap))/i
+  );
+  if (rollMatch) {
+    const countStr = rollMatch[1];
+    const codeOrType = rollMatch[2];
+    const location = rollMatch[3]?.trim() || null;
+    const incident = VOICE_CALL_CODE_MAP[codeOrType] || (codeOrType.charAt(0).toUpperCase() + codeOrType.slice(1) + ' call');
+    const count = countStr ? Math.min(parseInt(countStr), 5) : (lower.includes('multiple') ? 3 : 1);
+    return { incident, location, count };
+  }
+
+  // "I've got / we have / there's a [incident] at [location]" — officer reporting for dispatch to roll
+  const gotMatch = lower.match(
+    /\b(?:i(?:'ve|ve|'m|m)\s+(?:got|have|spotted|got\s+a)|we\s+have|there(?:'s|\s+is)|we\s+got)\s+(?:a\s+|an\s+)?(robbery|shooting|fight|assault|domestic|fire|accident|disturbance|suspicious\s+person|suspicious\s+vehicle|welfare\s+check|overdose|homicide|burglary|theft|crash)\b(?:\s+(?:at|on|near|by|in)\s+(.{3,60}?))?(?:\s*$)/i
+  );
+  if (gotMatch) {
+    const incident = gotMatch[1].charAt(0).toUpperCase() + gotMatch[1].slice(1);
+    const location = gotMatch[2]?.trim() || null;
+    return { incident, location, count: 1 };
+  }
+
+  // "create a call for [incident]"
+  const createMatch = lower.match(
+    /\bcreate\s+(?:a\s+)?(?:call|911\s+call|report)\s+(?:for\s+)?(.{3,40?})(?:\s+at\s+(.{3,60?}))?(?:\s*$)/i
+  );
+  if (createMatch) {
+    return { incident: createMatch[1].trim(), location: createMatch[2]?.trim() || null, count: 1 };
+  }
+
+  return null;
+}
+
+/**
+ * Detects if an officer is responding to an active broadcast call.
+ */
+function detectRespondToBroadcast(text) {
+  return /\b(?:respond(?:ing)?|i(?:'ll|ll|'m|m)?\s+respond|en\s*route|on\s+my\s+way|rolling|i(?:'m|m)\s+(?:en\s*route|responding|rolling)|copy\s+(?:that|dispatch)|i(?:'ll|ll)\s+take\s+(?:it|that|the\s+call)|show\s+me\s+responding|ten[\s-]?four|10\s*[-\s]?4)\b/i.test(text);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
  * Simple name similarity scorer (0–1).
  * Strips non-alphanumeric, checks exact, substring, and token-overlap matches.
@@ -595,10 +700,14 @@ function parseTranscript(text) {
 }
 
 const WHISPER_PROMPT =
-  'Police radio communication. Common terms: dispatch, 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-31, 10-50, 10-52, 10-78, 10-80, 10-97, 10-99, ' +
+  'GTA V FiveM roleplay police radio. Officers address dispatch using their call sign like "1 Adam 22", "2 Lincoln 40", "Adam 22", "Lincoln 4", or just say "Dispatch". ' +
+  'Call signs use LAPD phonetic: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
+  'Other triggers: "Marshal Command", "County Command", "Central Dispatch". ' +
+  'Common terms: 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-31, 10-50, 10-52, 10-78, 10-80, 10-97, 10-99, ' +
   'traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, run the plate, run the name, ' +
-  'check warrants on, run serial number, requesting backup, need backup, units available, code four, all clear, ' +
-  'send EMS, send fire, accident on scene, crime in progress, pulling over, officer down, copy that.';
+  'check warrants, run serial, requesting backup, units available, code four, all clear, ' +
+  'roll a 32, roll me a 32, roll multiple units, respond, responding, en route, I will respond, I will take it, ' +
+  'send EMS, send fire, accident, crime in progress, pulling over, officer down, copy that.';
 
 async function transcribeAudio(wavBuffer) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
@@ -899,11 +1008,15 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
       console.log(`[Dispatch AI] Action: ${name}`, args);
 
       if (name === 'move_to_traffic_stop') {
+        // Never auto-move — create a pending request so officer is asked first
         const target = findOfficerByName(args.officer_name, allStatuses)
           ?? allStatuses.find(s => s.userId === speakingUserId);
         if (!target) continue;
         const targetMember = await guild.members.fetch(target.userId).catch(() => null);
         if (!targetMember?.voice?.channelId) continue;
+        if (!(config.trafficStopChannelIds?.length > 0)) continue;
+
+        // Find best (least populated) stop channel
         let bestId = null, bestCount = Infinity;
         for (const id of (config.trafficStopChannelIds || [])) {
           if (id === targetMember.voice.channelId) continue;
@@ -912,10 +1025,22 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
           const count = ch.members.filter(m => !m.user.bot).size;
           if (count < bestCount) { bestCount = count; bestId = id; }
         }
-        if (bestId) {
-          await targetMember.voice.setChannel(bestId).catch(() => {});
-          console.log(`[Dispatch AI] Moved ${target.username} to traffic stop channel`);
-        }
+        if (!bestId) continue;
+
+        // Queue a pending move request — officer must confirm verbally ("yes" / "affirmative")
+        const moveKey = getPendingStopMoveKey(guild.id, target.userId);
+        pendingStopMoveRequests.set(moveKey, {
+          officerId: target.userId,
+          officerName: target.username,
+          channelId: bestId,
+          targetId: null,
+          targetName: null,
+          dispatchChannelId: config.dispatchChannelId || null,
+          messageId: null,
+          transcript: args.officer_name || '',
+          expiresAt: Date.now() + 90_000,
+        });
+        console.log(`[Dispatch AI] Queued move request for ${target.username} — awaiting voice confirmation`);
       }
 
       else if (name === 'move_to_patrol') {
@@ -986,7 +1111,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
   }
 }
 
-async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext, guild, config) {
+async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceContext, guild, config, detectedCallSign = null) {
   if (parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location) {
     const label = TEN_CODES[parsed.code]?.label || parsed.code;
     return { text: `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`, actions: [] };
@@ -1032,28 +1157,30 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const callText = parsed.rawText || parsed.code || 'unknown';
   const userSaid = fullVoiceContext || callText;
 
+  const ttsOfficerIdStr = detectedCallSign ? ` [Call sign: ${detectedCallSign}]` : '';
   const systemPrompt =
     `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
-    `Your voice is played live over police radio — stay concise and in character at all times.\n\n` +
+    `Your voice is played live over police radio — keep responses tight, natural, and in character.\n\n` +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `ACTIVE 911 CALLS:\n${callContext}\n\n` +
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
-    `\nRADIO PROTOCOL — follow every rule strictly:\n` +
-    `- Open EVERY response by addressing the officer first: "Copy [Name]," / "Dispatch copies, [Name]—" / "[Name], dispatch—"\n` +
-    `- Speak ten-codes as full words: "ten four", "ten eleven", "ten eighty", "ten ninety-seven", "ten eight", etc.\n` +
-    `- Maximum 1–2 short sentences. Radio is for essential info only — no filler, no repetition.\n` +
-    `- Reference other on-duty units by first name to coordinate. Reference open calls by number.\n` +
-    `- GTA RP setting: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, etc.\n` +
-    `- If transmision is unclear: "Say again, [Name]?" or "Go ahead, [Name]."\n` +
-    `- If officer asks about a previous call or transmission: answer from the conversation history above.\n\n` +
-    `FUNCTIONS YOU CAN CALL (use them proactively — do not just acknowledge, take action):\n` +
-    `- move_to_traffic_stop: officer initiates a stop, asks to be moved to stop channel, or goes ten-eleven\n` +
-    `- move_to_patrol: officer goes ten-eight, clears a scene, or asks to return to patrol\n` +
-    `- update_officer_status: officer verbally reports any status change\n` +
-    `- close_call: officer says code four on an active call, confirms scene is clear, or call is resolved\n` +
-    `- send_unit_to_call: officer requests backup, or an unattended call needs a unit assigned\n\n` +
-    `Always speak your radio response AS WELL AS calling any relevant functions. Never just call a function silently.`;
+    (ttsOfficerIdStr ? `SPEAKING OFFICER CALL SIGN: ${ttsOfficerIdStr}\n` : '') +
+    `\nRADIO PROTOCOL:\n` +
+    `- Open every response addressing the officer: "Copy [Name]," or "[Name], dispatch—"\n` +
+    `- If they used a call sign, address them by it first: "Copy 1-Adam-22," then their name.\n` +
+    `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight".\n` +
+    `- Keep it to 1–2 short sentences. Radio is terse. No filler.\n` +
+    `- If asking officer to move to a traffic stop channel, say: "Do you want me to move you to a stop channel?"\n` +
+    `- GTA RP setting: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis.\n` +
+    `- If transmission is unclear: "Say again, [Name]?" Keep it brief.\n\n` +
+    `ACTIONS (call them proactively alongside your spoken response — never silently):\n` +
+    `- move_to_traffic_stop: officer goes ten-eleven or asks about moving to stop channel (ASK first, do not force)\n` +
+    `- move_to_patrol: officer goes ten-eight or clears scene\n` +
+    `- update_officer_status: any verbal status change\n` +
+    `- close_call: officer says code four on an active call\n` +
+    `- send_unit_to_call: officer requests backup or a unit needs to be assigned\n\n` +
+    `Always include your spoken radio response. Never call a function without also speaking on the radio.`;
 
   // Tool definitions — full function calling schema
   const dispatchTools = [
@@ -1224,6 +1351,76 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript, ttsName)) return;
 
+    // --- Active broadcast respond detection (works WITHOUT saying "dispatch") ---
+    // If there's an active call broadcast, any officer saying "respond" attaches to it
+    {
+      const broadcast = activeBroadcastCalls.get(guild.id);
+      if (broadcast && (Date.now() - broadcast.timestamp) < 5 * 60 * 1000) {
+        if (detectRespondToBroadcast(transcript.trim())) {
+          console.log(`[Dispatch] ${officerName} responding to active broadcast call #${broadcast.callNum}`);
+          try {
+            const call = await EmergencyCall.findOne({ guildId: guild.id, callId: broadcast.callId, status: 'active' });
+            if (call) {
+              const alreadyOn = call.respondingLeoId === userId || call.attachedLeoIds?.includes(userId);
+              if (!alreadyOn) {
+                if (!call.respondingLeoId) {
+                  call.respondingLeoId = userId;
+                  call.respondingLeoUsername = officerName;
+                } else {
+                  call.attachedLeoIds = call.attachedLeoIds || [];
+                  call.attachedLeoIds.push(userId);
+                }
+                await call.save();
+
+                await updateOfficerStatus(guild.id, userId, officerName, '10-76',
+                  { code: '10-76', codeInfo: { label: '10-76 En Route' }, subject: null, location: broadcast.location, rawText: 'Responding to broadcast call' },
+                  null, null);
+
+                const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+                  await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+                if (dispatchCh?.isTextBased()) {
+                  const embed = new EmbedBuilder()
+                    .setColor('#43b581')
+                    .setTitle(`Call #${broadcast.callNum} — Unit Responding`)
+                    .setDescription(
+                      `**<@${userId}> (${officerName})** is responding to **Call #${broadcast.callNum}**.\n` +
+                      (broadcast.issue ? `**Incident:** ${broadcast.issue}\n` : '') +
+                      (broadcast.location ? `**Location:** ${broadcast.location}\n` : '')
+                    )
+                    .setFooter({ text: 'RPM • Dispatch' })
+                    .setTimestamp();
+                  await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+                }
+
+                if (config.aiEnabled && hasAIKey()) {
+                  try {
+                    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+                    const ttsText = `Copy ${ttsName}, showing you ten seventy six en route to call number ${broadcast.callNum}. Ten four.`;
+                    const ttsBuffer = await generateDispatchTTS(ttsText);
+                    playDispatchVoice(guild.id, ttsBuffer);
+                  } catch {}
+                }
+
+                await rebuildStatusBoard(guild, config);
+              } else {
+                if (config.aiEnabled && hasAIKey()) {
+                  try {
+                    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+                    const ttsBuffer = await generateDispatchTTS(`${ttsName}, you are already assigned to call number ${broadcast.callNum}.`);
+                    playDispatchVoice(guild.id, ttsBuffer);
+                  } catch {}
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[Dispatch] Broadcast respond error:', err.message);
+          }
+          return;
+        }
+      }
+    }
+    // --- End broadcast respond detection ---
+
     // --- Release stop detection ---
     // Must run before detectJoinStop so "releasing John Smith" isn't caught as a new stop
     if (detectReleaseStop(transcript)) {
@@ -1266,27 +1463,44 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End release stop ---
 
-    // fullVoiceContext = everything the officer said (pre + post "dispatch")
-    // transcript = only what came after the trigger word (used for command detection)
+    // fullVoiceContext = everything the officer said (pre + post trigger)
+    // transcript = only what came after the trigger (used for command detection)
     let fullVoiceContext = null;
+    let detectedCallSign = null;
     {
-      const words = transcript.trim().toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
-      const triggers = ['dispatch'];
-      const idx = words.findIndex(w => triggers.includes(w));
-      if (idx === -1 || idx > 10) {
-        console.log(`[Dispatch] Ignored — no trigger word found`);
+      const raw = transcript.trim();
+
+      // Check for call sign at the very start — e.g. "1 Adam 22, show me 10-8"
+      const callSignResult = detectCallSign(raw);
+
+      // Check for "dispatch" / "command" / "control" trigger anywhere in first 10 words
+      const words = raw.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z]/g, ''));
+      const dispatchTriggers = new Set(['dispatch', 'command', 'control', 'central']);
+      const dispatchIdx = words.findIndex((w, i) => i <= 10 && dispatchTriggers.has(w));
+
+      let preContext = '';
+      let commandText = '';
+
+      if (callSignResult && callSignResult.remainder.trim().length > 2) {
+        // Officer opened with their call sign — the remainder is the command for dispatch
+        detectedCallSign = callSignResult.callSign;
+        preContext = '';
+        commandText = callSignResult.remainder.trim();
+        console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
+      } else if (dispatchIdx !== -1) {
+        // Classic "dispatch, ..." trigger
+        preContext = words.slice(0, dispatchIdx).join(' ').trim();
+        commandText = words.slice(dispatchIdx + 1).join(' ');
+        console.log(`[Dispatch] Trigger "dispatch" found at word ${dispatchIdx}`);
+      } else {
+        console.log(`[Dispatch] Ignored — no trigger word or call sign found`);
         return;
       }
-      // Save words said BEFORE "dispatch" — the AI needs that context too
-      // (e.g. "I got a suspect in a red car, dispatch, show me 10-80")
-      const preDispatchWords = words.slice(0, idx).join(' ').trim();
-      transcript = words.slice(idx + 1).join(' ');
-      if (transcript.length < 2) return;
-      // Combine into full context for the AI, but keep post-dispatch for command parsing
-      fullVoiceContext = preDispatchWords
-        ? `${preDispatchWords}, ${transcript}`
-        : transcript;
-      console.log(`[Dispatch] Cleaned transcript: "${transcript}"${preDispatchWords ? ` (pre-context: "${preDispatchWords}")` : ''}`);
+
+      if (commandText.length < 2) return;
+      transcript = commandText;
+      fullVoiceContext = preContext ? `${preContext}, ${commandText}` : commandText;
+      console.log(`[Dispatch] Transcript ready: "${transcript}"${preContext ? ` (pre: "${preContext}")` : ''}${detectedCallSign ? ` (call sign: ${detectedCallSign})` : ''}`);
     }
 
     // --- "Show me in / show me on" join-stop detection ---
@@ -2049,6 +2263,85 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End EMS / Fire request ---
 
+    // --- Voice 911 call creation ("roll me a 32", "I've got a robbery at...") ---
+    const voiceCallReq = detectVoiceCallCreation(fullVoiceContext || transcript);
+    if (voiceCallReq) {
+      console.log(`[Dispatch] Voice call creation: ${voiceCallReq.incident}${voiceCallReq.location ? ` at ${voiceCallReq.location}` : ''} (${voiceCallReq.count} unit(s))`);
+      try {
+        const callNum = `${Date.now().toString().slice(-5)}`;
+        const callId = `${guild.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        const newCall = new EmergencyCall({
+          guildId: guild.id,
+          callId,
+          issue: voiceCallReq.incident,
+          location: voiceCallReq.location || 'Unknown',
+          reporterUsername: officerName,
+          reporterId: userId,
+          status: 'active',
+          respondingLeoId: userId,
+          respondingLeoUsername: officerName,
+        });
+        await newCall.save();
+
+        // Track as active broadcast so available officers can say "respond"
+        activeBroadcastCalls.set(guild.id, {
+          callId,
+          callNum,
+          issue: voiceCallReq.incident,
+          location: voiceCallReq.location,
+          timestamp: Date.now(),
+        });
+        // Auto-expire broadcast after 5 minutes
+        setTimeout(() => {
+          const b = activeBroadcastCalls.get(guild.id);
+          if (b?.callId === callId) activeBroadcastCalls.delete(guild.id);
+        }, 5 * 60 * 1000);
+
+        const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+        if (dispatchCh?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setColor('#e74c3c')
+            .setTitle(`Active Call #${callNum} — ${voiceCallReq.incident}`)
+            .setDescription(
+              `**Incident:** ${voiceCallReq.incident}\n` +
+              (voiceCallReq.location ? `**Location:** ${voiceCallReq.location}\n` : '') +
+              `**Reported By:** <@${userId}> (${officerName})\n\n` +
+              `Available units, say **"respond"** on the radio to attach to this call.`
+            )
+            .setFooter({ text: `RPM • Call #${callNum}` })
+            .setTimestamp();
+          await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+        }
+
+        // Broadcast TTS to available officers
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const locationPart = voiceCallReq.location ? ` at ${voiceCallReq.location}` : '';
+            const unitsNeeded = voiceCallReq.count > 1 ? `${voiceCallReq.count} units` : 'any available unit';
+            const ttsText = `Attention all units, attention all units — ${voiceCallReq.incident}${locationPart}. Call number ${callNum}. ${unitsNeeded} please respond. Say responding to attach.`;
+            addToRadioLog(guild.id, 'Dispatch', transcript, ttsText);
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) {
+            console.error('[Dispatch TTS] Voice call creation TTS error:', err.message);
+          }
+        }
+
+        await updateOfficerStatus(guild.id, userId, officerName, '10-97',
+          { code: '10-97', codeInfo: TEN_CODES['10-97'], subject: voiceCallReq.incident, location: voiceCallReq.location, rawText: transcript },
+          null, null);
+        await rebuildStatusBoard(guild, config);
+      } catch (err) {
+        console.error('[Dispatch] Voice call creation error:', err.message);
+      }
+      return;
+    }
+    // --- End voice 911 call creation ---
+
     const parsed = parseTranscript(transcript);
 
     const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
@@ -2057,7 +2350,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     let aiActions = [];
     if (config.aiEnabled && hasAIKey()) {
       try {
-        const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config);
+        const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign);
         dispatchResponse = aiResult.text;
         aiActions = aiResult.actions || [];
         if (aiActions.length) console.log(`[Dispatch AI] ${aiActions.length} action(s) queued:`, aiActions.map(a => a.name).join(', '));
@@ -3070,8 +3363,21 @@ async function checkTrafficStops(guild) {
   }
 }
 
-export function startTrafficStopCheckTimer(_guild) {
-  // Traffic stop check-in messages disabled
+const TRAFFIC_STOP_CHECK_MS = 8 * 60 * 1000; // check every 8 minutes
+
+export function startTrafficStopCheckTimer(guild) {
+  if (trafficStopCheckIntervals.has(guild.id)) return;
+  const interval = setInterval(() => checkTrafficStops(guild), TRAFFIC_STOP_CHECK_MS);
+  trafficStopCheckIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] Traffic stop check timer started for ${guild.name}`);
+}
+
+export function stopTrafficStopCheckTimer(guildId) {
+  const interval = trafficStopCheckIntervals.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    trafficStopCheckIntervals.delete(guildId);
+  }
 }
 
 export async function handleStopStillButton(interaction) {
@@ -3166,8 +3472,19 @@ async function checkStatusReminders(guild) {
   }
 }
 
-export function startStatusReminderTimer(_guild) {
-  // Status reminders disabled — no periodic announcements
+export function startStatusReminderTimer(guild) {
+  if (statusReminderIntervals.has(guild.id)) return;
+  const interval = setInterval(() => checkStatusReminders(guild), STATUS_REMINDER_MS);
+  statusReminderIntervals.set(guild.id, interval);
+  console.log(`[Dispatch] Status reminder timer started for ${guild.name}`);
+}
+
+export function stopStatusReminderTimer(guildId) {
+  const interval = statusReminderIntervals.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    statusReminderIntervals.delete(guildId);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
