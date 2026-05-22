@@ -998,7 +998,7 @@ async function playTTS(ttsPromise, guildId, { urgent = false } = {}) {
 
 // Radio log helpers are provided by ../utils/radioSession.js (imported above).
 
-const SIMPLE_ACK_CODES = new Set(['10-4', '10-8', '10-7', '10-6']);
+const SIMPLE_ACK_CODES = new Set(['10-4', '10-7', '10-6']);
 
 
 // Fuzzy-match an officer name from the radio log to a status record
@@ -1583,6 +1583,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
         const dispatchIdx = alphaWords.findIndex((w, i) => i <= 10 && (
           w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
+          w.endsWith('dispatch') ||
           w === 'command' || w === 'control' || w === 'central'
         ));
 
@@ -2650,7 +2651,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
 
-      // 10-99 — status board updated; no separate channel alert posted
+      // 10-99 — trigger full panic alert (embed + TTS + status board)
+      if (parsed.code === '10-99') {
+        await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
+      }
 
       // 10-80 — Pursuit from traffic stop: broadcast to patrol and ask for backup
       if (parsed.code === '10-80') {
