@@ -19,6 +19,7 @@ import AutoJoin from './models/AutoJoin.js';
 import Priority from './models/Priority.js';
 import DispatchConfig from './models/DispatchConfig.js';
 import Welcome from './models/Welcome.js';
+import Verification from './models/Verification.js';
 import { handleVerifyModal, handleVerifyModalSubmit } from './handlers/verifyHandler.js';
 import { handleSelectMenu } from './handlers/selectMenuHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
@@ -335,6 +336,21 @@ client.on('guildCreate', async (guild) => {
 client.on('guildMemberAdd', async (member) => {
   try {
     if (!member?.guild || member.user?.bot) return;
+
+    // Assign unverified role if verification system is configured
+    try {
+      const verification = await Verification.findOne({ guildId: member.guild.id });
+      if (verification?.enabled && verification?.unverifiedRoleId) {
+        const unverifiedRole = member.guild.roles.cache.get(verification.unverifiedRoleId);
+        if (unverifiedRole) {
+          await member.roles.add(unverifiedRole).catch((err) => {
+            console.error(`[VERIFY] Failed to assign unverified role to ${member.user.tag}:`, err.message);
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[VERIFY] guildMemberAdd unverified role error:', err.message);
+    }
 
     const welcome = await Welcome.findOne({ guildId: member.guild.id });
     if (!welcome?.enabled) return;

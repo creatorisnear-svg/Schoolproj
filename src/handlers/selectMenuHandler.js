@@ -982,7 +982,7 @@ async function handleVerifySetupMenu(interaction) {
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
-        embeds: [successEmbed('Verification system setup is complete!\n\nAutomatically configuring channel permissions...\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels\n\nAll channel permissions have been configured based on your settings.')],
+        embeds: [successEmbed('Verification system setup is complete!\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels')],
       });
 
       // Apply permissions in background (non-blocking)
