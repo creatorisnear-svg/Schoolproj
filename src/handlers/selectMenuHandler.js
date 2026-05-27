@@ -2518,12 +2518,29 @@ async function handleVerificationApprove(interaction) {
     if (member && verification) {
       const verifiedRole = interaction.guild.roles.cache.get(verification.verifiedRoleId);
       const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
-      
+
+      const botMember = interaction.guild.members.me;
+      const botHighestRole = botMember?.roles.highest;
+
+      if (verifiedRole && botHighestRole && botHighestRole.position <= verifiedRole.position) {
+        return await interaction.editReply({
+          embeds: [new EmbedBuilder()
+            .setColor('#f04747')
+            .setTitle('Missing Permissions')
+            .setDescription(
+              `The bot cannot assign the **${verifiedRole.name}** role because it is positioned higher than or equal to the bot's own role in the server's role list.\n\n` +
+              `**How to fix:** Go to **Server Settings → Roles** and drag the **RPM** bot role above the **${verifiedRole.name}** role, then try approving again.`
+            )
+            .setFooter({ text: 'RPM' })
+          ],
+        });
+      }
+
       if (verifiedRole) {
-        await member.roles.add(verifiedRole);
+        await member.roles.add(verifiedRole).catch(() => {});
       }
       if (unverifiedRole) {
-        await member.roles.remove(unverifiedRole);
+        await member.roles.remove(unverifiedRole).catch(() => {});
       }
 
       // Set nickname if RP tag is set
@@ -2557,8 +2574,18 @@ async function handleVerificationApprove(interaction) {
     });
   } catch (error) {
     console.error('Error approving verification:', error);
+    const isMissingPerms = error?.code === 50013;
     await interaction.editReply({
-      embeds: [errorEmbed('An error occurred while approving.')],
+      embeds: [new EmbedBuilder()
+        .setColor('#f04747')
+        .setTitle(isMissingPerms ? 'Missing Permissions' : 'Error')
+        .setDescription(
+          isMissingPerms
+            ? 'The bot is missing permissions to assign the verified role.\n\n**How to fix:** Go to **Server Settings → Roles** and drag the **RPM** bot role above the verified role, then try again.'
+            : 'An error occurred while approving. Please try again.'
+        )
+        .setFooter({ text: 'RPM' })
+      ],
     }).catch(() => {});
   }
 }
