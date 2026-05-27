@@ -3013,6 +3013,11 @@ const CODE_PREFIX = {
 export async function rebuildStatusBoard(guild, config) {
   if (!config?.statusBoardChannelId) return;
 
+  // Always re-fetch config from DB so we have the latest statusBoardMessageId,
+  // even when a stale in-memory config object is passed in.
+  const freshConfig = await DispatchConfig.findOne({ guildId: guild.id }).lean().catch(() => null);
+  if (freshConfig) config = freshConfig;
+
   const channel = guild.channels.cache.get(config.statusBoardChannelId) ||
     await guild.channels.fetch(config.statusBoardChannelId).catch(() => null);
   if (!channel?.isTextBased()) return;
