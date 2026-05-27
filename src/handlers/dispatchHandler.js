@@ -390,6 +390,12 @@ function detectClearPanic(text) {
   return /\b(?:clear\s+(?:the\s+)?10[-\s]?99|cancel\s+(?:the\s+)?10[-\s]?99|stand\s+down\s+(?:the\s+)?(?:10[-\s]?99|panic|emergency)|10[-\s]?99\s+(?:is\s+)?(?:clear|cleared|cancelled|all\s+clear|stand\s+down)|officer\s+is\s+(?:okay|ok|safe|secure)|i(?:'m|m)\s+(?:okay|ok|safe|secure|good)|false\s+alarm|all\s+(?:good|clear),?\s+(?:stand\s+down|cancel)|deactivate\s+(?:the\s+)?(?:10[-\s]?99|panic))\b/i.test(text);
 }
 
+// Returns true only when the text contains vocabulary that belongs in a police dispatch context.
+// Used to drop off-topic chatter that happens to say "dispatch" (e.g. "dispatch, can you help me?").
+function isDispatchRelevant(text) {
+  return /\b(?:10[-\s]?\d+|code\s*\d|show(?:ing)?(?:\s+me)?|patrol|unit|officer|en\s*route|on\s*scene|on\s*stop|traffic\s*stop|pursuit|robbery|shooting|shots?\s+fired|fire(?:arm)?|suspect|vehicle|plate|tag|registration|backup|assist|ems|ambulance|medic|respond(?:ing)?|available|unavailable|signal|copy|roger|clear(?:ing)?|stand\s*by|status|location|heading|north|south|east|west|street|ave(?:nue)?|blvd|highway|hwy|road|drive|lane|run\s+(?:a\s+)?(?:plate|name|check)|look(?:ing)?\s+up|bolo|warrant|stolen|wanted|armed|weapon|knife|gun|disturbance|domestic|noise|call|incident|scene|crash|accident|medical|overdose|trespass|burglary|assault|fight|drunk|disorderly)\b/i.test(text);
+}
+
 function detectUnitsCheck(text) {
   return /\b(?:how\s+many\s+(?:units?|officers?)|(?:who(?:'s|\s+is)\s+)?(?:units?\s+)?available\??|what\s+units?\s+(?:are\s+)?(?:available|on\s+duty)|(?:list|show\s+me)\s+(?:available\s+)?(?:units?|officers?)|units?\s+on\s+duty|who(?:'s|\s+is)\s+on\s+duty|how\s+many\s+(?:cops?|units?)\s+(?:are\s+)?(?:out|on\s+duty))\b/i.test(text);
 }
@@ -1892,6 +1898,16 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         console.log(`[Dispatch] Transcript ready: "${transcript}"${preContext ? ` (pre: "${preContext}")` : ''}${detectedCallSign ? ` (call sign: ${detectedCallSign})` : ''}`);
       }
     }
+
+    // --- Dispatch-relevance gate ---
+    // If a trigger word was heard but the command contains zero dispatch vocabulary,
+    // drop it silently. This prevents the bot from responding to off-topic chatter
+    // like "dispatch, can you help me move?" or accidental trigger-word hits.
+    if (hadTrigger && !isDispatchRelevant(transcript)) {
+      console.log(`[Dispatch] Trigger heard but off-topic — ignoring: "${transcript}"`);
+      return;
+    }
+    // --- End relevance gate ---
 
     // --- "Show me in / show me on" join-stop detection ---
     const joinTargetName = detectJoinStop(transcript);
