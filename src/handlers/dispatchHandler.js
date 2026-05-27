@@ -898,7 +898,7 @@ const TTS_MEM_CACHE_MAX = 30;
 
 try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
 
-const TTS_VOICE = 'dan';
+const TTS_VOICE = 'daniel';
 
 function ttsCacheKey(text) {
   return createHash('md5').update(`${TTS_VOICE}:${text.toLowerCase().trim()}`).digest('hex');
