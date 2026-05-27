@@ -8,6 +8,7 @@ import TicketConfig from '../models/TicketConfig.js';
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
+import MemberMovementConfig from '../models/MemberMovementConfig.js';
 import { revertVerificationPermissions } from './selectMenuHandler.js';
 import { isAdmin, isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
 
@@ -95,9 +96,17 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Success)
         );
 
+      const enableRow4 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('enable_membermove')
+            .setLabel('Member Movement')
+            .setStyle(ButtonStyle.Success)
+        );
+
       return interaction.update({
         embeds: [embed],
-        components: [enableRow1, enableRow2, enableRow3],
+        components: [enableRow1, enableRow2, enableRow3, enableRow4],
       });
     } else {
       // Show disable options
@@ -155,9 +164,17 @@ export async function handleEnableChoiceButton(interaction) {
             .setStyle(ButtonStyle.Danger)
         );
 
+      const disableRow4 = new ActionRowBuilder()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('disable_membermove')
+            .setLabel('Member Movement')
+            .setStyle(ButtonStyle.Danger)
+        );
+
       return interaction.update({
         embeds: [embed],
-        components: [disableRow1, disableRow2, disableRow3],
+        components: [disableRow1, disableRow2, disableRow3, disableRow4],
       });
     }
   } catch (error) {
@@ -239,6 +256,10 @@ export async function handleEnableCommandButton(interaction) {
       featureName = 'Welcome System';
       model = Welcome;
       setupCommand = 'Run `/welcomesystemsetup` to configure.';
+    } else if (customId === 'enable_membermove') {
+      featureName = 'Member Movement';
+      model = MemberMovementConfig;
+      setupCommand = 'Run `/movemesetup` to send the movement panel to a channel.';
     }
 
     // Save to database
@@ -308,6 +329,9 @@ export async function handleDisableCommandButton(interaction) {
     } else if (customId === 'disable_welcome') {
       featureName = 'Welcome System';
       model = Welcome;
+    } else if (customId === 'disable_membermove') {
+      featureName = 'Member Movement';
+      model = MemberMovementConfig;
     }
 
     // Save to database

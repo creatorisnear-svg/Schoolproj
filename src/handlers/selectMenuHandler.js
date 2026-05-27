@@ -330,6 +330,12 @@ export async function handleSelectMenu(interaction) {
     return handleDisableCommandButton(interaction);
   }
 
+  // Member Movement panel — members selecting a voice channel to be moved to
+  if (customId === 'membermove_panel_select') {
+    const { handleMemberMovePanelSelect } = await import('./memberMovementHandler.js');
+    return handleMemberMovePanelSelect(interaction);
+  }
+
   // Ticket setup select menus
   if (customId === 'ticketsupport_setup_menu') {
     const { handleTicketSetupMenu } = await import('./ticketHandler.js');
