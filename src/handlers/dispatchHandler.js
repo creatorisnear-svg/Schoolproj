@@ -714,7 +714,9 @@ function parseTranscript(text) {
 
   let detectedCode = null;
   for (const code of Object.keys(TEN_CODES)) {
-    const escaped = code.replace('-', '[\\-\\s]?');
+    // Require an explicit separator (dash or space) so e.g. "1080" never
+    // triggers 10-80 — only "10-80" or "10 80" should match.
+    const escaped = code.replace('-', '[-\\s]');
     if (new RegExp(`\\b${escaped}\\b`, 'i').test(lower)) {
       detectedCode = code;
       break;
@@ -1405,53 +1407,47 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const multiOfficerCalls = activeCalls.filter(c => c.respondingLeoId && (c.attachedLeoIds?.length ?? 0) > 0);
 
   const systemPrompt =
-    `You are the LSPD/BCSO radio dispatcher for a GTA 5 FiveM roleplay server. ` +
-    `Your role is to ACTIVELY ORGANIZE and coordinate all units — not just respond to requests. ` +
-    `You are the hub of all radio traffic. Be professional, direct, and proactive.\n\n` +
+    `You are the radio dispatcher for a GTA 5 FiveM roleplay police server. ` +
+    `You are a calm, professional, real-sounding dispatcher. React to what officers say — do NOT pepper them with questions.\n\n` +
     officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `AVAILABLE UNITS (10-8): ${availableNames || 'None'}\n\n` +
     `ACTIVE 911 CALLS:\n${callContext}\n\n` +
     `ACTIVE PURSUIT:\n${pursuitLine}\n\n` +
     `ACTIVE BOLOs:\n${boloContext}\n\n` +
-    (unattendedLines.length > 0 ? `UNATTENDED CALLS NEEDING A UNIT:\n  ${unattendedLines.join('\n  ')}\n\n` : '') +
+    (unattendedLines.length > 0 ? `UNATTENDED CALLS:\n  ${unattendedLines.join('\n  ')}\n\n` : '') +
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
     callSignLine +
-    `\nRADIO PROTOCOL:\n` +
-    `- Address officer by name first: "Copy [Name]," or "[Name], dispatch—"\n` +
-    `- If they used a call sign, address by call sign: "Copy 1-Adam-22, [Name]—"\n` +
-    `- Speak all ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
-    `- Keep it to 1–3 short radio sentences. Terse but complete. No filler, no pleasantries.\n` +
-    `- If transmission is unclear or too short: "Say again, [Name]?"\n` +
-    `- If the message has zero dispatch content (no codes, no action request, no tactical context) respond ONLY with silence — do NOT generate a response. Off-topic radio chatter, personal conversation, or non-police speech must be completely ignored.\n` +
-    `- GTA V locations: Los Santos, Blaine County, Pillbox Medical Center, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci Beach, Del Perro, Vinewood, Rockford Hills, La Mesa.\n` +
-    `- Divisions: LSPD (Los Santos PD), BCSO (Blaine County Sheriff), FIB, LSFD.\n` +
-    `- Unit types: Adam (patrol), Boy (traffic), Charlie (K9), David (detective).\n\n` +
-    `PROACTIVE DISPATCH RULES — follow these every response:\n` +
-    `1. NO STATUS: If officer has no status on file, ask for it after handling their request: "[Name], what are you showing?"\n` +
-    `2. ON SCENE CHECK: If officer is on an active code and doesn't update their status, ask: "Are you still showing [code]?"\n` +
-    `3. GOING TEN-EIGHT: If officer clears and there are unattended calls, immediately assign them by name: ` +
-    (unattendedLines.length > 0
-      ? `"Copy [Name], ten-eight. Can you respond to ${unattendedLines[0]}?" and call send_unit_to_call.\n`
-      : `no unattended calls — just acknowledge ten-eight and note available unit count.\n`) +
-    `4. AVAILABLE UNITS + UNATTENDED CALLS: If there are unattended calls and available units, proactively suggest which available officer should respond — name them specifically.\n` +
-    `5. MULTI-UNIT SCENES: If multiple officers are on the same call, check who is primary and who is backup — ask if the primary officer needs the backup to clear.\n` +
-    `6. LONG ON SCENE: If officer has been on an active code for 10+ minutes without update, note it: "You've been on scene for X minutes — do you need anything?"\n` +
-    `7. BACKUP COORDINATION: If an officer calls for backup, look at available units and name a specific unit to respond: "Sending [AvailableOfficer] to your location."\n\n` +
-    `CRITICAL — FUNCTION CALL RULES:\n` +
-    `- Call functions silently via the tool system. NEVER write <function=...> or JSON in your radio response.\n` +
-    `- Your spoken response must be ONLY natural radio dialogue — no brackets, no tags, no code.\n` +
-    `- Always speak on the radio AND call the relevant function together.\n\n` +
+    `\nRADIO STYLE — THIS IS CRITICAL:\n` +
+    `- Sound like a REAL dispatcher. Short. Clipped. Natural radio talk.\n` +
+    `- Maximum 1–2 sentences. Never more.\n` +
+    `- Address officer by first name or call sign. "Copy, Smith." "Ten-four, Adam-22."\n` +
+    `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
+    `- Never ask multiple questions. Never volunteer unrelated info.\n` +
+    `- If transmission is unclear: "Say again?"\n` +
+    `- Never explain yourself. Never recap what the officer said back to them.\n` +
+    `- Zero filler, zero pleasantries, zero "I'll do that right away".\n` +
+    `- Off-topic, non-police speech: do NOT respond at all.\n` +
+    `- GTA V locations: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci, Del Perro, Vinewood, Rockford Hills, La Mesa.\n\n` +
+    `RESPONSE EXAMPLES (model these exactly):\n` +
+    `- Officer says "ten eleven": "Copy, ten eleven. Want me to move you to a stop channel?"\n` +
+    `- Officer says "ten eight": "Ten-four, showing you available."\n` +
+    `- Officer says "ten ninety-seven": "Copy, ten ninety-seven."\n` +
+    `- Officer going ten-eight with unattended call: "Copy ten-eight, Smith. Got a ${unattendedLines[0] || 'pending call'} if you're free."\n` +
+    `- Officer requests backup: "Copy. ${availableNames ? availableNames.split(',')[0] : 'Sending a unit'}, can you respond?"\n\n` +
+    `FUNCTION RULES:\n` +
+    `- Call functions silently. NEVER write function names or JSON in your response.\n` +
+    `- Spoken response = natural radio only. No brackets, tags, or code.\n` +
     `WHEN TO CALL FUNCTIONS:\n` +
-    `- move_to_traffic_stop: officer reports ten-eleven OR asks to be moved to a stop channel (ask first — never force)\n` +
-    `- move_to_patrol: officer clears scene or goes ten-eight\n` +
-    `- update_officer_status: any verbal status change (ten-seventy-six, ten-ninety-seven, ten-fifteen, ten-fifty, etc.)\n` +
-    `- close_call: officer says "code four" or clears an active call\n` +
-    `- send_unit_to_call: when assigning or attaching an officer to a call\n` +
-    `- add_call_note: officer reports suspect description, vehicle info, or location update\n` +
-    `- flag_officer_needs_backup: officer explicitly calls for help — sets ten-seventy-eight\n` +
-    `- create_bolo: officer puts out a BOLO on a suspect or vehicle over radio`;
+    `- move_to_traffic_stop: officer calls ten-eleven or asks to be moved to a stop channel\n` +
+    `- move_to_patrol: officer goes ten-eight or clears a scene\n` +
+    `- update_officer_status: any verbal status change\n` +
+    `- close_call: officer says code four or clears a call\n` +
+    `- send_unit_to_call: assigning an officer to a call\n` +
+    `- add_call_note: officer reports suspect, vehicle, or location info\n` +
+    `- flag_officer_needs_backup: officer calls for help\n` +
+    `- create_bolo: officer puts out a BOLO over radio`;
 
   // Tool definitions
   const dispatchTools = [
@@ -1603,7 +1599,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     // Always use the fast 8B model — dispatch responses are short and formulaic,
     // speed matters more than raw quality here.
     const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
-    const maxTokens = 160;
+    const maxTokens = 80;
     try {
       const response = await client.chat.completions.create({
         model,
@@ -3794,16 +3790,10 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
     try {
       const { playDispatchVoice } = await import('../utils/voiceListener.js');
 
-      // Play panic alert sound urgently first (cuts through any queued audio)
-      if (PANIC_SOUND_BUFFER) {
-        playDispatchVoice(guild.id, PANIC_SOUND_BUFFER, { urgent: true });
-      }
-
-      // Queue pursuit TTS immediately after the sound
       if (config.aiEnabled && hasAIKey()) {
-        const ttsText = `Attention all units, Officer ${cleanNameForTTS(officerName)} is in an active ten eighty pursuit. All available units, will anyone respond to back up ${cleanNameForTTS(officerName)}? Say ten four to respond or press the respond button in dispatch.`;
+        const ttsText = `All units, ten eighty. ${cleanNameForTTS(officerName)} is in pursuit. Available units, say responding to back up.`;
         generateDispatchTTS(ttsText).then(ttsBuffer => {
-          playDispatchVoice(guild.id, ttsBuffer);
+          playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
         }).catch(err => console.error('[Dispatch TTS] Pursuit broadcast TTS error:', err.message));
       }
     } catch (err) {
@@ -3984,7 +3974,7 @@ async function checkTrafficStops(guild) {
           const minutesPart = minutesIn !== null && minutesIn > 0
             ? ` You have been on this stop for ${minutesIn} minute${minutesIn !== 1 ? 's' : ''}.`
             : '';
-          const ttsText = `${officer.username}, this is dispatch checking in on your traffic stop${subjectPart}.${minutesPart} Do you need me to run a plate, look up a name, or stay in your channel? Say your request now, or ten eight when you are clear.`;
+          const ttsText = `${cleanNameForTTS(officer.username)}, dispatch${subjectPart}.${minutesPart} Still showing you ten eleven. Ten four?`;
           const ttsBuffer = await generateDispatchTTS(ttsText);
           await playTTSInChannelAndReturn(targetChannel, ttsBuffer);
         } catch (err) {
