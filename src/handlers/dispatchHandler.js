@@ -1369,27 +1369,18 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     const minsOnStatus = officerDbStatus.updatedAt
       ? Math.floor((now - new Date(officerDbStatus.updatedAt).getTime()) / 60000)
       : null;
-    const timeStr = minsOnStatus !== null ? ` for ${minsOnStatus} minute${minsOnStatus !== 1 ? 's' : ''}` : '';
+    const timeStr = minsOnStatus !== null ? ` for ${minsOnStatus}m` : '';
     const subjectStr = officerDbStatus.subject ? ` with ${officerDbStatus.subject}` : '';
     const locationStr = officerDbStatus.location ? ` at ${officerDbStatus.location}` : '';
-    const longOnScene = ON_SCENE_STATUS_CODES.has(code) && minsOnStatus !== null && minsOnStatus >= 10;
     officerStatusBlock =
-      `SPEAKING OFFICER CURRENT STATUS:\n` +
+      `SPEAKING OFFICER PRIOR STATUS (before this transmission):\n` +
       `  ${ttsOfficerName}: ${code} — ${codeLabel}${subjectStr}${locationStr}${timeStr}\n` +
-      (ON_SCENE_STATUS_CODES.has(code)
-        ? `  RULE: Officer is on an active code. After handling their request, ask: "Are you still showing ${code}${subjectStr}?" unless they just gave a status update.\n`
-        : '') +
-      (longOnScene
-        ? `  RULE: Officer has been on scene for ${minsOnStatus} minutes — if they ask about anything routine, mention the time and ask if they need anything.\n`
-        : '') +
-      `\n`;
+      `  Use this to give context-aware responses (e.g. if they go 10-8 from a stop, say "stop is clear").\n` +
+      `  Do NOT ask the officer what their status is — they just told you via this transmission.\n\n`;
   } else {
-    // Officer has no known status — dispatch should ask
     officerStatusBlock =
-      `SPEAKING OFFICER CURRENT STATUS:\n` +
-      `  ${ttsOfficerName}: NO STATUS ON FILE\n` +
-      `  RULE: This officer has no recorded status. After handling their immediate request (if any), ` +
-      `ask them for their current status: "[Name], what's your current status?" or "What are you showing?" — keep it brief.\n\n`;
+      `SPEAKING OFFICER PRIOR STATUS: No prior status on file for ${ttsOfficerName}.\n` +
+      `  Do NOT ask for their status unprompted — respond to what they said first.\n\n`;
   }
 
   // Available units (10-8) for dispatch to assign to calls
@@ -1406,9 +1397,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   // Officers on scene together (for coordination context)
   const multiOfficerCalls = activeCalls.filter(c => c.respondingLeoId && (c.attachedLeoIds?.length ?? 0) > 0);
 
+  const hasPursuit = !!pursuitInfo;
+
   const systemPrompt =
     `You are the radio dispatcher for a GTA 5 FiveM roleplay police server. ` +
-    `You are a calm, professional, real-sounding dispatcher. React to what officers say — do NOT pepper them with questions.\n\n` +
+    `You are calm, professional, and real-sounding. You react to what is said — nothing more.\n\n` +
     officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `AVAILABLE UNITS (10-8): ${availableNames || 'None'}\n\n` +
@@ -1419,28 +1412,45 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
     callSignLine +
-    `\nRADIO STYLE — THIS IS CRITICAL:\n` +
+    `\nRADIO STYLE — CRITICAL:\n` +
     `- Sound like a REAL dispatcher. Short. Clipped. Natural radio talk.\n` +
     `- Maximum 1–2 sentences. Never more.\n` +
     `- Address officer by first name or call sign. "Copy, Smith." "Ten-four, Adam-22."\n` +
     `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
-    `- Never ask multiple questions. Never volunteer unrelated info.\n` +
+    `- Never ask multiple questions. Never volunteer unrelated info unprompted.\n` +
     `- If transmission is unclear: "Say again?"\n` +
-    `- Never explain yourself. Never recap what the officer said back to them.\n` +
-    `- Zero filler, zero pleasantries, zero "I'll do that right away".\n` +
-    `- Off-topic, non-police speech: do NOT respond at all.\n` +
+    `- Never explain yourself. Never recap what the officer said.\n` +
+    `- Zero filler. Zero pleasantries. Zero "I'll do that right away".\n` +
+    `- Non-police, off-topic speech: respond with nothing (empty string).\n` +
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci, Del Perro, Vinewood, Rockford Hills, La Mesa.\n\n` +
+    (hasPursuit
+      ? `PURSUIT IN PROGRESS — DISPATCH RULES:\n` +
+        `- There is an active ten-eighty pursuit. Only respond to pursuit-related traffic.\n` +
+        `- Ignore routine status updates from other officers unless they are offering to assist.\n` +
+        `- Keep responses extra short — officers need the channel clear.\n\n`
+      : '') +
+    `WHEN NOT TO RESPOND:\n` +
+    `- Officer-to-officer banter, casual chat, non-police topics — stay silent.\n` +
+    `- Simple ten-four acknowledgments from the officer — no need to respond.\n` +
+    `- Officer just gave their status — do NOT ask for it again in the same response.\n` +
+    `- If officer's prior status matches what they just said — acknowledge briefly, do not repeat info back.\n\n` +
+    `CONTEXT-AWARE 10-8 RESPONSES:\n` +
+    `- Coming from ten-eleven (traffic stop): "Copy ${ttsOfficerName}, showing you ten eight. Stop is clear."\n` +
+    `- Coming from ten-ninety-seven (on scene): "Copy ${ttsOfficerName}, ten eight. You're clear."\n` +
+    `- Coming from ten-eighty (pursuit): "Copy ${ttsOfficerName}, showing you ten eight. Pursuit concluded."\n` +
+    `- No prior status / from patrol: "Ten-four ${ttsOfficerName}, showing you ten eight."\n` +
+    `- If unattended calls exist when going ten-eight: "Copy, ten eight. ${unattendedLines[0] ? `Got a ${unattendedLines[0]} if you're free.` : ''}"\n\n` +
     `RESPONSE EXAMPLES (model these exactly):\n` +
-    `- Officer says "ten eleven": "Copy, ten eleven. Want me to move you to a stop channel?"\n` +
-    `- Officer says "ten eight": "Ten-four, showing you available."\n` +
+    `- Officer says "ten eleven": "Copy ${ttsOfficerName}, ten eleven."\n` +
     `- Officer says "ten ninety-seven": "Copy, ten ninety-seven."\n` +
-    `- Officer going ten-eight with unattended call: "Copy ten-eight, Smith. Got a ${unattendedLines[0] || 'pending call'} if you're free."\n` +
-    `- Officer requests backup: "Copy. ${availableNames ? availableNames.split(',')[0] : 'Sending a unit'}, can you respond?"\n\n` +
+    `- Officer says "ten seventy-six": "Copy, ten seventy-six. En route."\n` +
+    `- Officer requests backup: "Copy. ${availableNames ? availableNames.split(',')[0] : 'Any available unit'}, respond?"\n` +
+    `- Officer reports a plate/name: read back the result cleanly, one sentence.\n\n` +
     `FUNCTION RULES:\n` +
-    `- Call functions silently. NEVER write function names or JSON in your response.\n` +
+    `- Call functions silently. NEVER write function names or JSON in your text response.\n` +
     `- Spoken response = natural radio only. No brackets, tags, or code.\n` +
     `WHEN TO CALL FUNCTIONS:\n` +
-    `- move_to_traffic_stop: officer calls ten-eleven or asks to be moved to a stop channel\n` +
+    `- move_to_traffic_stop: officer calls ten-eleven\n` +
     `- move_to_patrol: officer goes ten-eight or clears a scene\n` +
     `- update_officer_status: any verbal status change\n` +
     `- close_call: officer says code four or clears a call\n` +
@@ -2982,9 +2992,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
     } else if (voiceAction === 'available') {
       // Officer called 10-8 verbally — clear their stop status
+      const wasOnStop = officerDbStatus?.tenCode === '10-11';
+      const wasOnScene = officerDbStatus?.tenCode === '10-97';
       await updateOfficerStatus(guild.id, userId, officerName, '10-8', parsed, null);
 
-      // If bot is currently in the stop channel with this officer, move them back to patrol
+      // If bot is currently in the stop channel with this officer, move back to patrol
+      let handledStopReturn = false;
       try {
         const { getCurrentChannelId, clearExtendedStay, moveToChannel } = await import('../utils/voiceListener.js');
         const currentBotChannelId = getCurrentChannelId(guild.id);
@@ -2994,23 +3007,21 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           !config.patrolChannelIds?.includes(currentBotChannelId);
 
         if (isInStopWithOfficer) {
+          handledStopReturn = true;
           clearExtendedStay(guild.id);
           const patrolChannelId = config.patrolChannelIds?.[0];
           if (patrolChannelId) {
             const patrolCh = guild.channels.cache.get(patrolChannelId) ||
               await guild.channels.fetch(patrolChannelId).catch(() => null);
             if (patrolCh) {
-              // Move the officer back to patrol first
               await member.voice.setChannel(patrolCh).catch(() => {});
-              // Then return bot to patrol
               await moveToChannel(patrolCh).catch(() => {});
             }
           }
-          // Acknowledge via TTS
-          if (config.aiEnabled && hasAIKey()) {
+          if (config.aiEnabled && hasAIKey() && !dispatchResponse) {
             try {
               const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsBuffer = await generateDispatchTTS(`Copy ${ttsName}, showing you ten eight. Stop is clear, returning you to patrol. Ten four.`);
+              const ttsBuffer = await generateDispatchTTS(`Copy ${ttsName}, showing you ten eight. Stop is clear.`);
               playDispatchVoice(guild.id, ttsBuffer);
             } catch {}
           }
@@ -3018,8 +3029,36 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       } catch (err) {
         console.error('[Dispatch] 10-8 auto-return error:', err.message);
       }
+
+      // Always acknowledge 10-8 with a brief TTS — even without a trigger word,
+      // dispatchers always confirm when an officer goes available.
+      if (!dispatchResponse && !handledStopReturn && config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          let ackText;
+          if (wasOnStop) {
+            ackText = `Ten-four ${ttsName}, showing you ten eight. Stop is clear.`;
+          } else if (wasOnScene) {
+            ackText = `Copy ${ttsName}, ten eight. You're clear.`;
+          } else {
+            ackText = `Ten-four ${ttsName}, showing you ten eight.`;
+          }
+          addToRadioLog(guild.id, cleanNameForTTS(officerName), transcript, ackText);
+          const ttsBuffer = await generateDispatchTTS(ackText);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch {}
+      }
+
     } else if (voiceAction === 'out_of_service') {
       await OfficerStatus.deleteOne({ guildId: guild.id, userId }).catch(() => {});
+      // Brief 10-7 acknowledgment
+      if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(`Ten-four ${ttsName}, showing you ten seven. Out of service.`);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch {}
+      }
     } else if (parsed.code) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
@@ -3030,21 +3069,44 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       }
 
       // 10-80 — Pursuit: always broadcast to patrol and play alert sound
-      if (parsed.code === '10-80') {
+      else if (parsed.code === '10-80') {
         const { getCurrentChannelId, clearExtendedStay } = await import('../utils/voiceListener.js');
         const currentBotChannelId = getCurrentChannelId(guild.id);
         const officerVoiceChannelId = member?.voice?.channelId;
         const isInStopChannel = currentBotChannelId &&
           officerVoiceChannelId === currentBotChannelId &&
           !config.patrolChannelIds?.includes(currentBotChannelId);
-
-        // Use the officer's current voice channel as the pursuit channel,
-        // fall back to wherever the bot currently is
         const pursuitChannelId = officerVoiceChannelId || currentBotChannelId;
         await triggerPursuitBroadcast(guild, config, userId, officerName, pursuitChannelId);
-
-        // If bot was in a stop channel with this officer, clear the extended stay
         if (isInStopChannel) clearExtendedStay(guild.id);
+      }
+
+      // Brief acknowledgment for common status codes when no AI response was generated
+      // (i.e., officer spoke without a trigger word — dispatcher still acknowledges)
+      else if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
+        const SILENT_CODES = new Set(['10-4', '10-6']); // already handled by SIMPLE_ACK_CODES
+        if (!SILENT_CODES.has(parsed.code)) {
+          const STATUS_ACK_MAP = {
+            '10-76': `Copy ${ttsName}, ten seventy-six en route.`,
+            '10-97': `Copy ${ttsName}, ten ninety-seven on scene.`,
+            '10-11': `Copy ${ttsName}, ten eleven.`,
+            '10-15': `Copy ${ttsName}, ten fifteen, prisoner in custody.`,
+            '10-17': `Copy ${ttsName}, ten seventeen, en route to station.`,
+            '10-19': `Copy ${ttsName}, ten nineteen, returning to station.`,
+            '10-50': `Copy ${ttsName}, ten fifty, vehicle accident.`,
+            '10-52': `Copy ${ttsName}, ten fifty-two, EMS requested.`,
+            '10-78': `Copy ${ttsName}, ten seventy-eight. All units, ${ttsName} needs assistance.`,
+          };
+          const ackText = STATUS_ACK_MAP[parsed.code];
+          if (ackText) {
+            try {
+              const { playDispatchVoice } = await import('../utils/voiceListener.js');
+              addToRadioLog(guild.id, cleanNameForTTS(officerName), transcript, ackText);
+              const ttsBuffer = await generateDispatchTTS(ackText);
+              playDispatchVoice(guild.id, ttsBuffer);
+            } catch {}
+          }
+        }
       }
     } else if (parsed.location) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
