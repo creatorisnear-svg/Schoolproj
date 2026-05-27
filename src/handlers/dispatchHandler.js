@@ -393,7 +393,12 @@ function detectClearPanic(text) {
 // Returns true only when the text contains vocabulary that belongs in a police dispatch context.
 // Used to drop off-topic chatter that happens to say "dispatch" (e.g. "dispatch, can you help me?").
 function isDispatchRelevant(text) {
-  return /\b(?:10[-\s]?\d+|code\s*\d|show(?:ing)?(?:\s+me)?|patrol|unit|officer|en\s*route|on\s*scene|on\s*stop|traffic\s*stop|pursuit|robbery|shooting|shots?\s+fired|fire(?:arm)?|suspect|vehicle|plate|tag|registration|backup|assist|ems|ambulance|medic|respond(?:ing)?|available|unavailable|signal|copy|roger|clear(?:ing)?|stand\s*by|status|location|heading|north|south|east|west|street|ave(?:nue)?|blvd|highway|hwy|road|drive|lane|run\s+(?:a\s+)?(?:plate|name|check)|look(?:ing)?\s+up|bolo|warrant|stolen|wanted|armed|weapon|knife|gun|disturbance|domestic|noise|call|incident|scene|crash|accident|medical|overdose|trespass|burglary|assault|fight|drunk|disorderly)\b/i.test(text);
+  const DISPATCH_RE = /\b(?:10[-\s]?\d+|code\s*\d|show(?:ing)?(?:\s+me)?|patrol|unit|officer|en\s*route|on\s*scene|on\s*stop|traffic\s*stop|pursuit|robbery|shooting|shots?\s+fired|fire(?:arm)?|suspect|vehicle|plate|tag|registration|backup|assist|ems|ambulance|medic|respond(?:ing)?|available|unavailable|signal|copy|roger|clear(?:ing)?|stand\s*by|status|location|heading|north|south|east|west|street|ave(?:nue)?|blvd|highway|hwy|road|drive|lane|run\s+(?:a\s+)?(?:plate|name|check)|look(?:ing)?\s+up|bolo|warrant|stolen|wanted|armed|weapon|knife|gun|disturbance|domestic|noise|call|incident|scene|crash|accident|medical|overdose|trespass|burglary|assault|fight|drunk|disorderly)\b/gi;
+  const matches = (text.match(DISPATCH_RE) || []).length;
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  // Short transmissions need 1 match; longer ones need 2+ distinct matches to filter out
+  // casual speech that happens to mention a single police-adjacent word.
+  return matches >= (wordCount > 7 ? 2 : 1);
 }
 
 function detectUnitsCheck(text) {
@@ -1406,6 +1411,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `- Speak all ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
     `- Keep it to 1–3 short radio sentences. Terse but complete. No filler, no pleasantries.\n` +
     `- If transmission is unclear or too short: "Say again, [Name]?"\n` +
+    `- If the message has zero dispatch content (no codes, no action request, no tactical context) respond ONLY with silence — do NOT generate a response. Off-topic radio chatter, personal conversation, or non-police speech must be completely ignored.\n` +
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical Center, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci Beach, Del Perro, Vinewood, Rockford Hills, La Mesa.\n` +
     `- Divisions: LSPD (Los Santos PD), BCSO (Blaine County Sheriff), FIB, LSFD.\n` +
     `- Unit types: Adam (patrol), Boy (traffic), Charlie (K9), David (detective).\n\n` +
@@ -1584,7 +1590,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     // Always use the fast 8B model — dispatch responses are short and formulaic,
     // speed matters more than raw quality here.
     const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
-    const maxTokens = 90;
+    const maxTokens = 160;
     try {
       const response = await client.chat.completions.create({
         model,
@@ -1696,6 +1702,43 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
 
     if (!transcript || transcript.trim().length < 3) return;
+
+    // ── Noise / Whisper hallucination filter ─────────────────────────────────
+    {
+      const _t = transcript.trim();
+      const _words = _t.split(/\s+/).filter(Boolean);
+      if (_words.length < 2) {
+        console.log(`[Dispatch] Dropping single-word noise: "${_t}"`);
+        return;
+      }
+      const FILLER = new Set(['uh','um','hmm','hm','ah','oh','eh','er','okay','ok',
+        'yeah','yep','nah','hey','yo','hi','hello','bye','thanks','thank','sure',
+        'right','alright','cool','nice','wow','huh','what','yep','nope','mhm']);
+      if (_words.every(w => FILLER.has(w.toLowerCase().replace(/[^a-z]/g, '')))) {
+        console.log(`[Dispatch] Dropping pure filler: "${_t}"`);
+        return;
+      }
+      const _unique = new Set(_words.map(w => w.toLowerCase().replace(/[^a-z]/g, '')));
+      if (_words.length >= 3 && _unique.size === 1) {
+        console.log(`[Dispatch] Dropping repeated-word hallucination: "${_t}"`);
+        return;
+      }
+      if (/^(?:(?:thank(?:s| you)[.,!]*\s*){2,}|(?:thanks?\s*){3,})$/i.test(_t)) {
+        console.log(`[Dispatch] Dropping thank-you loop: "${_t}"`);
+        return;
+      }
+      if (/^[.\s]+$/.test(_t)) {
+        console.log(`[Dispatch] Dropping ellipsis noise: "${_t}"`);
+        return;
+      }
+      const _nonAscii = (_t.match(/[^\x00-\x7F]/g) || []).length;
+      if (_nonAscii / _t.length > 0.3) {
+        console.log(`[Dispatch] Dropping non-ASCII transcript: "${_t}"`);
+        return;
+      }
+    }
+    // ── End noise filter ──────────────────────────────────────────────────────
+
     console.log(`[Dispatch] Transcript: "${transcript}"`);
 
     // Dedup: ignore identical transcripts from the same user within 8 seconds
@@ -1703,7 +1746,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     const now = Date.now();
     const lastEntry = _transcriptDedup.get(dedupKey);
     const normalized = transcript.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-    if (lastEntry && (now - lastEntry.ts < 8000) && lastEntry.text === normalized) {
+    if (lastEntry && (now - lastEntry.ts < 12000) && lastEntry.text === normalized) {
       console.log(`[Dispatch] Dedup — ignoring repeated transcript from ${officerName}`);
       return;
     }
@@ -1848,7 +1891,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         const rawWords = raw.split(/\s+/);
         const alphaWords = rawWords.map(w => w.toLowerCase().replace(/[^a-z]/g, ''));
 
-        const dispatchIdx = alphaWords.findIndex((w, i) => i <= 10 && (
+        const dispatchIdx = alphaWords.findIndex((w, i) => i <= 4 && (
           w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
           w.endsWith('dispatch') ||
           w === 'command' || w === 'control' || w === 'central'
@@ -1910,7 +1953,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End relevance gate ---
 
     // --- "Show me in / show me on" join-stop detection ---
-    const joinTargetName = detectJoinStop(transcript);
+    const joinTargetName = hadTrigger ? detectJoinStop(transcript) : null;
     if (joinTargetName && config.trafficStopChannelIds?.length > 0) {
       const civMember = await findMemberByName(guild, joinTargetName);
 
@@ -2001,7 +2044,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End join-stop detection ---
 
     // --- CAD lookup detection (run plate / run name) ---
-    const cadLookup = detectCADLookup(transcript);
+    const cadLookup = hadTrigger ? detectCADLookup(transcript) : null;
     if (cadLookup) {
       console.log(`[Dispatch] CAD lookup detected: ${cadLookup.type} → "${cadLookup.query}"`);
       const result = await runCADLookup(guild.id, cadLookup);
@@ -2414,7 +2457,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End stay-with-me detection ---
 
     // --- Warrant check detection ---
-    const warrantTarget = detectWarrantCheck(transcript);
+    const warrantTarget = hadTrigger ? detectWarrantCheck(transcript) : null;
     if (warrantTarget) {
       console.log(`[Dispatch] Warrant check detected for "${warrantTarget}" by ${officerName}`);
       const result = await runCADLookup(guild.id, { type: 'name', query: warrantTarget });
@@ -2471,7 +2514,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End warrant check ---
 
     // --- Firearm serial lookup ---
-    const serialQuery = detectSerialLookup(transcript);
+    const serialQuery = hadTrigger ? detectSerialLookup(transcript) : null;
     if (serialQuery) {
       console.log(`[Dispatch] Serial lookup: "${serialQuery}" by ${officerName}`);
       const escapedSerial = serialQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -2526,7 +2569,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End serial lookup ---
 
     // --- Backup request detection ---
-    const backupReq = detectBackupRequest(transcript);
+    const backupReq = hadTrigger ? detectBackupRequest(transcript) : null;
     if (backupReq) {
       console.log(`[Dispatch] Backup requested by ${officerName}${backupReq.location ? ` at ${backupReq.location}` : ''}`);
       const allStatuses = await OfficerStatus.find({ guildId: guild.id });
@@ -2574,7 +2617,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End backup request ---
 
     // --- 10-99 panic clear / stand-down detection ---
-    if (detectClearPanic(transcript)) {
+    if (hadTrigger && detectClearPanic(transcript)) {
       const officerStatus = await OfficerStatus.findOne({ guildId: guild.id, userId });
       if (officerStatus?.tenCode === '10-99') {
         console.log(`[Dispatch] 10-99 stand-down from ${officerName}`);
@@ -2598,7 +2641,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End 10-99 panic clear ---
 
     // --- Code 4 / scene clear detection ---
-    if (detectCodeFour(transcript)) {
+    if (hadTrigger && detectCodeFour(transcript)) {
       console.log(`[Dispatch] Code 4 / all clear from ${officerName}`);
       await updateOfficerStatus(guild.id, userId, officerName, '10-8',
         { code: '10-8', codeInfo: TEN_CODES['10-8'], subject: null, location: null, rawText: transcript },
@@ -2631,7 +2674,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End code 4 ---
 
     // --- Units available check ---
-    if (detectUnitsCheck(transcript)) {
+    if (hadTrigger && detectUnitsCheck(transcript)) {
       console.log(`[Dispatch] Units check requested by ${officerName}`);
       const allStatuses = await OfficerStatus.find({ guildId: guild.id });
       const available = allStatuses.filter(s => s.tenCode === '10-8');
@@ -2660,7 +2703,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End units check ---
 
     // --- EMS / Fire request ---
-    const emsReq = detectEMSRequest(transcript);
+    const emsReq = hadTrigger ? detectEMSRequest(transcript) : null;
     if (emsReq) {
       console.log(`[Dispatch] ${emsReq.type.toUpperCase()} request by ${officerName}${emsReq.location ? ` at ${emsReq.location}` : ''}`);
       const serviceLabel = emsReq.type === 'fire' ? 'Fire Department' : 'EMS';
@@ -2694,7 +2737,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // --- End EMS / Fire request ---
 
     // --- Voice 911 call creation ("roll me a 32", "I've got a robbery at...") ---
-    const voiceCallReq = detectVoiceCallCreation(fullVoiceContext || transcript);
+    const voiceCallReq = hadTrigger ? detectVoiceCallCreation(fullVoiceContext || transcript) : null;
     if (voiceCallReq) {
       console.log(`[Dispatch] Voice call creation: ${voiceCallReq.incident}${voiceCallReq.location ? ` at ${voiceCallReq.location}` : ''} (${voiceCallReq.count} unit(s))`);
       try {
@@ -2784,7 +2827,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // Only generate an AI response when a real dispatch trigger was heard (trigger word,
     // call sign, or emergency phrase). Ten-codes spoken without a trigger word just
     // update the officer's status silently — no AI chat-back.
-    if (hadTrigger && config.aiEnabled && hasAIKey()) {
+    if (hadTrigger && !isSimpleAck && config.aiEnabled && hasAIKey()) {
       try {
         const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign, officerDbStatus);
         dispatchResponse = aiResult.text;
