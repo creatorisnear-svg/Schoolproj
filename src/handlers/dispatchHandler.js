@@ -409,12 +409,23 @@ function detectUnitsCheck(text) {
 
 function detectEMSRequest(text) {
   const lower = text.toLowerCase().trim();
-  const withLoc = lower.match(/\b(?:send|need|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire(?:\s+department)?|fire(?:men|fighters)?))\s+(?:to|at)\s+(.{2,40}?)(?:\s*$)/i);
+
+  // Pattern with location — "send/need/request [service] to/at [place]"
+  // "fire" alone is allowed here because location context makes intent clear
+  const withLoc = lower.match(
+    /\b(?:send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire(?:\s*(?:department|dept|units?|truck|station|fighters?))?))\s+(?:to|at)\s+(.{2,40}?)(?:\s*$)/i
+  );
   if (withLoc) {
     const type = /fire/i.test(withLoc[1]) ? 'fire' : 'ems';
     return { type, location: withLoc[2].trim() };
   }
-  const withoutLoc = lower.match(/\b(?:need|send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic|fire))\b/i);
+
+  // Pattern without location — requires explicit service name
+  // "fire" alone is NOT accepted here to avoid false fires on "taking fire", "need fire support", etc.
+  // Must say "fire department", "fire dept", "fire unit", "fire truck", "fire station", or "fire fighters"
+  const withoutLoc = lower.match(
+    /\b(?:send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire\s*(?:department|dept|units?|truck|station|fighters?)))\b/i
+  );
   if (withoutLoc) {
     const type = /fire/i.test(withoutLoc[1]) ? 'fire' : 'ems';
     return { type, location: null };
