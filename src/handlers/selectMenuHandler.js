@@ -978,20 +978,11 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'verify_setup_done') {
-      // Respond immediately, then apply permissions in background
       const menuData = createSetupMenu();
       await interaction.update({
         ...menuData,
         embeds: [successEmbed('Verification system setup is complete!\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels')],
       });
-
-      // Apply permissions in background (non-blocking)
-      const verification = await Verification.findOne({ guildId: interaction.guildId });
-      if (verification) {
-        applyAllVerificationPermissions(interaction.guild, verification).catch(error => {
-          console.error('Error applying verification permissions:', error);
-        });
-      }
     }
   } catch (error) {
     console.error('Error handling verify setup menu:', error);
