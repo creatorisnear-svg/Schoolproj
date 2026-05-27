@@ -1614,6 +1614,33 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         .replace(/<function=\w+[\s\S]*?<\/function>/gi, '')
         .replace(/<\/?function[^>]*>/gi, '')
         .trim();
+
+      // Some models (e.g. certain Groq configs) emit bare function calls directly in the
+      // text as:  function_name{"key": "value"}  — with no XML wrapper.
+      // Parse and strip those too so they never appear in the spoken dispatch response.
+      const KNOWN_FN_NAMES = [
+        'move_to_traffic_stop', 'move_to_patrol', 'update_officer_status',
+        'close_call', 'send_unit_to_call', 'add_call_note',
+        'flag_officer_needs_backup', 'create_bolo',
+      ];
+      const bareFnPattern = new RegExp(
+        `\\b(${KNOWN_FN_NAMES.join('|')})\\s*(\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)*\\})`,
+        'g',
+      );
+      let bareMatch;
+      // Use a copy to iterate since we'll mutate rawText
+      const rawForScan = rawText;
+      bareFnPattern.lastIndex = 0;
+      while ((bareMatch = bareFnPattern.exec(rawForScan)) !== null) {
+        try {
+          const args = JSON.parse(bareMatch[2]);
+          actions.push({ name: bareMatch[1], args });
+        } catch {}
+      }
+      rawText = rawText.replace(bareFnPattern, '').trim();
+      // Clean up any stray punctuation or quotes left after stripping
+      rawText = rawText.replace(/["""'']\s*$/, '').replace(/^\s*["""'']/, '').trim();
+
       const text = rawText || '10-4, copy that.';
 
       // Also collect proper OpenAI-style tool_calls
