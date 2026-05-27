@@ -81,10 +81,12 @@ function cleanNameForTTS(name) {
   }
   // Strip common rank/role abbreviations at the start
   n = n.replace(/^(?:sgt|cpl|pvt|pfc|civ|ofc|dep|lt|cpt|cmdr|det|lcpl|ssgt|msgt|spec|ens|chief|corp)\.?\s+/i, '');
-  // Replace underscores with spaces
-  n = n.replace(/_/g, ' ');
-  // Strip anything that isn't a letter, number, space, hyphen, or apostrophe
-  n = n.replace(/[^a-zA-Z0-9 '\-]/g, ' ');
+  // Replace underscores and dots with spaces (common Discord name separators)
+  n = n.replace(/[_\.]+/g, ' ');
+  // Strip digits — real names never contain numbers (e.g. "James12" → "James")
+  n = n.replace(/\d+/g, ' ');
+  // Strip anything that isn't a letter, space, hyphen, or apostrophe
+  n = n.replace(/[^a-zA-Z '\-]/g, ' ');
   // Collapse multiple spaces, trim, keep first 3 words
   n = n.replace(/\s+/g, ' ').trim();
   const words = n.split(' ').filter(Boolean).slice(0, 3);
@@ -1786,7 +1788,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
                     .setColor('#43b581')
                     .setTitle(`Call #${broadcast.callNum} — Unit Responding`)
                     .setDescription(
-                      `**<@${userId}> (${officerName})** is responding to **Call #${broadcast.callNum}**.\n` +
+                      `**<@${userId}> (${cleanNameForTTS(officerName)})** is responding to **Call #${broadcast.callNum}**.\n` +
                       (broadcast.issue ? `**Incident:** ${broadcast.issue}\n` : '') +
                       (broadcast.location ? `**Location:** ${broadcast.location}\n` : '')
                     )
@@ -2320,7 +2322,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
               .setColor('#FF0000')
               .setTitle('10-80 — Unit Responding')
               .setDescription(
-                `**<@${userId}> (${responderName})** is responding to the pursuit.\n` +
+                `**<@${userId}> (${cleanNameForTTS(responderName)})** is responding to the pursuit.\n` +
                 `Moved to pursuit channel <#${pursuitAlert.pursuitChannelId}>.`
               )
               .setFooter({ text: 'RPM • Dispatch' })
@@ -2332,7 +2334,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (config.aiEnabled && hasAIKey()) {
           try {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
-            const ttsText = `Copy ${responderName}, moving you to the pursuit channel to back up ${pursuitAlert.officerName}. Ten four.`;
+            const ttsText = `Copy ${cleanNameForTTS(responderName)}, moving you to the pursuit channel to back up ${cleanNameForTTS(pursuitAlert.officerName)}. Ten four.`;
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
           } catch {}
@@ -2781,7 +2783,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
             .setDescription(
               `**Incident:** ${voiceCallReq.incident}\n` +
               (voiceCallReq.location ? `**Location:** ${voiceCallReq.location}\n` : '') +
-              `**Reported By:** <@${userId}> (${officerName})\n\n` +
+              `**Reported By:** <@${userId}> (${cleanNameForTTS(officerName)})\n\n` +
               `Available units, say **"respond"** on the radio to attach to this call.`
             )
             .setFooter({ text: `RPM • Call #${callNum}` })
@@ -3553,7 +3555,7 @@ async function clearPanicAlert(guild, config, userId, officerName) {
         .setColor('#43b581')
         .setTitle('10-99 Cleared — Stand Down')
         .setDescription(
-          `**Officer:** <@${userId}> (${officerName})\n` +
+          `**Officer:** <@${userId}> (${cleanNameForTTS(officerName)})\n` +
           `The 10-99 emergency has been cleared.\n` +
           `Showing **10-8 Available**. All units stand down.`
         )
@@ -3606,7 +3608,7 @@ async function triggerPanicAlert(guild, config, userId, officerName, voiceChanne
       .setTitle('10-99 — OFFICER NEEDS ASSISTANCE')
       .setDescription(
         `**ALL UNITS — RESPOND IMMEDIATELY**\n\n` +
-        `**Officer:** <@${userId}> (${officerName})\n` +
+        `**Officer:** <@${userId}> (${cleanNameForTTS(officerName)})\n` +
         `**Last Known Location:** ${locationText}\n\n` +
         `**10-99 — All available officers need to respond to this officer's location immediately.**`
       )
@@ -3806,10 +3808,10 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
           .setColor('#FF0000')
           .setTitle('10-80 — Active Pursuit')
           .setDescription(
-            `**Officer:** <@${officerId}> (${officerName})\n` +
+            `**Officer:** <@${officerId}> (${cleanNameForTTS(officerName)})\n` +
             `**Status:** Active pursuit in progress\n` +
             `**Pursuit Channel:** <#${pursuitChannelId}>\n\n` +
-            `Officer ${officerName} has initiated a **10-80 pursuit**. Any available unit, please respond.\n` +
+            `Officer ${cleanNameForTTS(officerName)} has initiated a **10-80 pursuit**. Any available unit, please respond.\n` +
             `Pressing **"Respond to Pursuit"** will move you to the pursuit channel.`
           )
           .setFooter({ text: 'RPM • Dispatch' })
