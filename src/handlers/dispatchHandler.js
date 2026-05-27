@@ -386,6 +386,10 @@ function detectCodeFour(text) {
   return /\b(?:code\s+(?:4|four)|all\s+clear|scene\s+is\s+(?:clear|secure|all\s+clear)|everything(?:'s|\s+is)\s+(?:clear|code\s+(?:4|four))|i(?:'m|m)\s+(?:clear|code\s+(?:4|four))|we(?:'re|\s+are)\s+(?:clear|code\s+(?:4|four)))\b/i.test(text);
 }
 
+function detectClearPanic(text) {
+  return /\b(?:clear\s+(?:the\s+)?10[-\s]?99|cancel\s+(?:the\s+)?10[-\s]?99|stand\s+down\s+(?:the\s+)?(?:10[-\s]?99|panic|emergency)|10[-\s]?99\s+(?:is\s+)?(?:clear|cleared|cancelled|all\s+clear|stand\s+down)|officer\s+is\s+(?:okay|ok|safe|secure)|i(?:'m|m)\s+(?:okay|ok|safe|secure|good)|false\s+alarm|all\s+(?:good|clear),?\s+(?:stand\s+down|cancel)|deactivate\s+(?:the\s+)?(?:10[-\s]?99|panic))\b/i.test(text);
+}
+
 function detectUnitsCheck(text) {
   return /\b(?:how\s+many\s+(?:units?|officers?)|(?:who(?:'s|\s+is)\s+)?(?:units?\s+)?available\??|what\s+units?\s+(?:are\s+)?(?:available|on\s+duty)|(?:list|show\s+me)\s+(?:available\s+)?(?:units?|officers?)|units?\s+on\s+duty|who(?:'s|\s+is)\s+on\s+duty|how\s+many\s+(?:cops?|units?)\s+(?:are\s+)?(?:out|on\s+duty))\b/i.test(text);
 }
@@ -1567,18 +1571,14 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     { role: 'user', content: `${ttsOfficerName}${detectedCallSign ? ` [${detectedCallSign}]` : ''}: "${userSaid}"` },
   ];
 
-  // Use the fast model for simple short queries, powerful model for complex ones
-  const wordCount = userSaid.trim().split(/\s+/).length;
-  const isComplexQuery = wordCount > 8 || /plate|name|bolo|backup|assist|pursuit|run|look.?up|describe/i.test(userSaid);
-
   let lastErr;
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    const model = provider === 'groq'
-      ? (isComplexQuery ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant')
-      : 'gpt-4o-mini';
-    const maxTokens = isComplexQuery ? 130 : 80;
+    // Always use the fast 8B model — dispatch responses are short and formulaic,
+    // speed matters more than raw quality here.
+    const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
+    const maxTokens = 90;
     try {
       const response = await client.chat.completions.create({
         model,
@@ -1586,7 +1586,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         tools: dispatchTools,
         tool_choice: 'auto',
         max_tokens: maxTokens,
-        temperature: 0.5,
+        temperature: 0.3,
       });
       const message = response.choices[0]?.message;
       let rawText = message?.content?.trim() || '';
@@ -2557,6 +2557,30 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     }
     // --- End backup request ---
 
+    // --- 10-99 panic clear / stand-down detection ---
+    if (detectClearPanic(transcript)) {
+      const officerStatus = await OfficerStatus.findOne({ guildId: guild.id, userId });
+      if (officerStatus?.tenCode === '10-99') {
+        console.log(`[Dispatch] 10-99 stand-down from ${officerName}`);
+        await updateOfficerStatus(guild.id, userId, officerName, '10-8',
+          { code: '10-8', codeInfo: TEN_CODES['10-8'], subject: null, location: null, rawText: transcript },
+          null, null);
+        await clearPanicAlert(guild, config, userId, officerName);
+        const ttsStandDown = `All units, the ten ninety nine is now cleared. ${ttsName} is showing ten eight, available. Stand down.`;
+        addToRadioLog(guild.id, 'Dispatch', transcript, ttsStandDown);
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsBuffer = await generateDispatchTTS(ttsStandDown);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) { console.error('[Dispatch TTS] Panic clear error:', err.message); }
+        }
+        await rebuildStatusBoard(guild, config);
+        return;
+      }
+    }
+    // --- End 10-99 panic clear ---
+
     // --- Code 4 / scene clear detection ---
     if (detectCodeFour(transcript)) {
       console.log(`[Dispatch] Code 4 / all clear from ${officerName}`);
@@ -3458,6 +3482,56 @@ export async function handleStopClearButton(interaction) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// 10-99 PANIC CLEAR — reverse a panic alert
+// ────────────────────────────────────────────────────────────────────────────
+async function clearPanicAlert(guild, config, userId, officerName) {
+  try {
+    const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
+      await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
+
+    if (dispatchCh?.isTextBased()) {
+      const embed = new EmbedBuilder()
+        .setColor('#43b581')
+        .setTitle('10-99 Cleared — Stand Down')
+        .setDescription(
+          `**Officer:** <@${userId}> (${officerName})\n` +
+          `The 10-99 emergency has been cleared.\n` +
+          `Showing **10-8 Available**. All units stand down.`
+        )
+        .setFooter({ text: 'RPM • Dispatch' })
+        .setTimestamp();
+      await dispatchCh.send({ embeds: [embed] }).catch(() => {});
+    }
+
+    // Deactivate priority board if it was auto-activated by this 10-99
+    try {
+      const priority = await Priority.findOne({ guildId: guild.id });
+      if (priority?.priorityActive && priority.priorityIssuedBy?.includes('Auto — 10-99')) {
+        priority.priorityActive = false;
+        priority.priorityIssuedBy = null;
+        priority.activatedAt = null;
+        await priority.save();
+
+        const { buildPriorityEmbed } = await import('./priorityTrackerHandler.js');
+        const prEmbed = await buildPriorityEmbed(priority);
+        const prCh = guild.channels.cache.get(priority.channelId) ||
+          await guild.channels.fetch(priority.channelId).catch(() => null);
+        if (prCh?.isTextBased() && priority.messageId) {
+          const prMsg = await prCh.messages.fetch(priority.messageId).catch(() => null);
+          if (prMsg) await prMsg.edit({ embeds: [prEmbed] }).catch(() => {});
+        }
+        console.log(`[Dispatch] Priority board deactivated after 10-99 clear in ${guild.name}`);
+      }
+    } catch (e) {
+      console.error('[Dispatch] Panic clear — priority reset error:', e.message);
+    }
+
+    console.log(`[Dispatch] 10-99 cleared by ${officerName} in ${guild.name}`);
+  } catch (err) {
+    console.error('[Dispatch] clearPanicAlert error:', err.message);
+  }
+}
+
 // 10-99 PANIC ALERT
 // ────────────────────────────────────────────────────────────────────────────
 async function triggerPanicAlert(guild, config, userId, officerName, voiceChannelId) {
