@@ -1792,8 +1792,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     // fullVoiceContext = everything the officer said (pre + post trigger)
     // transcript = only what came after the trigger (used for command detection)
+    // hadTrigger = true when a real dispatch trigger (word, call sign, or emergency phrase) was detected
     let fullVoiceContext = null;
     let detectedCallSign = null;
+    let hadTrigger = false;
     {
       const raw = transcript.trim();
 
@@ -1801,6 +1803,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       if (EMERGENCY_BYPASS_RE.test(raw)) {
         transcript = raw;
         fullVoiceContext = raw;
+        hadTrigger = true;
         console.log(`[Dispatch] Emergency phrase detected — bypassing trigger requirement`);
         // Fall through to processing below
       } else {
@@ -1825,24 +1828,26 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
           // Officer opened with their call sign — the remainder is the command for dispatch
           detectedCallSign = callSignResult.callSign;
           commandText = callSignResult.remainder.trim();
+          hadTrigger = true;
           console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
         } else if (dispatchIdx !== -1) {
           // Use ORIGINAL rawWords to preserve ten-codes / numbers in the command
           preContext = rawWords.slice(0, dispatchIdx).join(' ').trim();
           commandText = rawWords.slice(dispatchIdx + 1).join(' ').trim();
+          hadTrigger = true;
           console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} — command: "${commandText}"`);
         } else {
-          // No trigger word or call sign — treat the entire utterance as the command.
-          // Officers in a configured patrol channel are always talking to dispatch.
+          // No trigger word or call sign detected.
+          // Only process if the utterance contains a ten-code; otherwise it is general chatter
+          // that dispatch should not respond to.
           commandText = raw;
-          // Require at least 3 words OR a ten-code, otherwise it's likely background noise
-          const wordCount = commandText.trim().split(/\s+/).filter(Boolean).length;
           const hasTenCode = /\b10[-\s]?\d+\b/i.test(commandText);
-          if (wordCount < 3 && !hasTenCode) {
-            console.log(`[Dispatch] No trigger — too short (${wordCount} word${wordCount !== 1 ? 's' : ''}), ignoring`);
+          if (!hasTenCode) {
+            console.log(`[Dispatch] No trigger or ten-code — ignoring general chatter: "${commandText}"`);
             return;
           }
-          console.log(`[Dispatch] No trigger — processing full utterance: "${commandText}"`);
+          // Ten-code present but no trigger word — log the status update but don't AI-respond
+          console.log(`[Dispatch] Ten-code without trigger word — logging status only: "${commandText}"`);
         }
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
@@ -2709,7 +2714,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     let dispatchResponse = null;
     let aiActions = [];
-    if (config.aiEnabled && hasAIKey()) {
+    // Only generate an AI response when a real dispatch trigger was heard (trigger word,
+    // call sign, or emergency phrase). Ten-codes spoken without a trigger word just
+    // update the officer's status silently — no AI chat-back.
+    if (hadTrigger && config.aiEnabled && hasAIKey()) {
       try {
         const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign, officerDbStatus);
         dispatchResponse = aiResult.text;
