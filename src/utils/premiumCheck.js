@@ -86,6 +86,6 @@ export async function getPremiumUpsellEmbed(featureName) {
       `> Extended leaderboard (top 25)\n\n` +
       `To get Premium, join our support server and use \`/activatepremium\` once you have a key.`
     )
-    .addFields({ name: 'Get Premium', value: '[discord.gg/m4dZsWq6m](https://discord.gg/m4dZsWq6m)', inline: true })
+    .addFields({ name: 'Get Premium', value: '[discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)', inline: true })
     .setFooter({ text: 'RPM' });
 }

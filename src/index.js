@@ -316,7 +316,7 @@ client.on('guildCreate', async (guild) => {
         },
         {
           name: 'Need Help?',
-          value: 'Join our support server: **[discord.gg/m4dZsWq6m](https://discord.gg/m4dZsWq6m)**\nOr email us: **creatorisnear@gmail.com**',
+          value: 'Join our support server: **[discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)**\nOr email us: **creatorisnear@gmail.com**',
         }
       )
       .setFooter({ text: 'RPM • roleplaymanager.xyz' });

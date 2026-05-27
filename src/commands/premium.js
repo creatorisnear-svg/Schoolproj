@@ -30,7 +30,7 @@ export async function execute(interaction) {
       '-# Premium: all of the above are **unlimited** + top-25 leaderboard\n\n' +
       '### How to activate\n' +
       'Get a premium key from our support server, then run `/activatepremium` with your key.\n\n' +
-      '**[Get Premium → discord.gg/m4dZsWq6m](https://discord.gg/m4dZsWq6m)**'
+      '**[Get Premium → discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)**'
     )
     .setFooter({ text: 'RPM' })
     .setTimestamp();

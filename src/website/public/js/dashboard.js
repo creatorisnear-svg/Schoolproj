@@ -358,7 +358,7 @@ function renderPremiumSection(g) {
     '<div style="border-top:1px solid var(--border);padding-top:12px;width:100%;">' +
     '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key by joining our Discord support server, then enter it below.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="https://discord.gg/m4dZsWq6m" target="_blank" class="btn btn-discord btn-sm">Join Support Server to Get a Key</a>' +
+    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm">Join Support Server to Get a Key</a>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
     '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
