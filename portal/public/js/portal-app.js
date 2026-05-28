@@ -959,14 +959,18 @@ async function goOffDuty() {
    LEO
 ══════════════════════════════════════════════════════ */
 const TEN_CODES = {
-  '10-6': { label: '10-6 Busy', color: 'var(--warning)' },
-  '10-7': { label: '10-7 Out of Service', color: 'var(--text-muted)' },
-  '10-8': { label: '10-8 Available', color: 'var(--success)' },
-  '10-10': { label: '10-10 Off Duty', color: 'var(--text-muted)' },
-  '10-15': { label: '10-15 In Pursuit', color: 'var(--danger)' },
-  '10-50': { label: '10-50 Traffic Stop', color: 'var(--accent)' },
-  '10-97': { label: '10-97 On Scene', color: 'var(--accent)' },
-  '10-99': { label: '10-99 Emergency', color: 'var(--danger)' },
+  '10-6':  { label: '10-6 Busy',                 color: 'var(--warning)' },
+  '10-7':  { label: '10-7 Out of Service',        color: 'var(--text-muted)' },
+  '10-8':  { label: '10-8 Available',             color: 'var(--success)' },
+  '10-10': { label: '10-10 Off Duty',             color: 'var(--text-muted)' },
+  '10-11': { label: '10-11 Traffic Stop',         color: 'var(--accent)' },
+  '10-15': { label: '10-15 Prisoner in Custody',  color: 'var(--warning)' },
+  '10-50': { label: '10-50 Accident',             color: 'var(--accent)' },
+  '10-76': { label: '10-76 En Route',             color: 'var(--accent)' },
+  '10-78': { label: '10-78 Need Assistance',      color: 'var(--danger)' },
+  '10-80': { label: '10-80 Pursuit',              color: 'var(--danger)' },
+  '10-97': { label: '10-97 On Scene',             color: 'var(--accent)' },
+  '10-99': { label: '10-99 Officer Down',         color: 'var(--danger)' },
 };
 
 function tenInfo(code) {

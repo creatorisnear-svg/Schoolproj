@@ -26,21 +26,48 @@ const DISCORD_BASE = 'https://discord.com/api/v10';
 const botHeaders = () => ({ Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' });
 
 const TEN_LABELS = {
-  '10-6': 'Busy', '10-7': 'Out of Service', '10-8': 'Available',
-  '10-10': 'Off Duty', '10-15': 'In Pursuit', '10-50': 'Traffic Stop',
-  '10-97': 'On Scene', '10-99': 'Emergency',
+  '10-6':  'Busy',
+  '10-7':  'Out of Service',
+  '10-8':  'Available',
+  '10-10': 'Off Duty',
+  '10-11': 'Traffic Stop',
+  '10-15': 'Prisoner in Custody',
+  '10-50': 'Accident',
+  '10-76': 'En Route',
+  '10-78': 'Need Assistance',
+  '10-80': 'Pursuit',
+  '10-97': 'On Scene',
+  '10-99': 'Officer Down',
 };
 
 const TEN_COLORS = {
-  '10-8': 0x3dd68c,
-  '10-6': 0xf5a623, '10-97': 0xf5a623, '10-50': 0xf5a623,
-  '10-15': 0xf75f5f, '10-99': 0xff0000,
-  '10-7': 0x50505f, '10-10': 0x50505f,
+  '10-8':  0x3dd68c,
+  '10-6':  0xf5a623,
+  '10-97': 0xf5a623,
+  '10-11': 0xf5a623,
+  '10-50': 0xf5a623,
+  '10-76': 0x4f7ef7,
+  '10-78': 0xf75f5f,
+  '10-80': 0xf75f5f,
+  '10-15': 0xf75f5f,
+  '10-99': 0xff0000,
+  '10-7':  0x50505f,
+  '10-10': 0x50505f,
 };
 
 const TEN_ICONS = {
-  '10-8': '🟢', '10-6': '🟡', '10-97': '🟠', '10-50': '🟠',
-  '10-15': '🔴', '10-99': '🆘', '10-7': '⚫', '10-10': '⚫',
+  '10-8':  '🟢',
+  '10-6':  '🟡',
+  '10-97': '🟠',
+  '10-11': '🟠',
+  '10-50': '🟠',
+  '10-76': '🔵',
+  '10-78': '🔴',
+  '10-80': '🔴',
+  '10-15': '🔴',
+  '10-99': '🆘',
+  '10-7':  '⚫',
+  '10-10': '⚫',
 };
 
 async function rebuildStatusBoard(guildId, dispatchCfg) {
@@ -93,9 +120,18 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
 
     if (messageId) {
       try {
+        let components = [];
+        try {
+          const existingRes = await axios.get(
+            `${DISCORD_BASE}/channels/${channelId}/messages/${messageId}`,
+            { headers: botHeaders() }
+          );
+          components = existingRes.data.components || [];
+        } catch { /* preserve nothing if fetch fails */ }
+
         await axios.patch(
           `${DISCORD_BASE}/channels/${channelId}/messages/${messageId}`,
-          { embeds: [embed] },
+          { embeds: [embed], components },
           { headers: botHeaders() }
         );
         return;

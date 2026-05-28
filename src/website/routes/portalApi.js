@@ -43,7 +43,7 @@ async function editChannelMessage(client, channelId, messageId, payload) {
   try {
     const channel = await client.channels.fetch(channelId);
     const msg = await channel.messages.fetch(messageId);
-    await msg.edit(payload);
+    await msg.edit({ ...payload, components: msg.components });
     return true;
   } catch {
     return false;
@@ -56,10 +56,14 @@ const TEN_INFO = {
   '10-7':  { label: '10-7 Out of Service' },
   '10-8':  { label: '10-8 Available' },
   '10-10': { label: '10-10 Off Duty' },
-  '10-15': { label: '10-15 In Pursuit' },
-  '10-50': { label: '10-50 Traffic Stop' },
+  '10-11': { label: '10-11 Traffic Stop' },
+  '10-15': { label: '10-15 Prisoner in Custody' },
+  '10-50': { label: '10-50 Accident' },
+  '10-76': { label: '10-76 En Route' },
+  '10-78': { label: '10-78 Need Assistance' },
+  '10-80': { label: '10-80 Pursuit' },
   '10-97': { label: '10-97 On Scene' },
-  '10-99': { label: '10-99 PANIC' },
+  '10-99': { label: '10-99 Officer Down' },
 };
 
 async function rebuildStatusBoard(client, guildId, dispatchCfg) {
