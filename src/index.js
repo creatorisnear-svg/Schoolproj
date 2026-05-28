@@ -13,6 +13,8 @@ import axios from 'axios';
 import { createApiRouter } from './website/routes/api.js';
 import { createAuthRouter } from './website/routes/auth.js';
 import { createDevRouter } from './website/routes/dev.js';
+import { createPortalRouter } from './website/routes/portal.js';
+import { createPortalApiRouter } from './website/routes/portalApi.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -179,6 +181,8 @@ app.get('/auth/site/callback', async (req, res) => {
 });
 
 app.use('/api', createApiRouter(client));
+app.use('/portal', createPortalRouter(client));
+app.use('/api/portal', createPortalApiRouter(client));
 
 app.get('/callback', async (req, res) => {
   console.log('[OAUTH CALLBACK] Received code, attempting exchange...');

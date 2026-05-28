@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Portal</title>
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <img src="/img/logo.png" class="login-logo" alt="Logo" onerror="this.style.display='none'">
+    <h1 id="login-server-name">Member Portal</h1>
+    <p class="login-sub">Sign in with Discord to access the portal</p>
+    <div id="login-error" class="login-error hidden"></div>
+    <a href="/portal/auth" class="btn-discord">Login with Discord</a>
+    <p class="login-footer">You must be a member of the server to access this portal.</p>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" class="hidden">
+  <aside id="sidebar">
+    <div class="sidebar-user">
+      <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+      <div class="user-info">
+        <div id="user-name" class="user-name"></div>
+        <div id="user-server" class="user-server"></div>
+      </div>
+    </div>
+    <div id="user-roles" class="user-roles"></div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-tab="overview">Overview</a>
+      <a class="nav-item" data-tab="cad">CAD System</a>
+      <a class="nav-item" data-tab="economy">Economy</a>
+      <a class="nav-item" data-tab="rolerequest">Role Requests</a>
+      <a class="nav-item hidden" data-tab="leo" id="nav-leo">LEO Dashboard</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="/portal/logout" class="btn-logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <main id="main">
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview" class="tab-pane">
+      <div class="page-header">
+        <h2>Overview</h2>
+      </div>
+      <div id="overview-cards" class="stat-grid"></div>
+      <div class="section-title">Quick Access</div>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="switchTab('cad')">CAD System</button>
+        <button class="quick-btn" onclick="switchTab('economy')">Economy</button>
+        <button class="quick-btn" onclick="switchTab('rolerequest')">Role Requests</button>
+        <button class="quick-btn hidden" id="qa-leo" onclick="switchTab('leo')">LEO Dashboard</button>
+      </div>
+    </div>
+
+    <!-- CAD TAB -->
+    <div id="tab-cad" class="tab-pane hidden">
+      <div class="page-header">
+        <h2>CAD System</h2>
+        <button class="btn-primary" onclick="openCreateCharModal()">New Character</button>
+      </div>
+      <div id="cad-list" class="cad-list">
+        <div class="loading-text">Loading characters...</div>
+      </div>
+    </div>
+
+    <!-- ECONOMY TAB -->
+    <div id="tab-economy" class="tab-pane hidden">
+      <div class="page-header">
+        <h2>Economy</h2>
+      </div>
+      <div id="economy-balance" class="balance-cards"></div>
+      <div class="economy-grid">
+        <div class="economy-col">
+          <div class="section-title">Shop</div>
+          <div id="shop-search-wrap">
+            <input id="shop-search" type="text" placeholder="Search items..." oninput="filterShop(this.value)">
+          </div>
+          <div id="shop-list" class="shop-list">
+            <div class="loading-text">Loading shop...</div>
+          </div>
+        </div>
+        <div class="economy-col">
+          <div class="section-title">Your Inventory</div>
+          <div id="inventory-list" class="inventory-list">
+            <div class="loading-text">Loading inventory...</div>
+          </div>
+          <div class="section-title" style="margin-top:24px">Leaderboard</div>
+          <div id="leaderboard-list" class="leaderboard-list">
+            <div class="loading-text">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROLE REQUESTS TAB -->
+    <div id="tab-rolerequest" class="tab-pane hidden">
+      <div class="page-header">
+        <h2>Role Requests</h2>
+      </div>
+      <div class="rr-grid">
+        <div class="rr-col">
+          <div class="section-title">Submit a Request</div>
+          <div id="rr-form-area">
+            <div class="loading-text">Loading role types...</div>
+          </div>
+        </div>
+        <div class="rr-col">
+          <div class="section-title">Your Recent Requests</div>
+          <div id="rr-history" class="rr-history">
+            <div class="loading-text">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEO TAB -->
+    <div id="tab-leo" class="tab-pane hidden">
+      <div class="page-header">
+        <h2>LEO Dashboard</h2>
+      </div>
+      <div class="leo-grid">
+        <div class="leo-search-card card">
+          <div class="section-title">Search</div>
+          <div class="leo-search-controls">
+            <select id="leo-search-type">
+              <option value="plate">License Plate</option>
+              <option value="character">Character Name</option>
+            </select>
+            <input id="leo-search-input" type="text" placeholder="Enter search query...">
+            <button class="btn-primary" onclick="leoSearch()">Search</button>
+          </div>
+          <div id="leo-results" class="leo-results"></div>
+        </div>
+        <div class="leo-right">
+          <div class="card">
+            <div class="section-title">Active BOLOs</div>
+            <div id="leo-bolos" class="leo-bolos">
+              <div class="loading-text">Loading BOLOs...</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <div class="section-title">Active 911 Calls</div>
+            <div id="leo-calls" class="leo-calls">
+              <div class="loading-text">Loading calls...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- CREATE CHARACTER MODAL -->
+<div id="modal-create-char" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create Character</h3>
+      <button class="modal-close" onclick="closeModal('modal-create-char')">&times;</button>
+    </div>
+    <form id="form-create-char" onsubmit="submitCreateChar(event)">
+      <div class="form-row">
+        <label>Character Name *</label>
+        <input name="characterName" type="text" required placeholder="First Last">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Age</label>
+          <input name="age" type="number" min="1" max="120" placeholder="25">
+        </div>
+        <div class="form-row">
+          <label>Gender</label>
+          <input name="gender" type="text" placeholder="Male / Female / Other">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Hair Color</label>
+          <input name="hairColor" type="text" placeholder="Black">
+        </div>
+        <div class="form-row">
+          <label>Eye Color</label>
+          <input name="eyeColor" type="text" placeholder="Brown">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Height</label>
+          <input name="height" type="text" placeholder="5'11">
+        </div>
+        <div class="form-row">
+          <label>Occupation</label>
+          <input name="occupation" type="text" placeholder="Mechanic">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Address</label>
+        <input name="address" type="text" placeholder="123 Grove St, Los Santos">
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Phone Number</label>
+          <input name="phoneNumber" type="text" placeholder="555-0100">
+        </div>
+        <div class="form-row">
+          <label>Emergency Contact</label>
+          <input name="emergencyContact" type="text" placeholder="Name - Number">
+        </div>
+      </div>
+      <div id="form-char-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-create-char')">Cancel</button>
+        <button type="submit" class="btn-primary">Create Character</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ADD VEHICLE MODAL -->
+<div id="modal-add-vehicle" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Vehicle</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-vehicle')">&times;</button>
+    </div>
+    <form id="form-add-vehicle" onsubmit="submitAddVehicle(event)">
+      <input type="hidden" id="vehicle-char-id" name="charId">
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Make *</label>
+          <input name="make" type="text" required placeholder="Vapid">
+        </div>
+        <div class="form-row">
+          <label>Model *</label>
+          <input name="model" type="text" required placeholder="Dominator">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Color</label>
+          <input name="color" type="text" placeholder="Black">
+        </div>
+        <div class="form-row">
+          <label>Year</label>
+          <input name="year" type="text" placeholder="2021">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>License Plate</label>
+        <input name="licensePlate" type="text" placeholder="ABC123">
+      </div>
+      <div id="form-vehicle-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
+        <button type="submit" class="btn-primary">Add Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- BUY ITEM MODAL -->
+<div id="modal-buy" class="modal-overlay hidden">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>Purchase Item</h3>
+      <button class="modal-close" onclick="closeModal('modal-buy')">&times;</button>
+    </div>
+    <div id="buy-item-info" class="buy-info"></div>
+    <div class="form-row">
+      <label>Quantity</label>
+      <input id="buy-qty" type="number" value="1" min="1" max="99">
+    </div>
+    <div id="buy-total" class="buy-total"></div>
+    <div id="form-buy-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" onclick="closeModal('modal-buy')">Cancel</button>
+      <button class="btn-primary" onclick="confirmBuy()">Buy</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/portal-app.js"></script>
+</body>
+</html>
