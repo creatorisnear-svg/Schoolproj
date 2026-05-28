@@ -2,211 +2,289 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d0d0f">
   <title>Member Portal</title>
   <link rel="stylesheet" href="/css/portal.css">
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- ══════════ LOGIN ══════════ -->
 <div id="login-screen" class="hidden">
   <div class="login-card">
-    <img id="login-logo" src="" class="login-logo" alt="Logo" style="display:none">
+    <img id="login-logo" src="" class="login-logo" alt="Server Logo" style="display:none">
     <h1 id="login-server-name">Member Portal</h1>
-    <p class="login-sub">Sign in with Discord to access the portal</p>
+    <p class="login-sub">Sign in with Discord to access your character, economy, and server tools.</p>
     <div id="login-error" class="login-error hidden"></div>
-    <a href="/auth/login" class="btn-discord">Login with Discord</a>
+    <a href="/auth/login" class="btn-discord">
+      <svg class="btn-discord-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+      Login with Discord
+    </a>
     <p class="login-footer">You must be a member of the server to access this portal.</p>
   </div>
 </div>
 
-<!-- APP SHELL -->
+<!-- ══════════ APP ══════════ -->
 <div id="app" class="hidden">
+
+  <!-- Mobile Top Bar -->
+  <div id="mobile-topbar">
+    <div class="topbar-server">
+      <img id="topbar-server-icon" class="topbar-server-icon" src="" alt="" style="display:none">
+      <div id="topbar-server-icon-placeholder" class="server-icon-placeholder" style="display:none">🏛️</div>
+      <span id="topbar-server-name" class="topbar-server-name">Portal</span>
+    </div>
+    <div class="topbar-user">
+      <img id="topbar-avatar" class="topbar-avatar" src="" alt="">
+      <span id="topbar-username" class="topbar-username"></span>
+    </div>
+    <a href="/auth/logout" class="topbar-logout" title="Sign out">⎋</a>
+  </div>
+
+  <!-- Desktop Sidebar -->
   <aside id="sidebar">
+    <div class="sidebar-header">
+      <img id="sidebar-server-icon" class="server-icon" src="" alt="" style="display:none">
+      <div id="sidebar-server-icon-placeholder" class="server-icon-placeholder">🏛️</div>
+      <span id="sidebar-server-name" class="sidebar-server-name">Portal</span>
+    </div>
+
     <div class="sidebar-user">
-      <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+      <img id="sidebar-avatar" src="" alt="Avatar" class="user-avatar">
       <div class="user-info">
-        <div id="user-name" class="user-name"></div>
-        <div id="user-server" class="user-server"></div>
+        <div id="sidebar-username" class="user-name"></div>
+        <div id="sidebar-server-sub" class="user-server"></div>
       </div>
     </div>
-    <div id="user-roles" class="user-roles"></div>
+
+    <div id="sidebar-roles" class="user-roles"></div>
+
     <nav class="sidebar-nav">
-      <a class="nav-item active" data-tab="overview">Overview</a>
-      <a class="nav-item" data-tab="cad">CAD System</a>
-      <a class="nav-item" data-tab="economy">Economy</a>
-      <a class="nav-item" data-tab="rolerequest">Role Requests</a>
-      <a class="nav-item hidden" data-tab="leo" id="nav-leo">LEO Dashboard</a>
+      <div class="nav-section-label">General</div>
+      <a class="nav-item active" data-tab="overview"><span class="nav-icon">🏠</span> Overview</a>
+      <a class="nav-item" data-tab="cad"><span class="nav-icon">👤</span> CAD System</a>
+      <a class="nav-item" data-tab="economy"><span class="nav-icon">💰</span> Economy</a>
+      <a class="nav-item" data-tab="tickets"><span class="nav-icon">🎫</span> Tickets</a>
+      <a class="nav-item" data-tab="calendar"><span class="nav-icon">📅</span> RP Calendar</a>
+      <a class="nav-item" data-tab="rolerequest"><span class="nav-icon">📋</span> Role Requests</a>
+      <div id="nav-leo-section" class="hidden">
+        <div class="nav-section-label">LEO</div>
+        <a class="nav-item hidden" data-tab="leo" id="nav-leo"><span class="nav-icon">🚔</span> LEO Dashboard</a>
+      </div>
     </nav>
+
     <div class="sidebar-bottom">
-      <a href="/auth/logout" class="btn-logout">Sign Out</a>
+      <a href="/auth/logout" class="btn-logout"><span class="nav-icon">⎋</span> Sign Out</a>
     </div>
   </aside>
 
+  <!-- Main Content -->
   <main id="main">
-    <!-- OVERVIEW -->
-    <div id="tab-overview" class="tab-pane">
-      <div class="page-header"><h2>Overview</h2></div>
-      <div id="overview-cards" class="stat-grid"></div>
-      <div class="section-title">Quick Access</div>
-      <div class="quick-actions">
-        <button class="quick-btn" onclick="switchTab('cad')">CAD System</button>
-        <button class="quick-btn" onclick="switchTab('economy')">Economy</button>
-        <button class="quick-btn" onclick="switchTab('rolerequest')">Role Requests</button>
-        <button class="quick-btn hidden" id="qa-leo" onclick="switchTab('leo')">LEO Dashboard</button>
-      </div>
-    </div>
+    <div class="main-inner">
 
-    <!-- CAD -->
-    <div id="tab-cad" class="tab-pane hidden">
-      <div class="page-header">
-        <h2>CAD System</h2>
-        <button class="btn-primary" onclick="openCreateCharModal()">New Character</button>
-      </div>
-      <div id="cad-list" class="cad-list"><div class="loading-text">Loading characters...</div></div>
-    </div>
-
-    <!-- ECONOMY -->
-    <div id="tab-economy" class="tab-pane hidden">
-      <div class="page-header"><h2>Economy</h2></div>
-      <div id="economy-balance" class="balance-cards"></div>
-      <div class="economy-grid">
-        <div class="economy-col">
-          <div class="section-title">Shop</div>
-          <div id="shop-search-wrap"><input id="shop-search" type="text" placeholder="Search items..." oninput="filterShop(this.value)"></div>
-          <div id="shop-list" class="shop-list"><div class="loading-text">Loading shop...</div></div>
-        </div>
-        <div class="economy-col">
-          <div class="section-title">Your Inventory</div>
-          <div id="inventory-list" class="inventory-list"><div class="loading-text">Loading inventory...</div></div>
-          <div class="section-title" style="margin-top:24px">Leaderboard</div>
-          <div id="leaderboard-list" class="leaderboard-list"><div class="loading-text">Loading...</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ROLE REQUESTS -->
-    <div id="tab-rolerequest" class="tab-pane hidden">
-      <div class="page-header"><h2>Role Requests</h2></div>
-      <div class="rr-grid">
-        <div class="rr-col">
-          <div class="section-title">Submit a Request</div>
-          <div id="rr-form-area"><div class="loading-text">Loading role types...</div></div>
-        </div>
-        <div class="rr-col">
-          <div class="section-title">Your Recent Requests</div>
-          <div id="rr-history" class="rr-history"><div class="loading-text">Loading...</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- LEO -->
-    <div id="tab-leo" class="tab-pane hidden">
-      <div class="page-header"><h2>LEO Dashboard</h2></div>
-      <div class="leo-grid">
-        <div class="leo-search-card card">
-          <div class="section-title">Search</div>
-          <div class="leo-search-controls">
-            <select id="leo-search-type">
-              <option value="plate">License Plate</option>
-              <option value="character">Character Name</option>
-            </select>
-            <input id="leo-search-input" type="text" placeholder="Enter search query...">
-            <button class="btn-primary" onclick="leoSearch()">Search</button>
+      <!-- OVERVIEW -->
+      <div id="tab-overview" class="tab-pane active">
+        <div class="page-header"><h2>Overview</h2></div>
+        <div id="priority-banner" class="priority-banner hidden">
+          <div class="priority-banner-dot"></div>
+          <div class="priority-banner-text">
+            <div class="priority-banner-title">Priority Event Active</div>
+            <div id="priority-banner-sub" class="priority-banner-sub">Server-wide priority is currently in session</div>
           </div>
-          <div id="leo-results" class="leo-results"></div>
         </div>
-        <div class="leo-right">
+        <div id="overview-stats" class="stat-grid"></div>
+        <div class="section-label">Quick Access</div>
+        <div class="quick-actions" id="quick-actions"></div>
+      </div>
+
+      <!-- CAD -->
+      <div id="tab-cad" class="tab-pane">
+        <div class="page-header">
+          <h2>CAD System</h2>
+          <button class="btn btn-primary btn-sm" onclick="openCreateCharModal()">+ New Character</button>
+        </div>
+        <div id="cad-list" class="cad-list"><div class="empty-state"><div class="empty-state-icon">👤</div>Loading characters...</div></div>
+      </div>
+
+      <!-- ECONOMY -->
+      <div id="tab-economy" class="tab-pane">
+        <div class="page-header"><h2>Economy</h2></div>
+        <div id="economy-balance" class="balance-grid"></div>
+        <div class="economy-grid">
+          <div class="economy-col">
+            <div class="section-label">Shop</div>
+            <input id="shop-search" class="shop-search" type="text" placeholder="Search items..." oninput="filterShop(this.value)">
+            <div id="shop-list" class="shop-list"><div class="empty-state">Loading shop...</div></div>
+          </div>
+          <div class="economy-col">
+            <div class="section-label">Inventory</div>
+            <div id="inventory-list" class="inventory-list"><div class="empty-state">Loading...</div></div>
+            <div class="section-label">Leaderboard</div>
+            <div id="leaderboard-list" class="lb-list"><div class="empty-state">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TICKETS -->
+      <div id="tab-tickets" class="tab-pane">
+        <div class="page-header">
+          <h2>Tickets</h2>
+        </div>
+        <div class="section-label">Your Open Tickets</div>
+        <div id="tickets-open" class="ticket-list"><div class="empty-state">Loading...</div></div>
+        <div class="section-label">Recent Closed</div>
+        <div id="tickets-closed" class="ticket-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div id="tab-calendar" class="tab-pane">
+        <div class="page-header"><h2>RP Calendar</h2></div>
+        <div id="calendar-list" class="calendar-list"><div class="empty-state">Loading events...</div></div>
+      </div>
+
+      <!-- ROLE REQUESTS -->
+      <div id="tab-rolerequest" class="tab-pane">
+        <div class="page-header"><h2>Role Requests</h2></div>
+        <div class="rr-grid">
+          <div>
+            <div class="section-label">Submit a Request</div>
+            <div id="rr-form-area"><div class="empty-state">Loading role types...</div></div>
+          </div>
+          <div>
+            <div class="section-label">Your Recent Requests</div>
+            <div id="rr-history" class="rr-history"><div class="empty-state">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEO -->
+      <div id="tab-leo" class="tab-pane">
+        <div class="page-header"><h2>LEO Dashboard</h2></div>
+        <div class="leo-grid">
           <div class="card">
-            <div class="section-title">Active BOLOs</div>
-            <div id="leo-bolos" class="leo-bolos"><div class="loading-text">Loading BOLOs...</div></div>
+            <div class="section-label" style="margin-top:0">Search Records</div>
+            <div class="leo-search-controls">
+              <select id="leo-search-type">
+                <option value="plate">Plate</option>
+                <option value="character">Name</option>
+              </select>
+              <input id="leo-search-input" type="text" placeholder="Enter query...">
+              <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
+            </div>
+            <div id="leo-results" class="leo-results"></div>
           </div>
-          <div class="card" style="margin-top:16px">
-            <div class="section-title">Active 911 Calls</div>
-            <div id="leo-calls" class="leo-calls"><div class="loading-text">Loading calls...</div></div>
+          <div class="leo-right">
+            <div class="card">
+              <div class="section-label" style="margin-top:0">Active BOLOs</div>
+              <div id="leo-bolos" class="bolo-list"><div class="empty-state">Loading...</div></div>
+            </div>
+            <div class="card">
+              <div class="section-label" style="margin-top:0">Active 911 Calls</div>
+              <div id="leo-calls" class="call-list"><div class="empty-state">Loading...</div></div>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
   </main>
+
+  <!-- Mobile Bottom Nav -->
+  <nav id="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bnav-item active" data-tab="overview"><span class="bnav-icon">🏠</span><span class="bnav-label">Home</span></button>
+      <button class="bnav-item" data-tab="cad"><span class="bnav-icon">👤</span><span class="bnav-label">CAD</span></button>
+      <button class="bnav-item" data-tab="economy"><span class="bnav-icon">💰</span><span class="bnav-label">Economy</span></button>
+      <button class="bnav-item" data-tab="tickets"><span class="bnav-icon">🎫</span><span class="bnav-label">Tickets</span></button>
+      <button class="bnav-item" data-tab="calendar"><span class="bnav-icon">📅</span><span class="bnav-label">Calendar</span></button>
+      <button class="bnav-item hidden" data-tab="leo" id="bnav-leo"><span class="bnav-icon">🚔</span><span class="bnav-label">LEO</span></button>
+    </div>
+  </nav>
+
 </div>
 
-<!-- CREATE CHARACTER MODAL -->
+<!-- ══════════ MODAL: Create Character ══════════ -->
 <div id="modal-create-char" class="modal-overlay hidden">
   <div class="modal">
+    <div class="modal-handle"></div>
     <div class="modal-header">
-      <h3>Create Character</h3>
+      <h3>New Character</h3>
       <button class="modal-close" onclick="closeModal('modal-create-char')">&times;</button>
     </div>
     <form id="form-create-char" onsubmit="submitCreateChar(event)">
-      <div class="form-row"><label>Character Name *</label><input name="characterName" type="text" required placeholder="First Last"></div>
-      <div class="form-row-2">
-        <div class="form-row"><label>Age</label><input name="age" type="number" min="1" max="120" placeholder="25"></div>
-        <div class="form-row"><label>Gender</label><input name="gender" type="text" placeholder="Male / Female / Other"></div>
+      <div class="form-group"><label class="form-label">Character Name *</label><input class="form-input" name="characterName" type="text" required placeholder="First Last"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Age</label><input class="form-input" name="age" type="number" min="1" max="120" placeholder="25"></div>
+        <div class="form-group"><label class="form-label">Gender</label><input class="form-input" name="gender" type="text" placeholder="Male / Female"></div>
       </div>
-      <div class="form-row-2">
-        <div class="form-row"><label>Hair Color</label><input name="hairColor" type="text" placeholder="Black"></div>
-        <div class="form-row"><label>Eye Color</label><input name="eyeColor" type="text" placeholder="Brown"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Hair Color</label><input class="form-input" name="hairColor" type="text" placeholder="Black"></div>
+        <div class="form-group"><label class="form-label">Eye Color</label><input class="form-input" name="eyeColor" type="text" placeholder="Brown"></div>
       </div>
-      <div class="form-row-2">
-        <div class="form-row"><label>Height</label><input name="height" type="text" placeholder="5'11"></div>
-        <div class="form-row"><label>Occupation</label><input name="occupation" type="text" placeholder="Mechanic"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Height</label><input class="form-input" name="height" type="text" placeholder="5'11&quot;"></div>
+        <div class="form-group"><label class="form-label">Occupation</label><input class="form-input" name="occupation" type="text" placeholder="Mechanic"></div>
       </div>
-      <div class="form-row"><label>Address</label><input name="address" type="text" placeholder="123 Grove St, Los Santos"></div>
-      <div class="form-row-2">
-        <div class="form-row"><label>Phone Number</label><input name="phoneNumber" type="text" placeholder="555-0100"></div>
-        <div class="form-row"><label>Emergency Contact</label><input name="emergencyContact" type="text" placeholder="Name - Number"></div>
+      <div class="form-group"><label class="form-label">Address</label><input class="form-input" name="address" type="text" placeholder="123 Grove St, Los Santos"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" name="phoneNumber" type="text" placeholder="555-0100"></div>
+        <div class="form-group"><label class="form-label">Emergency Contact</label><input class="form-input" name="emergencyContact" type="text" placeholder="Name – Number"></div>
       </div>
       <div id="form-char-error" class="form-error hidden"></div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" onclick="closeModal('modal-create-char')">Cancel</button>
-        <button type="submit" class="btn-primary">Create Character</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-char')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Character</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- ADD VEHICLE MODAL -->
+<!-- ══════════ MODAL: Add Vehicle ══════════ -->
 <div id="modal-add-vehicle" class="modal-overlay hidden">
   <div class="modal">
+    <div class="modal-handle"></div>
     <div class="modal-header">
       <h3>Add Vehicle</h3>
       <button class="modal-close" onclick="closeModal('modal-add-vehicle')">&times;</button>
     </div>
     <form id="form-add-vehicle" onsubmit="submitAddVehicle(event)">
       <input type="hidden" id="vehicle-char-id" name="charId">
-      <div class="form-row-2">
-        <div class="form-row"><label>Make *</label><input name="make" type="text" required placeholder="Vapid"></div>
-        <div class="form-row"><label>Model *</label><input name="model" type="text" required placeholder="Dominator"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Make *</label><input class="form-input" name="make" type="text" required placeholder="Vapid"></div>
+        <div class="form-group"><label class="form-label">Model *</label><input class="form-input" name="model" type="text" required placeholder="Dominator"></div>
       </div>
-      <div class="form-row-2">
-        <div class="form-row"><label>Color</label><input name="color" type="text" placeholder="Black"></div>
-        <div class="form-row"><label>Year</label><input name="year" type="text" placeholder="2021"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Color</label><input class="form-input" name="color" type="text" placeholder="Black"></div>
+        <div class="form-group"><label class="form-label">Year</label><input class="form-input" name="year" type="text" placeholder="2021"></div>
       </div>
-      <div class="form-row"><label>License Plate</label><input name="licensePlate" type="text" placeholder="ABC123"></div>
+      <div class="form-group"><label class="form-label">License Plate</label><input class="form-input" name="licensePlate" type="text" placeholder="ABC123" style="text-transform:uppercase"></div>
       <div id="form-vehicle-error" class="form-error hidden"></div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
-        <button type="submit" class="btn-primary">Add Vehicle</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Vehicle</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- BUY MODAL -->
+<!-- ══════════ MODAL: Buy Item ══════════ -->
 <div id="modal-buy" class="modal-overlay hidden">
-  <div class="modal modal-sm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-handle"></div>
     <div class="modal-header">
       <h3>Purchase Item</h3>
       <button class="modal-close" onclick="closeModal('modal-buy')">&times;</button>
     </div>
-    <div id="buy-item-info" class="buy-info"></div>
-    <div class="form-row"><label>Quantity</label><input id="buy-qty" type="number" value="1" min="1" max="99" oninput="updateBuyTotal()"></div>
+    <div id="buy-item-name" class="buy-item-name"></div>
+    <div id="buy-item-desc" class="buy-item-desc"></div>
+    <div class="form-group"><label class="form-label">Quantity</label><input id="buy-qty" class="form-input" type="number" value="1" min="1" max="99"></div>
     <div id="buy-total" class="buy-total"></div>
     <div id="form-buy-error" class="form-error hidden"></div>
     <div class="modal-actions">
-      <button type="button" class="btn-secondary" onclick="closeModal('modal-buy')">Cancel</button>
-      <button class="btn-primary" onclick="confirmBuy()">Buy</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-buy')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmBuy()">Buy</button>
     </div>
   </div>
 </div>
