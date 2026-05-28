@@ -1072,15 +1072,16 @@ export async function handleGlobalRoleLinkAddModal(interaction) {
       return interaction.editReply({ embeds: [errorEmbed(`You need **Administrator** permission in **${targetGuild.name}** to create a global role link to it.`)] });
     }
 
-    // Verify the target role exists
+    // Verify the target role exists — fetch all roles to ensure cache is populated
     let targetRole;
     try {
-      targetRole = await targetGuild.roles.fetch(targetRoleId);
+      await targetGuild.roles.fetch();
+      targetRole = targetGuild.roles.cache.get(targetRoleId);
     } catch {
       targetRole = null;
     }
     if (!targetRole) {
-      return interaction.editReply({ embeds: [errorEmbed(`Role ID \`${targetRoleId}\` was not found in **${targetGuild.name}**. Double-check the role ID.`)] });
+      return interaction.editReply({ embeds: [errorEmbed(`Role ID \`${targetRoleId}\` was not found in **${targetGuild.name}**.\n\n-# Make sure you copied the role ID from the correct server. Right-click the role in Server Settings → Roles, then Copy Role ID.`)] });
     }
 
     // Load config and find the source role type
