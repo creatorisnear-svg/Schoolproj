@@ -1,15 +1,20 @@
-/* ── State ──────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
 let me = null;
 let shopItems = [];
+let shopCurrency = '$';
 let currentBuyItem = null;
 let selectedRoleTypeId = null;
 let selectedApproverId = null;
+const loaded = {};
 
-/* ── Boot ───────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════ */
 (async () => {
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
-
   try {
     const res = await fetch('/api/portal/me', { credentials: 'include' });
     if (!res.ok) throw new Error('not_authed');
@@ -21,16 +26,13 @@ let selectedApproverId = null;
 })();
 
 function showLogin(error) {
-  const loginScreen = document.getElementById('login-screen');
-  loginScreen.classList.remove('hidden');
-
+  document.getElementById('login-screen').classList.remove('hidden');
   const errMap = {
     not_member: 'You are not a member of this server.',
-    bot_not_in_server: 'The bot is not present in this server.',
+    bot_not_in_server: 'The bot is not in this server.',
     auth_failed: 'Authentication failed. Please try again.',
-    invalid_state: 'Login state mismatch. Please try again.',
+    invalid_state: 'Security check failed. Please try again.',
   };
-
   if (error && errMap[error]) {
     const el = document.getElementById('login-error');
     el.textContent = errMap[error];
@@ -41,181 +43,458 @@ function showLogin(error) {
 function showApp() {
   document.getElementById('app').classList.remove('hidden');
 
-  document.getElementById('user-avatar').src = me.avatar;
-  document.getElementById('user-name').textContent = me.displayName || me.username;
-  document.getElementById('user-server').textContent = me.serverName || 'Member Portal';
+  const serverName = me.serverName || 'Member Portal';
+  ['login-server-name','sidebar-server-name','topbar-server-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = serverName;
+  });
 
   if (me.serverIcon) {
-    document.querySelector('.login-logo')?.setAttribute('src', me.serverIcon);
+    ['sidebar-server-icon','topbar-server-icon'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.src = me.serverIcon; el.style.display = 'block'; }
+    });
+    ['sidebar-server-icon-placeholder','topbar-server-icon-placeholder'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    const loginLogo = document.getElementById('login-logo');
+    if (loginLogo) { loginLogo.src = me.serverIcon; loginLogo.style.display = 'block'; }
   }
 
-  // Roles
-  const rolesEl = document.getElementById('user-roles');
-  if (me.roles?.length) {
-    rolesEl.innerHTML = me.roles.slice(0, 6).map(r => {
-      const color = r.color && r.color !== '#000000' ? r.color : '#555';
-      return `<span class="role-badge" style="color:${color};border-color:${color}20;background:${color}15">${r.name}</span>`;
+  const displayName = me.displayName || me.username;
+  ['sidebar-avatar','topbar-avatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.src = me.avatar;
+  });
+  const unEl = document.getElementById('sidebar-username');
+  if (unEl) unEl.textContent = displayName;
+  const tbun = document.getElementById('topbar-username');
+  if (tbun) tbun.textContent = displayName;
+  const sub = document.getElementById('sidebar-server-sub');
+  if (sub) sub.textContent = serverName;
+
+  const rolesEl = document.getElementById('sidebar-roles');
+  if (me.roles?.length && rolesEl) {
+    rolesEl.innerHTML = me.roles.map(r => {
+      const color = r.color && r.color !== '#000000' ? r.color : '#666688';
+      return `<span class="role-badge" style="color:${color};border-color:${color}40;background:${color}18">${r.name}</span>`;
     }).join('');
+  } else if (rolesEl) {
+    rolesEl.style.display = 'none';
   }
 
-  // LEO tab
   if (me.isLeo) {
-    document.getElementById('nav-leo').classList.remove('hidden');
-    document.getElementById('qa-leo').classList.remove('hidden');
+    document.getElementById('nav-leo')?.classList.remove('hidden');
+    document.getElementById('nav-leo-section')?.classList.remove('hidden');
+    document.getElementById('more-leo')?.classList.remove('hidden');
   }
 
-  // Nav click
-  document.querySelectorAll('.nav-item').forEach(el => {
+  document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(el => {
     el.addEventListener('click', () => switchTab(el.dataset.tab));
   });
 
-  // Load overview
   loadOverview();
 }
 
-/* ── Tabs ───────────────────────────────────────────────────────────────── */
-const loaded = {};
+/* ══════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════ */
+const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo']);
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const leavingLeo = document.getElementById('tab-leo')?.classList.contains('active');
+  if (leavingLeo && tab !== 'leo') stopBoardRefresh();
+
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.remove('active'));
 
   const pane = document.getElementById(`tab-${tab}`);
-  if (pane) pane.classList.remove('hidden');
+  if (pane) pane.classList.add('active');
 
-  const nav = document.querySelector(`[data-tab="${tab}"]`);
-  if (nav) nav.classList.add('active');
+  document.querySelectorAll(`[data-tab="${tab}"]`).forEach(n => n.classList.add('active'));
+
+  if (secondaryTabs.has(tab)) {
+    document.getElementById('bnav-more')?.classList.add('active');
+  }
+
+  document.getElementById('main').scrollTop = 0;
 
   if (!loaded[tab]) {
     loaded[tab] = true;
     if (tab === 'cad') loadCad();
     if (tab === 'economy') loadEconomy();
+    if (tab === 'dispatch') loadDispatch();
+    if (tab === 'fines') loadTrafficFines();
+    if (tab === 'tickets') loadTickets();
+    if (tab === 'calendar') loadCalendar();
     if (tab === 'rolerequest') loadRoleRequest();
     if (tab === 'leo') loadLeo();
   }
 }
 
-/* ── Overview ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   MORE DRAWER
+══════════════════════════════════════════════════════ */
+function toggleMoreDrawer() {
+  const drawer = document.getElementById('more-drawer');
+  const overlay = document.getElementById('more-overlay');
+  if (drawer.classList.contains('hidden')) {
+    drawer.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => { drawer.classList.add('open'); overlay.classList.add('open'); });
+  } else {
+    closeMoreDrawer();
+  }
+}
+
+function closeMoreDrawer() {
+  const drawer = document.getElementById('more-drawer');
+  const overlay = document.getElementById('more-overlay');
+  drawer.classList.remove('open');
+  overlay.classList.remove('open');
+  setTimeout(() => { drawer.classList.add('hidden'); overlay.classList.add('hidden'); }, 260);
+}
+
+function moreNav(tab) {
+  closeMoreDrawer();
+  setTimeout(() => switchTab(tab), 100);
+}
+
+/* ══════════════════════════════════════════════════════
+   OVERVIEW
+══════════════════════════════════════════════════════ */
 async function loadOverview() {
   try {
-    const [cadRes, ecoRes, rrRes] = await Promise.all([
+    const [cadRes, ecoRes, ticketsRes, priorityRes, finesRes] = await Promise.all([
       api('/cad'),
       api('/economy'),
-      api('/rolerequest/mine'),
+      api('/tickets'),
+      api('/priority'),
+      api('/traffic-tickets'),
     ]);
 
-    const stats = [
-      { label: 'Characters', value: cadRes?.length ?? 0, sub: 'in CAD' },
-      { label: 'Cash', value: fmt(ecoRes?.cash ?? 0, ecoRes?.currency), sub: 'in hand' },
-      { label: 'Bank', value: fmt(ecoRes?.bank ?? 0, ecoRes?.currency), sub: 'balance' },
-      { label: 'Requests', value: rrRes?.length ?? 0, sub: 'submitted' },
-    ];
+    if (priorityRes?.active) {
+      const banner = document.getElementById('priority-banner');
+      banner.classList.remove('hidden');
+      const sub = document.getElementById('priority-banner-sub');
+      if (priorityRes.customMessage) sub.textContent = priorityRes.customMessage;
+      else if (priorityRes.issuedBy) sub.textContent = `Issued by ${priorityRes.issuedBy}`;
+    }
 
-    document.getElementById('overview-cards').innerHTML = stats.map(s => `
+    const openTickets = (ticketsRes || []).filter(t => t.status === 'open').length;
+    const unpaidFines = (finesRes || []).filter(f => !f.paid).length;
+    const cur = ecoRes?.currency || '$';
+
+    let statsHtml = [
+      { label: 'Characters', value: cadRes?.length ?? 0, sub: 'in CAD' },
+      { label: 'Cash', value: fmt(ecoRes?.cash ?? 0, cur), sub: 'on hand' },
+      { label: 'Bank', value: fmt(ecoRes?.bank ?? 0, cur), sub: 'balance' },
+      { label: 'Open Tickets', value: openTickets, sub: 'support tickets' },
+    ].map(s => `
       <div class="stat-card">
         <div class="stat-label">${s.label}</div>
         <div class="stat-value">${s.value}</div>
         <div class="stat-sub">${s.sub}</div>
       </div>
     `).join('');
+
+    if (unpaidFines > 0) {
+      statsHtml += `
+        <div class="stat-card" style="--accent:var(--warning)">
+          <div class="stat-label">Unpaid Fines</div>
+          <div class="stat-value" style="color:var(--warning)">${unpaidFines}</div>
+          <div class="stat-sub">traffic violations</div>
+        </div>`;
+    }
+
+    document.getElementById('overview-stats').innerHTML = statsHtml;
+
+    const SVG = {
+      cad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      dispatch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>',
+      economy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      fines: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>',
+      tickets: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      rolerequest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      leo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    };
+    const actions = [
+      { tab: 'cad', label: 'CAD System' },
+      { tab: 'dispatch', label: 'Dispatch / 911' },
+      { tab: 'economy', label: 'Economy' },
+      { tab: 'fines', label: 'Traffic Fines' },
+      { tab: 'tickets', label: 'Tickets' },
+      { tab: 'calendar', label: 'RP Calendar' },
+      { tab: 'rolerequest', label: 'Role Requests' },
+    ];
+    if (me.isLeo) actions.push({ tab: 'leo', label: 'LEO Dashboard' });
+
+    document.getElementById('quick-actions').innerHTML = actions.map(a => `
+      <button class="quick-btn" onclick="switchTab('${a.tab}')">
+        <span class="quick-btn-icon">${SVG[a.tab] || ''}</span>${a.label}
+      </button>
+    `).join('');
+
   } catch {
-    document.getElementById('overview-cards').innerHTML = '<p class="loading-text">Could not load stats.</p>';
+    document.getElementById('overview-stats').innerHTML = '<p style="color:var(--text-muted);font-size:13px">Could not load stats.</p>';
   }
 }
 
-/* ── CAD ────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   CAD
+══════════════════════════════════════════════════════ */
 async function loadCad() {
   const list = document.getElementById('cad-list');
   try {
     const chars = await api('/cad');
     if (!chars?.length) {
-      list.innerHTML = '<p class="loading-text">No characters found. Create one to get started.</p>';
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>No characters yet. Create one to get started.</div>`;
       return;
     }
     list.innerHTML = chars.map(c => renderCharCard(c)).join('');
     list.querySelectorAll('.char-header').forEach(h => {
-      h.addEventListener('click', () => {
-        h.closest('.char-card').classList.toggle('open');
-      });
+      h.addEventListener('click', () => h.closest('.char-card').classList.toggle('open'));
     });
     list.querySelectorAll('.btn-add-vehicle').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        openAddVehicleModal(btn.dataset.charId);
-      });
+      btn.addEventListener('click', e => { e.stopPropagation(); openAddVehicleModal(btn.dataset.charId); });
+    });
+    list.querySelectorAll('.btn-delete-char').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); deleteChar(btn.dataset.charId); });
     });
   } catch {
-    list.innerHTML = '<p class="loading-text">Failed to load characters.</p>';
+    list.innerHTML = `<div class="empty-state">Failed to load characters.</div>`;
   }
 }
 
 function renderCharCard(c) {
+  const initials = c.characterName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
   const details = [
-    { label: 'Age', value: c.age || 'N/A' },
-    { label: 'Gender', value: c.gender || 'N/A' },
-    { label: 'Hair', value: c.hairColor || 'N/A' },
-    { label: 'Eyes', value: c.eyeColor || 'N/A' },
-    { label: 'Height', value: c.height || 'N/A' },
-    { label: 'Occupation', value: c.occupation || 'N/A' },
-    { label: 'Address', value: c.address || 'N/A' },
-    { label: 'Phone', value: c.phoneNumber || 'N/A' },
-    { label: 'License', value: c.driversLicense || 'N/A' },
-    { label: 'License Status', value: c.driverLicenseStatus || 'N/A' },
-    { label: 'Emergency Contact', value: c.emergencyContact || 'N/A' },
+    ['Age', c.age || 'N/A'], ['Gender', c.gender || 'N/A'],
+    ['Hair', c.hairColor || 'N/A'], ['Eyes', c.eyeColor || 'N/A'],
+    ['Height', c.height || 'N/A'], ['Occupation', c.occupation || 'N/A'],
+    ['Address', c.address || 'N/A'], ['Phone', c.phoneNumber || 'N/A'],
+    ['License', c.driversLicense || 'N/A'], ['License Status', c.driverLicenseStatus || 'Valid'],
+    ['SSN', c.socialSecurityNumber || 'N/A'], ['Emergency Contact', c.emergencyContact || 'N/A'],
   ];
 
   const vehicles = c.vehicles?.length
     ? c.vehicles.map(v => `
         <div class="vehicle-item">
-          <span>${v.year ? v.year + ' ' : ''}${v.color ? v.color + ' ' : ''}${v.make} ${v.model}</span>
-          ${v.licensePlate ? `<span style="color:var(--text-muted);font-size:12px">${v.licensePlate}</span>` : ''}
-        </div>
-      `).join('')
-    : '<p class="empty-notice">No vehicles registered.</p>';
+          <div class="vehicle-item-left">
+            <div class="vehicle-item-name">${v.year ? v.year + ' ' : ''}${v.color ? v.color + ' ' : ''}${v.make} ${v.model}</div>
+            ${v.licensePlate ? `<div class="vehicle-item-plate">${v.licensePlate}</div>` : ''}
+          </div>
+        </div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No vehicles registered.</div>';
 
   const guns = c.guns?.length
-    ? c.guns.map(g => `
-        <div class="gun-item">
-          <span>${g.name}</span>
-          <span style="color:var(--text-muted);font-size:12px">${g.serialNumber || ''}</span>
-        </div>
-      `).join('')
-    : '<p class="empty-notice">No firearms registered.</p>';
+    ? c.guns.map(g => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${g.name}</div>${g.serialNumber ? `<div class="vehicle-item-plate">${g.serialNumber}</div>` : ''}</div></div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No firearms registered.</div>';
+
+  const arrests = c.arrestHistory?.length
+    ? c.arrestHistory.map(a => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${a.charge}</div><div class="vehicle-item-plate">${a.outcome || ''} ${a.date ? '• ' + new Date(a.date).toLocaleDateString() : ''}</div></div></div>`).join('')
+    : '';
 
   return `
     <div class="char-card" id="char-${c._id}">
       <div class="char-header">
-        <div>
-          <div class="char-name">${c.characterName}</div>
-          <div class="char-meta">${c.occupation || 'No occupation'} &bull; SSN: ${c.socialSecurityNumber || 'N/A'}</div>
+        <div class="char-header-left">
+          <div class="char-avatar">${initials}</div>
+          <div>
+            <div class="char-name">${c.characterName}</div>
+            <div class="char-meta">${c.occupation || 'No occupation'}</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}">${c.status === 'wanted' ? 'WANTED' : 'CLEAN'}</span>
-          <span class="char-chevron">&#9654;</span>
+        <div class="char-header-right">
+          <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}">${c.status === 'wanted' ? 'Wanted' : 'Clean'}</span>
+          <span class="char-chevron"></span>
         </div>
       </div>
       <div class="char-body">
-        ${c.status === 'wanted' && c.wantedReason ? `<div style="background:rgba(240,71,71,0.1);border:1px solid var(--danger);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--danger);margin:10px 0">Wanted: ${c.wantedReason}</div>` : ''}
+        ${c.status === 'wanted' && c.wantedReason ? `<div class="wanted-banner">Wanted: ${c.wantedReason}</div>` : ''}
         <div class="char-details-grid">
-          ${details.map(d => `<div class="detail-item"><div class="detail-label">${d.label}</div><div class="detail-value">${d.value}</div></div>`).join('')}
+          ${details.map(([l, v]) => `<div class="detail-item"><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`).join('')}
         </div>
-        <div class="char-section-title">
-          Vehicles (${c.vehicles?.length || 0})
-          <button class="btn-primary btn-sm btn-add-vehicle" data-char-id="${c._id}">Add Vehicle</button>
+        <div class="char-section-header">
+          <span class="char-section-label">Vehicles (${c.vehicles?.length || 0})</span>
+          <button class="btn btn-primary btn-sm btn-add-vehicle" data-char-id="${c._id}">+ Add</button>
         </div>
         <div class="vehicle-list">${vehicles}</div>
-        <div class="char-section-title" style="margin-top:16px">Firearms (${c.guns?.length || 0})</div>
+        <div class="char-section-header" style="margin-top:14px">
+          <span class="char-section-label">Firearms (${c.guns?.length || 0})</span>
+        </div>
         <div class="gun-list">${guns}</div>
-        ${c.arrestHistory?.length ? `
-          <div class="char-section-title" style="margin-top:16px">Arrest History (${c.arrestHistory.length})</div>
-          ${c.arrestHistory.map(a => `<div class="vehicle-item"><span>${a.charge}</span><span style="color:var(--text-muted);font-size:12px">${a.outcome || ''} ${a.date ? '&bull; ' + new Date(a.date).toLocaleDateString() : ''}</span></div>`).join('')}
-        ` : ''}
+        ${arrests ? `<div class="char-section-header" style="margin-top:14px"><span class="char-section-label">Arrest History (${c.arrestHistory.length})</span></div>${arrests}` : ''}
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn btn-danger btn-sm btn-delete-char" data-char-id="${c._id}">Delete Character</button>
+        </div>
       </div>
     </div>
   `;
 }
 
-/* ── Economy ────────────────────────────────────────────────────────────── */
+async function deleteChar(charId) {
+  if (!confirm('Delete this character? This cannot be undone.')) return;
+  try {
+    await apiDel(`/cad/${charId}`);
+    loaded['cad'] = false;
+    loadCad();
+    toast('Character deleted.', 'info');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   DISPATCH / 911
+══════════════════════════════════════════════════════ */
+async function loadDispatch() {
+  try {
+    const calls = await api('/dispatch/mine');
+    const active = (calls || []).filter(c => c.status === 'active');
+    const closed = (calls || []).filter(c => c.status !== 'active');
+
+    document.getElementById('dispatch-active').innerHTML = active.length
+      ? active.map(c => renderDispatchCall(c, true)).join('')
+      : `<div class="empty-state" style="padding:20px 0">No active calls.</div>`;
+
+    document.getElementById('dispatch-history').innerHTML = closed.length
+      ? closed.slice(0, 8).map(c => renderDispatchCall(c, false)).join('')
+      : `<div class="empty-state" style="padding:16px 0">No previous calls.</div>`;
+
+    document.querySelectorAll('.btn-cancel-call').forEach(btn => {
+      btn.addEventListener('click', () => cancelCall(btn.dataset.callId));
+    });
+  } catch {
+    document.getElementById('dispatch-active').innerHTML = '<div class="empty-state">Failed to load calls.</div>';
+  }
+}
+
+function renderDispatchCall(c, isActive) {
+  const ago = timeAgo(new Date(c.timestamp));
+  return `
+    <div class="dispatch-call ${isActive ? 'dispatch-call-active' : 'dispatch-call-closed'}">
+      <div class="dispatch-call-header">
+        <div>
+          <div class="dispatch-call-id">${c.callId}</div>
+          <div class="dispatch-call-issue">${c.issue}</div>
+        </div>
+        ${isActive ? `<button class="btn btn-sm btn-secondary btn-cancel-call" data-call-id="${c.callId}">Cancel</button>` : `<span class="status-pill ${c.status === 'active' ? 'ticket-status-open' : 'ticket-status-closed'}">${c.status}</span>`}
+      </div>
+      <div class="dispatch-call-loc">${c.location}</div>
+      ${c.suspectsDescription ? `<div class="dispatch-call-detail">Suspect: ${c.suspectsDescription}</div>` : ''}
+      ${c.lastSeen ? `<div class="dispatch-call-detail">Last seen: ${c.lastSeen}</div>` : ''}
+      <div class="dispatch-call-meta">
+        ${ago}
+        ${isActive && c.respondingLeoUsername ? ` • Responding: <strong>${c.respondingLeoUsername}</strong>` : ''}
+        ${isActive && !c.respondingLeoUsername ? ' • <span style="color:var(--warning)">No officer responding yet</span>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function cancelCall(callId) {
+  if (!confirm('Cancel this 911 call?')) return;
+  try {
+    await apiDel(`/dispatch/${callId}/cancel`);
+    toast('Call cancelled.', 'info');
+    loaded['dispatch'] = false;
+    loadDispatch();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function submit911(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  const errEl = document.getElementById('form-911-error');
+  const btn = document.getElementById('btn-submit-911');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Dispatching...';
+  try {
+    const result = await apiPost('/dispatch/submit', data);
+    closeModal('modal-911');
+    e.target.reset();
+    toast(`Call ${result.callId} dispatched to officers.`, 'success');
+    loaded['dispatch'] = false;
+    if (document.getElementById('tab-dispatch').classList.contains('active')) loadDispatch();
+    loaded['overview'] = false;
+    loadOverview();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Dispatch Now';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   TRAFFIC FINES
+══════════════════════════════════════════════════════ */
+async function loadTrafficFines() {
+  const list = document.getElementById('fines-list');
+  const summary = document.getElementById('fines-summary');
+  try {
+    const [tickets, ecoRes] = await Promise.all([api('/traffic-tickets'), api('/economy')]);
+    const cur = ecoRes?.currency || '$';
+
+    if (!tickets?.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>No traffic violations on record.</div>`;
+      return;
+    }
+
+    const unpaid = tickets.filter(t => !t.paid);
+    const totalOwed = unpaid.reduce((s, t) => s + (t.fine || 0), 0);
+
+    if (unpaid.length) {
+      summary.innerHTML = `
+        <div class="fines-owed">
+          <div class="fines-owed-label">Total Outstanding</div>
+          <div class="fines-owed-amount">${fmt(totalOwed, cur)}</div>
+          <div class="fines-owed-sub">${unpaid.length} unpaid violation${unpaid.length > 1 ? 's' : ''} — paid from bank balance</div>
+        </div>`;
+      summary.classList.remove('hidden');
+    }
+
+    list.innerHTML = tickets.map(t => `
+      <div class="fine-item ${t.paid ? 'fine-paid' : 'fine-unpaid'}">
+        <div class="fine-item-left">
+          <div class="fine-id">#${t.ticketId}</div>
+          <div class="fine-char">${t.characterName || 'Unknown character'}</div>
+          <div class="fine-violation">${t.violation}</div>
+          ${t.description ? `<div class="fine-desc">${t.description}</div>` : ''}
+          <div class="fine-meta">
+            Issued by ${t.issuedBy || 'officer'} • ${new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            ${t.paid && t.paidAt ? ` • Paid ${new Date(t.paidAt).toLocaleDateString()}` : ''}
+          </div>
+        </div>
+        <div class="fine-item-right">
+          <div class="fine-amount ${t.paid ? 'fine-amount-paid' : 'fine-amount-owed'}">${fmt(t.fine || 0, cur)}</div>
+          ${!t.paid ? `<button class="btn btn-primary btn-sm" onclick="payFine('${t.ticketId}', ${t.fine}, '${cur}')">Pay Fine</button>` : '<span class="fine-paid-badge">Paid</span>'}
+        </div>
+      </div>
+    `).join('');
+  } catch {
+    list.innerHTML = '<div class="empty-state">Failed to load traffic fines.</div>';
+  }
+}
+
+async function payFine(ticketId, amount, cur) {
+  if (!confirm(`Pay ${fmt(amount, cur)} from your bank balance?`)) return;
+  try {
+    const result = await apiPost(`/traffic-tickets/${ticketId}/pay`, {});
+    toast(`Fine paid. New bank balance: ${fmt(result.newBank, result.currency || cur)}`, 'success');
+    loaded['fines'] = false;
+    loadTrafficFines();
+    loaded['economy'] = false;
+    if (document.getElementById('tab-economy').classList.contains('active')) loadEconomy();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   ECONOMY
+══════════════════════════════════════════════════════ */
 async function loadEconomy() {
   try {
     const [ecoRes, shopRes, lbRes] = await Promise.all([
@@ -224,65 +503,51 @@ async function loadEconomy() {
       api('/economy/leaderboard'),
     ]);
 
-    // Balance
     const cur = ecoRes.currency || '$';
-    document.getElementById('economy-balance').innerHTML = `
-      <div class="balance-card">
-        <div class="balance-label">Cash</div>
-        <div class="balance-amount">${fmt(ecoRes.cash, cur)}</div>
-        <div class="balance-total">Available to spend</div>
-      </div>
-      <div class="balance-card">
-        <div class="balance-label">Bank</div>
-        <div class="balance-amount">${fmt(ecoRes.bank, cur)}</div>
-        <div class="balance-total">In the bank</div>
-      </div>
-      <div class="balance-card">
-        <div class="balance-label">Total</div>
-        <div class="balance-amount">${fmt(ecoRes.cash + ecoRes.bank, cur)}</div>
-        <div class="balance-total">Combined wealth</div>
-      </div>
-    `;
+    shopCurrency = cur;
 
-    // Shop
+    document.getElementById('economy-balance').innerHTML = [
+      { label: 'Cash', value: fmt(ecoRes.cash, cur), sub: 'on hand' },
+      { label: 'Bank', value: fmt(ecoRes.bank, cur), sub: 'saved' },
+      { label: 'Total', value: fmt(ecoRes.cash + ecoRes.bank, cur), sub: 'wealth' },
+    ].map(c => `
+      <div class="balance-card">
+        <div class="balance-label">${c.label}</div>
+        <div class="balance-amount">${c.value}</div>
+        <div class="balance-sub">${c.sub}</div>
+      </div>
+    `).join('');
+
     shopItems = shopRes || [];
     renderShop(shopItems, cur);
 
-    // Inventory
     const inv = ecoRes.inventory || [];
     document.getElementById('inventory-list').innerHTML = inv.length
-      ? inv.map(i => `<div class="inv-item"><span>${i.itemName}</span><span class="inv-item-qty">x${i.quantity}</span></div>`).join('')
-      : '<p class="loading-text">Your inventory is empty.</p>';
+      ? inv.map(i => `<div class="inv-item"><span>${i.itemName}</span><span class="inv-qty">×${i.quantity}</span></div>`).join('')
+      : '<div class="empty-state" style="padding:16px 0">Inventory is empty.</div>';
 
-    // Leaderboard
     const cur2 = lbRes.currency || cur;
-    document.getElementById('leaderboard-list').innerHTML = (lbRes.entries || []).map(e => `
-      <div class="lb-row">
-        <span class="lb-rank ${e.rank <= 3 ? 'top' : ''}">${e.rank}</span>
-        <span class="lb-name">${e.name}</span>
-        <span class="lb-amount">${fmt(e.total, cur2)}</span>
-      </div>
-    `).join('') || '<p class="loading-text">No data yet.</p>';
+    document.getElementById('leaderboard-list').innerHTML = (lbRes.entries || []).map(e => {
+      const rc = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
+      return `<div class="lb-row"><span class="lb-rank ${rc}">${e.rank}</span><span class="lb-name">${e.name}</span><span class="lb-amount">${fmt(e.total, cur2)}</span></div>`;
+    }).join('') || '<div class="empty-state" style="padding:12px 0">No data yet.</div>';
   } catch {
-    document.getElementById('economy-balance').innerHTML = '<p class="loading-text">Failed to load economy data.</p>';
+    document.getElementById('economy-balance').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Failed to load economy data.</p>';
   }
 }
 
 function renderShop(items, currency) {
   const shopList = document.getElementById('shop-list');
-  if (!items.length) {
-    shopList.innerHTML = '<p class="loading-text">No items in the shop.</p>';
-    return;
-  }
+  if (!items.length) { shopList.innerHTML = '<div class="empty-state" style="padding:20px 0">No items in the shop.</div>'; return; }
   shopList.innerHTML = items.map(item => `
-    <div class="shop-item" data-name="${esc(item.name)}">
-      <div class="shop-item-info">
+    <div class="shop-item" data-name="${esc(item.name).toLowerCase()}">
+      <div>
         <div class="shop-item-name">${item.name}</div>
         ${item.description ? `<div class="shop-item-desc">${item.description}</div>` : ''}
       </div>
       <div class="shop-item-right">
-        <span class="shop-item-price">${fmt(item.price, currency || '$')}</span>
-        <button class="btn-primary btn-sm" onclick="openBuyModal(${JSON.stringify(item)})">Buy</button>
+        <span class="shop-item-price">${fmt(item.price, currency)}</span>
+        <button class="btn btn-primary btn-sm" onclick='openBuyModal(${JSON.stringify(item)})'>Buy</button>
       </div>
     </div>
   `).join('');
@@ -291,32 +556,27 @@ function renderShop(items, currency) {
 function filterShop(query) {
   const q = query.toLowerCase();
   document.querySelectorAll('.shop-item').forEach(el => {
-    const name = el.dataset.name.toLowerCase();
-    el.style.display = name.includes(q) ? '' : 'none';
+    el.style.display = el.dataset.name.includes(q) ? '' : 'none';
   });
 }
 
 function openBuyModal(item) {
   currentBuyItem = item;
-  document.getElementById('buy-item-info').innerHTML = `
-    <div>${item.name}</div>
-    ${item.description ? `<div class="buy-desc">${item.description}</div>` : ''}
-  `;
+  document.getElementById('buy-item-name').textContent = item.name;
+  document.getElementById('buy-item-desc').textContent = item.description || '';
   document.getElementById('buy-qty').value = 1;
-  updateBuyTotal();
   document.getElementById('form-buy-error').classList.add('hidden');
+  updateBuyTotal();
   openModal('modal-buy');
 }
 
 function updateBuyTotal() {
   if (!currentBuyItem) return;
   const qty = parseInt(document.getElementById('buy-qty').value) || 1;
-  const total = currentBuyItem.price * qty;
-  const cur = document.querySelector('.balance-amount')?.textContent?.[0] || '$';
-  document.getElementById('buy-total').textContent = `Total: ${fmt(total, '$')}`;
+  document.getElementById('buy-total').textContent = `Total: ${fmt(currentBuyItem.price * qty, shopCurrency)}`;
 }
-document.getElementById?.('buy-qty')?.addEventListener?.('input', updateBuyTotal);
-window.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('buy-qty')?.addEventListener('input', updateBuyTotal);
 });
 
@@ -325,164 +585,411 @@ async function confirmBuy() {
   const qty = parseInt(document.getElementById('buy-qty').value) || 1;
   const errEl = document.getElementById('form-buy-error');
   errEl.classList.add('hidden');
-
   try {
-    const res = await apiPost('/economy/buy', { itemName: currentBuyItem.name, quantity: qty });
+    await apiPost('/economy/buy', { itemName: currentBuyItem.name, quantity: qty });
     closeModal('modal-buy');
-    toast(`Purchased ${qty}x ${currentBuyItem.name}`, 'success');
+    toast(`Purchased ${qty}× ${currentBuyItem.name}`, 'success');
     loaded['economy'] = false;
     loadEconomy();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   TICKETS
+══════════════════════════════════════════════════════ */
+async function loadTickets() {
+  try {
+    const tickets = await api('/tickets');
+    const open = (tickets || []).filter(t => t.status === 'open');
+    const closed = (tickets || []).filter(t => t.status === 'closed');
+
+    document.getElementById('tickets-open').innerHTML = open.length
+      ? open.map(t => renderTicket(t)).join('')
+      : '<div class="empty-state" style="padding:20px 0">No open tickets.</div>';
+
+    document.getElementById('tickets-closed').innerHTML = closed.length
+      ? closed.slice(0, 5).map(t => renderTicket(t)).join('')
+      : '<div class="empty-state" style="padding:16px 0">No closed tickets.</div>';
+  } catch {
+    document.getElementById('tickets-open').innerHTML = '<div class="empty-state">Failed to load tickets.</div>';
   }
 }
 
-/* ── Role Requests ──────────────────────────────────────────────────────── */
+function renderTicket(t) {
+  const sc = t.status === 'open' ? 'ticket-status-open' : 'ticket-status-closed';
+  return `
+    <div class="ticket-item">
+      <div class="ticket-item-left">
+        <div class="ticket-id">#${t.ticketId}</div>
+        <div class="ticket-type">${t.ticketType || 'Support Ticket'}</div>
+        ${t.description ? `<div class="ticket-desc">${t.description}</div>` : ''}
+        <div class="ticket-date">${new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+      </div>
+      <span class="status-pill ${sc}">${t.status === 'open' ? 'Open' : 'Closed'}</span>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════════════
+   CALENDAR
+══════════════════════════════════════════════════════ */
+async function loadCalendar() {
+  const list = document.getElementById('calendar-list');
+  try {
+    const events = await api('/calendar');
+    if (!events?.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>No upcoming events scheduled.</div>`;
+      return;
+    }
+    list.innerHTML = events.map(e => {
+      const [hh, mm] = (e.time || '').split(':');
+      const h = parseInt(hh);
+      const formatted = hh && mm ? `${h > 12 ? h - 12 : h || 12}:${mm} ${h >= 12 ? 'PM' : 'AM'}` : (e.time || '');
+      const platforms = [];
+      if (e.psn) platforms.push(`PSN: ${e.psn}`);
+      if (e.xbox) platforms.push(`Xbox: ${e.xbox}`);
+      return `
+        <div class="cal-item">
+          <div class="cal-day-badge">
+            <div class="cal-day">${(e.day || '').slice(0, 3)}</div>
+            <div class="cal-time">${formatted}</div>
+          </div>
+          <div class="cal-info">
+            <div class="cal-host">${e.person || 'TBA'}</div>
+            ${e.description ? `<div class="cal-desc">${e.description}</div>` : ''}
+            ${e.timezone ? `<div class="cal-desc" style="margin-top:2px">${e.timezone}</div>` : ''}
+            ${platforms.length ? `<div class="cal-platform">${platforms.map(p => `<span class="cal-tag">${p}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch {
+    list.innerHTML = '<div class="empty-state">Failed to load calendar.</div>';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   ROLE REQUESTS
+══════════════════════════════════════════════════════ */
 async function loadRoleRequest() {
   try {
-    const [typesRes, histRes] = await Promise.all([
-      api('/rolerequest/types'),
-      api('/rolerequest/mine'),
-    ]);
-
+    const [typesRes, histRes] = await Promise.all([api('/rolerequest/types'), api('/rolerequest/mine')]);
     const area = document.getElementById('rr-form-area');
 
     if (!typesRes?.length) {
-      area.innerHTML = '<p class="loading-text">No role types configured. Ask a staff member.</p>';
+      area.innerHTML = '<div class="empty-state">No role types configured.<br>Ask a staff member.</div>';
     } else {
       area.innerHTML = `
-        <div id="rr-types">
-          ${typesRes.map(rt => `
-            <div class="rr-role-type" data-id="${rt.id}" onclick="selectRoleType('${rt.id}')">
-              <div class="rr-role-name">${rt.roleName || rt.name}</div>
-              <div class="rr-role-sub">Click to select</div>
-            </div>
-          `).join('')}
+        <div id="rr-types">${typesRes.map(rt => `
+          <div class="rr-role-type" data-id="${rt.id}" onclick="selectRoleType('${rt.id}')">
+            <div class="rr-role-name">${rt.roleName || rt.name}</div>
+            <div class="rr-role-sub">Tap to select</div>
+          </div>`).join('')}
         </div>
-        <div id="rr-approver-section" class="rr-approver-select">
-          <div class="section-title" style="margin-top:14px">Select Approver</div>
+        <div id="rr-approver-section" class="rr-approver-section">
+          <div class="section-label">Select Approver</div>
           <div id="rr-approvers"></div>
           <div id="rr-submit-error" class="form-error hidden"></div>
-          <div style="margin-top:12px">
-            <button class="btn-primary" onclick="submitRoleRequest()">Submit Request</button>
-          </div>
-        </div>
-      `;
+          <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="submitRoleRequest()">Submit Request</button>
+        </div>`;
     }
 
-    // History
-    const hist = histRes || [];
-    document.getElementById('rr-history').innerHTML = hist.length
-      ? hist.map(r => `
+    document.getElementById('rr-history').innerHTML = (histRes || []).length
+      ? histRes.map(r => `
           <div class="rr-hist-item">
             <div class="rr-hist-role">${r.roleName}</div>
-            <div class="rr-hist-meta">Approver: ${r.approverUsername} &bull; ${new Date(r.timestamp).toLocaleDateString()}</div>
+            <div class="rr-hist-meta">Approver: ${r.approverUsername} • ${new Date(r.timestamp).toLocaleDateString()}</div>
             <span class="status-pill ${r.status === 'approved' ? 'pill-approved' : r.status === 'denied' ? 'pill-denied' : 'pill-pending'}">${r.status || 'pending'}</span>
-          </div>
-        `).join('')
-      : '<p class="loading-text">No requests submitted yet.</p>';
+          </div>`).join('')
+      : '<div class="empty-state" style="padding:16px 0">No requests yet.</div>';
   } catch {
-    document.getElementById('rr-form-area').innerHTML = '<p class="loading-text">Failed to load role types.</p>';
+    document.getElementById('rr-form-area').innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
 }
 
 async function selectRoleType(id) {
   selectedRoleTypeId = id;
   selectedApproverId = null;
-
-  document.querySelectorAll('.rr-role-type').forEach(el => {
-    el.classList.toggle('selected', el.dataset.id === id);
-  });
-
+  document.querySelectorAll('.rr-role-type').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
   const section = document.getElementById('rr-approver-section');
   section.classList.add('visible');
-
   const approversEl = document.getElementById('rr-approvers');
-  approversEl.innerHTML = '<p class="loading-text">Loading approvers...</p>';
-
+  approversEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Loading approvers...</div>';
   try {
     const approvers = await api(`/rolerequest/approvers/${id}`);
-    if (!approvers?.length) {
-      approversEl.innerHTML = '<p class="loading-text">No approvers available.</p>';
-      return;
-    }
+    if (!approvers?.length) { approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">No approvers available.</div>'; return; }
     approversEl.innerHTML = approvers.map(a => `
-      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">
-        ${a.name}
-      </div>
-    `).join('');
+      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">${a.name}</div>`).join('');
   } catch {
-    approversEl.innerHTML = '<p class="loading-text">Could not load approvers.</p>';
+    approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">Could not load approvers.</div>';
   }
 }
 
 function selectApprover(id) {
   selectedApproverId = id;
-  document.querySelectorAll('.rr-approver-option').forEach(el => {
-    el.classList.toggle('selected', el.dataset.id === id);
-  });
+  document.querySelectorAll('.rr-approver-option').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
 }
 
 async function submitRoleRequest() {
   const errEl = document.getElementById('rr-submit-error');
   errEl.classList.add('hidden');
-
   if (!selectedRoleTypeId) { errEl.textContent = 'Select a role type.'; errEl.classList.remove('hidden'); return; }
   if (!selectedApproverId) { errEl.textContent = 'Select an approver.'; errEl.classList.remove('hidden'); return; }
-
   try {
     await apiPost('/rolerequest/submit', { roleTypeId: selectedRoleTypeId, approverId: selectedApproverId });
-    toast('Role request submitted. Your approver has been notified via DM.', 'success');
+    toast('Role request submitted. Approver notified by DM.', 'success');
     loaded['rolerequest'] = false;
     loadRoleRequest();
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   LEO — STATUS UPDATE
+══════════════════════════════════════════════════════ */
+let boardRefreshTimer = null;
+let boardCountdown = 30;
+
+function startBoardRefresh() {
+  stopBoardRefresh();
+  boardCountdown = 30;
+  updateCountdown();
+  boardRefreshTimer = setInterval(() => {
+    boardCountdown--;
+    updateCountdown();
+    if (boardCountdown <= 0) {
+      boardCountdown = 30;
+      refreshOfficerBoard();
+    }
+  }, 1000);
+}
+
+function stopBoardRefresh() {
+  if (boardRefreshTimer) { clearInterval(boardRefreshTimer); boardRefreshTimer = null; }
+}
+
+function updateCountdown() {
+  const el = document.getElementById('board-countdown');
+  if (el) el.textContent = boardCountdown;
+}
+
+async function refreshOfficerBoard() {
+  try {
+    const officers = await api('/leo/officers');
+    renderOfficerBoard(officers || []);
+  } catch { /* silent */ }
+}
+
+function renderOfficerBoard(officers) {
+  const el = document.getElementById('leo-officers');
+  if (!el) return;
+  if (!officers.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px 0">No officers currently on duty.</div>';
+    return;
+  }
+  el.innerHTML = officers.map(o => {
+    const info = tenInfo(o.tenCode);
+    const isMe = me && o.userId === me.userId;
+    return `
+      <div class="officer-card${isMe ? ' is-me' : ''}">
+        <div class="officer-header">
+          <div class="officer-name">${o.username}</div>
+          <span class="officer-badge" style="background:${info.color}18;color:${info.color};border-color:${info.color}40">${info.label}</span>
+        </div>
+        ${o.location ? `<div class="officer-detail">${o.location}</div>` : ''}
+        ${o.subject ? `<div class="officer-detail">${o.subject}</div>` : ''}
+        <div class="officer-time">Updated ${timeAgo(new Date(o.updatedAt))}</div>
+      </div>`;
+  }).join('');
+}
+
+function applyMyStatusToUI(status) {
+  const sub = document.getElementById('my-status-sub');
+  const offDutyBtn = document.getElementById('btn-go-offduty');
+  if (!status) {
+    if (sub) { sub.textContent = 'Not on duty'; sub.className = 'my-status-sub'; }
+    if (offDutyBtn) offDutyBtn.style.display = 'none';
+    panicActive = false;
+    const idleEl = document.getElementById('panic-idle');
+    const activeEl = document.getElementById('panic-active');
+    const panicBtn = document.getElementById('btn-panic');
+    if (idleEl) idleEl.classList.remove('hidden');
+    if (activeEl) activeEl.classList.add('hidden');
+    if (panicBtn) { panicBtn.disabled = false; panicBtn.querySelector('.panic-label').textContent = 'PANIC'; }
+    return;
+  }
+  if (status.tenCode === '10-99') {
+    panicActive = true;
+    const idleEl = document.getElementById('panic-idle');
+    const activeEl = document.getElementById('panic-active');
+    if (idleEl) idleEl.classList.add('hidden');
+    if (activeEl) activeEl.classList.remove('hidden');
+  }
+  const info = tenInfo(status.tenCode);
+  const parts = [info.label];
+  if (status.location) parts.push(status.location);
+  if (sub) {
+    sub.textContent = parts.join(' · ');
+    const urgentCodes = new Set(['10-15','10-99']);
+    const busyCodes = new Set(['10-6','10-50','10-97']);
+    if (urgentCodes.has(status.tenCode)) sub.className = 'my-status-sub urgent';
+    else if (busyCodes.has(status.tenCode)) sub.className = 'my-status-sub busy';
+    else sub.className = 'my-status-sub on-duty';
+  }
+  if (offDutyBtn) offDutyBtn.style.display = '';
+  const tcEl = document.getElementById('status-tencode');
+  if (tcEl && status.tenCode) tcEl.value = status.tenCode;
+  const locEl = document.getElementById('status-location');
+  if (locEl) locEl.value = status.location || '';
+  const subEl = document.getElementById('status-subject');
+  if (subEl) subEl.value = status.subject || '';
+}
+
+let panicActive = false;
+
+async function triggerPanic() {
+  const locRaw = prompt('Panic — 10-99\n\nEnter your current location (or leave blank):');
+  if (locRaw === null) return;
+  const location = locRaw.trim();
+  const btn = document.getElementById('btn-panic');
+  btn.disabled = true;
+  btn.querySelector('.panic-label').textContent = 'SENDING...';
+  try {
+    await apiPost('/leo/panic', { location });
+    panicActive = true;
+    document.getElementById('panic-idle').classList.add('hidden');
+    document.getElementById('panic-active').classList.remove('hidden');
+    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
+    document.getElementById('status-tencode').value = '10-99';
+    toast('10-99 sent — dispatch alerted', 'error');
+    boardCountdown = 1;
+    await refreshOfficerBoard();
+    boardCountdown = 30;
+  } catch (err) {
+    toast(err.message || 'Failed to send panic', 'error');
+    btn.disabled = false;
+    btn.querySelector('.panic-label').textContent = 'PANIC';
+  }
+}
+
+async function clearPanic() {
+  const clearBtn = document.getElementById('btn-clear-panic');
+  clearBtn.disabled = true;
+  clearBtn.textContent = 'Clearing...';
+  try {
+    await apiDel('/leo/status');
+    panicActive = false;
+    document.getElementById('panic-active').classList.add('hidden');
+    document.getElementById('panic-idle').classList.remove('hidden');
+    const panicBtn = document.getElementById('btn-panic');
+    panicBtn.disabled = false;
+    panicBtn.querySelector('.panic-label').textContent = 'PANIC';
+    applyMyStatusToUI(null);
+    document.getElementById('status-tencode').value = '';
+    document.getElementById('status-location').value = '';
+    document.getElementById('status-subject').value = '';
+    toast('Panic cleared — 10-99 cancelled', 'info');
+    await refreshOfficerBoard();
+  } catch (err) {
+    toast(err.message || 'Failed to clear panic', 'error');
+  } finally {
+    clearBtn.disabled = false;
+    clearBtn.textContent = 'Clear Panic';
+  }
+}
+
+async function updateOfficerStatus() {
+  const tenCode = document.getElementById('status-tencode').value;
+  const location = document.getElementById('status-location').value;
+  const subject = document.getElementById('status-subject').value;
+  const errEl = document.getElementById('status-error');
+  const btn = document.getElementById('btn-update-status');
+  errEl.classList.add('hidden');
+  if (!tenCode) { errEl.textContent = 'Please select a ten-code.'; errEl.classList.remove('hidden'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+  try {
+    const result = await apiPost('/leo/status', { tenCode, location, subject });
+    applyMyStatusToUI(result.status);
+    toast(`Status updated to ${tenCode}`, 'success');
+    boardCountdown = 1;
+    await refreshOfficerBoard();
+    boardCountdown = 30;
   } catch (err) {
     errEl.textContent = err.message;
     errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Status';
   }
 }
 
-/* ── LEO ────────────────────────────────────────────────────────────────── */
-async function loadLeo() {
-  loadBolos();
-  loadCalls();
+async function goOffDuty() {
+  if (!confirm('Go off duty? Your status will be removed from the board.')) return;
+  try {
+    await apiDel('/leo/status');
+    applyMyStatusToUI(null);
+    document.getElementById('status-tencode').value = '';
+    document.getElementById('status-location').value = '';
+    document.getElementById('status-subject').value = '';
+    toast('You are now off duty.', 'info');
+    await refreshOfficerBoard();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
-async function loadBolos() {
-  const el = document.getElementById('leo-bolos');
+/* ══════════════════════════════════════════════════════
+   LEO
+══════════════════════════════════════════════════════ */
+const TEN_CODES = {
+  '10-6':  { label: '10-6 Busy',           color: '#f0a020' },
+  '10-7':  { label: '10-7 Out of Service', color: '#7f7f96' },
+  '10-8':  { label: '10-8 Available',      color: '#36c97a' },
+  '10-10': { label: '10-10 Off Duty',      color: '#7f7f96' },
+  '10-15': { label: '10-15 In Pursuit',    color: '#f25757' },
+  '10-50': { label: '10-50 Traffic Stop',  color: '#4c78f5' },
+  '10-97': { label: '10-97 On Scene',      color: '#4c78f5' },
+  '10-99': { label: '10-99 Emergency',     color: '#f25757' },
+};
+
+function tenInfo(code) {
+  return TEN_CODES[code] || { label: code || 'Unknown', color: '#7f7f96' };
+}
+
+async function loadLeo() {
+  const boloEl = document.getElementById('leo-bolos');
+  const callEl = document.getElementById('leo-calls');
   try {
-    const bolos = await api('/leo/bolos');
-    el.innerHTML = bolos?.length
+    const [bolos, calls, officers, myStatus] = await Promise.all([
+      api('/leo/bolos'),
+      api('/leo/calls'),
+      api('/leo/officers'),
+      api('/leo/mystatus'),
+    ]);
+
+    renderOfficerBoard(officers || []);
+    applyMyStatusToUI(myStatus);
+    startBoardRefresh();
+
+    boloEl.innerHTML = bolos?.length
       ? bolos.map(b => `
-          <div class="bolo-card">
+          <div class="bolo-item">
             <div class="bolo-name">${b.characterName}</div>
             <div class="bolo-reason">${b.reason}</div>
-            ${b.description ? `<div class="bolo-reason" style="color:var(--text-muted)">${b.description}</div>` : ''}
-            <div class="bolo-meta">Issued: ${new Date(b.createdAt).toLocaleString()} &bull; Expires: ${new Date(b.expiresAt).toLocaleString()}</div>
-          </div>
-        `).join('')
-      : '<p class="loading-text">No active BOLOs.</p>';
-  } catch {
-    el.innerHTML = '<p class="loading-text">Failed to load BOLOs.</p>';
-  }
-}
+            <div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()}</div>
+          </div>`).join('')
+      : '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
 
-async function loadCalls() {
-  const el = document.getElementById('leo-calls');
-  try {
-    const calls = await api('/leo/calls');
-    el.innerHTML = calls?.length
+    callEl.innerHTML = calls?.length
       ? calls.map(c => `
-          <div class="call-card">
+          <div class="call-item">
             <div class="call-id">${c.callId}</div>
             <div class="call-issue">${c.issue}</div>
             ${c.location ? `<div class="call-loc">${c.location}</div>` : ''}
-            <div class="bolo-meta">${new Date(c.timestamp).toLocaleString()} &bull; ${c.respondingLeoUsername ? 'Responding: ' + c.respondingLeoUsername : 'No response yet'}</div>
-          </div>
-        `).join('')
-      : '<p class="loading-text">No active calls.</p>';
+            <div class="call-meta">${timeAgo(new Date(c.timestamp))} ${c.respondingLeoUsername ? '• ' + c.respondingLeoUsername : '• No response'}</div>
+          </div>`).join('')
+      : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
   } catch {
-    el.innerHTML = '<p class="loading-text">Failed to load calls.</p>';
+    document.getElementById('leo-officers').innerHTML = '<div class="empty-state">Failed to load.</div>';
+    if (boloEl) boloEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
+    if (callEl) callEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
 }
 
@@ -490,35 +997,31 @@ async function leoSearch() {
   const type = document.getElementById('leo-search-type').value;
   const query = document.getElementById('leo-search-input').value.trim();
   const results = document.getElementById('leo-results');
-
-  if (!query) { results.innerHTML = '<p class="loading-text">Enter a search query.</p>'; return; }
-  results.innerHTML = '<p class="loading-text">Searching...</p>';
-
+  if (!query) { results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Enter a search query.</p>'; return; }
+  results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Searching...</p>';
   try {
     const data = await api(`/leo/search?type=${type}&query=${encodeURIComponent(query)}`);
     const chars = data.results || [];
-    if (!chars.length) { results.innerHTML = '<p class="loading-text">No results found.</p>'; return; }
-
+    if (!chars.length) { results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No results found.</p>'; return; }
     results.innerHTML = chars.map(c => `
       <div class="leo-result-card">
         <div class="leo-result-name">${c.characterName} <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}" style="font-size:10px">${c.status?.toUpperCase()}</span></div>
-        <div class="leo-result-row">DOB / Age: <span>${c.age || 'N/A'}</span> &bull; Gender: <span>${c.gender || 'N/A'}</span></div>
+        <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> · Gender: <span>${c.gender || 'N/A'}</span></div>
         <div class="leo-result-row">Address: <span>${c.address || 'N/A'}</span></div>
-        <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> &bull; Status: <span>${c.driverLicenseStatus || 'valid'}</span></div>
-        <div class="leo-result-row">Plate: <span>${c.licensePlate || 'N/A'}</span></div>
-        ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
+        <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> · Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
         ${c.vehicles?.length ? `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>` : ''}
-        ${c.medicalInfo ? `<div class="leo-result-row">Medical: <span>${c.medicalInfo}</span></div>` : ''}
-      </div>
-    `).join('');
+        ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
+      </div>`).join('');
   } catch (err) {
-    results.innerHTML = `<p class="loading-text">${err.message}</p>`;
+    results.innerHTML = `<p style="color:var(--danger);font-size:13px">${err.message}</p>`;
   }
 }
 
-/* ── Modals ─────────────────────────────────────────────────────────────── */
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+/* ══════════════════════════════════════════════════════
+   MODALS
+══════════════════════════════════════════════════════ */
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
 
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
@@ -532,12 +1035,10 @@ function openCreateCharModal() {
 
 async function submitCreateChar(e) {
   e.preventDefault();
-  const form = e.target;
-  const data = Object.fromEntries(new FormData(form));
+  const data = Object.fromEntries(new FormData(e.target));
   const errEl = document.getElementById('form-char-error');
+  const btn = e.target.querySelector('[type="submit"]');
   errEl.classList.add('hidden');
-
-  const btn = form.querySelector('[type="submit"]');
   btn.disabled = true;
   try {
     await apiPost('/cad/create', data);
@@ -545,12 +1046,10 @@ async function submitCreateChar(e) {
     toast('Character created.', 'success');
     loaded['cad'] = false;
     loadCad();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  } finally {
-    btn.disabled = false;
-  }
+    loaded['overview'] = false;
+    loadOverview();
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
 }
 
 function openAddVehicleModal(charId) {
@@ -563,15 +1062,12 @@ function openAddVehicleModal(charId) {
 
 async function submitAddVehicle(e) {
   e.preventDefault();
-  const form = e.target;
-  const data = Object.fromEntries(new FormData(form));
+  const data = Object.fromEntries(new FormData(e.target));
   const charId = data.charId;
   delete data.charId;
-
   const errEl = document.getElementById('form-vehicle-error');
+  const btn = e.target.querySelector('[type="submit"]');
   errEl.classList.add('hidden');
-
-  const btn = form.querySelector('[type="submit"]');
   btn.disabled = true;
   try {
     await apiPost(`/cad/${charId}/vehicle`, data);
@@ -579,15 +1075,13 @@ async function submitAddVehicle(e) {
     toast('Vehicle added.', 'success');
     loaded['cad'] = false;
     loadCad();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  } finally {
-    btn.disabled = false;
-  }
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
 }
 
-/* ── API Helpers ────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   API HELPERS
+══════════════════════════════════════════════════════ */
 async function api(path) {
   const res = await fetch(`/api/portal${path}`, { credentials: 'include' });
   if (res.status === 401) { window.location.href = '/portal'; return null; }
@@ -598,8 +1092,7 @@ async function api(path) {
 
 async function apiPost(path, body) {
   const res = await fetch(`/api/portal${path}`, {
-    method: 'POST',
-    credentials: 'include',
+    method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -608,7 +1101,16 @@ async function apiPost(path, body) {
   return data;
 }
 
-/* ── Toast ──────────────────────────────────────────────────────────────── */
+async function apiDel(path) {
+  const res = await fetch(`/api/portal${path}`, { method: 'DELETE', credentials: 'include' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+/* ══════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════ */
 let toastContainer;
 function toast(msg, type = 'success') {
   if (!toastContainer) {
@@ -620,14 +1122,24 @@ function toast(msg, type = 'success') {
   el.className = `toast ${type}`;
   el.textContent = msg;
   toastContainer.appendChild(el);
-  setTimeout(() => el.remove(), 4000);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
 }
 
-/* ── Helpers ────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════ */
 function fmt(n, cur = '$') {
   return `${cur}${Number(n || 0).toLocaleString()}`;
 }
 
 function esc(str) {
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function timeAgo(date) {
+  const s = Math.floor((Date.now() - date) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }

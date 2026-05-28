@@ -10,6 +10,12 @@ import BOLO from '../../models/BOLO.js';
 import RoleRequestConfig from '../../models/RoleRequestConfig.js';
 import RoleRequest from '../../models/RoleRequest.js';
 import EmergencyCall from '../../models/EmergencyCall.js';
+import OfficerStatus from '../../models/OfficerStatus.js';
+import DispatchConfig from '../../models/DispatchConfig.js';
+import TrafficTicket from '../../models/TrafficTicket.js';
+import Ticket from '../../models/Ticket.js';
+import RoleplayCalendar from '../../models/RoleplayCalendar.js';
+import Priority from '../../models/Priority.js';
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -22,17 +28,86 @@ function isLeo(user, cadConfig) {
     || cadConfig.staffRoleIds?.some(id => userRoleIds.includes(id));
 }
 
+// ── Discord helpers ─────────────────────────────────────────────────────────
+async function sendToChannel(client, channelId, payload) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    return await channel.send(payload);
+  } catch (err) {
+    console.error('[PORTAL Discord send]', err.message);
+    return null;
+  }
+}
+
+async function editChannelMessage(client, channelId, messageId, payload) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    const msg = await channel.messages.fetch(messageId);
+    await msg.edit(payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── Officer Status Board ────────────────────────────────────────────────────
+const TEN_INFO = {
+  '10-6':  { label: '10-6 Busy' },
+  '10-7':  { label: '10-7 Out of Service' },
+  '10-8':  { label: '10-8 Available' },
+  '10-10': { label: '10-10 Off Duty' },
+  '10-15': { label: '10-15 In Pursuit' },
+  '10-50': { label: '10-50 Traffic Stop' },
+  '10-97': { label: '10-97 On Scene' },
+  '10-99': { label: '10-99 PANIC' },
+};
+
+async function rebuildStatusBoard(client, guildId, dispatchCfg) {
+  if (!dispatchCfg?.statusBoardChannelId || !client) return;
+  try {
+    const officers = await OfficerStatus.find({ guildId });
+    const lines = officers.map(o => {
+      const info = TEN_INFO[o.tenCode] || { label: o.tenCode || 'Unknown' };
+      let line = `**${o.username}** — ${info.label}`;
+      if (o.location) line += ` | ${o.location}`;
+      if (o.subject) line += ` | ${o.subject}`;
+      return line;
+    });
+
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Officer Status Board')
+      .setDescription(lines.length ? lines.join('\n') : '-# No officers currently on duty')
+      .setTimestamp()
+      .setFooter({ text: 'RPM' });
+
+    const payload = { embeds: [embed] };
+
+    if (dispatchCfg.statusBoardMessageId) {
+      const edited = await editChannelMessage(client, dispatchCfg.statusBoardChannelId, dispatchCfg.statusBoardMessageId, payload);
+      if (edited) return;
+    }
+
+    const msg = await sendToChannel(client, dispatchCfg.statusBoardChannelId, payload);
+    if (msg) {
+      dispatchCfg.statusBoardMessageId = msg.id;
+      await dispatchCfg.save();
+    }
+  } catch (err) {
+    console.error('[PORTAL rebuildStatusBoard]', err.message);
+  }
+}
+
 export function createPortalApiRouter(client) {
   const router = Router();
   const auth = portalAuth(client);
 
-  // ── /me ────────────────────────────────────────────────────────────────────
+  // ── /me ──────────────────────────────────────────────────────────────────
   router.get('/me', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
       const { userId, username, avatar, roles = [], displayName } = req.portalUser;
       const cadConfig = guildId ? await CADConfig.findOne({ guildId }) : null;
-
       const guild = guildId && client ? client.guilds.cache.get(guildId) : null;
 
       res.json({
@@ -53,7 +128,33 @@ export function createPortalApiRouter(client) {
     }
   });
 
-  // ── CAD ────────────────────────────────────────────────────────────────────
+  // ── Priority ─────────────────────────────────────────────────────────────
+  router.get('/priority', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json({ active: false });
+      const priority = await Priority.findOne({ guildId });
+      if (!priority?.priorityActive) return res.json({ active: false });
+      res.json({
+        active: true,
+        issuedBy: priority.priorityIssuedBy || null,
+        customMessage: priority.customMessage || null,
+      });
+    } catch {
+      res.json({ active: false });
+    }
+  });
+
+  // ── Strikes ───────────────────────────────────────────────────────────────
+  router.get('/strikes', auth, async (req, res) => {
+    try {
+      res.json({ level: 0 });
+    } catch {
+      res.json({ level: 0 });
+    }
+  });
+
+  // ── CAD ──────────────────────────────────────────────────────────────────
   router.get('/cad', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
@@ -100,6 +201,18 @@ export function createPortalApiRouter(client) {
     }
   });
 
+  router.delete('/cad/:charId', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const result = await CADCharacter.findOneAndDelete({ _id: req.params.charId, guildId, userId: req.portalUser.userId });
+      if (!result) return res.status(404).json({ error: 'Character not found' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /cad DELETE]', err);
+      res.status(500).json({ error: 'Failed to delete character' });
+    }
+  });
+
   router.post('/cad/:charId/vehicle', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
@@ -118,7 +231,7 @@ export function createPortalApiRouter(client) {
     }
   });
 
-  // ── Economy ────────────────────────────────────────────────────────────────
+  // ── Economy ───────────────────────────────────────────────────────────────
   router.get('/economy', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
@@ -225,7 +338,183 @@ export function createPortalApiRouter(client) {
     }
   });
 
-  // ── Role Requests ──────────────────────────────────────────────────────────
+  // ── Traffic Tickets / Fines ───────────────────────────────────────────────
+  router.get('/traffic-tickets', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+
+      const chars = await CADCharacter.find({ guildId, userId: req.portalUser.userId }).select('_id');
+      const charIds = chars.map(c => c._id);
+      if (!charIds.length) return res.json([]);
+
+      const tickets = await TrafficTicket.find({ guildId, characterId: { $in: charIds } })
+        .sort({ createdAt: -1 })
+        .limit(50);
+      res.json(tickets);
+    } catch (err) {
+      console.error('[PORTAL /traffic-tickets]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/traffic-tickets/:ticketId/pay', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+
+      const ticket = await TrafficTicket.findOne({ guildId, ticketId: req.params.ticketId });
+      if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+      if (ticket.paid) return res.status(400).json({ error: 'This fine is already paid' });
+
+      const chars = await CADCharacter.find({ guildId, userId: req.portalUser.userId }).select('_id');
+      const charIds = chars.map(c => c._id.toString());
+      if (!charIds.includes(ticket.characterId.toString())) {
+        return res.status(403).json({ error: 'This ticket does not belong to your characters' });
+      }
+
+      const balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      if (!balance) return res.status(400).json({ error: 'No economy account found' });
+
+      const amount = ticket.fine || 0;
+      if (balance.bank < amount) {
+        const config = await EconomyConfig.findOne({ guildId });
+        const sym = config?.currencySymbol || '$';
+        return res.status(400).json({
+          error: `Insufficient bank balance. Fine: ${sym}${amount.toLocaleString()}, Bank: ${sym}${balance.bank.toLocaleString()}`,
+        });
+      }
+
+      balance.bank -= amount;
+      await balance.save();
+
+      ticket.paid = true;
+      ticket.paidAt = new Date();
+      await ticket.save();
+
+      const config = await EconomyConfig.findOne({ guildId });
+      res.json({ success: true, newBank: balance.bank, currency: config?.currencySymbol || '$' });
+    } catch (err) {
+      console.error('[PORTAL /traffic-tickets/pay]', err);
+      res.status(500).json({ error: 'Payment failed' });
+    }
+  });
+
+  // ── Support Tickets ───────────────────────────────────────────────────────
+  router.get('/tickets', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const tickets = await Ticket.find({ guildId, userId: req.portalUser.userId })
+        .sort({ createdAt: -1 })
+        .limit(20);
+      res.json(tickets);
+    } catch (err) {
+      console.error('[PORTAL /tickets]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  // ── Calendar ──────────────────────────────────────────────────────────────
+  router.get('/calendar', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const cal = await RoleplayCalendar.findOne({ guildId });
+      if (!cal?.enabled || !cal.events?.length) return res.json([]);
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const sorted = [...cal.events].sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day));
+      res.json(sorted);
+    } catch (err) {
+      console.error('[PORTAL /calendar]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  // ── Dispatch / 911 ────────────────────────────────────────────────────────
+  router.get('/dispatch/mine', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const calls = await EmergencyCall.find({ guildId, callerId: req.portalUser.userId })
+        .sort({ timestamp: -1 })
+        .limit(20);
+      res.json(calls);
+    } catch (err) {
+      console.error('[PORTAL /dispatch/mine]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/dispatch/submit', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId || !client) return res.status(400).json({ error: 'Portal not configured' });
+
+      const { issue, location, suspectsDescription, lastSeen, contact } = req.body;
+      if (!issue?.trim()) return res.status(400).json({ error: 'Emergency description is required' });
+      if (!location?.trim()) return res.status(400).json({ error: 'Location is required' });
+
+      const callId = `911-${Date.now().toString(36).toUpperCase()}`;
+      const call = new EmergencyCall({
+        guildId,
+        callId,
+        callerId: req.portalUser.userId,
+        callerUsername: req.portalUser.displayName || req.portalUser.username,
+        issue: issue.trim(),
+        location: location.trim(),
+        suspectsDescription: suspectsDescription?.trim() || null,
+        lastSeen: lastSeen?.trim() || null,
+        contact: contact?.trim() || null,
+        status: 'active',
+        timestamp: new Date(),
+      });
+      await call.save();
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      if (dispatchCfg?.enabled && dispatchCfg.dispatchChannelId) {
+        const embed = new EmbedBuilder()
+          .setColor('#f04747')
+          .setTitle('911 Emergency Call')
+          .setDescription([
+            `**Call ID:** \`${callId}\``,
+            `**Caller:** ${call.callerUsername}`,
+            `**Emergency:** ${issue.trim()}`,
+            `**Location:** ${location.trim()}`,
+            suspectsDescription ? `**Suspect/Vehicle:** ${suspectsDescription}` : null,
+            lastSeen ? `**Last Seen:** ${lastSeen}` : null,
+            contact ? `**Contact:** ${contact}` : null,
+          ].filter(Boolean).join('\n'))
+          .setTimestamp()
+          .setFooter({ text: 'RPM Portal • 911 Dispatch' });
+
+        await sendToChannel(client, dispatchCfg.dispatchChannelId, { embeds: [embed] });
+      }
+
+      res.json({ success: true, callId });
+    } catch (err) {
+      console.error('[PORTAL /dispatch/submit]', err);
+      res.status(500).json({ error: 'Failed to submit call' });
+    }
+  });
+
+  router.delete('/dispatch/:callId/cancel', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, callerId: req.portalUser.userId });
+      if (!call) return res.status(404).json({ error: 'Call not found' });
+      if (call.status !== 'active') return res.status(400).json({ error: 'Call is not active' });
+      call.status = 'closed';
+      call.closedBy = req.portalUser.displayName || req.portalUser.username;
+      await call.save();
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /dispatch/cancel]', err);
+      res.status(500).json({ error: 'Failed to cancel call' });
+    }
+  });
+
+  // ── Role Requests ─────────────────────────────────────────────────────────
   router.get('/rolerequest/types', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
@@ -252,8 +541,6 @@ export function createPortalApiRouter(client) {
       if (!guild) return res.json([]);
 
       const approvers = [];
-
-      // Collect approver members from IDs
       for (const memberId of (roleType.approverMemberIds || [])) {
         try {
           const m = await guild.members.fetch(memberId);
@@ -261,7 +548,6 @@ export function createPortalApiRouter(client) {
         } catch { /* skip */ }
       }
 
-      // Collect members who have approver roles
       if (roleType.approverRoleIds?.length > 0) {
         try {
           const allMembers = await guild.members.fetch({ limit: 0 });
@@ -299,7 +585,6 @@ export function createPortalApiRouter(client) {
       const approverMember = await guild.members.fetch(approverId).catch(() => null);
       if (!approverMember) return res.status(400).json({ error: 'Approver not found in server' });
 
-      // Verify approver is authorized
       let authorized = roleType.approverMemberIds?.includes(approverId);
       if (!authorized) {
         authorized = roleType.approverRoleIds?.some(rid => approverMember.roles.cache.has(rid));
@@ -320,7 +605,6 @@ export function createPortalApiRouter(client) {
       });
       await newRequest.save();
 
-      // DM the approver
       try {
         const dmEmbed = new EmbedBuilder()
           .setColor('#2d2d2d')
@@ -342,7 +626,7 @@ export function createPortalApiRouter(client) {
         newRequest.dmChannelId = dmMsg.channelId;
         await newRequest.save();
       } catch {
-        // DM failed - still created the request
+        // DM failed — request still created
       }
 
       res.json({ success: true, requestId });
@@ -364,7 +648,7 @@ export function createPortalApiRouter(client) {
     }
   });
 
-  // ── LEO (role-gated) ───────────────────────────────────────────────────────
+  // ── LEO (role-gated) ──────────────────────────────────────────────────────
   async function requireLeo(req, res, next) {
     const guildId = GUILD_ID();
     if (!guildId) return res.status(403).json({ error: 'Not configured' });
@@ -426,6 +710,117 @@ export function createPortalApiRouter(client) {
     } catch (err) {
       console.error('[PORTAL /leo/calls]', err);
       res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.get('/leo/officers', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const officers = await OfficerStatus.find({ guildId }).sort({ updatedAt: -1 });
+      res.json(officers);
+    } catch (err) {
+      console.error('[PORTAL /leo/officers]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.get('/leo/mystatus', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const status = await OfficerStatus.findOne({ guildId, userId: req.portalUser.userId });
+      res.json(status || null);
+    } catch (err) {
+      console.error('[PORTAL /leo/mystatus]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/leo/status', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { tenCode, location, subject } = req.body;
+      if (!tenCode) return res.status(400).json({ error: 'Ten-code is required' });
+
+      const status = await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        {
+          username: req.portalUser.displayName || req.portalUser.username,
+          tenCode,
+          location: location?.trim() || null,
+          subject: subject?.trim() || null,
+          updatedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(client, guildId, dispatchCfg);
+
+      res.json({ success: true, status });
+    } catch (err) {
+      console.error('[PORTAL /leo/status POST]', err);
+      res.status(500).json({ error: 'Failed to update status' });
+    }
+  });
+
+  router.delete('/leo/status', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      await OfficerStatus.findOneAndDelete({ guildId, userId: req.portalUser.userId });
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(client, guildId, dispatchCfg);
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /leo/status DELETE]', err);
+      res.status(500).json({ error: 'Failed to go off duty' });
+    }
+  });
+
+  router.post('/leo/panic', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!client) return res.status(400).json({ error: 'Portal not configured' });
+
+      const { location } = req.body;
+      const username = req.portalUser.displayName || req.portalUser.username;
+
+      await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        {
+          username,
+          tenCode: '10-99',
+          location: location?.trim() || null,
+          subject: 'PANIC — Officer needs immediate assistance',
+          updatedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+
+      if (dispatchCfg?.enabled && dispatchCfg.dispatchChannelId) {
+        const embed = new EmbedBuilder()
+          .setColor('#f04747')
+          .setTitle('10-99 PANIC — Officer Emergency')
+          .setDescription([
+            `**Officer:** ${username}`,
+            location ? `**Location:** ${location}` : null,
+            `**Status:** Officer needs immediate assistance — all units respond`,
+          ].filter(Boolean).join('\n'))
+          .setTimestamp()
+          .setFooter({ text: 'RPM Portal • Panic Alert' });
+
+        await sendToChannel(client, dispatchCfg.dispatchChannelId, { embeds: [embed] });
+      }
+
+      await rebuildStatusBoard(client, guildId, dispatchCfg);
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /leo/panic]', err);
+      res.status(500).json({ error: 'Failed to send panic' });
     }
   });
 
