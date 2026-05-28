@@ -532,5 +532,83 @@ export function createApiRouter() {
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
 
+  router.get('/leo/mystatus', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json(null);
+      const status = await OfficerStatus.findOne({ guildId, userId: req.portalUser.userId });
+      res.json(status || null);
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  router.post('/leo/status', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { tenCode, location, subject } = req.body;
+      if (!tenCode?.trim()) return res.status(400).json({ error: 'Ten-code is required' });
+
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+
+      const updated = await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        {
+          guildId,
+          userId: req.portalUser.userId,
+          username: displayName,
+          tenCode: tenCode.trim(),
+          location: location?.trim() || null,
+          subject: subject?.trim() || null,
+          rawCall: null,
+          updatedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      /* Post status update to dispatch status board channel if configured */
+      try {
+        const dispatchCfg = await DispatchConfig.findOne({ guildId });
+        if (dispatchCfg?.enabled && dispatchCfg.statusBoardChannelId) {
+          const TEN_LABELS = {
+            '10-6': 'Busy', '10-7': 'Out of Service', '10-8': 'Available',
+            '10-10': 'Off Duty', '10-15': 'In Pursuit', '10-50': 'Traffic Stop',
+            '10-97': 'On Scene', '10-99': 'Emergency',
+          };
+          const label = TEN_LABELS[tenCode] || tenCode;
+          const fields = [{ name: 'Status', value: `${tenCode} — ${label}`, inline: true }];
+          if (location?.trim()) fields.push({ name: 'Location', value: location.trim(), inline: true });
+          if (subject?.trim()) fields.push({ name: 'Subject', value: subject.trim(), inline: true });
+          await axios.post(
+            `${DISCORD_BASE}/channels/${dispatchCfg.statusBoardChannelId}/messages`,
+            {
+              embeds: [{
+                color: 0x4f7ef7,
+                title: `🚔 Status Update — ${displayName}`,
+                fields,
+                footer: { text: 'RPM Portal • Officer Status' },
+                timestamp: new Date().toISOString(),
+              }],
+            },
+            { headers: botHeaders() }
+          );
+        }
+      } catch { /* status post failed — DB record still saved */ }
+
+      res.json({ success: true, status: updated });
+    } catch (err) {
+      console.error('[API POST /leo/status]', err.message);
+      res.status(500).json({ error: 'Failed to update status' });
+    }
+  });
+
+  router.delete('/leo/status', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      await OfficerStatus.findOneAndDelete({ guildId, userId: req.portalUser.userId });
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
   return router;
 }

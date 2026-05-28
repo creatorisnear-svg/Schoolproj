@@ -181,7 +181,41 @@
       <!-- LEO DASHBOARD -->
       <div id="tab-leo" class="tab-pane">
         <div class="page-header"><h2>LEO Dashboard</h2></div>
-        <div class="section-label">Officer Status Board</div>
+
+        <!-- My Status Controls -->
+        <div class="my-status-panel" id="my-status-panel">
+          <div class="my-status-header">
+            <div>
+              <div class="my-status-title">My Status</div>
+              <div class="my-status-sub" id="my-status-sub">Not on duty</div>
+            </div>
+            <div class="my-status-actions">
+              <button class="btn btn-danger btn-sm" id="btn-go-offduty" onclick="goOffDuty()" style="display:none">Go Off Duty</button>
+            </div>
+          </div>
+          <div class="my-status-controls">
+            <select id="status-tencode" class="form-select status-select">
+              <option value="">Select ten-code...</option>
+              <option value="10-8">10-8 — Available</option>
+              <option value="10-6">10-6 — Busy</option>
+              <option value="10-97">10-97 — On Scene</option>
+              <option value="10-50">10-50 — Traffic Stop</option>
+              <option value="10-15">10-15 — In Pursuit</option>
+              <option value="10-99">10-99 — Emergency</option>
+              <option value="10-7">10-7 — Out of Service</option>
+              <option value="10-10">10-10 — Off Duty</option>
+            </select>
+            <input id="status-location" class="form-input status-input" type="text" placeholder="Location (optional)">
+            <input id="status-subject" class="form-input status-input" type="text" placeholder="Subject / notes (optional)">
+            <button class="btn btn-primary" id="btn-update-status" onclick="updateOfficerStatus()">Update Status</button>
+          </div>
+          <div id="status-error" class="form-error hidden" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Officer Status Board</span>
+          <span id="board-refresh-label" style="font-size:10px;color:var(--text-sub);font-weight:400;letter-spacing:0">Refreshes in <span id="board-countdown">30</span>s</span>
+        </div>
         <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
         <div class="leo-grid" style="margin-top:20px">
           <div class="card">

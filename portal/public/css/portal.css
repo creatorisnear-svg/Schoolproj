@@ -1303,6 +1303,76 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .fine-paid-badge { font-size: 11px; font-weight: 700; color: var(--success); background: var(--success-dim); padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(61,214,140,0.25); }
 
 /* ══════════════════════════════════════════════════════
+   MY STATUS PANEL
+══════════════════════════════════════════════════════ */
+.my-status-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.my-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.my-status-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.my-status-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.my-status-sub.on-duty { color: var(--success); }
+.my-status-sub.busy { color: var(--warning); }
+.my-status-sub.urgent { color: var(--danger); }
+
+.my-status-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.status-select, .status-input {
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+.status-select {
+  grid-column: 1 / -1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  -webkit-appearance: none;
+}
+
+#btn-update-status {
+  grid-column: 1 / -1;
+  justify-content: center;
+  padding: 11px;
+}
+
+@media (min-width: 540px) {
+  .my-status-controls {
+    grid-template-columns: 1.5fr 1fr 1fr auto;
+  }
+  .status-select { grid-column: auto; }
+  #btn-update-status { grid-column: auto; padding: 9px 18px; }
+}
+
+/* ══════════════════════════════════════════════════════
    OFFICER STATUS
 ══════════════════════════════════════════════════════ */
 .officer-grid {
@@ -1341,6 +1411,17 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 .officer-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .officer-time { font-size: 10px; color: var(--text-sub); margin-top: 6px; }
+
+.officer-card.is-me {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent-dim), var(--card));
+}
+.officer-card.is-me .officer-name::after {
+  content: ' (you)';
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 400;
+}
 
 /* ══════════════════════════════════════════════════════
    BOTTOM NAV — DISPATCH ACCENT
