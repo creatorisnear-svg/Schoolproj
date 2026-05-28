@@ -48,6 +48,11 @@ export async function handleModalSubmit(interaction) {
     const { handleCharacterEditModal } = await import('./civilianDatabaseHandler.js');
     return handleCharacterEditModal(interaction, characterId);
   }
+
+  if (interaction.customId.startsWith('globalrolelink_add_modal_')) {
+    const { handleGlobalRoleLinkAddModal } = await import('./roleRequestHandler.js');
+    return handleGlobalRoleLinkAddModal(interaction);
+  }
 }
 
 async function handleSetupCustomQuestionModal(interaction) {

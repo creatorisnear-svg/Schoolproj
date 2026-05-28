@@ -18,16 +18,13 @@ export async function execute(interaction) {
       });
     }
 
-    // Only approvers can manage roles - NOT staff/admins
-    // Find which roles this user can manage
+    const isStaff = await checkStaffPermission(interaction);
     const managedRoles = [];
-    
-    // Check all roles to see which ones this user can manage
-    for (const roleConfig of config.roles) {
-      let canManage = false;
 
-      // Check if they have any approver roles
-      if (roleConfig.approverRoleIds && roleConfig.approverRoleIds.length > 0) {
+    for (const roleConfig of config.roles) {
+      let canManage = isStaff;
+
+      if (!canManage && roleConfig.approverRoleIds?.length > 0) {
         for (const approverRoleId of roleConfig.approverRoleIds) {
           if (interaction.member.roles.cache.has(approverRoleId)) {
             canManage = true;
@@ -36,18 +33,15 @@ export async function execute(interaction) {
         }
       }
 
-      // Check if they're in the approver members list
-      if (!canManage && roleConfig.approverMemberIds && roleConfig.approverMemberIds.length > 0) {
-        if (roleConfig.approverMemberIds.includes(interaction.user.id)) {
-          canManage = true;
-        }
+      if (!canManage && roleConfig.approverMemberIds?.includes(interaction.user.id)) {
+        canManage = true;
       }
 
       if (canManage) {
         managedRoles.push({
           label: roleConfig.roleName,
           value: roleConfig.id,
-          description: 'Manage members with this role'
+          description: 'View members and remove this role'
         });
       }
     }
@@ -62,13 +56,19 @@ export async function execute(interaction) {
     const menu = new ActionRowBuilder()
       .addComponents(
         new StringSelectMenuBuilder()
-          .setCustomId('manage_role_select')
+          .setCustomId('manage_rolereq_type_select')
           .setPlaceholder('Select a role to manage...')
           .addOptions(managedRoles)
       );
 
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Manage Roles')
+      .setDescription('Select a role type below to view current holders and remove the role from a member.')
+      .setFooter({ text: 'RPM' });
+
     await interaction.reply({
-      content: 'Which role would you like to manage?',
+      embeds: [embed],
       components: [menu],
       flags: 64,
     });

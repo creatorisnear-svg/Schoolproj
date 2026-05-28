@@ -25,9 +25,10 @@ export async function handleBackToMenu(interaction) {
             .setPlaceholder('Select an option...')
             .addOptions(
               { label: 'Add Role Request Type', value: 'add_role', description: 'Create a new requestable role type' },
-              { label: 'Remove Role Request Type', value: 'delete_role', description: 'Delete an existing role type' },
+              { label: 'Delete Role Request Type', value: 'delete_role', description: 'Delete an existing role type' },
               { label: 'View Role Request Types', value: 'view_roles', description: 'See all configured role types' },
-              { label: 'Finish Setup', value: 'setup_done', description: 'Close the setup menu' }
+              { label: 'Manage Global Role Links', value: 'global_role_links', description: 'Sync roles across servers on approval' },
+              { label: 'Done - Close Setup', value: 'setup_done', description: 'Close the setup menu' }
             )
         );
 
@@ -35,6 +36,25 @@ export async function handleBackToMenu(interaction) {
         embeds: [menuEmbed('Role Request Setup', 'Configure which roles members can request and who approves them.')],
         content: '',
         components: [menu],
+      });
+
+    } else if (customId === 'back_to_global_links_menu') {
+      const subMenu = new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('globalrolelink_setup_menu')
+            .setPlaceholder('Choose an option...')
+            .addOptions(
+              { label: 'Add Global Role Link', value: 'add_link' },
+              { label: 'Remove Global Role Link', value: 'remove_link' },
+              { label: 'View Global Role Links', value: 'view_links' },
+              { label: '← Back to Setup', value: 'back_to_setup' },
+            )
+        );
+      await interaction.update({
+        embeds: [menuEmbed('Global Role Links', 'Mirror role approvals and removals across linked servers.')],
+        content: '',
+        components: [subMenu],
       });
 
     } else if (customId === 'back_to_ticket_menu') {

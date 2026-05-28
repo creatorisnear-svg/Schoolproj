@@ -43,6 +43,7 @@ export async function execute(interaction) {
             { label: 'Add Role Request Type', value: 'add_role' },
             { label: 'Delete Role Request Type', value: 'delete_role' },
             { label: 'View Role Request Types', value: 'view_roles' },
+            { label: 'Manage Global Role Links', value: 'global_role_links' },
             { label: 'Done - Close Setup', value: 'setup_done' }
           )
       );

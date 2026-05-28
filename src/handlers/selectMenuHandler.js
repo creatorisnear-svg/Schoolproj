@@ -400,6 +400,20 @@ export async function handleSelectMenu(interaction) {
     return handleSelectApprover(interaction);
   }
 
+  // Global role links select menus
+  if (customId === 'globalrolelink_setup_menu') {
+    const { handleGlobalRoleLinksSetupMenu } = await import('./roleRequestHandler.js');
+    return handleGlobalRoleLinksSetupMenu(interaction);
+  }
+  if (customId === 'globalrolelink_select_source') {
+    const { handleGlobalRoleLinkSelectSource } = await import('./roleRequestHandler.js');
+    return handleGlobalRoleLinkSelectSource(interaction);
+  }
+  if (customId === 'globalrolelink_remove_select') {
+    const { handleGlobalRoleLinkRemoveSelect } = await import('./roleRequestHandler.js');
+    return handleGlobalRoleLinkRemoveSelect(interaction);
+  }
+
   // Priority tracker
   if (customId === 'prioritytrackersetup_channel_select') {
     const { handlePriorityTrackerChannelSelect } = await import('./priorityTrackerHandler.js');
