@@ -756,6 +756,54 @@ async function submitRoleRequest() {
 }
 
 /* ══════════════════════════════════════════════════════
+   LEO — INNER TABS
+══════════════════════════════════════════════════════ */
+function switchLeoTab(tab) {
+  document.querySelectorAll('.leo-innertab').forEach(b => b.classList.toggle('active', b.dataset.leotab === tab));
+  document.querySelectorAll('.leo-innerpane').forEach(p => p.classList.add('hidden'));
+  const pane = document.getElementById(`leo-innerpane-${tab}`);
+  if (pane) pane.classList.remove('hidden');
+  if (tab === 'officers') {
+    document.getElementById('board-refresh-label')?.classList.remove('hidden');
+  } else {
+    document.getElementById('board-refresh-label')?.classList.add('hidden');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   LEO — QUICK STATUS
+══════════════════════════════════════════════════════ */
+let pendingTenCode = null;
+const STATUS_NEEDS_DETAILS = new Set(['10-76','10-97','10-11','10-80','10-15','10-99']);
+
+function selectQuickStatus(code) {
+  pendingTenCode = code;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === code));
+  const errEl = document.getElementById('status-error');
+  if (errEl) errEl.classList.add('hidden');
+
+  const detailRow = document.getElementById('status-detail-row');
+  if (STATUS_NEEDS_DETAILS.has(code)) {
+    detailRow.classList.remove('hidden');
+    document.getElementById('status-location').value = '';
+    document.getElementById('status-subject').value = '';
+    document.getElementById('status-location').focus();
+  } else {
+    detailRow.classList.add('hidden');
+    updateOfficerStatus();
+  }
+}
+
+function confirmStatusUpdate() {
+  if (!pendingTenCode) {
+    const errEl = document.getElementById('status-error');
+    if (errEl) { errEl.textContent = 'Select a status first.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  updateOfficerStatus();
+}
+
+/* ══════════════════════════════════════════════════════
    LEO — STATUS UPDATE
 ══════════════════════════════════════════════════════ */
 let boardRefreshTimer = null;
@@ -821,31 +869,28 @@ function applyMyStatusToUI(status) {
   if (!status) {
     if (sub) { sub.textContent = 'Not on duty'; sub.className = 'my-status-sub'; }
     if (offDutyBtn) offDutyBtn.style.display = 'none';
-    // Restore panic idle state if panic was cleared
+    pendingTenCode = null;
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     panicActive = false;
-    const idleEl = document.getElementById('panic-idle');
-    const activeEl = document.getElementById('panic-active');
+    document.getElementById('panic-idle')?.classList.remove('hidden');
+    document.getElementById('panic-active')?.classList.add('hidden');
     const panicBtn = document.getElementById('btn-panic');
-    if (idleEl) idleEl.classList.remove('hidden');
-    if (activeEl) activeEl.classList.add('hidden');
-    if (panicBtn) { panicBtn.disabled = false; panicBtn.querySelector('.panic-label').textContent = 'PANIC'; }
+    if (panicBtn) panicBtn.disabled = false;
     return;
   }
-  // Restore panic active bar if status is 10-99 on load
   if (status.tenCode === '10-99') {
     panicActive = true;
-    const idleEl = document.getElementById('panic-idle');
-    const activeEl = document.getElementById('panic-active');
-    if (idleEl) idleEl.classList.add('hidden');
-    if (activeEl) activeEl.classList.remove('hidden');
+    document.getElementById('panic-idle')?.classList.add('hidden');
+    document.getElementById('panic-active')?.classList.remove('hidden');
   }
   const info = tenInfo(status.tenCode);
   const parts = [info.label];
-  if (status.location) parts.push(`📍 ${status.location}`);
+  if (status.location) parts.push(status.location);
   if (sub) {
     sub.textContent = parts.join(' · ');
-    const urgentCodes = new Set(['10-15','10-99']);
-    const busyCodes = new Set(['10-6','10-50','10-97']);
+    const urgentCodes = new Set(['10-15','10-99','10-80']);
+    const busyCodes = new Set(['10-6','10-97','10-11','10-76']);
     const offCodes = new Set(['10-7','10-10']);
     if (urgentCodes.has(status.tenCode)) sub.className = 'my-status-sub urgent';
     else if (busyCodes.has(status.tenCode)) sub.className = 'my-status-sub busy';
@@ -853,92 +898,75 @@ function applyMyStatusToUI(status) {
     else sub.className = 'my-status-sub on-duty';
   }
   if (offDutyBtn) offDutyBtn.style.display = '';
-  const tcEl = document.getElementById('status-tencode');
-  if (tcEl && status.tenCode) tcEl.value = status.tenCode;
-  const locEl = document.getElementById('status-location');
-  if (locEl) locEl.value = status.location || '';
-  const subEl = document.getElementById('status-subject');
-  if (subEl) subEl.value = status.subject || '';
+  pendingTenCode = status.tenCode;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === status.tenCode));
 }
 
 let panicActive = false;
 
 async function triggerPanic() {
   const locRaw = prompt('Panic — 10-99\n\nEnter your current location (or leave blank):');
-  if (locRaw === null) return; // user cancelled
+  if (locRaw === null) return;
   const location = locRaw.trim();
 
   const btn = document.getElementById('btn-panic');
-  btn.disabled = true;
-  btn.querySelector('.panic-label').textContent = 'SENDING...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
   try {
     await apiPost('/leo/panic', { location });
     panicActive = true;
-    document.getElementById('panic-idle').classList.add('hidden');
-    document.getElementById('panic-active').classList.remove('hidden');
+    document.getElementById('panic-idle')?.classList.add('hidden');
+    document.getElementById('panic-active')?.classList.remove('hidden');
     applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
-    document.getElementById('status-tencode').value = '10-99';
     toast('10-99 sent — dispatch alerted', 'error');
     boardCountdown = 1;
     await refreshOfficerBoard();
     boardCountdown = 30;
   } catch (err) {
     toast(err.message || 'Failed to send panic', 'error');
-    btn.disabled = false;
-    btn.querySelector('.panic-label').textContent = 'PANIC';
+    if (btn) { btn.disabled = false; btn.textContent = 'PANIC 10-99'; }
   }
 }
 
 async function clearPanic() {
   const clearBtn = document.getElementById('btn-clear-panic');
-  clearBtn.disabled = true;
-  clearBtn.textContent = 'Clearing...';
+  if (clearBtn) { clearBtn.disabled = true; clearBtn.textContent = 'Clearing...'; }
   try {
     await apiDel('/leo/status');
-    panicActive = false;
-    document.getElementById('panic-active').classList.add('hidden');
-    document.getElementById('panic-idle').classList.remove('hidden');
-    const panicBtn = document.getElementById('btn-panic');
-    panicBtn.disabled = false;
-    panicBtn.querySelector('.panic-label').textContent = 'PANIC';
     applyMyStatusToUI(null);
-    document.getElementById('status-tencode').value = '';
-    document.getElementById('status-location').value = '';
-    document.getElementById('status-subject').value = '';
     toast('Panic cleared — 10-99 cancelled', 'info');
     await refreshOfficerBoard();
   } catch (err) {
     toast(err.message || 'Failed to clear panic', 'error');
   } finally {
-    clearBtn.disabled = false;
-    clearBtn.textContent = 'Clear Panic';
+    if (clearBtn) { clearBtn.disabled = false; clearBtn.textContent = 'Clear Panic'; }
   }
 }
 
 async function updateOfficerStatus() {
-  const tenCode = document.getElementById('status-tencode').value;
-  const location = document.getElementById('status-location').value;
-  const subject = document.getElementById('status-subject').value;
+  const tenCode = pendingTenCode;
+  const location = document.getElementById('status-location')?.value?.trim() || '';
+  const subject = document.getElementById('status-subject')?.value?.trim() || '';
   const errEl = document.getElementById('status-error');
   const btn = document.getElementById('btn-update-status');
-  errEl.classList.add('hidden');
-  if (!tenCode) { errEl.textContent = 'Please select a ten-code.'; errEl.classList.remove('hidden'); return; }
-  btn.disabled = true;
-  btn.textContent = 'Updating...';
+  if (errEl) errEl.classList.add('hidden');
+  if (!tenCode) {
+    if (errEl) { errEl.textContent = 'Select a status first.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
   try {
     const result = await apiPost('/leo/status', { tenCode, location, subject });
     applyMyStatusToUI(result.status);
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     toast(`Status updated to ${tenCode}`, 'success');
     boardCountdown = 1;
     await refreshOfficerBoard();
     boardCountdown = 30;
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
+    if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Update Status';
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm'; }
   }
 }
 
@@ -947,9 +975,6 @@ async function goOffDuty() {
   try {
     await apiDel('/leo/status');
     applyMyStatusToUI(null);
-    document.getElementById('status-tencode').value = '';
-    document.getElementById('status-location').value = '';
-    document.getElementById('status-subject').value = '';
     toast('You are now off duty.', 'info');
     await refreshOfficerBoard();
   } catch (err) { toast(err.message, 'error'); }

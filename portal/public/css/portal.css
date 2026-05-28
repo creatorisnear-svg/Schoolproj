@@ -1453,6 +1453,158 @@ html, body {
 .call-meta { font-size: 11px; color: var(--text-sub); }
 
 /* ══════════════════════════════════════════════════════
+   PANIC STRIP (compact)
+══════════════════════════════════════════════════════ */
+.panic-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(180,40,30,0.08);
+  border: 1px solid rgba(220,60,40,0.22);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+.panic-strip-left { min-width: 0; }
+.panic-strip-title { font-size: 12px; font-weight: 700; color: var(--danger); letter-spacing: -0.1px; }
+.panic-strip-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+/* ══════════════════════════════════════════════════════
+   STATUS QUICK GRID
+══════════════════════════════════════════════════════ */
+.status-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.status-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--elevated);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+  min-width: 0;
+}
+.status-btn:active { transform: scale(0.96); }
+.status-btn-code { font-size: 11px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
+.status-btn-label { font-size: 9px; color: var(--text-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+.status-btn-available { border-color: rgba(54,201,122,0.18); }
+.status-btn-available .status-btn-code { color: var(--success); }
+.status-btn-available:hover, .status-btn-available.active { background: var(--success-dim); border-color: rgba(54,201,122,0.45); }
+
+.status-btn-busy { border-color: rgba(240,160,32,0.18); }
+.status-btn-busy .status-btn-code { color: var(--warning); }
+.status-btn-busy:hover, .status-btn-busy.active { background: var(--warning-dim); border-color: rgba(240,160,32,0.45); }
+
+.status-btn-enroute, .status-btn-scene, .status-btn-traffic {
+  border-color: rgba(76,120,245,0.18);
+}
+.status-btn-enroute .status-btn-code,
+.status-btn-scene .status-btn-code,
+.status-btn-traffic .status-btn-code { color: var(--accent); }
+.status-btn-enroute:hover, .status-btn-enroute.active,
+.status-btn-scene:hover, .status-btn-scene.active,
+.status-btn-traffic:hover, .status-btn-traffic.active { background: var(--accent-dim); border-color: rgba(76,120,245,0.45); }
+
+.status-btn-pursuit, .status-btn-prisoner {
+  border-color: rgba(242,87,87,0.18);
+}
+.status-btn-pursuit .status-btn-code,
+.status-btn-prisoner .status-btn-code { color: var(--danger); }
+.status-btn-pursuit:hover, .status-btn-pursuit.active,
+.status-btn-prisoner:hover, .status-btn-prisoner.active { background: var(--danger-dim); border-color: rgba(242,87,87,0.45); }
+
+.status-btn-oos { border-color: var(--border); }
+.status-btn-oos .status-btn-code { color: var(--text-muted); }
+.status-btn-oos:hover, .status-btn-oos.active { background: var(--border); }
+
+@media (max-width: 480px) {
+  .status-quick-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .status-btn { padding: 9px 4px; }
+  .status-btn-code { font-size: 10px; }
+  .status-btn-label { font-size: 8px; }
+}
+
+.status-detail-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.status-detail-row .form-input { flex: 1; font-size: 12px; padding: 8px 10px; }
+.status-detail-row .btn { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 540px) {
+  .status-detail-row { flex-wrap: wrap; }
+  .status-detail-row .form-input { min-width: calc(50% - 4px); }
+  .status-detail-row .btn { width: 100%; justify-content: center; }
+}
+
+/* ══════════════════════════════════════════════════════
+   LEO INNER TABS
+══════════════════════════════════════════════════════ */
+.leo-innertab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  padding-bottom: 0;
+}
+
+.leo-innertab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 14px 10px;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.leo-innertab:hover { color: var(--text); }
+.leo-innertab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.board-refresh-label {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-sub);
+  font-weight: 400;
+  flex-shrink: 0;
+  padding-bottom: 10px;
+}
+
+.leo-innerpane { }
+
+.leo-intel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .leo-intel-grid { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════
    BOTTOM NAV DISPATCH ACCENT
 ══════════════════════════════════════════════════════ */
 .bnav-dispatch { color: var(--danger) !important; }

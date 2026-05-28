@@ -72,7 +72,7 @@ const TEN_ICONS = {
 
 async function rebuildStatusBoard(guildId, dispatchCfg) {
   try {
-    if (!dispatchCfg?.enabled || !dispatchCfg.statusBoardChannelId) return;
+    if (!dispatchCfg?.statusBoardChannelId) return;
 
     const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000);
     const officers = await OfficerStatus.find({ guildId, updatedAt: { $gte: cutoff } }).sort({ updatedAt: -1 });

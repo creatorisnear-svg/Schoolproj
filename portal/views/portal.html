@@ -228,85 +228,116 @@
 
       <!-- LEO DASHBOARD -->
       <div id="tab-leo" class="tab-pane">
-        <div class="page-header"><h2>LEO Dashboard</h2></div>
+        <div class="page-header">
+          <h2>LEO Dashboard</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-go-offduty" onclick="goOffDuty()" style="display:none">Off Duty</button>
+        </div>
 
-        <!-- Panic Button -->
-        <div class="panic-panel" id="panic-panel">
-          <div id="panic-idle">
-            <button class="btn-panic" id="btn-panic" onclick="triggerPanic()">
-              <span class="panic-label">PANIC</span>
-              <span class="panic-sub">10-99 Emergency</span>
-            </button>
+        <!-- Panic Strip -->
+        <div id="panic-idle" class="panic-strip">
+          <div class="panic-strip-left">
+            <div class="panic-strip-title">Officer Emergency</div>
+            <div class="panic-strip-sub">Triggers 10-99 — all units respond</div>
           </div>
-          <div id="panic-active" class="hidden">
-            <div class="panic-active-bar">
-              <div class="panic-active-dot"></div>
-              <div>
-                <div class="panic-active-title">10-99 PANIC ACTIVE</div>
-                <div class="panic-active-sub">Dispatch has been alerted — all units responding</div>
-              </div>
-              <button class="btn btn-sm" id="btn-clear-panic" onclick="clearPanic()" style="margin-left:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);white-space:nowrap">Clear Panic</button>
+          <button class="btn btn-danger" id="btn-panic" onclick="triggerPanic()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            PANIC 10-99
+          </button>
+        </div>
+        <div id="panic-active" class="hidden">
+          <div class="panic-active-bar" style="margin-bottom:14px">
+            <div class="panic-active-dot"></div>
+            <div>
+              <div class="panic-active-title">10-99 PANIC ACTIVE</div>
+              <div class="panic-active-sub">Dispatch has been alerted — all units responding</div>
             </div>
+            <button class="btn btn-sm" id="btn-clear-panic" onclick="clearPanic()" style="margin-left:auto;background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);white-space:nowrap">Clear Panic</button>
           </div>
         </div>
 
-        <!-- My Status Controls -->
-        <div class="my-status-panel" id="my-status-panel">
+        <!-- My Status Panel -->
+        <div class="my-status-panel">
           <div class="my-status-header">
-            <div>
-              <div class="my-status-title">My Status</div>
-              <div class="my-status-sub" id="my-status-sub">Not on duty</div>
-            </div>
-            <div class="my-status-actions">
-              <button class="btn btn-danger btn-sm" id="btn-go-offduty" onclick="goOffDuty()" style="display:none">Go Off Duty</button>
-            </div>
+            <div class="my-status-title">My Status</div>
+            <div class="my-status-sub" id="my-status-sub">Not on duty</div>
           </div>
-          <div class="my-status-controls">
-            <select id="status-tencode" class="form-select status-select">
-              <option value="">Select ten-code...</option>
-              <option value="10-8">10-8 — Available</option>
-              <option value="10-6">10-6 — Busy</option>
-              <option value="10-76">10-76 — En Route</option>
-              <option value="10-97">10-97 — On Scene</option>
-              <option value="10-11">10-11 — Traffic Stop</option>
-              <option value="10-80">10-80 — Pursuit</option>
-              <option value="10-15">10-15 — Prisoner in Custody</option>
-              <option value="10-99">10-99 — Officer Down</option>
-              <option value="10-7">10-7 — Out of Service</option>
-              <option value="10-10">10-10 — Off Duty</option>
-            </select>
-            <input id="status-location" class="form-input status-input" type="text" placeholder="Location (optional)">
-            <input id="status-subject" class="form-input status-input" type="text" placeholder="Subject / notes (optional)">
-            <button class="btn btn-primary" id="btn-update-status" onclick="updateOfficerStatus()">Update Status</button>
+          <div class="status-quick-grid">
+            <button class="status-btn status-btn-available" data-code="10-8" onclick="selectQuickStatus('10-8')">
+              <span class="status-btn-code">10-8</span>
+              <span class="status-btn-label">Available</span>
+            </button>
+            <button class="status-btn status-btn-busy" data-code="10-6" onclick="selectQuickStatus('10-6')">
+              <span class="status-btn-code">10-6</span>
+              <span class="status-btn-label">Busy</span>
+            </button>
+            <button class="status-btn status-btn-enroute" data-code="10-76" onclick="selectQuickStatus('10-76')">
+              <span class="status-btn-code">10-76</span>
+              <span class="status-btn-label">En Route</span>
+            </button>
+            <button class="status-btn status-btn-scene" data-code="10-97" onclick="selectQuickStatus('10-97')">
+              <span class="status-btn-code">10-97</span>
+              <span class="status-btn-label">On Scene</span>
+            </button>
+            <button class="status-btn status-btn-traffic" data-code="10-11" onclick="selectQuickStatus('10-11')">
+              <span class="status-btn-code">10-11</span>
+              <span class="status-btn-label">Traffic Stop</span>
+            </button>
+            <button class="status-btn status-btn-pursuit" data-code="10-80" onclick="selectQuickStatus('10-80')">
+              <span class="status-btn-code">10-80</span>
+              <span class="status-btn-label">Pursuit</span>
+            </button>
+            <button class="status-btn status-btn-prisoner" data-code="10-15" onclick="selectQuickStatus('10-15')">
+              <span class="status-btn-code">10-15</span>
+              <span class="status-btn-label">Prisoner</span>
+            </button>
+            <button class="status-btn status-btn-oos" data-code="10-7" onclick="selectQuickStatus('10-7')">
+              <span class="status-btn-code">10-7</span>
+              <span class="status-btn-label">Out of Service</span>
+            </button>
+          </div>
+          <div id="status-detail-row" class="status-detail-row hidden">
+            <input id="status-location" class="form-input" type="text" placeholder="Location (optional)">
+            <input id="status-subject" class="form-input" type="text" placeholder="Subject / notes (optional)" id="status-subject-input">
+            <button class="btn btn-primary" id="btn-update-status" onclick="confirmStatusUpdate()">Confirm</button>
           </div>
           <div id="status-error" class="form-error hidden" style="margin-top:8px"></div>
         </div>
 
-        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Officer Status Board</span>
-          <span id="board-refresh-label" style="font-size:10px;color:var(--text-sub);font-weight:400;letter-spacing:0">Refreshes in <span id="board-countdown">30</span>s</span>
+        <!-- LEO Inner Tabs -->
+        <div class="leo-innertab-bar">
+          <button class="leo-innertab active" data-leotab="officers" onclick="switchLeoTab('officers')">Officers</button>
+          <button class="leo-innertab" data-leotab="records" onclick="switchLeoTab('records')">Search Records</button>
+          <button class="leo-innertab" data-leotab="intel" onclick="switchLeoTab('intel')">BOLOs &amp; Calls</button>
+          <span id="board-refresh-label" class="board-refresh-label">Refreshes in <span id="board-countdown">30</span>s</span>
         </div>
-        <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
-        <div class="leo-grid" style="margin-top:20px">
-          <div class="card">
-            <div class="section-label" style="margin-top:0">Search Records</div>
-            <div class="leo-search-controls">
-              <select id="leo-search-type">
-                <option value="plate">Plate</option>
-                <option value="character">Name</option>
-              </select>
-              <input id="leo-search-input" type="text" placeholder="Enter query...">
-              <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
-            </div>
-            <div id="leo-results" class="leo-results"></div>
+
+        <!-- Officers Pane -->
+        <div id="leo-innerpane-officers" class="leo-innerpane">
+          <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
+        </div>
+
+        <!-- Search Records Pane -->
+        <div id="leo-innerpane-records" class="leo-innerpane hidden">
+          <div class="leo-search-controls">
+            <select id="leo-search-type">
+              <option value="plate">Plate</option>
+              <option value="character">Name</option>
+            </select>
+            <input id="leo-search-input" type="text" placeholder="Enter query...">
+            <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
           </div>
-          <div class="leo-right">
-            <div class="card">
-              <div class="section-label" style="margin-top:0">Active BOLOs</div>
+          <div id="leo-results" class="leo-results"></div>
+        </div>
+
+        <!-- Intel Pane (BOLOs + Calls) -->
+        <div id="leo-innerpane-intel" class="leo-innerpane hidden">
+          <div class="leo-intel-grid">
+            <div class="card" style="padding:14px">
+              <div class="section-label" style="margin-top:0;margin-bottom:10px">Active BOLOs</div>
               <div id="leo-bolos" class="bolo-list"><div class="empty-state">Loading...</div></div>
             </div>
-            <div class="card">
-              <div class="section-label" style="margin-top:0">All Active 911 Calls</div>
+            <div class="card" style="padding:14px">
+              <div class="section-label" style="margin-top:0;margin-bottom:10px">Active 911 Calls</div>
               <div id="leo-calls" class="call-list"><div class="empty-state">Loading...</div></div>
             </div>
           </div>
