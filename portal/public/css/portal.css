@@ -1121,6 +1121,235 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .bnav-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 
 /* ══════════════════════════════════════════════════════
+   MORE DRAWER
+══════════════════════════════════════════════════════ */
+.more-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.more-overlay.open { opacity: 1; }
+
+.more-drawer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  z-index: 201;
+  padding: 12px 16px 32px;
+  padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.more-drawer.open { transform: translateY(0); }
+
+.more-drawer-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 14px;
+}
+
+.more-drawer-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.more-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.more-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--text);
+}
+.more-item:hover, .more-item:active { background: var(--elevated); border-color: var(--accent); }
+
+.more-item-icon { font-size: 22px; }
+.more-item-label { font-size: 10px; font-weight: 600; text-align: center; color: var(--text-muted); }
+
+.more-logout {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  transition: color 0.15s;
+}
+.more-logout:hover { color: var(--danger); }
+
+/* ══════════════════════════════════════════════════════
+   DISPATCH / 911
+══════════════════════════════════════════════════════ */
+.dispatch-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--success-dim);
+  border: 1px solid rgba(61,214,140,0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--success);
+  margin-bottom: 16px;
+}
+
+.dispatch-dot-active {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.dispatch-list { display: flex; flex-direction: column; gap: 10px; }
+
+.dispatch-call {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.dispatch-call-active { border-left: 3px solid var(--danger); }
+.dispatch-call-closed { opacity: 0.65; }
+
+.dispatch-call-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.dispatch-call-id { font-size: 10px; color: var(--text-muted); font-family: monospace; font-weight: 600; margin-bottom: 3px; }
+.dispatch-call-issue { font-size: 14px; font-weight: 700; }
+.dispatch-call-loc { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.dispatch-call-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+.dispatch-call-meta { font-size: 11px; color: var(--text-sub); margin-top: 6px; }
+
+/* ══════════════════════════════════════════════════════
+   TRAFFIC FINES
+══════════════════════════════════════════════════════ */
+.fines-summary { margin-bottom: 16px; }
+
+.fines-owed {
+  background: linear-gradient(135deg, var(--warning-dim), rgba(247,95,95,0.06));
+  border: 1px solid rgba(245,166,35,0.3);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.fines-owed-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--warning); margin-bottom: 4px; }
+.fines-owed-amount { font-size: 36px; font-weight: 800; color: var(--warning); letter-spacing: -1px; line-height: 1; }
+.fines-owed-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+.fines-list { display: flex; flex-direction: column; gap: 10px; }
+
+.fine-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.fine-unpaid { border-left: 3px solid var(--warning); }
+.fine-paid { opacity: 0.6; }
+
+.fine-item-left { flex: 1; min-width: 0; }
+.fine-id { font-size: 10px; color: var(--text-muted); font-family: monospace; font-weight: 600; margin-bottom: 3px; }
+.fine-char { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+.fine-violation { font-size: 14px; font-weight: 700; }
+.fine-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.fine-meta { font-size: 11px; color: var(--text-sub); margin-top: 5px; }
+
+.fine-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.fine-amount { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.fine-amount-owed { color: var(--warning); }
+.fine-amount-paid { color: var(--text-muted); text-decoration: line-through; }
+.fine-paid-badge { font-size: 11px; font-weight: 700; color: var(--success); background: var(--success-dim); padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(61,214,140,0.25); }
+
+/* ══════════════════════════════════════════════════════
+   OFFICER STATUS
+══════════════════════════════════════════════════════ */
+.officer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.officer-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.officer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.officer-name { font-size: 13px; font-weight: 700; }
+
+.officer-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.officer-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.officer-time { font-size: 10px; color: var(--text-sub); margin-top: 6px; }
+
+/* ══════════════════════════════════════════════════════
+   BOTTOM NAV — DISPATCH ACCENT
+══════════════════════════════════════════════════════ */
+.bnav-dispatch { color: var(--danger) !important; }
+.bnav-dispatch.active { color: var(--danger) !important; }
+.bnav-dispatch .bnav-label { color: var(--danger) !important; }
+
+/* ══════════════════════════════════════════════════════
    SCROLLBAR
 ══════════════════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 4px; height: 4px; }

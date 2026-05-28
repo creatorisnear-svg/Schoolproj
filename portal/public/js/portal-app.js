@@ -43,74 +43,77 @@ function showLogin(error) {
 function showApp() {
   document.getElementById('app').classList.remove('hidden');
 
-  /* ── Server info ── */
   const serverName = me.serverName || 'Member Portal';
-  document.getElementById('login-server-name').textContent = serverName;
-  document.getElementById('sidebar-server-name').textContent = serverName;
-  document.getElementById('topbar-server-name').textContent = serverName;
+  ['login-server-name','sidebar-server-name','topbar-server-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = serverName;
+  });
 
   if (me.serverIcon) {
     ['sidebar-server-icon','topbar-server-icon'].forEach(id => {
       const el = document.getElementById(id);
-      el.src = me.serverIcon;
-      el.style.display = 'block';
+      if (el) { el.src = me.serverIcon; el.style.display = 'block'; }
     });
-    document.getElementById('sidebar-server-icon-placeholder').style.display = 'none';
-    document.getElementById('topbar-server-icon-placeholder').style.display = 'none';
+    ['sidebar-server-icon-placeholder','topbar-server-icon-placeholder'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
     const loginLogo = document.getElementById('login-logo');
-    loginLogo.src = me.serverIcon;
-    loginLogo.style.display = 'block';
-  } else {
-    document.getElementById('sidebar-server-icon').style.display = 'none';
-    document.getElementById('topbar-server-icon').style.display = 'none';
+    if (loginLogo) { loginLogo.src = me.serverIcon; loginLogo.style.display = 'block'; }
   }
 
-  /* ── User info ── */
   const displayName = me.displayName || me.username;
   ['sidebar-avatar','topbar-avatar'].forEach(id => {
-    document.getElementById(id).src = me.avatar;
+    const el = document.getElementById(id);
+    if (el) el.src = me.avatar;
   });
-  document.getElementById('sidebar-username').textContent = displayName;
-  document.getElementById('topbar-username').textContent = displayName;
-  document.getElementById('sidebar-server-sub').textContent = serverName;
+  const unEl = document.getElementById('sidebar-username');
+  if (unEl) unEl.textContent = displayName;
+  const tbun = document.getElementById('topbar-username');
+  if (tbun) tbun.textContent = displayName;
+  const sub = document.getElementById('sidebar-server-sub');
+  if (sub) sub.textContent = serverName;
 
-  /* ── Roles ── */
   const rolesEl = document.getElementById('sidebar-roles');
-  if (me.roles?.length) {
+  if (me.roles?.length && rolesEl) {
     rolesEl.innerHTML = me.roles.map(r => {
       const color = r.color && r.color !== '#000000' ? r.color : '#666688';
       return `<span class="role-badge" style="color:${color};border-color:${color}40;background:${color}18">${r.name}</span>`;
     }).join('');
-  } else {
+  } else if (rolesEl) {
     rolesEl.style.display = 'none';
   }
 
-  /* ── LEO tab ── */
   if (me.isLeo) {
-    document.getElementById('nav-leo').classList.remove('hidden');
-    document.getElementById('nav-leo-section').classList.remove('hidden');
-    document.getElementById('bnav-leo').classList.remove('hidden');
+    document.getElementById('nav-leo')?.classList.remove('hidden');
+    document.getElementById('nav-leo-section')?.classList.remove('hidden');
+    document.getElementById('more-leo')?.classList.remove('hidden');
   }
 
-  /* ── Nav listeners ── */
   document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(el => {
     el.addEventListener('click', () => switchTab(el.dataset.tab));
   });
 
-  /* ── Load overview ── */
   loadOverview();
 }
 
 /* ══════════════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════════════ */
+const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo']);
+
 function switchTab(tab) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item, .bnav-item').forEach(n => n.classList.remove('active'));
 
   const pane = document.getElementById(`tab-${tab}`);
   if (pane) pane.classList.add('active');
+
   document.querySelectorAll(`[data-tab="${tab}"]`).forEach(n => n.classList.add('active'));
+
+  if (secondaryTabs.has(tab)) {
+    document.getElementById('bnav-more')?.classList.add('active');
+  }
 
   document.getElementById('main').scrollTop = 0;
 
@@ -118,6 +121,8 @@ function switchTab(tab) {
     loaded[tab] = true;
     if (tab === 'cad') loadCad();
     if (tab === 'economy') loadEconomy();
+    if (tab === 'dispatch') loadDispatch();
+    if (tab === 'fines') loadTrafficFines();
     if (tab === 'tickets') loadTickets();
     if (tab === 'calendar') loadCalendar();
     if (tab === 'rolerequest') loadRoleRequest();
@@ -126,19 +131,47 @@ function switchTab(tab) {
 }
 
 /* ══════════════════════════════════════════════════════
+   MORE DRAWER
+══════════════════════════════════════════════════════ */
+function toggleMoreDrawer() {
+  const drawer = document.getElementById('more-drawer');
+  const overlay = document.getElementById('more-overlay');
+  if (drawer.classList.contains('hidden')) {
+    drawer.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => { drawer.classList.add('open'); overlay.classList.add('open'); });
+  } else {
+    closeMoreDrawer();
+  }
+}
+
+function closeMoreDrawer() {
+  const drawer = document.getElementById('more-drawer');
+  const overlay = document.getElementById('more-overlay');
+  drawer.classList.remove('open');
+  overlay.classList.remove('open');
+  setTimeout(() => { drawer.classList.add('hidden'); overlay.classList.add('hidden'); }, 260);
+}
+
+function moreNav(tab) {
+  closeMoreDrawer();
+  setTimeout(() => switchTab(tab), 100);
+}
+
+/* ══════════════════════════════════════════════════════
    OVERVIEW
 ══════════════════════════════════════════════════════ */
 async function loadOverview() {
   try {
-    const [cadRes, ecoRes, ticketsRes, priorityRes, strikeRes] = await Promise.all([
+    const [cadRes, ecoRes, ticketsRes, priorityRes, strikeRes, finesRes] = await Promise.all([
       api('/cad'),
       api('/economy'),
       api('/tickets'),
       api('/priority'),
       api('/strikes'),
+      api('/traffic-tickets'),
     ]);
 
-    /* Priority banner */
     if (priorityRes?.active) {
       const banner = document.getElementById('priority-banner');
       banner.classList.remove('hidden');
@@ -147,19 +180,17 @@ async function loadOverview() {
       else if (priorityRes.issuedBy) sub.textContent = `Issued by ${priorityRes.issuedBy}`;
     }
 
-    /* Stats */
     const openTickets = (ticketsRes || []).filter(t => t.status === 'open').length;
     const strikeLevel = strikeRes?.level ?? 0;
+    const unpaidFines = (finesRes || []).filter(f => !f.paid).length;
     const cur = ecoRes?.currency || '$';
 
-    const stats = [
+    let statsHtml = [
       { label: 'Characters', value: cadRes?.length ?? 0, sub: 'in CAD' },
-      { label: 'Cash', value: fmt(ecoRes?.cash ?? 0, cur), sub: 'in hand' },
+      { label: 'Cash', value: fmt(ecoRes?.cash ?? 0, cur), sub: 'on hand' },
       { label: 'Bank', value: fmt(ecoRes?.bank ?? 0, cur), sub: 'balance' },
-      { label: 'Open Tickets', value: openTickets, sub: 'active' },
-    ];
-
-    document.getElementById('overview-stats').innerHTML = stats.map(s => `
+      { label: 'Open Tickets', value: openTickets, sub: 'support tickets' },
+    ].map(s => `
       <div class="stat-card">
         <div class="stat-label">${s.label}</div>
         <div class="stat-value">${s.value}</div>
@@ -167,24 +198,33 @@ async function loadOverview() {
       </div>
     `).join('');
 
-    /* Strike info on overview if any */
+    if (unpaidFines > 0) {
+      statsHtml += `
+        <div class="stat-card" style="--accent:var(--warning)">
+          <div class="stat-label">Unpaid Fines</div>
+          <div class="stat-value" style="color:var(--warning)">${unpaidFines}</div>
+          <div class="stat-sub">traffic violations</div>
+        </div>`;
+    }
+
     if (strikeLevel > 0) {
-      const strikeHtml = `
+      statsHtml += `
         <div class="stat-card" style="--accent:${strikeLevel >= 3 ? 'var(--danger)' : 'var(--warning)'}">
           <div class="stat-label">Strike Level</div>
           <div class="stat-value" style="color:${strikeLevel >= 3 ? 'var(--danger)' : 'var(--warning)'}">${strikeLevel}/4</div>
           <div class="stat-sub">active strikes</div>
-        </div>
-      `;
-      document.getElementById('overview-stats').innerHTML += strikeHtml;
+        </div>`;
     }
 
-    /* Quick actions */
+    document.getElementById('overview-stats').innerHTML = statsHtml;
+
     const actions = [
       { icon: '👤', label: 'CAD', tab: 'cad' },
+      { icon: '🚨', label: 'Dispatch', tab: 'dispatch' },
       { icon: '💰', label: 'Economy', tab: 'economy' },
+      { icon: '📄', label: 'Traffic Fines', tab: 'fines' },
       { icon: '🎫', label: 'Tickets', tab: 'tickets' },
-      { icon: '📅', label: 'Calendar', tab: 'calendar' },
+      { icon: '📅', label: 'RP Calendar', tab: 'calendar' },
       { icon: '📋', label: 'Role Requests', tab: 'rolerequest' },
     ];
     if (me.isLeo) actions.push({ icon: '🚔', label: 'LEO Dashboard', tab: 'leo' });
@@ -208,7 +248,7 @@ async function loadCad() {
   try {
     const chars = await api('/cad');
     if (!chars?.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div>No characters yet.<br>Create one to get started.</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div>No characters yet. Create one to get started.</div>`;
       return;
     }
     list.innerHTML = chars.map(c => renderCharCard(c)).join('');
@@ -242,7 +282,7 @@ function renderCharCard(c) {
         <div class="vehicle-item">
           <div class="vehicle-item-left">
             <div class="vehicle-item-name">${v.year ? v.year + ' ' : ''}${v.color ? v.color + ' ' : ''}${v.make} ${v.model}</div>
-            ${v.licensePlate ? `<div class="vehicle-item-plate">${v.licensePlate}</div>` : ''}
+            ${v.licensePlate ? `<div class="vehicle-item-plate">🚗 ${v.licensePlate}</div>` : ''}
           </div>
         </div>`).join('')
     : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No vehicles registered.</div>';
@@ -250,6 +290,10 @@ function renderCharCard(c) {
   const guns = c.guns?.length
     ? c.guns.map(g => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${g.name}</div>${g.serialNumber ? `<div class="vehicle-item-plate">${g.serialNumber}</div>` : ''}</div></div>`).join('')
     : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No firearms registered.</div>';
+
+  const arrests = c.arrestHistory?.length
+    ? c.arrestHistory.map(a => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${a.charge}</div><div class="vehicle-item-plate">${a.outcome || ''} ${a.date ? '• ' + new Date(a.date).toLocaleDateString() : ''}</div></div></div>`).join('')
+    : '';
 
   return `
     <div class="char-card" id="char-${c._id}">
@@ -280,10 +324,7 @@ function renderCharCard(c) {
           <span class="char-section-label">Firearms (${c.guns?.length || 0})</span>
         </div>
         <div class="gun-list">${guns}</div>
-        ${c.arrestHistory?.length ? `
-          <div class="char-section-header" style="margin-top:14px"><span class="char-section-label">Arrest History (${c.arrestHistory.length})</span></div>
-          ${c.arrestHistory.map(a => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${a.charge}</div><div class="vehicle-item-plate">${a.outcome || ''} ${a.date ? '• ' + new Date(a.date).toLocaleDateString() : ''}</div></div></div>`).join('')}
-        ` : ''}
+        ${arrests ? `<div class="char-section-header" style="margin-top:14px"><span class="char-section-label">Arrest History (${c.arrestHistory.length})</span></div>${arrests}` : ''}
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
           <button class="btn btn-danger btn-sm btn-delete-char" data-char-id="${c._id}">Delete Character</button>
         </div>
@@ -299,9 +340,156 @@ async function deleteChar(charId) {
     loaded['cad'] = false;
     loadCad();
     toast('Character deleted.', 'info');
-  } catch (err) {
-    toast(err.message, 'error');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   DISPATCH / 911
+══════════════════════════════════════════════════════ */
+async function loadDispatch() {
+  try {
+    const calls = await api('/dispatch/mine');
+    const active = (calls || []).filter(c => c.status === 'active');
+    const closed = (calls || []).filter(c => c.status === 'closed');
+
+    document.getElementById('dispatch-active').innerHTML = active.length
+      ? active.map(c => renderDispatchCall(c, true)).join('')
+      : `<div class="empty-state" style="padding:20px 0"><div class="empty-state-icon">✅</div>No active calls.</div>`;
+
+    document.getElementById('dispatch-history').innerHTML = closed.length
+      ? closed.slice(0, 8).map(c => renderDispatchCall(c, false)).join('')
+      : `<div class="empty-state" style="padding:16px 0">No previous calls.</div>`;
+
+    document.querySelectorAll('.btn-cancel-call').forEach(btn => {
+      btn.addEventListener('click', () => cancelCall(btn.dataset.callId));
+    });
+  } catch {
+    document.getElementById('dispatch-active').innerHTML = '<div class="empty-state">Failed to load calls.</div>';
   }
+}
+
+function renderDispatchCall(c, isActive) {
+  const time = new Date(c.timestamp);
+  const ago = timeAgo(time);
+  return `
+    <div class="dispatch-call ${isActive ? 'dispatch-call-active' : 'dispatch-call-closed'}">
+      <div class="dispatch-call-header">
+        <div>
+          <div class="dispatch-call-id">${c.callId}</div>
+          <div class="dispatch-call-issue">${c.issue}</div>
+        </div>
+        ${isActive ? `<button class="btn btn-sm btn-secondary btn-cancel-call" data-call-id="${c.callId}">Cancel</button>` : `<span class="status-pill ${c.status === 'active' ? 'ticket-status-open' : 'ticket-status-closed'}">${c.status}</span>`}
+      </div>
+      <div class="dispatch-call-loc">📍 ${c.location}</div>
+      ${c.suspectsDescription ? `<div class="dispatch-call-detail">Suspect: ${c.suspectsDescription}</div>` : ''}
+      ${c.lastSeen ? `<div class="dispatch-call-detail">Last seen: ${c.lastSeen}</div>` : ''}
+      <div class="dispatch-call-meta">
+        ${ago}
+        ${isActive && c.respondingLeoUsername ? ` • Responding: <strong>${c.respondingLeoUsername}</strong>` : ''}
+        ${isActive && !c.respondingLeoUsername ? ' • <span style="color:var(--warning)">No officer responding yet</span>' : ''}
+        ${!isActive ? (c.closedBy ? ` • Closed by ${c.closedBy}` : '') : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function cancelCall(callId) {
+  if (!confirm('Cancel this 911 call?')) return;
+  try {
+    await apiDel(`/dispatch/${callId}/cancel`);
+    toast('Call cancelled.', 'info');
+    loaded['dispatch'] = false;
+    loadDispatch();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function submit911(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  const errEl = document.getElementById('form-911-error');
+  const btn = document.getElementById('btn-submit-911');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Dispatching...';
+  try {
+    const result = await apiPost('/dispatch/submit', data);
+    closeModal('modal-911');
+    e.target.reset();
+    toast(`Call ${result.callId} dispatched to officers.`, 'success');
+    loaded['dispatch'] = false;
+    if (document.getElementById('tab-dispatch').classList.contains('active')) loadDispatch();
+    loaded['overview'] = false;
+    loadOverview();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚨 Dispatch Now';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   TRAFFIC FINES
+══════════════════════════════════════════════════════ */
+async function loadTrafficFines() {
+  const list = document.getElementById('fines-list');
+  const summary = document.getElementById('fines-summary');
+  try {
+    const [tickets, ecoRes] = await Promise.all([api('/traffic-tickets'), api('/economy')]);
+    const cur = ecoRes?.currency || '$';
+
+    if (!tickets?.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div>No traffic violations on record.</div>`;
+      return;
+    }
+
+    const unpaid = tickets.filter(t => !t.paid);
+    const totalOwed = unpaid.reduce((s, t) => s + (t.fine || 0), 0);
+
+    if (unpaid.length) {
+      summary.innerHTML = `
+        <div class="fines-owed">
+          <div class="fines-owed-label">Total Outstanding</div>
+          <div class="fines-owed-amount">${fmt(totalOwed, cur)}</div>
+          <div class="fines-owed-sub">${unpaid.length} unpaid violation${unpaid.length > 1 ? 's' : ''}</div>
+        </div>`;
+      summary.classList.remove('hidden');
+    }
+
+    list.innerHTML = tickets.map(t => `
+      <div class="fine-item ${t.paid ? 'fine-paid' : 'fine-unpaid'}">
+        <div class="fine-item-left">
+          <div class="fine-id">#${t.ticketId}</div>
+          <div class="fine-char">${t.characterName || 'Unknown character'}</div>
+          <div class="fine-violation">${t.violation}</div>
+          ${t.description ? `<div class="fine-desc">${t.description}</div>` : ''}
+          <div class="fine-meta">
+            Issued by ${t.issuedBy || 'officer'} • ${new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            ${t.paid && t.paidAt ? ` • Paid ${new Date(t.paidAt).toLocaleDateString()}` : ''}
+          </div>
+        </div>
+        <div class="fine-item-right">
+          <div class="fine-amount ${t.paid ? 'fine-amount-paid' : 'fine-amount-owed'}">${fmt(t.fine || 0, cur)}</div>
+          ${!t.paid ? `<button class="btn btn-primary btn-sm" onclick="payFine('${t.ticketId}', ${t.fine}, '${cur}')">Pay Fine</button>` : '<span class="fine-paid-badge">✓ Paid</span>'}
+        </div>
+      </div>
+    `).join('');
+  } catch {
+    list.innerHTML = '<div class="empty-state">Failed to load traffic fines.</div>';
+  }
+}
+
+async function payFine(ticketId, amount, cur) {
+  if (!confirm(`Pay ${fmt(amount, cur)} from your bank balance?`)) return;
+  try {
+    const result = await apiPost(`/traffic-tickets/${ticketId}/pay`, {});
+    toast(`Fine paid. New bank balance: ${fmt(result.newBank, cur)}`, 'success');
+    loaded['fines'] = false;
+    loadTrafficFines();
+    loaded['economy'] = false;
+    if (document.getElementById('tab-economy').classList.contains('active')) loadEconomy();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -340,16 +528,9 @@ async function loadEconomy() {
 
     const cur2 = lbRes.currency || cur;
     document.getElementById('leaderboard-list').innerHTML = (lbRes.entries || []).map(e => {
-      const rankClass = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
-      return `
-        <div class="lb-row">
-          <span class="lb-rank ${rankClass}">${e.rank}</span>
-          <span class="lb-name">${e.name}</span>
-          <span class="lb-amount">${fmt(e.total, cur2)}</span>
-        </div>
-      `;
+      const rc = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
+      return `<div class="lb-row"><span class="lb-rank ${rc}">${e.rank}</span><span class="lb-name">${e.name}</span><span class="lb-amount">${fmt(e.total, cur2)}</span></div>`;
     }).join('') || '<div class="empty-state" style="padding:12px 0">No data yet.</div>';
-
   } catch {
     document.getElementById('economy-balance').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Failed to load economy data.</p>';
   }
@@ -366,7 +547,7 @@ function renderShop(items, currency) {
       </div>
       <div class="shop-item-right">
         <span class="shop-item-price">${fmt(item.price, currency)}</span>
-        <button class="btn btn-primary btn-sm" onclick="openBuyModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">Buy</button>
+        <button class="btn btn-primary btn-sm" onclick='openBuyModal(${JSON.stringify(item)})'>Buy</button>
       </div>
     </div>
   `).join('');
@@ -384,8 +565,8 @@ function openBuyModal(item) {
   document.getElementById('buy-item-name').textContent = item.name;
   document.getElementById('buy-item-desc').textContent = item.description || '';
   document.getElementById('buy-qty').value = 1;
-  updateBuyTotal();
   document.getElementById('form-buy-error').classList.add('hidden');
+  updateBuyTotal();
   openModal('modal-buy');
 }
 
@@ -395,7 +576,7 @@ function updateBuyTotal() {
   document.getElementById('buy-total').textContent = `Total: ${fmt(currentBuyItem.price * qty, shopCurrency)}`;
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('buy-qty')?.addEventListener('input', updateBuyTotal);
 });
 
@@ -410,10 +591,7 @@ async function confirmBuy() {
     toast(`Purchased ${qty}× ${currentBuyItem.name}`, 'success');
     loaded['economy'] = false;
     loadEconomy();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  }
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -432,15 +610,13 @@ async function loadTickets() {
     document.getElementById('tickets-closed').innerHTML = closed.length
       ? closed.slice(0, 5).map(t => renderTicket(t)).join('')
       : '<div class="empty-state" style="padding:16px 0">No closed tickets.</div>';
-
   } catch {
     document.getElementById('tickets-open').innerHTML = '<div class="empty-state">Failed to load tickets.</div>';
   }
 }
 
 function renderTicket(t) {
-  const statusClass = t.status === 'open' ? 'ticket-status-open' : 'ticket-status-closed';
-  const statusLabel = t.status === 'open' ? 'Open' : 'Closed';
+  const sc = t.status === 'open' ? 'ticket-status-open' : 'ticket-status-closed';
   return `
     <div class="ticket-item">
       <div class="ticket-item-left">
@@ -449,7 +625,7 @@ function renderTicket(t) {
         ${t.description ? `<div class="ticket-desc">${t.description}</div>` : ''}
         <div class="ticket-date">${new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
       </div>
-      <span class="status-pill ${statusClass}">${statusLabel}</span>
+      <span class="status-pill ${sc}">${t.status === 'open' ? 'Open' : 'Closed'}</span>
     </div>
   `;
 }
@@ -466,9 +642,9 @@ async function loadCalendar() {
       return;
     }
     list.innerHTML = events.map(e => {
-      const time = e.time || '';
-      const [hh, mm] = time.split(':');
-      const formatted = hh && mm ? `${parseInt(hh) > 12 ? parseInt(hh) - 12 : parseInt(hh) || 12}:${mm} ${parseInt(hh) >= 12 ? 'PM' : 'AM'}` : time;
+      const [hh, mm] = (e.time || '').split(':');
+      const h = parseInt(hh);
+      const formatted = hh && mm ? `${h > 12 ? h - 12 : h || 12}:${mm} ${h >= 12 ? 'PM' : 'AM'}` : e.time;
       const platforms = [];
       if (e.psn) platforms.push(`PSN: ${e.psn}`);
       if (e.xbox) platforms.push(`Xbox: ${e.xbox}`);
@@ -484,8 +660,7 @@ async function loadCalendar() {
             ${e.timezone ? `<div class="cal-desc" style="margin-top:2px">🕐 ${e.timezone}</div>` : ''}
             ${platforms.length ? `<div class="cal-platform">${platforms.map(p => `<span class="cal-tag">${p}</span>`).join('')}</div>` : ''}
           </div>
-        </div>
-      `;
+        </div>`;
     }).join('');
   } catch {
     list.innerHTML = '<div class="empty-state">Failed to load calendar.</div>';
@@ -515,20 +690,17 @@ async function loadRoleRequest() {
           <div id="rr-approvers"></div>
           <div id="rr-submit-error" class="form-error hidden"></div>
           <button class="btn btn-primary" style="margin-top:10px;width:100%" onclick="submitRoleRequest()">Submit Request</button>
-        </div>
-      `;
+        </div>`;
     }
 
-    const hist = histRes || [];
-    document.getElementById('rr-history').innerHTML = hist.length
-      ? hist.map(r => `
+    document.getElementById('rr-history').innerHTML = (histRes || []).length
+      ? histRes.map(r => `
           <div class="rr-hist-item">
             <div class="rr-hist-role">${r.roleName}</div>
             <div class="rr-hist-meta">Approver: ${r.approverUsername} • ${new Date(r.timestamp).toLocaleDateString()}</div>
             <span class="status-pill ${r.status === 'approved' ? 'pill-approved' : r.status === 'denied' ? 'pill-denied' : 'pill-pending'}">${r.status || 'pending'}</span>
           </div>`).join('')
       : '<div class="empty-state" style="padding:16px 0">No requests yet.</div>';
-
   } catch {
     document.getElementById('rr-form-area').innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
@@ -546,9 +718,7 @@ async function selectRoleType(id) {
     const approvers = await api(`/rolerequest/approvers/${id}`);
     if (!approvers?.length) { approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">No approvers available.</div>'; return; }
     approversEl.innerHTML = approvers.map(a => `
-      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">
-        👤 ${a.name}
-      </div>`).join('');
+      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">👤 ${a.name}</div>`).join('');
   } catch {
     approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">Could not load approvers.</div>';
   }
@@ -569,28 +739,78 @@ async function submitRoleRequest() {
     toast('Role request submitted. Approver notified by DM.', 'success');
     loaded['rolerequest'] = false;
     loadRoleRequest();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  }
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
 }
 
 /* ══════════════════════════════════════════════════════
    LEO
 ══════════════════════════════════════════════════════ */
+const TEN_CODES = {
+  '10-6': { label: '10-6 Busy', color: 'var(--warning)' },
+  '10-7': { label: '10-7 Out of Service', color: 'var(--text-muted)' },
+  '10-8': { label: '10-8 Available', color: 'var(--success)' },
+  '10-10': { label: '10-10 Off Duty', color: 'var(--text-muted)' },
+  '10-15': { label: '10-15 In Pursuit', color: 'var(--danger)' },
+  '10-50': { label: '10-50 Traffic Stop', color: 'var(--accent)' },
+  '10-97': { label: '10-97 On Scene', color: 'var(--accent)' },
+  '10-99': { label: '10-99 Emergency', color: 'var(--danger)' },
+};
+
+function tenInfo(code) {
+  return TEN_CODES[code] || { label: code || 'Unknown', color: 'var(--text-muted)' };
+}
+
 async function loadLeo() {
-  const [bEl, cEl] = [document.getElementById('leo-bolos'), document.getElementById('leo-calls')];
+  const [boloEl, callEl, offEl] = [
+    document.getElementById('leo-bolos'),
+    document.getElementById('leo-calls'),
+    document.getElementById('leo-officers'),
+  ];
   try {
-    const [bolos, calls] = await Promise.all([api('/leo/bolos'), api('/leo/calls')]);
-    bEl.innerHTML = bolos?.length
-      ? bolos.map(b => `<div class="bolo-item"><div class="bolo-name">${b.characterName}</div><div class="bolo-reason">${b.reason}</div><div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()}</div></div>`).join('')
+    const [bolos, calls, officers] = await Promise.all([
+      api('/leo/bolos'),
+      api('/leo/calls'),
+      api('/leo/officers'),
+    ]);
+
+    offEl.innerHTML = officers?.length
+      ? officers.map(o => {
+          const info = tenInfo(o.tenCode);
+          const lastSeen = o.updatedAt ? timeAgo(new Date(o.updatedAt)) : 'unknown';
+          return `
+            <div class="officer-card">
+              <div class="officer-header">
+                <div class="officer-name">${o.username}</div>
+                <span class="officer-badge" style="background:${info.color}18;color:${info.color};border-color:${info.color}40">${info.label}</span>
+              </div>
+              ${o.location ? `<div class="officer-detail">📍 ${o.location}</div>` : ''}
+              ${o.subject ? `<div class="officer-detail">👤 ${o.subject}</div>` : ''}
+              ${o.rawCall ? `<div class="officer-detail">📻 ${o.rawCall}</div>` : ''}
+              <div class="officer-time">Updated ${lastSeen}</div>
+            </div>`;
+        }).join('')
+      : '<div class="empty-state" style="padding:16px 0">No officers currently on duty.</div>';
+
+    boloEl.innerHTML = bolos?.length
+      ? bolos.map(b => `
+          <div class="bolo-item">
+            <div class="bolo-name">${b.characterName}</div>
+            <div class="bolo-reason">${b.reason}</div>
+            <div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()}</div>
+          </div>`).join('')
       : '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
 
-    cEl.innerHTML = calls?.length
-      ? calls.map(c => `<div class="call-item"><div class="call-id">${c.callId}</div><div class="call-issue">${c.issue}</div>${c.location ? `<div class="call-loc">📍 ${c.location}</div>` : ''}<div class="call-meta">${new Date(c.timestamp).toLocaleTimeString()} ${c.respondingLeoUsername ? '• Responding: ' + c.respondingLeoUsername : '• No response yet'}</div></div>`).join('')
+    callEl.innerHTML = calls?.length
+      ? calls.map(c => `
+          <div class="call-item">
+            <div class="call-id">${c.callId}</div>
+            <div class="call-issue">${c.issue}</div>
+            ${c.location ? `<div class="call-loc">📍 ${c.location}</div>` : ''}
+            <div class="call-meta">${timeAgo(new Date(c.timestamp))} ${c.respondingLeoUsername ? '• ' + c.respondingLeoUsername : '• No response'}</div>
+          </div>`).join('')
       : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
   } catch {
-    bEl.innerHTML = cEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
+    offEl.innerHTML = boloEl.innerHTML = callEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
 }
 
@@ -607,9 +827,9 @@ async function leoSearch() {
     results.innerHTML = chars.map(c => `
       <div class="leo-result-card">
         <div class="leo-result-name">${c.characterName} <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}" style="font-size:10px">${c.status?.toUpperCase()}</span></div>
-        <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> • Gender: <span>${c.gender || 'N/A'}</span></div>
+        <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> · Gender: <span>${c.gender || 'N/A'}</span></div>
         <div class="leo-result-row">Address: <span>${c.address || 'N/A'}</span></div>
-        <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> • Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
+        <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> · Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
         ${c.vehicles?.length ? `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>` : ''}
         ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
       </div>`).join('');
@@ -638,8 +858,8 @@ async function submitCreateChar(e) {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target));
   const errEl = document.getElementById('form-char-error');
-  errEl.classList.add('hidden');
   const btn = e.target.querySelector('[type="submit"]');
+  errEl.classList.add('hidden');
   btn.disabled = true;
   try {
     await apiPost('/cad/create', data);
@@ -649,10 +869,8 @@ async function submitCreateChar(e) {
     loadCad();
     loaded['overview'] = false;
     loadOverview();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  } finally { btn.disabled = false; }
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
 }
 
 function openAddVehicleModal(charId) {
@@ -669,8 +887,8 @@ async function submitAddVehicle(e) {
   const charId = data.charId;
   delete data.charId;
   const errEl = document.getElementById('form-vehicle-error');
-  errEl.classList.add('hidden');
   const btn = e.target.querySelector('[type="submit"]');
+  errEl.classList.add('hidden');
   btn.disabled = true;
   try {
     await apiPost(`/cad/${charId}/vehicle`, data);
@@ -678,10 +896,8 @@ async function submitAddVehicle(e) {
     toast('Vehicle added.', 'success');
     loaded['cad'] = false;
     loadCad();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-  } finally { btn.disabled = false; }
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -735,3 +951,11 @@ function toast(msg, type = 'success') {
 ══════════════════════════════════════════════════════ */
 function fmt(n, cur = '$') { return `${cur}${Number(n || 0).toLocaleString()}`; }
 function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function timeAgo(date) {
+  const secs = Math.floor((Date.now() - date) / 1000);
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}

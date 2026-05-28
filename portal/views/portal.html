@@ -16,7 +16,7 @@
   <div class="login-card">
     <img id="login-logo" src="" class="login-logo" alt="Server Logo" style="display:none">
     <h1 id="login-server-name">Member Portal</h1>
-    <p class="login-sub">Sign in with Discord to access your character, economy, and server tools.</p>
+    <p class="login-sub">Sign in with Discord to access your character, economy, dispatch, and more.</p>
     <div id="login-error" class="login-error hidden"></div>
     <a href="/auth/login" class="btn-discord">
       <svg class="btn-discord-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
@@ -50,7 +50,6 @@
       <div id="sidebar-server-icon-placeholder" class="server-icon-placeholder">🏛️</div>
       <span id="sidebar-server-name" class="sidebar-server-name">Portal</span>
     </div>
-
     <div class="sidebar-user">
       <img id="sidebar-avatar" src="" alt="Avatar" class="user-avatar">
       <div class="user-info">
@@ -58,23 +57,22 @@
         <div id="sidebar-server-sub" class="user-server"></div>
       </div>
     </div>
-
     <div id="sidebar-roles" class="user-roles"></div>
-
     <nav class="sidebar-nav">
       <div class="nav-section-label">General</div>
       <a class="nav-item active" data-tab="overview"><span class="nav-icon">🏠</span> Overview</a>
       <a class="nav-item" data-tab="cad"><span class="nav-icon">👤</span> CAD System</a>
       <a class="nav-item" data-tab="economy"><span class="nav-icon">💰</span> Economy</a>
+      <a class="nav-item" data-tab="dispatch"><span class="nav-icon">🚨</span> Dispatch / 911</a>
+      <a class="nav-item" data-tab="fines"><span class="nav-icon">📄</span> Traffic Fines</a>
       <a class="nav-item" data-tab="tickets"><span class="nav-icon">🎫</span> Tickets</a>
       <a class="nav-item" data-tab="calendar"><span class="nav-icon">📅</span> RP Calendar</a>
       <a class="nav-item" data-tab="rolerequest"><span class="nav-icon">📋</span> Role Requests</a>
       <div id="nav-leo-section" class="hidden">
         <div class="nav-section-label">LEO</div>
-        <a class="nav-item hidden" data-tab="leo" id="nav-leo"><span class="nav-icon">🚔</span> LEO Dashboard</a>
+        <a class="nav-item" data-tab="leo" id="nav-leo"><span class="nav-icon">🚔</span> LEO Dashboard</a>
       </div>
     </nav>
-
     <div class="sidebar-bottom">
       <a href="/auth/logout" class="btn-logout"><span class="nav-icon">⎋</span> Sign Out</a>
     </div>
@@ -127,11 +125,32 @@
         </div>
       </div>
 
+      <!-- DISPATCH / 911 -->
+      <div id="tab-dispatch" class="tab-pane">
+        <div class="page-header">
+          <h2>Dispatch / 911</h2>
+          <button class="btn btn-danger" onclick="openModal('modal-911')">🚨 Submit 911 Call</button>
+        </div>
+        <div class="dispatch-status-bar" id="dispatch-status-bar">
+          <div class="dispatch-status-dot dispatch-dot-active"></div>
+          <span>Dispatch is active — calls are monitored by LEO officers</span>
+        </div>
+        <div class="section-label">Your Active Calls</div>
+        <div id="dispatch-active" class="dispatch-list"><div class="empty-state">Loading...</div></div>
+        <div class="section-label">Recent Call History</div>
+        <div id="dispatch-history" class="dispatch-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- TRAFFIC FINES -->
+      <div id="tab-fines" class="tab-pane">
+        <div class="page-header"><h2>Traffic Fines</h2></div>
+        <div id="fines-summary" class="fines-summary hidden"></div>
+        <div id="fines-list" class="fines-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
       <!-- TICKETS -->
       <div id="tab-tickets" class="tab-pane">
-        <div class="page-header">
-          <h2>Tickets</h2>
-        </div>
+        <div class="page-header"><h2>Tickets</h2></div>
         <div class="section-label">Your Open Tickets</div>
         <div id="tickets-open" class="ticket-list"><div class="empty-state">Loading...</div></div>
         <div class="section-label">Recent Closed</div>
@@ -159,10 +178,12 @@
         </div>
       </div>
 
-      <!-- LEO -->
+      <!-- LEO DASHBOARD -->
       <div id="tab-leo" class="tab-pane">
         <div class="page-header"><h2>LEO Dashboard</h2></div>
-        <div class="leo-grid">
+        <div class="section-label">Officer Status Board</div>
+        <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
+        <div class="leo-grid" style="margin-top:20px">
           <div class="card">
             <div class="section-label" style="margin-top:0">Search Records</div>
             <div class="leo-search-controls">
@@ -181,7 +202,7 @@
               <div id="leo-bolos" class="bolo-list"><div class="empty-state">Loading...</div></div>
             </div>
             <div class="card">
-              <div class="section-label" style="margin-top:0">Active 911 Calls</div>
+              <div class="section-label" style="margin-top:0">All Active 911 Calls</div>
               <div id="leo-calls" class="call-list"><div class="empty-state">Loading...</div></div>
             </div>
           </div>
@@ -191,18 +212,56 @@
     </div>
   </main>
 
-  <!-- Mobile Bottom Nav -->
+  <!-- Mobile Bottom Nav — 5 primary tabs + More -->
   <nav id="bottom-nav">
     <div class="bottom-nav-inner">
       <button class="bnav-item active" data-tab="overview"><span class="bnav-icon">🏠</span><span class="bnav-label">Home</span></button>
       <button class="bnav-item" data-tab="cad"><span class="bnav-icon">👤</span><span class="bnav-label">CAD</span></button>
+      <button class="bnav-item bnav-dispatch" data-tab="dispatch"><span class="bnav-icon">🚨</span><span class="bnav-label">Dispatch</span></button>
       <button class="bnav-item" data-tab="economy"><span class="bnav-icon">💰</span><span class="bnav-label">Economy</span></button>
-      <button class="bnav-item" data-tab="tickets"><span class="bnav-icon">🎫</span><span class="bnav-label">Tickets</span></button>
-      <button class="bnav-item" data-tab="calendar"><span class="bnav-icon">📅</span><span class="bnav-label">Calendar</span></button>
-      <button class="bnav-item hidden" data-tab="leo" id="bnav-leo"><span class="bnav-icon">🚔</span><span class="bnav-label">LEO</span></button>
+      <button class="bnav-item" id="bnav-more" onclick="toggleMoreDrawer()"><span class="bnav-icon">☰</span><span class="bnav-label">More</span></button>
     </div>
   </nav>
 
+  <!-- More Drawer -->
+  <div id="more-overlay" class="more-overlay hidden" onclick="closeMoreDrawer()"></div>
+  <div id="more-drawer" class="more-drawer hidden">
+    <div class="more-drawer-handle"></div>
+    <div class="more-drawer-title">More</div>
+    <div class="more-drawer-grid">
+      <button class="more-item" data-tab="fines" onclick="moreNav('fines')"><span class="more-item-icon">📄</span><span class="more-item-label">Traffic Fines</span></button>
+      <button class="more-item" data-tab="tickets" onclick="moreNav('tickets')"><span class="more-item-icon">🎫</span><span class="more-item-label">Tickets</span></button>
+      <button class="more-item" data-tab="calendar" onclick="moreNav('calendar')"><span class="more-item-icon">📅</span><span class="more-item-label">RP Calendar</span></button>
+      <button class="more-item" data-tab="rolerequest" onclick="moreNav('rolerequest')"><span class="more-item-icon">📋</span><span class="more-item-label">Role Requests</span></button>
+      <button class="more-item hidden" data-tab="leo" id="more-leo" onclick="moreNav('leo')"><span class="more-item-icon">🚔</span><span class="more-item-label">LEO Dashboard</span></button>
+    </div>
+    <a href="/auth/logout" class="more-logout">Sign Out</a>
+  </div>
+
+</div>
+
+<!-- ══════════ MODAL: 911 Call ══════════ -->
+<div id="modal-911" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>🚨 Submit 911 Call</h3>
+      <button class="modal-close" onclick="closeModal('modal-911')">&times;</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">This call will be dispatched to on-duty officers immediately. Only submit genuine emergencies.</p>
+    <form id="form-911" onsubmit="submit911(event)">
+      <div class="form-group"><label class="form-label">What is the emergency? *</label><input class="form-input" name="issue" type="text" required placeholder="e.g. Armed robbery in progress, injury accident..."></div>
+      <div class="form-group"><label class="form-label">Location *</label><input class="form-input" name="location" type="text" required placeholder="e.g. Maze Bank Arena parking lot, Route 68..."></div>
+      <div class="form-group"><label class="form-label">Suspect Description</label><input class="form-input" name="suspectsDescription" type="text" placeholder="e.g. White male, red hoodie, armed..."></div>
+      <div class="form-group"><label class="form-label">Last Seen / Direction of Travel</label><input class="form-input" name="lastSeen" type="text" placeholder="e.g. Fleeing northbound on Olympic Fwy..."></div>
+      <div class="form-group"><label class="form-label">Callback / Contact</label><input class="form-input" name="contact" type="text" placeholder="Your name or number"></div>
+      <div id="form-911-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-911')">Cancel</button>
+        <button type="submit" class="btn btn-danger" id="btn-submit-911">🚨 Dispatch Now</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- ══════════ MODAL: Create Character ══════════ -->
