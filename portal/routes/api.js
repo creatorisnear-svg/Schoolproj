@@ -648,6 +648,105 @@ export function createApiRouter() {
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
 
+  router.post('/leo/calls/:callId/respond', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, status: 'active' });
+      if (!call) return res.status(404).json({ error: 'Call not found or already closed' });
+      if (call.respondingLeoId) return res.status(400).json({ error: 'Call already has a primary responder' });
+
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+      call.respondingLeoId = req.portalUser.userId;
+      call.respondingLeoUsername = displayName;
+      await call.save();
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+
+      await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        { guildId, userId: req.portalUser.userId, username: displayName, tenCode: '10-76', location: call.location || null, subject: `Responding to ${call.callId}`, rawCall: null, updatedAt: new Date() },
+        { upsert: true, new: true }
+      );
+
+      if (dispatchCfg?.dispatchChannelId) {
+        await axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
+          embeds: [{
+            color: 0x4f7ef7,
+            title: `Officer Responding — ${call.callId}`,
+            description: `**${displayName}** is responding via the Member Portal.\n**Status:** 10-76 En Route${call.location ? `\n**Location:** ${call.location}` : ''}`,
+            footer: { text: 'RPM Portal • Status auto-set to 10-76' },
+            timestamp: new Date().toISOString(),
+          }],
+        }, { headers: botHeaders() }).catch(() => {});
+      }
+
+      await rebuildStatusBoard(guildId, dispatchCfg);
+      res.json({ success: true, call });
+    } catch (err) {
+      console.error('[API POST /leo/calls/respond]', err.message);
+      res.status(500).json({ error: 'Failed to respond to call' });
+    }
+  });
+
+  router.post('/leo/calls/:callId/attach', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, status: 'active' });
+      if (!call) return res.status(404).json({ error: 'Call not found or already closed' });
+      if ((call.attachedLeoIds || []).includes(req.portalUser.userId))
+        return res.status(400).json({ error: 'You are already attached to this call' });
+
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+      call.attachedLeoIds = [...(call.attachedLeoIds || []), req.portalUser.userId];
+      await call.save();
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+
+      await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        { guildId, userId: req.portalUser.userId, username: displayName, tenCode: '10-97', location: call.location || null, subject: `Attached to ${call.callId}`, rawCall: null, updatedAt: new Date() },
+        { upsert: true, new: true }
+      );
+
+      await rebuildStatusBoard(guildId, dispatchCfg);
+      res.json({ success: true, call });
+    } catch (err) {
+      console.error('[API POST /leo/calls/attach]', err.message);
+      res.status(500).json({ error: 'Failed to attach to call' });
+    }
+  });
+
+  router.delete('/leo/calls/:callId', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, status: 'active' });
+      if (!call) return res.status(404).json({ error: 'Call not found or already closed' });
+
+      const userId = req.portalUser.userId;
+      const isResponder = call.respondingLeoId === userId;
+      const isAttached = (call.attachedLeoIds || []).includes(userId);
+
+      const freshRoles = await refreshMemberRoles(userId);
+      const cadConfig = await CADConfig.findOne({ guildId });
+      const isStaff = cadConfig?.staffRoleIds?.some(id => (freshRoles || []).includes(id));
+
+      if (!isResponder && !isAttached && !isStaff)
+        return res.status(403).json({ error: 'Only the responding or attached officer (or staff) can dismiss this call' });
+
+      call.status = 'closed';
+      call.closedAt = new Date();
+      call.closedBy = req.portalUser.displayName || req.portalUser.username;
+      await call.save();
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(guildId, dispatchCfg);
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API DELETE /leo/calls/:callId]', err.message);
+      res.status(500).json({ error: 'Failed to dismiss call' });
+    }
+  });
+
   router.get('/leo/officers', portalAuth, requireLeo, async (req, res) => {
     try {
       const guildId = GUILD_ID();

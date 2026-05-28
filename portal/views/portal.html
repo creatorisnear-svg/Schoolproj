@@ -297,7 +297,7 @@
           </div>
           <div id="status-detail-row" class="status-detail-row hidden">
             <input id="status-location" class="form-input" type="text" placeholder="Location (optional)">
-            <input id="status-subject" class="form-input" type="text" placeholder="Subject / notes (optional)" id="status-subject-input">
+            <input id="status-subject" class="form-input" type="text" placeholder="Subject / notes (optional)">
             <button class="btn btn-primary" id="btn-update-status" onclick="confirmStatusUpdate()">Confirm</button>
           </div>
           <div id="status-error" class="form-error hidden" style="margin-top:8px"></div>
@@ -307,7 +307,7 @@
         <div class="leo-innertab-bar">
           <button class="leo-innertab active" data-leotab="officers" onclick="switchLeoTab('officers')">Officers</button>
           <button class="leo-innertab" data-leotab="records" onclick="switchLeoTab('records')">Search Records</button>
-          <button class="leo-innertab" data-leotab="intel" onclick="switchLeoTab('intel')">BOLOs &amp; Calls</button>
+          <button class="leo-innertab" data-leotab="intel" onclick="switchLeoTab('intel')">BOLOs &amp; Calls<span id="intel-dot" class="leo-dot hidden">!</span></button>
           <span id="board-refresh-label" class="board-refresh-label">Refreshes in <span id="board-countdown">30</span>s</span>
         </div>
 
@@ -331,16 +331,17 @@
 
         <!-- Intel Pane (BOLOs + Calls) -->
         <div id="leo-innerpane-intel" class="leo-innerpane hidden">
-          <div class="leo-intel-grid">
-            <div class="card" style="padding:14px">
-              <div class="section-label" style="margin-top:0;margin-bottom:10px">Active BOLOs</div>
-              <div id="leo-bolos" class="bolo-list"><div class="empty-state">Loading...</div></div>
+          <div class="intel-section-header">
+            <div class="intel-header-left">
+              <div class="section-label" style="margin:0">Active 911 Calls</div>
+              <span id="intel-unresponded" class="intel-unresponded hidden"></span>
             </div>
-            <div class="card" style="padding:14px">
-              <div class="section-label" style="margin-top:0;margin-bottom:10px">Active 911 Calls</div>
-              <div id="leo-calls" class="call-list"><div class="empty-state">Loading...</div></div>
-            </div>
+            <span id="intel-refresh-status" class="intel-refresh-status">Refreshes in <span id="intel-countdown">15</span>s</span>
           </div>
+          <div id="leo-calls"><div class="empty-state" style="padding:12px 0">Loading...</div></div>
+
+          <div class="section-label" style="margin-top:20px">Active BOLOs</div>
+          <div id="leo-bolos"><div class="empty-state" style="padding:12px 0">Loading...</div></div>
         </div>
       </div>
 

@@ -1605,6 +1605,166 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════
+   DISPATCH CALL CARDS (Intel Tab)
+══════════════════════════════════════════════════════ */
+.dcc {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: border-left-color 0.2s;
+}
+.dcc:last-child { margin-bottom: 0; }
+.dcc-alert { border-left-color: var(--danger); }
+.dcc-ok { border-left-color: var(--success); }
+
+.dcc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.dcc-id {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-sub);
+  font-weight: 600;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.dcc-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-none { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(242,87,87,0.2); }
+.badge-responding { background: var(--success-dim); color: var(--success); border: 1px solid rgba(54,201,122,0.2); }
+
+.dcc-issue { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 4px; }
+.dcc-loc { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+.dcc-meta { font-size: 11px; color: var(--text-sub); }
+.dcc-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Intel section header ── */
+.intel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.intel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.intel-unresponded {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--danger);
+  background: var(--danger-dim);
+  border: 1px solid rgba(242,87,87,0.2);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.intel-refresh-status {
+  font-size: 10px;
+  color: var(--text-sub);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── BOLO items v2 ── */
+.bolo-item-v2 {
+  padding: 12px 14px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+.bolo-item-v2:last-child { margin-bottom: 0; }
+.bolo-v2-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.bolo-v2-name { font-size: 13px; font-weight: 700; }
+.bolo-v2-type {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.bolo-type-wanted { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(242,87,87,0.2); }
+.bolo-type-vehicle { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(240,160,32,0.2); }
+.bolo-v2-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+.bolo-v2-reason { font-size: 12px; color: var(--text); margin-bottom: 3px; }
+.bolo-v2-meta { font-size: 11px; color: var(--text-sub); }
+
+/* ── LEO tab notification dot ── */
+.leo-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  margin-left: 5px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* ── Officer card improvements ── */
+.officer-you-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(76,120,245,0.25);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.officer-detail-label {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  min-width: 42px;
+  margin-right: 4px;
+}
+.officer-dispatch-line {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════════════════════
    BOTTOM NAV DISPATCH ACCENT
 ══════════════════════════════════════════════════════ */
 .bnav-dispatch { color: var(--danger) !important; }

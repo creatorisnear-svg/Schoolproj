@@ -765,8 +765,15 @@ function switchLeoTab(tab) {
   if (pane) pane.classList.remove('hidden');
   if (tab === 'officers') {
     document.getElementById('board-refresh-label')?.classList.remove('hidden');
+    stopIntelRefresh();
   } else {
     document.getElementById('board-refresh-label')?.classList.add('hidden');
+    if (tab === 'intel') {
+      loadLeoIntel();
+      startIntelRefresh();
+    } else {
+      stopIntelRefresh();
+    }
   }
 }
 
@@ -852,12 +859,12 @@ function renderOfficerBoard(officers) {
     return `
       <div class="officer-card${isMe ? ' is-me' : ''}">
         <div class="officer-header">
-          <div class="officer-name">${o.username}</div>
+          <div class="officer-name">${o.username}${isMe ? ' <span class="officer-you-badge">You</span>' : ''}</div>
           <span class="officer-badge" style="background:${info.color}18;color:${info.color};border-color:${info.color}40">${info.label}</span>
         </div>
-        ${o.location ? `<div class="officer-detail">📍 ${o.location}</div>` : ''}
-        ${o.subject ? `<div class="officer-detail">👤 ${o.subject}</div>` : ''}
-        ${o.rawCall ? `<div class="officer-detail">📻 ${o.rawCall}</div>` : ''}
+        ${o.location ? `<div class="officer-detail"><span class="officer-detail-label">Loc</span>${o.location}</div>` : ''}
+        ${o.subject ? `<div class="officer-detail"><span class="officer-detail-label">Subj</span>${o.subject}</div>` : ''}
+        ${o.rawCall ? `<div class="officer-detail officer-dispatch-line"><span class="officer-detail-label">Dispatch</span>${o.rawCall}</div>` : ''}
         <div class="officer-time">Updated ${timeAgo(new Date(o.updatedAt))}</div>
       </div>`;
   }).join('');
@@ -1003,44 +1010,148 @@ function tenInfo(code) {
 }
 
 async function loadLeo() {
-  const [boloEl, callEl] = [
-    document.getElementById('leo-bolos'),
-    document.getElementById('leo-calls'),
-  ];
   try {
-    const [bolos, calls, officers, myStatus] = await Promise.all([
-      api('/leo/bolos'),
-      api('/leo/calls'),
+    const [officers, myStatus] = await Promise.all([
       api('/leo/officers'),
       api('/leo/mystatus'),
     ]);
-
     renderOfficerBoard(officers || []);
     applyMyStatusToUI(myStatus);
     startBoardRefresh();
-
-    boloEl.innerHTML = bolos?.length
-      ? bolos.map(b => `
-          <div class="bolo-item">
-            <div class="bolo-name">${b.characterName}</div>
-            <div class="bolo-reason">${b.reason}</div>
-            <div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()}</div>
-          </div>`).join('')
-      : '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
-
-    callEl.innerHTML = calls?.length
-      ? calls.map(c => `
-          <div class="call-item">
-            <div class="call-id">${c.callId}</div>
-            <div class="call-issue">${c.issue}</div>
-            ${c.location ? `<div class="call-loc">📍 ${c.location}</div>` : ''}
-            <div class="call-meta">${timeAgo(new Date(c.timestamp))} ${c.respondingLeoUsername ? '• ' + c.respondingLeoUsername : '• No response'}</div>
-          </div>`).join('')
-      : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
+    await loadLeoIntel();
   } catch {
     document.getElementById('leo-officers').innerHTML = '<div class="empty-state">Failed to load.</div>';
-    boloEl.innerHTML = callEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
+}
+
+/* ── Intel auto-refresh ── */
+let intelRefreshTimer = null;
+let intelCountdown = 15;
+
+function startIntelRefresh() {
+  stopIntelRefresh();
+  intelCountdown = 15;
+  updateIntelCountdown();
+  intelRefreshTimer = setInterval(() => {
+    intelCountdown--;
+    updateIntelCountdown();
+    if (intelCountdown <= 0) {
+      intelCountdown = 15;
+      loadLeoIntel();
+    }
+  }, 1000);
+}
+
+function stopIntelRefresh() {
+  if (intelRefreshTimer) { clearInterval(intelRefreshTimer); intelRefreshTimer = null; }
+}
+
+function updateIntelCountdown() {
+  const el = document.getElementById('intel-countdown');
+  if (el) el.textContent = intelCountdown;
+}
+
+async function loadLeoIntel() {
+  try {
+    const [bolos, calls] = await Promise.all([api('/leo/bolos'), api('/leo/calls')]);
+
+    const callEl = document.getElementById('leo-calls');
+    const boloEl = document.getElementById('leo-bolos');
+
+    if (callEl) {
+      callEl.innerHTML = calls?.length
+        ? calls.map(c => renderCallCard(c)).join('')
+        : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
+    }
+    if (boloEl) {
+      boloEl.innerHTML = bolos?.length
+        ? bolos.map(b => renderBoloItem(b)).join('')
+        : '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
+    }
+
+    const unresponded = (calls || []).filter(c => !c.respondingLeoId).length;
+    const dot = document.getElementById('intel-dot');
+    const badge = document.getElementById('intel-unresponded');
+    if (dot) dot.classList.toggle('hidden', unresponded === 0);
+    if (badge) {
+      badge.textContent = `${unresponded} unresponded`;
+      badge.classList.toggle('hidden', unresponded === 0);
+    }
+    intelCountdown = 15;
+  } catch {
+    const callEl = document.getElementById('leo-calls');
+    const boloEl = document.getElementById('leo-bolos');
+    if (callEl) callEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
+    if (boloEl) boloEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
+  }
+}
+
+function renderCallCard(call) {
+  const hasResponder = !!call.respondingLeoId;
+  const myId = me?.userId;
+  const isResponder = call.respondingLeoId === myId;
+  const isAttached = (call.attachedLeoIds || []).includes(myId);
+  const attachedCount = (call.attachedLeoIds || []).length;
+
+  const actions = [];
+  if (!hasResponder) actions.push(`<button class="btn btn-primary btn-sm" onclick="respondToCall('${call.callId}')">Respond 10-76</button>`);
+  if (!isAttached && !isResponder) actions.push(`<button class="btn btn-secondary btn-sm" onclick="attachToCall('${call.callId}')">Attach 10-97</button>`);
+  if (isResponder || isAttached) actions.push(`<button class="btn btn-danger btn-sm" onclick="dismissCall('${call.callId}')">Dismiss</button>`);
+
+  return `<div class="dcc ${hasResponder ? 'dcc-ok' : 'dcc-alert'}">
+    <div class="dcc-top">
+      <span class="dcc-id">${call.callId}</span>
+      <span class="dcc-status-badge ${hasResponder ? 'badge-responding' : 'badge-none'}">${hasResponder ? call.respondingLeoUsername : 'No Response'}</span>
+    </div>
+    <div class="dcc-issue">${call.issue}</div>
+    ${call.location ? `<div class="dcc-loc">${call.location}</div>` : ''}
+    <div class="dcc-meta">${timeAgo(new Date(call.timestamp))}${attachedCount ? ` · ${attachedCount} attached` : ''}</div>
+    ${actions.length ? `<div class="dcc-actions">${actions.join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderBoloItem(b) {
+  const typeLabel = b.type === 'vehicle' ? 'VEHICLE' : 'WANTED';
+  const vehicleDesc = b.type === 'vehicle'
+    ? [b.vehicleColor, b.vehicleMake, b.vehicleModel, b.licensePlate ? `(${b.licensePlate})` : ''].filter(Boolean).join(' ')
+    : null;
+  return `<div class="bolo-item-v2">
+    <div class="bolo-v2-top">
+      <span class="bolo-v2-name">${b.characterName || b.licensePlate || 'Unknown'}</span>
+      <span class="bolo-v2-type bolo-type-${b.type === 'vehicle' ? 'vehicle' : 'wanted'}">${typeLabel}</span>
+    </div>
+    ${vehicleDesc ? `<div class="bolo-v2-sub">${vehicleDesc}</div>` : ''}
+    ${b.reason ? `<div class="bolo-v2-reason">${b.reason}</div>` : ''}
+    <div class="bolo-v2-meta">Added ${timeAgo(new Date(b.createdAt))}</div>
+  </div>`;
+}
+
+/* ── Dispatch call actions ── */
+async function respondToCall(callId) {
+  try {
+    await apiPost(`/leo/calls/${callId}/respond`, {});
+    toast('Responding — status set to 10-76 En Route', 'success');
+    const [, , myStatus] = await Promise.all([loadLeoIntel(), refreshOfficerBoard(), api('/leo/mystatus')]);
+    applyMyStatusToUI(myStatus);
+  } catch (err) { toast(err.message || 'Failed to respond to call', 'error'); }
+}
+
+async function attachToCall(callId) {
+  try {
+    await apiPost(`/leo/calls/${callId}/attach`, {});
+    toast('Attached — status set to 10-97 On Scene', 'success');
+    const [, , myStatus] = await Promise.all([loadLeoIntel(), refreshOfficerBoard(), api('/leo/mystatus')]);
+    applyMyStatusToUI(myStatus);
+  } catch (err) { toast(err.message || 'Failed to attach to call', 'error'); }
+}
+
+async function dismissCall(callId) {
+  if (!confirm('Dismiss this call? It will be closed and removed from the board.')) return;
+  try {
+    await apiDel(`/leo/calls/${callId}`);
+    toast('Call dismissed', 'info');
+    await Promise.all([loadLeoIntel(), refreshOfficerBoard()]);
+  } catch (err) { toast(err.message || 'Failed to dismiss call', 'error'); }
 }
 
 async function leoSearch() {
