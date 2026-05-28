@@ -811,7 +811,23 @@ function applyMyStatusToUI(status) {
   if (!status) {
     if (sub) { sub.textContent = 'Not on duty'; sub.className = 'my-status-sub'; }
     if (offDutyBtn) offDutyBtn.style.display = 'none';
+    // Restore panic idle state if panic was cleared
+    panicActive = false;
+    const idleEl = document.getElementById('panic-idle');
+    const activeEl = document.getElementById('panic-active');
+    const panicBtn = document.getElementById('btn-panic');
+    if (idleEl) idleEl.classList.remove('hidden');
+    if (activeEl) activeEl.classList.add('hidden');
+    if (panicBtn) { panicBtn.disabled = false; panicBtn.querySelector('.panic-label').textContent = 'PANIC'; }
     return;
+  }
+  // Restore panic active bar if status is 10-99 on load
+  if (status.tenCode === '10-99') {
+    panicActive = true;
+    const idleEl = document.getElementById('panic-idle');
+    const activeEl = document.getElementById('panic-active');
+    if (idleEl) idleEl.classList.add('hidden');
+    if (activeEl) activeEl.classList.remove('hidden');
   }
   const info = tenInfo(status.tenCode);
   const parts = [info.label];
@@ -833,6 +849,61 @@ function applyMyStatusToUI(status) {
   if (locEl) locEl.value = status.location || '';
   const subEl = document.getElementById('status-subject');
   if (subEl) subEl.value = status.subject || '';
+}
+
+let panicActive = false;
+
+async function triggerPanic() {
+  const locRaw = prompt('Panic — 10-99\n\nEnter your current location (or leave blank):');
+  if (locRaw === null) return; // user cancelled
+  const location = locRaw.trim();
+
+  const btn = document.getElementById('btn-panic');
+  btn.disabled = true;
+  btn.querySelector('.panic-label').textContent = 'SENDING...';
+
+  try {
+    await apiPost('/leo/panic', { location });
+    panicActive = true;
+    document.getElementById('panic-idle').classList.add('hidden');
+    document.getElementById('panic-active').classList.remove('hidden');
+    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
+    document.getElementById('status-tencode').value = '10-99';
+    toast('10-99 sent — dispatch alerted', 'error');
+    boardCountdown = 1;
+    await refreshOfficerBoard();
+    boardCountdown = 30;
+  } catch (err) {
+    toast(err.message || 'Failed to send panic', 'error');
+    btn.disabled = false;
+    btn.querySelector('.panic-label').textContent = 'PANIC';
+  }
+}
+
+async function clearPanic() {
+  const clearBtn = document.getElementById('btn-clear-panic');
+  clearBtn.disabled = true;
+  clearBtn.textContent = 'Clearing...';
+  try {
+    await apiDel('/leo/status');
+    panicActive = false;
+    document.getElementById('panic-active').classList.add('hidden');
+    document.getElementById('panic-idle').classList.remove('hidden');
+    const panicBtn = document.getElementById('btn-panic');
+    panicBtn.disabled = false;
+    panicBtn.querySelector('.panic-label').textContent = 'PANIC';
+    applyMyStatusToUI(null);
+    document.getElementById('status-tencode').value = '';
+    document.getElementById('status-location').value = '';
+    document.getElementById('status-subject').value = '';
+    toast('Panic cleared — 10-99 cancelled', 'info');
+    await refreshOfficerBoard();
+  } catch (err) {
+    toast(err.message || 'Failed to clear panic', 'error');
+  } finally {
+    clearBtn.disabled = false;
+    clearBtn.textContent = 'Clear Panic';
+  }
 }
 
 async function updateOfficerStatus() {

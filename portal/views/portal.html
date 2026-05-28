@@ -182,6 +182,26 @@
       <div id="tab-leo" class="tab-pane">
         <div class="page-header"><h2>LEO Dashboard</h2></div>
 
+        <!-- Panic Button -->
+        <div class="panic-panel" id="panic-panel">
+          <div id="panic-idle">
+            <button class="btn-panic" id="btn-panic" onclick="triggerPanic()">
+              <span class="panic-label">PANIC</span>
+              <span class="panic-sub">10-99 Emergency</span>
+            </button>
+          </div>
+          <div id="panic-active" class="hidden">
+            <div class="panic-active-bar">
+              <div class="panic-active-dot"></div>
+              <div>
+                <div class="panic-active-title">10-99 PANIC ACTIVE</div>
+                <div class="panic-active-sub">Dispatch has been alerted — all units responding</div>
+              </div>
+              <button class="btn btn-sm" id="btn-clear-panic" onclick="clearPanic()" style="margin-left:auto;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.2);white-space:nowrap">Clear Panic</button>
+            </div>
+          </div>
+        </div>
+
         <!-- My Status Controls -->
         <div class="my-status-panel" id="my-status-panel">
           <div class="my-status-header">

@@ -610,5 +610,71 @@ export function createApiRouter() {
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
 
+  router.post('/leo/panic', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { location } = req.body;
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+
+      await OfficerStatus.findOneAndUpdate(
+        { guildId, userId: req.portalUser.userId },
+        {
+          guildId,
+          userId: req.portalUser.userId,
+          username: displayName,
+          tenCode: '10-99',
+          location: location?.trim() || null,
+          subject: 'PANIC — Officer needs immediate assistance',
+          rawCall: null,
+          updatedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      try {
+        const dispatchCfg = await DispatchConfig.findOne({ guildId });
+        if (dispatchCfg?.enabled) {
+          const panicEmbed = {
+            color: 0xff0000,
+            title: '10-99 — OFFICER NEEDS IMMEDIATE ASSISTANCE',
+            description: `**${displayName}** has activated their panic button via the Member Portal.\n-# All units respond immediately.`,
+            fields: [
+              { name: 'Officer', value: displayName, inline: true },
+              ...(location?.trim() ? [{ name: 'Last Known Location', value: location.trim(), inline: true }] : []),
+              { name: 'Code', value: '10-99 — Emergency', inline: true },
+            ],
+            footer: { text: 'RPM Portal • ALL UNITS RESPOND' },
+            timestamp: new Date().toISOString(),
+          };
+          const postEmbed = (channelId) => channelId
+            ? axios.post(`${DISCORD_BASE}/channels/${channelId}/messages`, { embeds: [panicEmbed] }, { headers: botHeaders() }).catch(() => {})
+            : Promise.resolve();
+          await Promise.all([
+            postEmbed(dispatchCfg.dispatchChannelId),
+            dispatchCfg.statusBoardChannelId && dispatchCfg.statusBoardChannelId !== dispatchCfg.dispatchChannelId
+              ? postEmbed(dispatchCfg.statusBoardChannelId)
+              : Promise.resolve(),
+          ]);
+        }
+      } catch { /* embed post failed — status still saved */ }
+
+      const botUrl = process.env.BOT_INTERNAL_URL;
+      const secret = process.env.PORTAL_INTERNAL_SECRET;
+      if (botUrl && secret) {
+        axios.post(
+          `${botUrl}/api/internal/panic`,
+          { guildId, officerName: displayName, location: location?.trim() || null },
+          { headers: { 'x-internal-secret': secret }, timeout: 5000 }
+        ).catch(() => {});
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API POST /leo/panic]', err.message);
+      res.status(500).json({ error: 'Failed to trigger panic' });
+    }
+  });
+
   return router;
 }

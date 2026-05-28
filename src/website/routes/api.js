@@ -950,5 +950,34 @@ export function createApiRouter(client) {
     }
   });
 
+  /* ── Internal panic endpoint — called by the portal when an officer hits the panic button ── */
+  router.post('/internal/panic', async (req, res) => {
+    const secret = req.headers['x-internal-secret'];
+    const expected = process.env.PORTAL_INTERNAL_SECRET;
+    if (!expected || secret !== expected) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { guildId, officerName, location } = req.body;
+    if (!guildId) return res.status(400).json({ error: 'guildId required' });
+
+    res.json({ success: true });
+
+    setImmediate(async () => {
+      try {
+        const { playDispatchVoice } = await import('../../utils/voiceListener.js');
+        const { generateDispatchTTSPublic, PANIC_SOUND_BUFFER } = await import('../../handlers/dispatchHandler.js');
+        const loc = location ? ` at ${location}` : '';
+        const ttsText = `Attention all units, 10-99, officer ${officerName} is in distress${loc}. All units respond immediately. This is not a drill.`;
+        if (PANIC_SOUND_BUFFER) {
+          await playDispatchVoice(guildId, PANIC_SOUND_BUFFER, { urgent: true, skipRadioWave: true });
+          await new Promise(r => setTimeout(r, 600));
+        }
+        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+        await playDispatchVoice(guildId, ttsBuffer, { urgent: false });
+      } catch (err) {
+        console.error('[Internal /panic] TTS error:', err.message);
+      }
+    });
+  });
+
   return router;
 }

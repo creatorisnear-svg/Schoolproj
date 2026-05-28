@@ -18,7 +18,7 @@ import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
 
 // Pre-load panic alert sound (MP3 played urgently over voice on 10-99)
 const _panicSoundPath = join(dirname(fileURLToPath(import.meta.url)), '../assets/panic_alert.mp3');
-const PANIC_SOUND_BUFFER = existsSync(_panicSoundPath) ? readFileSync(_panicSoundPath) : null;
+export const PANIC_SOUND_BUFFER = existsSync(_panicSoundPath) ? readFileSync(_panicSoundPath) : null;
 if (PANIC_SOUND_BUFFER) {
   console.log(`[Dispatch] Panic alert sound loaded (${PANIC_SOUND_BUFFER.length} bytes)`);
 } else {
