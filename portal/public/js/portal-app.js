@@ -221,20 +221,30 @@ async function loadOverview() {
 
     document.getElementById('overview-stats').innerHTML = statsHtml;
 
+    const SVG = {
+      cad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      dispatch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>',
+      economy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      fines: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>',
+      tickets: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      rolerequest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      leo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    };
     const actions = [
-      { icon: '👤', label: 'CAD', tab: 'cad' },
-      { icon: '🚨', label: 'Dispatch', tab: 'dispatch' },
-      { icon: '💰', label: 'Economy', tab: 'economy' },
-      { icon: '📄', label: 'Traffic Fines', tab: 'fines' },
-      { icon: '🎫', label: 'Tickets', tab: 'tickets' },
-      { icon: '📅', label: 'RP Calendar', tab: 'calendar' },
-      { icon: '📋', label: 'Role Requests', tab: 'rolerequest' },
+      { tab: 'cad', label: 'CAD System' },
+      { tab: 'dispatch', label: 'Dispatch / 911' },
+      { tab: 'economy', label: 'Economy' },
+      { tab: 'fines', label: 'Traffic Fines' },
+      { tab: 'tickets', label: 'Tickets' },
+      { tab: 'calendar', label: 'RP Calendar' },
+      { tab: 'rolerequest', label: 'Role Requests' },
     ];
-    if (me.isLeo) actions.push({ icon: '🚔', label: 'LEO Dashboard', tab: 'leo' });
+    if (me.isLeo) actions.push({ tab: 'leo', label: 'LEO Dashboard' });
 
     document.getElementById('quick-actions').innerHTML = actions.map(a => `
       <button class="quick-btn" onclick="switchTab('${a.tab}')">
-        <span class="quick-btn-icon">${a.icon}</span>${a.label}
+        <span class="quick-btn-icon">${SVG[a.tab] || ''}</span>${a.label}
       </button>
     `).join('');
 

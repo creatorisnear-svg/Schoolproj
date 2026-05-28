@@ -25,6 +25,96 @@ const GUILD_ID = () => process.env.PORTAL_GUILD_ID;
 const DISCORD_BASE = 'https://discord.com/api/v10';
 const botHeaders = () => ({ Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' });
 
+const TEN_LABELS = {
+  '10-6': 'Busy', '10-7': 'Out of Service', '10-8': 'Available',
+  '10-10': 'Off Duty', '10-15': 'In Pursuit', '10-50': 'Traffic Stop',
+  '10-97': 'On Scene', '10-99': 'Emergency',
+};
+
+const TEN_COLORS = {
+  '10-8': 0x3dd68c,
+  '10-6': 0xf5a623, '10-97': 0xf5a623, '10-50': 0xf5a623,
+  '10-15': 0xf75f5f, '10-99': 0xff0000,
+  '10-7': 0x50505f, '10-10': 0x50505f,
+};
+
+const TEN_ICONS = {
+  '10-8': '🟢', '10-6': '🟡', '10-97': '🟠', '10-50': '🟠',
+  '10-15': '🔴', '10-99': '🆘', '10-7': '⚫', '10-10': '⚫',
+};
+
+async function rebuildStatusBoard(guildId, dispatchCfg) {
+  try {
+    if (!dispatchCfg?.enabled || !dispatchCfg.statusBoardChannelId) return;
+
+    const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const officers = await OfficerStatus.find({ guildId, updatedAt: { $gte: cutoff } }).sort({ updatedAt: -1 });
+
+    const activeOfficers = officers.filter(o => o.tenCode !== '10-10' && o.tenCode !== '10-7');
+
+    let embed;
+    if (!officers.length) {
+      embed = {
+        color: 0x2e2e36,
+        title: '🚔  Officer Status Board',
+        description: '*No officers currently on duty.*',
+        footer: { text: 'RPM Portal • Auto-updates on status change' },
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      const fields = officers.map(o => {
+        const icon = TEN_ICONS[o.tenCode] || '⚪';
+        const label = TEN_LABELS[o.tenCode] || o.tenCode;
+        let value = `${icon} **${o.tenCode}** — ${label}`;
+        if (o.location) value += `\n📍 ${o.location}`;
+        if (o.subject) value += `\n📋 ${o.subject}`;
+        const mins = Math.floor((Date.now() - new Date(o.updatedAt).getTime()) / 60000);
+        value += `\n*Updated ${mins < 1 ? 'just now' : `${mins}m ago`}*`;
+        return { name: `👮  ${o.username}`, value, inline: true };
+      });
+
+      const dominantCode = activeOfficers.find(o => o.tenCode === '10-99')?.tenCode
+        || activeOfficers.find(o => o.tenCode === '10-15')?.tenCode
+        || activeOfficers[0]?.tenCode
+        || '10-10';
+
+      embed = {
+        color: TEN_COLORS[dominantCode] ?? 0x4f7ef7,
+        title: '🚔  Officer Status Board',
+        description: `**${activeOfficers.length}** officer${activeOfficers.length !== 1 ? 's' : ''} active  •  **${officers.length}** total on shift`,
+        fields,
+        footer: { text: 'RPM Portal • Auto-updates on status change' },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const channelId = dispatchCfg.statusBoardChannelId;
+    let messageId = dispatchCfg.statusBoardMessageId;
+
+    if (messageId) {
+      try {
+        await axios.patch(
+          `${DISCORD_BASE}/channels/${channelId}/messages/${messageId}`,
+          { embeds: [embed] },
+          { headers: botHeaders() }
+        );
+        return;
+      } catch {
+        messageId = null;
+      }
+    }
+
+    const posted = await axios.post(
+      `${DISCORD_BASE}/channels/${channelId}/messages`,
+      { embeds: [embed] },
+      { headers: botHeaders() }
+    );
+    await DispatchConfig.findOneAndUpdate({ guildId }, { statusBoardMessageId: posted.data.id });
+  } catch (err) {
+    console.error('[rebuildStatusBoard]', err.message);
+  }
+}
+
 async function getLeoStatus(roleIds, guildId) {
   const cadConfig = await CADConfig.findOne({ guildId });
   if (!cadConfig) return false;
@@ -565,34 +655,8 @@ export function createApiRouter() {
         { upsert: true, new: true }
       );
 
-      /* Post status update to dispatch status board channel if configured */
-      try {
-        const dispatchCfg = await DispatchConfig.findOne({ guildId });
-        if (dispatchCfg?.enabled && dispatchCfg.statusBoardChannelId) {
-          const TEN_LABELS = {
-            '10-6': 'Busy', '10-7': 'Out of Service', '10-8': 'Available',
-            '10-10': 'Off Duty', '10-15': 'In Pursuit', '10-50': 'Traffic Stop',
-            '10-97': 'On Scene', '10-99': 'Emergency',
-          };
-          const label = TEN_LABELS[tenCode] || tenCode;
-          const fields = [{ name: 'Status', value: `${tenCode} — ${label}`, inline: true }];
-          if (location?.trim()) fields.push({ name: 'Location', value: location.trim(), inline: true });
-          if (subject?.trim()) fields.push({ name: 'Subject', value: subject.trim(), inline: true });
-          await axios.post(
-            `${DISCORD_BASE}/channels/${dispatchCfg.statusBoardChannelId}/messages`,
-            {
-              embeds: [{
-                color: 0x4f7ef7,
-                title: `🚔 Status Update — ${displayName}`,
-                fields,
-                footer: { text: 'RPM Portal • Officer Status' },
-                timestamp: new Date().toISOString(),
-              }],
-            },
-            { headers: botHeaders() }
-          );
-        }
-      } catch { /* status post failed — DB record still saved */ }
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(guildId, dispatchCfg);
 
       res.json({ success: true, status: updated });
     } catch (err) {
@@ -606,6 +670,8 @@ export function createApiRouter() {
       const guildId = GUILD_ID();
       if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
       await OfficerStatus.findOneAndDelete({ guildId, userId: req.portalUser.userId });
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(guildId, dispatchCfg);
       res.json({ success: true });
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
@@ -647,15 +713,10 @@ export function createApiRouter() {
             footer: { text: 'RPM Portal • ALL UNITS RESPOND' },
             timestamp: new Date().toISOString(),
           };
-          const postEmbed = (channelId) => channelId
-            ? axios.post(`${DISCORD_BASE}/channels/${channelId}/messages`, { embeds: [panicEmbed] }, { headers: botHeaders() }).catch(() => {})
-            : Promise.resolve();
-          await Promise.all([
-            postEmbed(dispatchCfg.dispatchChannelId),
-            dispatchCfg.statusBoardChannelId && dispatchCfg.statusBoardChannelId !== dispatchCfg.dispatchChannelId
-              ? postEmbed(dispatchCfg.statusBoardChannelId)
-              : Promise.resolve(),
-          ]);
+          if (dispatchCfg.dispatchChannelId) {
+            await axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, { embeds: [panicEmbed] }, { headers: botHeaders() }).catch(() => {});
+          }
+          await rebuildStatusBoard(guildId, dispatchCfg);
         }
       } catch { /* embed post failed — status still saved */ }
 
