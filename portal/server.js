@@ -34,10 +34,10 @@ if (!MONGO_URI || (!MONGO_URI.startsWith('mongodb://') && !MONGO_URI.startsWith(
 app.get('/health', (req, res) => res.send('OK'));
 
 app.use('/', createAuthRouter());
-app.use('/api', createApiRouter());
+app.use('/api/portal', createApiRouter());
 
 const viewsDir = join(__dirname, 'views');
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(join(viewsDir, 'portal.html'));
 });
 

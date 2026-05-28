@@ -590,7 +590,7 @@ async function submitAddVehicle(e) {
 /* ── API Helpers ────────────────────────────────────────────────────────── */
 async function api(path) {
   const res = await fetch(`/api/portal${path}`, { credentials: 'include' });
-  if (res.status === 401) { window.location.href = '/portal'; return null; }
+  if (res.status === 401) { window.location.href = '/'; return null; }
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
