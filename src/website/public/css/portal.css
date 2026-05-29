@@ -441,29 +441,55 @@ html, body {
 .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 
 .priority-banner {
-  background: linear-gradient(135deg, rgba(242,87,87,0.12), rgba(240,160,32,0.06));
-  border: 1px solid rgba(242,87,87,0.25);
   border-radius: var(--radius);
   padding: 14px 16px;
   margin-bottom: 18px;
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.priority-banner-active {
+  background: linear-gradient(135deg, rgba(242,87,87,0.12), rgba(240,160,32,0.06));
+  border: 1px solid rgba(242,87,87,0.25);
+}
+.priority-banner-cooldown {
+  background: linear-gradient(135deg, rgba(240,160,32,0.10), rgba(240,160,32,0.04));
+  border: 1px solid rgba(240,160,32,0.30);
+}
+.priority-banner-idle {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
 }
 .priority-banner-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--danger);
   flex-shrink: 0;
-  animation: pulse 1.5s ease-in-out infinite;
 }
-@keyframes pulse {
+.priority-dot-active {
+  background: var(--danger);
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+.priority-dot-cooldown {
+  background: #f0a020;
+  animation: pulse-yellow 1.5s ease-in-out infinite;
+}
+.priority-dot-idle {
+  background: #36c97a;
+}
+@keyframes pulse-red {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(242,87,87,0.4); }
   50% { opacity: 0.8; box-shadow: 0 0 0 5px rgba(242,87,87,0); }
 }
+@keyframes pulse-yellow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(240,160,32,0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 5px rgba(240,160,32,0); }
+}
 .priority-banner-text { flex: 1; }
-.priority-banner-title { font-size: 13px; font-weight: 700; color: var(--danger); }
+.priority-banner-active  .priority-banner-title { font-size: 13px; font-weight: 700; color: var(--danger); }
+.priority-banner-cooldown .priority-banner-title { font-size: 13px; font-weight: 700; color: #f0a020; }
+.priority-banner-idle .priority-banner-title { font-size: 13px; font-weight: 700; color: #36c97a; }
 .priority-banner-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
 
 .quick-actions { display: flex; flex-direction: column; gap: 3px; }

@@ -198,6 +198,60 @@ function moreNav(tab) {
 }
 
 /* ══════════════════════════════════════════════════════
+   PRIORITY BANNER
+══════════════════════════════════════════════════════ */
+let _priorityCooldownTimer = null;
+
+function applyPriorityBanner(p) {
+  const banner = document.getElementById('priority-banner');
+  const dot    = document.getElementById('priority-banner-dot');
+  const title  = document.getElementById('priority-banner-title');
+  const sub    = document.getElementById('priority-banner-sub');
+  if (!banner) return;
+
+  if (_priorityCooldownTimer) { clearInterval(_priorityCooldownTimer); _priorityCooldownTimer = null; }
+
+  if (p?.active) {
+    banner.className = 'priority-banner priority-banner-active';
+    dot.className    = 'priority-banner-dot priority-dot-active';
+    title.textContent = 'Priority Event Active';
+    if (p.customMessage) sub.textContent = p.customMessage;
+    else if (p.issuedBy)  sub.textContent = `Issued by ${p.issuedBy}`;
+    else                  sub.textContent = 'Server-wide priority is currently in session';
+  } else if (p?.cooldown && p.cooldownEndsAt) {
+    banner.className = 'priority-banner priority-banner-cooldown';
+    dot.className    = 'priority-banner-dot priority-dot-cooldown';
+    title.textContent = 'Priority Cooldown';
+    const endsAt = new Date(p.cooldownEndsAt);
+
+    function updateCooldownSub() {
+      const ms = endsAt - Date.now();
+      if (ms <= 0) {
+        clearInterval(_priorityCooldownTimer);
+        _priorityCooldownTimer = null;
+        applyPriorityBanner({ active: false, cooldown: false });
+        loaded['overview'] = false;
+        loadOverview();
+        return;
+      }
+      const totalSec = Math.ceil(ms / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+      sub.textContent = (p.cooldownIssuedBy ? `Issued by ${p.cooldownIssuedBy} — ` : '') + `Ends in ${timeStr}`;
+    }
+
+    updateCooldownSub();
+    _priorityCooldownTimer = setInterval(updateCooldownSub, 1000);
+  } else {
+    banner.className = 'priority-banner priority-banner-idle';
+    dot.className    = 'priority-banner-dot priority-dot-idle';
+    title.textContent = 'No Priority / Cooldown';
+    sub.textContent   = 'Server is open — no active priority or cooldown';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
    OVERVIEW
 ══════════════════════════════════════════════════════ */
 async function loadOverview() {
@@ -210,13 +264,7 @@ async function loadOverview() {
       api('/traffic-tickets'),
     ]);
 
-    if (priorityRes?.active) {
-      const banner = document.getElementById('priority-banner');
-      banner.classList.remove('hidden');
-      const sub = document.getElementById('priority-banner-sub');
-      if (priorityRes.customMessage) sub.textContent = priorityRes.customMessage;
-      else if (priorityRes.issuedBy) sub.textContent = `Issued by ${priorityRes.issuedBy}`;
-    }
+    applyPriorityBanner(priorityRes);
 
     const openTickets = (ticketsRes || []).filter(t => t.status === 'open').length;
     const unpaidFines = (finesRes || []).filter(f => !f.paid).length;
