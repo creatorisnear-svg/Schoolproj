@@ -849,18 +849,21 @@ export async function postCivilianJobsPanel(guild, jobConfig) {
   const embed = new EmbedBuilder()
     .setColor(0x2d2d2d)
     .setTitle('Civilian Jobs')
-    .setDescription(`Click a job below to apply. Your role will be assigned automatically and expire after the listed duration.\n\n${desc}`)
+    .setDescription(`Select a job from the menu below to apply. Your role will be assigned automatically and expire after the listed duration.\n\n${desc}`)
     .setFooter({ text: 'RPM' });
 
   const rows = [];
-  for (let i = 0; i < Math.min(jobs.length, 25); i += 5) {
+  if (jobs.length > 0) {
+    const options = jobs.slice(0, 25).map(j => ({
+      label: j.name.slice(0, 100),
+      value: j.jobId,
+      description: (j.description || `Role expires after ${j.durationHours}h`).slice(0, 100),
+    }));
     rows.push(new ActionRowBuilder().addComponents(
-      jobs.slice(i, i + 5).map(j =>
-        new ButtonBuilder()
-          .setCustomId(`civjob_apply_${j.jobId}`)
-          .setLabel(j.name.slice(0, 80))
-          .setStyle(ButtonStyle.Primary)
-      )
+      new StringSelectMenuBuilder()
+        .setCustomId('civjob_select')
+        .setPlaceholder('Choose a job to apply for...')
+        .addOptions(options)
     ));
   }
 
@@ -883,7 +886,7 @@ export async function postCivilianJobsPanel(guild, jobConfig) {
 export async function handleCivilianJobApply(interaction) {
   const guildId = interaction.guildId;
   const userId  = interaction.user.id;
-  const jobId   = interaction.customId.replace('civjob_apply_', '');
+  const jobId   = interaction.values[0];
 
   const jobConfig = await CivilianJobConfig.findOne({ guildId });
   const job = jobConfig?.jobs?.find(j => j.jobId === jobId);

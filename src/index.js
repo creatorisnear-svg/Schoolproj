@@ -797,7 +797,10 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId.startsWith('economy')) {
+      if (interaction.customId === 'civjob_select') {
+        const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
+        await handleCivilianJobApply(interaction);
+      } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyMenu } = await import('./handlers/economyHandler.js');
         await handleEconomyMenu(interaction);
       } else {
@@ -841,9 +844,6 @@ client.on('interactionCreate', async interaction => {
         }
         const { handleShopCategoryButton } = await import('./handlers/economyActions.js');
         await handleShopCategoryButton(interaction);
-      } else if (interaction.customId.startsWith('civjob_apply_')) {
-        const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
-        await handleCivilianJobApply(interaction);
       } else if (interaction.customId === 'collect_income' || interaction.customId.startsWith('economy')) {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);
