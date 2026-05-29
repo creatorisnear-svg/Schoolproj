@@ -345,7 +345,7 @@ async function loadCad() {
   try {
     const chars = await api('/cad');
     if (!chars?.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div>No characters yet. Create one to get started.</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>No characters yet. Create one to get started.</div>`;
       return;
     }
     list.innerHTML = chars.map(c => renderCharCard(c)).join('');
@@ -385,7 +385,7 @@ function renderCharCard(c) {
         <div class="vehicle-item">
           <div class="vehicle-item-left">
             <div class="vehicle-item-name">${v.year ? v.year + ' ' : ''}${v.color ? v.color + ' ' : ''}${v.make} ${v.model}</div>
-            ${v.licensePlate ? `<div class="vehicle-item-plate">🚗 ${v.licensePlate}</div>` : ''}
+            ${v.licensePlate ? `<div class="vehicle-item-plate">${v.licensePlate}</div>` : ''}
           </div>
         </div>`).join('')
     : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No vehicles registered.</div>';
@@ -484,7 +484,7 @@ function renderDispatchCall(c, isActive) {
         </div>
         ${isActive ? `<button class="btn btn-sm btn-secondary btn-cancel-call" data-call-id="${c.callId}">Cancel</button>` : `<span class="status-pill ${c.status === 'active' ? 'ticket-status-open' : 'ticket-status-closed'}">${c.status}</span>`}
       </div>
-      <div class="dispatch-call-loc">📍 ${c.location}</div>
+      <div class="dispatch-call-loc">${c.location}</div>
       ${c.suspectsDescription ? `<div class="dispatch-call-detail">Suspect: ${c.suspectsDescription}</div>` : ''}
       ${c.lastSeen ? `<div class="dispatch-call-detail">Last seen: ${c.lastSeen}</div>` : ''}
       <div class="dispatch-call-meta">
@@ -529,7 +529,7 @@ async function submit911(e) {
     errEl.classList.remove('hidden');
   } finally {
     btn.disabled = false;
-    btn.textContent = '🚨 Dispatch Now';
+    btn.textContent = 'Dispatch Now';
   }
 }
 
@@ -544,7 +544,7 @@ async function loadTrafficFines() {
     const cur = ecoRes?.currency || '$';
 
     if (!tickets?.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📄</div>No traffic violations on record.</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>No traffic violations on record.</div>`;
       return;
     }
 
@@ -735,21 +735,6 @@ function showEcoMsg(text, type = 'info') {
   el._t = setTimeout(() => el.classList.add('hidden'), 4000);
 }
 
-function updateBalanceDisplay(cash, bank, cur) {
-  const fmt2 = v => `${cur}${Number(v).toLocaleString()}`;
-  document.getElementById('economy-balance').innerHTML = [
-    { label: 'Cash', value: fmt2(cash), sub: 'on hand' },
-    { label: 'Bank', value: fmt2(bank), sub: 'saved' },
-    { label: 'Total', value: fmt2(cash + bank), sub: 'wealth' },
-  ].map(c => `
-    <div class="balance-card">
-      <div class="balance-label">${c.label}</div>
-      <div class="balance-amount">${c.value}</div>
-      <div class="balance-sub">${c.sub}</div>
-    </div>
-  `).join('');
-}
-
 async function doDeposit() {
   const amount = document.getElementById('deposit-input').value.trim();
   if (!amount) return showEcoMsg('Enter an amount to deposit.', 'error');
@@ -847,7 +832,7 @@ async function loadCalendar() {
   try {
     const events = await api('/calendar');
     if (!events?.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📅</div>No upcoming events scheduled.</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>No upcoming events scheduled.</div>`;
       return;
     }
     list.innerHTML = events.map(e => {
@@ -866,7 +851,7 @@ async function loadCalendar() {
           <div class="cal-info">
             <div class="cal-host">${e.person || 'TBA'}</div>
             ${e.description ? `<div class="cal-desc">${e.description}</div>` : ''}
-            ${e.timezone ? `<div class="cal-desc" style="margin-top:2px">🕐 ${e.timezone}</div>` : ''}
+            ${e.timezone ? `<div class="cal-desc" style="margin-top:2px">${e.timezone}</div>` : ''}
             ${platforms.length ? `<div class="cal-platform">${platforms.map(p => `<span class="cal-tag">${p}</span>`).join('')}</div>` : ''}
           </div>
         </div>`;
@@ -927,7 +912,7 @@ async function selectRoleType(id) {
     const approvers = await api(`/rolerequest/approvers/${id}`);
     if (!approvers?.length) { approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">No approvers available.</div>'; return; }
     approversEl.innerHTML = approvers.map(a => `
-      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">👤 ${a.name}</div>`).join('');
+      <div class="rr-approver-option" data-id="${a.id}" onclick="selectApprover('${a.id}')">${a.name}</div>`).join('');
   } catch {
     approversEl.innerHTML = '<div class="empty-state" style="padding:8px 0">Could not load approvers.</div>';
   }
@@ -1113,6 +1098,7 @@ async function triggerPanic() {
   const location = locRaw.trim();
 
   const btn = document.getElementById('btn-panic');
+  const btnOrigHTML = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
   try {
@@ -1127,7 +1113,7 @@ async function triggerPanic() {
     boardCountdown = 30;
   } catch (err) {
     toast(err.message || 'Failed to send panic', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'PANIC 10-99'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = btnOrigHTML || 'PANIC 10-99'; }
   }
 }
 
