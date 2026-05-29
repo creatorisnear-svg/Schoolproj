@@ -99,6 +99,14 @@ app.use('/img', express.static(resolve('src/website/public/img')));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
+app.get('/install', (req, res) => {
+  const clientId = process.env.DISCORD_CLIENT_ID || '1441306995641683978';
+  const permissions = '8';
+  const scopes = 'bot+applications.commands';
+  const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=${scopes}&permissions=${permissions}`;
+  res.redirect(inviteUrl);
+});
+
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
   res.send(
