@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { portalAuth } from './portal.js';
-import { triggerPanicAlert } from '../../handlers/dispatchHandler.js';
+import { triggerPanicAlert, announce911Call } from '../../handlers/dispatchHandler.js';
 import CADCharacter from '../../models/CADCharacter.js';
 import CADConfig from '../../models/CADConfig.js';
 import EconomyBalance from '../../models/EconomyBalance.js';
@@ -468,7 +468,7 @@ export function createPortalApiRouter(client) {
     try {
       const guildId = GUILD_ID();
       if (!guildId) return res.json([]);
-      const calls = await EmergencyCall.find({ guildId, callerId: req.portalUser.userId })
+      const calls = await EmergencyCall.find({ guildId, reporterId: req.portalUser.userId })
         .sort({ timestamp: -1 })
         .limit(20);
       res.json(calls);
@@ -491,8 +491,8 @@ export function createPortalApiRouter(client) {
       const call = new EmergencyCall({
         guildId,
         callId,
-        callerId: req.portalUser.userId,
-        callerUsername: req.portalUser.displayName || req.portalUser.username,
+        reporterId: req.portalUser.userId,
+        reporterUsername: req.portalUser.displayName || req.portalUser.username,
         issue: issue.trim(),
         location: location.trim(),
         suspectsDescription: suspectsDescription?.trim() || null,
@@ -504,23 +504,12 @@ export function createPortalApiRouter(client) {
       await call.save();
 
       const dispatchCfg = await DispatchConfig.findOne({ guildId });
-      if (dispatchCfg?.enabled && dispatchCfg.dispatchChannelId) {
-        const embed = new EmbedBuilder()
-          .setColor('#f04747')
-          .setTitle('911 Emergency Call')
-          .setDescription([
-            `**Call ID:** \`${callId}\``,
-            `**Caller:** ${call.callerUsername}`,
-            `**Emergency:** ${issue.trim()}`,
-            `**Location:** ${location.trim()}`,
-            suspectsDescription ? `**Suspect/Vehicle:** ${suspectsDescription}` : null,
-            lastSeen ? `**Last Seen:** ${lastSeen}` : null,
-            contact ? `**Contact:** ${contact}` : null,
-          ].filter(Boolean).join('\n'))
-          .setTimestamp()
-          .setFooter({ text: 'RPM Portal • 911 Dispatch' });
+      const guild = client.guilds.cache.get(guildId);
 
-        await sendToChannel(client, dispatchCfg.dispatchChannelId, { embeds: [embed] });
+      if (guild && dispatchCfg?.dispatchChannelId) {
+        announce911Call(guild, call, dispatchCfg).catch(err => {
+          console.error('[PORTAL 911] announce911Call error:', err.message);
+        });
       }
 
       res.json({ success: true, callId });
@@ -533,12 +522,34 @@ export function createPortalApiRouter(client) {
   router.delete('/dispatch/:callId/cancel', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
-      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, callerId: req.portalUser.userId });
+      const call = await EmergencyCall.findOne({ guildId, callId: req.params.callId, reporterId: req.portalUser.userId });
       if (!call) return res.status(404).json({ error: 'Call not found' });
       if (call.status !== 'active') return res.status(400).json({ error: 'Call is not active' });
       call.status = 'closed';
       call.closedBy = req.portalUser.displayName || req.portalUser.username;
       await call.save();
+
+      if (call.messageId && call.channelId && client) {
+        const guild = client.guilds.cache.get(guildId);
+        const ch = guild?.channels.cache.get(call.channelId);
+        if (ch?.isTextBased()) {
+          ch.messages.fetch(call.messageId).then(msg => {
+            msg.edit({
+              embeds: [new EmbedBuilder()
+                .setColor('#2d2d2d')
+                .setTitle('911 Call — Cancelled')
+                .setDescription(`**Call ID:** \`${call.callId}\`\nThis call was cancelled by the reporter.`)
+                .setTimestamp()
+                .setFooter({ text: 'RPM • 911 Dispatch' })],
+              components: [],
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      }
+
+      const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      await rebuildStatusBoard(client, guildId, dispatchCfg);
+
       res.json({ success: true });
     } catch (err) {
       console.error('[PORTAL /dispatch/cancel]', err);

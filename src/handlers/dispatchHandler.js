@@ -4484,3 +4484,75 @@ export async function initDispatchForGuild(guild, client) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }
 }
+
+// ── Portal 911 call announcement ─────────────────────────────────────────────
+export async function announce911Call(guild, call, dispatchCfg) {
+  try {
+    const channelId = dispatchCfg?.dispatchChannelId;
+    if (!channelId) return;
+
+    const channel = guild.channels.cache.get(channelId) ||
+      await guild.channels.fetch(channelId).catch(() => null);
+    if (!channel?.isTextBased()) return;
+
+    const cadConfig = await CADConfig.findOne({ guildId: guild.id });
+    const mentions = [];
+    if (cadConfig?.leoRoleIds?.length) mentions.push(...cadConfig.leoRoleIds.map(id => `<@&${id}>`));
+    if (cadConfig?.fireDepartmentRoleIds?.length) mentions.push(...cadConfig.fireDepartmentRoleIds.map(id => `<@&${id}>`));
+    const content = mentions.length > 0 ? mentions.join(' ') : '@here';
+
+    const embed = new EmbedBuilder()
+      .setColor('#f04747')
+      .setTitle('911 Emergency Call')
+      .setDescription([
+        `**Call ID:** \`${call.callId}\``,
+        `**Caller:** ${call.reporterUsername || 'Unknown'}`,
+        `**Emergency:** ${call.issue}`,
+        `**Location:** ${call.location}`,
+        call.suspectsDescription ? `**Suspect/Vehicle:** ${call.suspectsDescription}` : null,
+        call.lastSeen ? `**Last Seen:** ${call.lastSeen}` : null,
+        call.contact ? `**Contact:** ${call.contact}` : null,
+      ].filter(Boolean).join('\n'))
+      .setTimestamp()
+      .setFooter({ text: 'RPM • 911 Dispatch' });
+
+    const respondBtn = new ButtonBuilder()
+      .setCustomId(`911_respond_${call.callId}`)
+      .setLabel('Respond 10-76')
+      .setStyle(ButtonStyle.Danger);
+    const attachBtn = new ButtonBuilder()
+      .setCustomId(`911_attach_${call.callId}`)
+      .setLabel('Attach 10-97')
+      .setStyle(ButtonStyle.Primary);
+    const dismissBtn = new ButtonBuilder()
+      .setCustomId(`911_dismiss_${call.callId}`)
+      .setLabel('Dismiss')
+      .setStyle(ButtonStyle.Secondary);
+
+    const sentMessage = await channel.send({
+      content,
+      embeds: [embed],
+      components: [new ActionRowBuilder().addComponents(respondBtn, attachBtn, dismissBtn)],
+    });
+
+    await EmergencyCall.findOneAndUpdate(
+      { _id: call._id },
+      { messageId: sentMessage.id, channelId }
+    );
+
+    if (dispatchCfg?.aiEnabled && hasAIKey()) {
+      try {
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        const ttsText = `Attention all units. 9-1-1 emergency. ${call.issue} at ${call.location}. All available units respond.`;
+        const ttsBuffer = await generateDispatchTTS(ttsText);
+        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
+      } catch (err) {
+        console.error('[Dispatch 911] TTS error:', err.message);
+      }
+    }
+
+    await rebuildStatusBoard(guild, dispatchCfg);
+  } catch (err) {
+    console.error('[Dispatch] announce911Call error:', err.message);
+  }
+}
