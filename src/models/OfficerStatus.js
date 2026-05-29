@@ -12,6 +12,7 @@ const officerStatusSchema = new mongoose.Schema({
   trafficStopStartAt: { type: Date, default: null },
   trafficStopChannelId: { type: String, default: null },
   updatedAt: { type: Date, default: Date.now },
+  panicAnnounced: { type: Boolean, default: true },
 });
 
 officerStatusSchema.index({ guildId: 1, userId: 1 }, { unique: true });

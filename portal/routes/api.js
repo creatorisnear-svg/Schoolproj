@@ -1002,6 +1002,7 @@ export function createApiRouter() {
           subject: 'PANIC — Officer needs immediate assistance',
           rawCall: null,
           updatedAt: new Date(),
+          panicAnnounced: false,
         },
         { upsert: true, new: true }
       );

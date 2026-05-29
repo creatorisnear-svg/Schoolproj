@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { Readable } from 'stream';
 import prism from 'prism-media';
 import { clearRadioLog } from './radioSession.js';
+import OfficerStatus from '../models/OfficerStatus.js';
 
 // Pre-load radio wave sound — played before every dispatch TTS response
 const _radioWavePath = join(dirname(fileURLToPath(import.meta.url)), '../assets/radio_wave.mp3');
@@ -56,6 +57,62 @@ const MAX_BACKOFF_MS = 300000;
 const lastLoggedState = new Map();
 const logThrottleCounts = new Map();
 
+/** Per-guild panic poller intervals — detect 10-99 from DB without needing BOT_INTERNAL_URL */
+const panicPollers = new Map();
+
+/**
+ * Poll MongoDB every 5s for unannounced 10-99 panics in this guild.
+ * Fires TTS through the active voice connection, then marks them announced.
+ * This runs independently of BOT_INTERNAL_URL — the bot detects panics itself.
+ */
+async function _runPanicPoll(guildId) {
+  try {
+    const panics = await OfficerStatus.find({ guildId, tenCode: '10-99', panicAnnounced: false });
+    if (!panics.length) return;
+
+    const { generateDispatchTTSPublic, PANIC_SOUND_BUFFER } = await import('../handlers/dispatchHandler.js');
+
+    for (const p of panics) {
+      // Mark announced first to prevent double-firing if TTS takes time
+      await OfficerStatus.updateOne({ _id: p._id }, { $set: { panicAnnounced: true } });
+
+      const loc = p.location ? ` at ${p.location}` : '';
+      const ttsText = `Attention all units, 10-99, officer ${p.username} is in distress${loc}. All units respond immediately. This is not a drill.`;
+
+      console.log(`[Dispatch Panic Poller] Announcing 10-99 for ${p.username} in guild ${guildId}`);
+
+      if (PANIC_SOUND_BUFFER) {
+        await playDispatchVoice(guildId, PANIC_SOUND_BUFFER, { urgent: true, skipRadioWave: true });
+        await new Promise(r => setTimeout(r, 600));
+      }
+      try {
+        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+        await playDispatchVoice(guildId, ttsBuffer, { urgent: false });
+      } catch (ttsErr) {
+        console.error('[Dispatch Panic Poller] TTS generation failed:', ttsErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch Panic Poller] Poll error:', err.message);
+  }
+}
+
+function _startPanicPoller(guildId) {
+  if (panicPollers.has(guildId)) return; // already running
+  const interval = setInterval(() => _runPanicPoll(guildId), 5000);
+  panicPollers.set(guildId, interval);
+  console.log(`[Dispatch Panic Poller] Started for guild ${guildId}`);
+}
+
+function _stopPanicPoller(guildId) {
+  const interval = panicPollers.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    panicPollers.delete(guildId);
+    console.log(`[Dispatch Panic Poller] Stopped for guild ${guildId}`);
+  }
+}
+
 /**
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
@@ -77,6 +134,7 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
       joinAudioPlayed: false,
     });
   }
+  _startPanicPoller(guildId);
 }
 
 /**
@@ -540,6 +598,7 @@ export function leaveDispatchChannel(guildId) {
     try { state.connection.destroy(); } catch {}
   }
   clearRadioLog(guildId);
+  _stopPanicPoller(guildId);
   dispatchState.delete(guildId);
   reconnectAttempts.delete(guildId);
   for (const key of [...logThrottleCounts.keys()]) {
