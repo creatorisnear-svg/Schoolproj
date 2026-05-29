@@ -411,21 +411,20 @@ function detectUnitsCheck(text) {
 function detectEMSRequest(text) {
   const lower = text.toLowerCase().trim();
 
-  // Pattern with location — "send/need/request [service] to/at [place]"
-  // "fire" alone is allowed here because location context makes intent clear
+  // Must start with an explicit "dispatch" address to avoid false positives
+  // e.g. "dispatch, I need EMS at Pillbox" or "dispatch send fire department to..."
   const withLoc = lower.match(
-    /\b(?:send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire(?:\s*(?:department|dept|units?|truck|station|fighters?))?))\s+(?:to|at)\s+(.{2,40}?)(?:\s*$)/i
+    /\bdispatch[,.]?\s+(?:i\s+)?(?:need|send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire(?:\s*(?:department|dept|units?|truck|station|fighters?))?))\s+(?:to|at)\s+(.{2,40}?)(?:\s*$)/i
   );
   if (withLoc) {
     const type = /fire/i.test(withLoc[1]) ? 'fire' : 'ems';
     return { type, location: withLoc[2].trim() };
   }
 
-  // Pattern without location — requires explicit service name
-  // "fire" alone is NOT accepted here to avoid false fires on "taking fire", "need fire support", etc.
-  // Must say "fire department", "fire dept", "fire unit", "fire truck", "fire station", or "fire fighters"
+  // Without location — still requires "dispatch" prefix
+  // "fire" alone NOT accepted to avoid "taking fire" / "need fire support" false positives
   const withoutLoc = lower.match(
-    /\b(?:send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire\s*(?:department|dept|units?|truck|station|fighters?)))\b/i
+    /\bdispatch[,.]?\s+(?:i\s+)?(?:need|send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire\s*(?:department|dept|units?|truck|station|fighters?)))\b/i
   );
   if (withoutLoc) {
     const type = /fire/i.test(withoutLoc[1]) ? 'fire' : 'ems';
@@ -679,8 +678,8 @@ const PHRASE_ALIASES = [
   [/\b(?:returning\s+to\s+(?:the\s+)?station|heading\s+back\s+to\s+(?:the\s+)?station|going\s+(?:back\s+to\s+)?(?:the\s+)?station|back\s+to\s+(?:the\s+)?station)\b/i, '10-19'],
   // 10-50 — Accident
   [/\b(?:vehicle\s+accident|traffic\s+accident|crash(?:ed)?|accident\s+(?:at|on|near)|we\s+have\s+an?\s+accident|reporting\s+an?\s+accident)\b/i, '10-50'],
-  // 10-52 — EMS Requested (natural phrases without a location)
-  [/\b(?:need\s+(?:an?\s+)?(?:ambulance|ems|medic(?:al)?)|requesting\s+(?:an?\s+)?(?:ambulance|ems|medics?)|send\s+(?:an?\s+)?(?:ambulance|ems|medics?))\b/i, '10-52'],
+  // 10-52 — EMS Requested (must be explicitly directed at dispatch)
+  [/\bdispatch[,.]?\s+(?:i\s+)?(?:need\s+(?:an?\s+)?(?:ambulance|ems|medic(?:al)?)|requesting\s+(?:an?\s+)?(?:ambulance|ems|medics?)|send\s+(?:an?\s+)?(?:ambulance|ems|medics?))\b/i, '10-52'],
   // 10-31 — Crime in Progress
   [/\b(?:crime\s+in\s+progress|robbery\s+in\s+progress|shots?\s+fired\s+(?:at|on|near)|burglary\s+in\s+progress|suspect\s+is\s+(?:running|fleeing|armed))\b/i, '10-31'],
 ];
