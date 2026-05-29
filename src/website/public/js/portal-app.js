@@ -431,7 +431,7 @@ function renderDispatchCall(c, isActive) {
   return `
     <div class="dispatch-call ${isActive ? 'dispatch-call-active' : 'dispatch-call-closed'}">
       <div class="dispatch-call-header">
-        <div>
+        <div class="dispatch-call-info">
           <div class="dispatch-call-id">${c.callId}</div>
           <div class="dispatch-call-issue">${c.issue}</div>
         </div>
