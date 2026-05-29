@@ -1,6 +1,9 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADCharacter from '../models/CADCharacter.js';
+import TrafficTicket from '../models/TrafficTicket.js';
+import EconomyBalance from '../models/EconomyBalance.js';
+import EconomyConfig from '../models/EconomyConfig.js';
 import { errorEmbed, successEmbed } from '../utils/embedBuilder.js';
 import { capitalizeName } from '../utils/nameFormatter.js';
 
@@ -288,6 +291,95 @@ export async function handleCivilianDatabaseMenu(interaction) {
         components: [charMenu, backButton],
       });
     }
+
+    if (choice === 'view_fines') {
+      const chars = await CADCharacter.find({ guildId: interaction.guildId, userId: interaction.user.id });
+
+      if (chars.length === 0) {
+        return interaction.reply({
+          embeds: [errorEmbed('No Characters', 'You need to create a character before you can view fines.')],
+          flags: 64,
+        });
+      }
+
+      const charIds = chars.map(c => c._id);
+      const tickets = await TrafficTicket.find({
+        guildId: interaction.guildId,
+        $or: [
+          { characterId: { $in: charIds } },
+          { characterName: { $in: chars.map(c => c.characterName) } },
+        ],
+      }).sort({ createdAt: -1 }).limit(20);
+
+      const econConfig = await EconomyConfig.findOne({ guildId: interaction.guildId });
+      const sym = econConfig?.currencySymbol || '$';
+
+      const unpaid = tickets.filter(t => !t.paid);
+      const paid = tickets.filter(t => t.paid);
+
+      let description = '';
+      if (tickets.length === 0) {
+        description = 'No traffic fines on record.';
+      } else {
+        if (unpaid.length > 0) {
+          const totalOwed = unpaid.reduce((s, t) => s + (t.fine || 0), 0);
+          description += `**Total Owed:** ${sym}${totalOwed.toLocaleString()}\n\n`;
+          description += `**Unpaid Fines**\n`;
+          unpaid.slice(0, 10).forEach(t => {
+            const charName = chars.find(c => c._id.toString() === t.characterId?.toString())?.characterName || t.characterName || 'Unknown';
+            description += `\`#${t.ticketId}\` **${t.violation}** — ${sym}${(t.fine || 0).toLocaleString()} | ${charName}\n`;
+            if (t.description) description += `-# ${t.description}\n`;
+          });
+        } else {
+          description += '**No unpaid fines.**\n';
+        }
+        if (paid.length > 0) {
+          description += `\n**Paid Fines (${paid.length})**\n`;
+          paid.slice(0, 5).forEach(t => {
+            description += `~~\`#${t.ticketId}\` **${t.violation}** — ${sym}${(t.fine || 0).toLocaleString()}~~\n`;
+          });
+        }
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Traffic Fines')
+        .setDescription(description)
+        .setFooter({ text: 'RPM' });
+
+      const components = [];
+
+      const payable = unpaid.slice(0, 20);
+      for (let i = 0; i < payable.length; i += 5) {
+        const row = new ActionRowBuilder();
+        payable.slice(i, i + 5).forEach(t => {
+          const label = `Pay #${t.ticketId} (${sym}${(t.fine || 0).toLocaleString()})`.slice(0, 80);
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`civilian_pay_fine_${t.ticketId}`)
+              .setLabel(label)
+              .setStyle(ButtonStyle.Primary)
+          );
+        });
+        components.push(row);
+        if (components.length >= 4) break;
+      }
+
+      components.push(
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('back_to_civilian_menu')
+            .setLabel('← Back')
+            .setStyle(ButtonStyle.Secondary)
+        )
+      );
+
+      return interaction.update({
+        content: '',
+        embeds: [embed],
+        components,
+      });
+    }
   } catch (error) {
     console.error('Error in civilian database menu:', error);
     return interaction.reply({
@@ -570,6 +662,84 @@ export async function handleCharacterDeleteConfirm(interaction, characterId) {
     console.error('Error deleting character:', error);
     return interaction.reply({
       embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
+
+export async function handleCivilianPayFine(interaction, ticketId) {
+  try {
+    const guildId = interaction.guildId;
+    const userId = interaction.user.id;
+
+    const ticket = await TrafficTicket.findOne({ guildId, ticketId });
+    if (!ticket) {
+      return interaction.reply({
+        embeds: [errorEmbed('Ticket Not Found', 'This traffic fine could not be found.')],
+        flags: 64,
+      });
+    }
+    if (ticket.paid) {
+      return interaction.reply({
+        embeds: [errorEmbed('Already Paid', 'This fine has already been paid.')],
+        flags: 64,
+      });
+    }
+
+    const chars = await CADCharacter.find({ guildId, userId });
+    const ownsTicket = chars.some(
+      c => c._id.toString() === ticket.characterId?.toString() || c.characterName === ticket.characterName
+    );
+    if (!ownsTicket) {
+      return interaction.reply({
+        embeds: [errorEmbed('Access Denied', 'This fine does not belong to your characters.')],
+        flags: 64,
+      });
+    }
+
+    const [balance, econConfig] = await Promise.all([
+      EconomyBalance.findOne({ guildId, userId }),
+      EconomyConfig.findOne({ guildId }),
+    ]);
+    const sym = econConfig?.currencySymbol || '$';
+    const amount = ticket.fine || 0;
+
+    if (!balance) {
+      return interaction.reply({
+        embeds: [errorEmbed('No Economy Account', 'You do not have an economy account on this server.')],
+        flags: 64,
+      });
+    }
+    if (balance.bank < amount) {
+      return interaction.reply({
+        embeds: [errorEmbed('Insufficient Funds', `**Required:** ${sym}${amount.toLocaleString()}\n**Bank balance:** ${sym}${balance.bank.toLocaleString()}`)],
+        flags: 64,
+      });
+    }
+
+    balance.bank -= amount;
+    await balance.save();
+
+    ticket.paid = true;
+    ticket.paidAt = new Date();
+    await ticket.save();
+
+    const embed = new EmbedBuilder()
+      .setColor('#43b581')
+      .setTitle('Fine Paid')
+      .setDescription(
+        `**Ticket:** \`#${ticket.ticketId}\`\n` +
+        `**Violation:** ${ticket.violation}\n` +
+        `**Amount paid:** ${sym}${amount.toLocaleString()}\n` +
+        `**Remaining bank:** ${sym}${balance.bank.toLocaleString()}`
+      )
+      .setFooter({ text: 'RPM' });
+
+    return interaction.reply({ embeds: [embed], flags: 64 });
+  } catch (error) {
+    console.error('Error paying fine:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('Payment Failed', 'An error occurred while processing your payment.')],
       flags: 64,
     });
   }

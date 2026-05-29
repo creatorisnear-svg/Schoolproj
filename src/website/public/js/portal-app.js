@@ -545,6 +545,8 @@ async function payFine(ticketId, amount, cur) {
     loadTrafficFines();
     loaded['economy'] = false;
     if (document.getElementById('tab-economy').classList.contains('active')) loadEconomy();
+    loaded['cad'] = false;
+    if (document.getElementById('tab-cad') && document.getElementById('tab-cad').classList.contains('active')) loadCad();
   } catch (err) { toast(err.message, 'error'); }
 }
 

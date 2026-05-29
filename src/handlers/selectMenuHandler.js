@@ -624,6 +624,12 @@ export async function handleSelectMenu(interaction) {
     return interaction.update({ content: 'Character deletion cancelled.', components: [], embeds: [] });
   }
 
+  if (customId.startsWith('civilian_pay_fine_')) {
+    const ticketId = customId.replace('civilian_pay_fine_', '');
+    const { handleCivilianPayFine } = await import('./civilianDatabaseHandler.js');
+    return handleCivilianPayFine(interaction, ticketId);
+  }
+
   // Dev panel select menus (dev_select_*)
   if (customId.startsWith('dev_select_')) {
     const { handleDevSelect } = await import('./devHandler.js');

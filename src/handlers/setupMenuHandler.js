@@ -202,7 +202,8 @@ export async function handleBackToMenu(interaction) {
               { label: 'Create Character', value: 'create_character' },
               { label: 'Add Vehicle', value: 'add_vehicle' },
               { label: 'Add Firearm', value: 'add_firearm' },
-              { label: 'Manage Character', value: 'manage_character' }
+              { label: 'Manage Character', value: 'manage_character' },
+              { label: 'View & Pay Fines', value: 'view_fines' }
             )
         );
 
