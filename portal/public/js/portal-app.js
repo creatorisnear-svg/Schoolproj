@@ -167,7 +167,7 @@ function applyModeNav(mode) {
 /* ══════════════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════════════ */
-const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo']);
+const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo','priority']);
 
 function switchTab(tab) {
   const leavingLeo = document.getElementById('tab-leo')?.classList.contains('active');
@@ -187,6 +187,8 @@ function switchTab(tab) {
 
   document.getElementById('main').scrollTop = 0;
 
+  if (tab === 'priority') { loadPriority(); schedulePriorityRefresh(); }
+
   if (!loaded[tab]) {
     loaded[tab] = true;
     if (tab === 'cad') loadCad();
@@ -196,7 +198,6 @@ function switchTab(tab) {
     if (tab === 'tickets') loadTickets();
     if (tab === 'calendar') loadCalendar();
     if (tab === 'rolerequest') loadRoleRequest();
-    if (tab === 'priority') { loadPriority(); schedulePriorityRefresh(); }
     if (tab === 'leo') loadLeo();
   }
 }
@@ -1289,7 +1290,6 @@ async function submitCreateChar(e) {
 }
 
 function openAddFirearmModal(charId) {
-  document.getElementById('firearm-char-id').value = charId;
   document.getElementById('form-add-firearm').reset();
   document.getElementById('firearm-char-id').value = charId;
   document.getElementById('form-firearm-error').classList.add('hidden');
