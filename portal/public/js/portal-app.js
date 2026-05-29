@@ -299,8 +299,16 @@ async function loadOverview() {
       calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       rolerequest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
       leo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+      priority: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
     };
-    const actions = [
+    const isLeoMode = (localStorage.getItem('portalMode') === 'leo') && me.isLeo;
+    const actions = isLeoMode ? [
+      { tab: 'leo', label: 'LEO Dashboard' },
+      { tab: 'economy', label: 'Economy' },
+      { tab: 'calendar', label: 'RP Calendar' },
+      { tab: 'rolerequest', label: 'Role Requests' },
+      { tab: 'priority', label: 'Priority Status' },
+    ] : [
       { tab: 'cad', label: 'CAD System' },
       { tab: 'dispatch', label: 'Dispatch / 911' },
       { tab: 'economy', label: 'Economy' },
@@ -309,7 +317,6 @@ async function loadOverview() {
       { tab: 'calendar', label: 'RP Calendar' },
       { tab: 'rolerequest', label: 'Role Requests' },
     ];
-    if (me.isLeo) actions.push({ tab: 'leo', label: 'LEO Dashboard' });
 
     document.getElementById('quick-actions').innerHTML = actions.map(a => `
       <button class="quick-btn" onclick="switchTab('${a.tab}')">
@@ -1194,12 +1201,24 @@ function renderBoloItem(b) {
   return `<div class="bolo-item-v2">
     <div class="bolo-v2-top">
       <span class="bolo-v2-name">${b.characterName || b.licensePlate || 'Unknown'}</span>
-      <span class="bolo-v2-type bolo-type-${b.type === 'vehicle' ? 'vehicle' : 'wanted'}">${typeLabel}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span class="bolo-v2-type bolo-type-${b.type === 'vehicle' ? 'vehicle' : 'wanted'}">${typeLabel}</span>
+        <button class="btn btn-danger btn-xs" onclick="removeBolo('${b.boloId}')">Remove</button>
+      </div>
     </div>
     ${vehicleDesc ? `<div class="bolo-v2-sub">${vehicleDesc}</div>` : ''}
     ${b.reason ? `<div class="bolo-v2-reason">${b.reason}</div>` : ''}
-    <div class="bolo-v2-meta">Added ${timeAgo(new Date(b.createdAt))}</div>
+    <div class="bolo-v2-meta">Added ${timeAgo(new Date(b.createdAt))}${b.issuedBy ? ` · by ${b.issuedBy}` : ''}</div>
   </div>`;
+}
+
+async function removeBolo(boloId) {
+  if (!confirm('Remove this BOLO? It will be marked inactive.')) return;
+  try {
+    await apiDel(`/leo/bolo/${boloId}`);
+    toast('BOLO removed.', 'info');
+    await loadLeoIntel();
+  } catch (err) { toast(err.message || 'Failed to remove BOLO', 'error'); }
 }
 
 /* ── Dispatch call actions ── */
@@ -1240,15 +1259,42 @@ async function leoSearch() {
     const data = await api(`/leo/search?type=${type}&query=${encodeURIComponent(query)}`);
     const chars = data.results || [];
     if (!chars.length) { results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No results found.</p>'; return; }
-    results.innerHTML = chars.map(c => `
-      <div class="leo-result-card">
-        <div class="leo-result-name">${c.characterName} <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}" style="font-size:10px">${c.status?.toUpperCase()}</span></div>
+    results.innerHTML = chars.map(c => {
+      const bolos = c.activeBolos || [];
+      const tickets = c.trafficTickets || [];
+      const boloWarning = bolos.length > 0
+        ? `<div style="margin:6px 0 4px;padding:6px 10px;background:var(--danger-dim);border:1px solid rgba(242,87,87,0.3);border-radius:6px;font-size:11px;font-weight:700;color:var(--danger)">
+            ⚠ BOLO ACTIVE (${bolos.length}) — ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
+           </div>`
+        : '';
+      const ticketRows = tickets.length > 0
+        ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-sub);margin-bottom:4px">Traffic Tickets (${tickets.length})</div>
+            ${tickets.slice(0, 5).map(t => `
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">
+                <span style="color:var(--text);font-weight:600">${t.violation}</span>
+                ${t.fine ? ` · $${t.fine}` : ''}
+                · <span style="${t.paid ? 'color:var(--success)' : 'color:var(--warning)'}">${t.paid ? 'Paid' : 'Unpaid'}</span>
+                · ${timeAgo(new Date(t.createdAt))}
+              </div>`).join('')}
+            ${tickets.length > 5 ? `<div style="font-size:11px;color:var(--text-sub)">&hellip; and ${tickets.length - 5} more</div>` : ''}
+           </div>`
+        : '';
+      return `<div class="leo-result-card">
+        <div class="leo-result-name">
+          ${c.characterName}
+          <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}" style="font-size:10px">${(c.status || 'clean').toUpperCase()}</span>
+          ${bolos.length > 0 ? '<span style="font-size:10px;font-weight:800;color:var(--danger);background:var(--danger-dim);border:1px solid rgba(242,87,87,0.25);padding:1px 7px;border-radius:10px">BOLO</span>' : ''}
+        </div>
+        ${boloWarning}
         <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> · Gender: <span>${c.gender || 'N/A'}</span></div>
         <div class="leo-result-row">Address: <span>${c.address || 'N/A'}</span></div>
         <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> · Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
         ${c.vehicles?.length ? `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>` : ''}
         ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
-      </div>`).join('');
+        ${ticketRows}
+      </div>`;
+    }).join('');
   } catch (err) {
     results.innerHTML = `<p style="color:var(--danger);font-size:13px">${err.message}</p>`;
   }

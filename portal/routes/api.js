@@ -665,15 +665,42 @@ export function createApiRouter() {
       const guildId = GUILD_ID();
       const { type, query } = req.query;
       if (!query?.trim()) return res.status(400).json({ error: 'Query required' });
+
+      let chars = [];
       if (type === 'plate') {
-        const chars = await CADCharacter.find({ guildId, 'vehicles.licensePlate': { $regex: query.trim(), $options: 'i' } }).limit(10);
-        return res.json({ type: 'plate', results: chars });
+        chars = await CADCharacter.find({ guildId, 'vehicles.licensePlate': { $regex: query.trim(), $options: 'i' } }).limit(10);
+      } else if (type === 'character') {
+        chars = await CADCharacter.find({ guildId, characterName: { $regex: query.trim(), $options: 'i' } }).limit(10);
+      } else {
+        return res.status(400).json({ error: 'type must be plate or character' });
       }
-      if (type === 'character') {
-        const chars = await CADCharacter.find({ guildId, characterName: { $regex: query.trim(), $options: 'i' } }).limit(10);
-        return res.json({ type: 'character', results: chars });
+
+      const charIds = chars.map(c => c._id);
+      const [bolos, tickets] = await Promise.all([
+        BOLO.find({ guildId, characterId: { $in: charIds }, active: true }).select('characterId boloId reason description issuedBy createdAt').lean(),
+        TrafficTicket.find({ guildId, characterId: { $in: charIds } }).sort({ createdAt: -1 }).select('characterId ticketId violation description fine paid createdAt issuedBy').lean(),
+      ]);
+
+      const bolosByChar = {};
+      for (const b of bolos) {
+        const key = b.characterId.toString();
+        if (!bolosByChar[key]) bolosByChar[key] = [];
+        bolosByChar[key].push(b);
       }
-      res.status(400).json({ error: 'type must be plate or character' });
+      const ticketsByChar = {};
+      for (const t of tickets) {
+        const key = t.characterId.toString();
+        if (!ticketsByChar[key]) ticketsByChar[key] = [];
+        ticketsByChar[key].push(t);
+      }
+
+      const results = chars.map(c => ({
+        ...c.toObject(),
+        activeBolos: bolosByChar[c._id.toString()] || [],
+        trafficTickets: ticketsByChar[c._id.toString()] || [],
+      }));
+
+      res.json({ type, results });
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
 
