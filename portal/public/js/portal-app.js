@@ -581,7 +581,7 @@ async function loadHomeOfficers() {
     const d = await api('/officers/overview').catch(() => null);
     if (!d?.active) { widget.classList.add('hidden'); return; }
 
-    const TEN_ICONS = { '10-8': '🟢', '10-6': '🟡', '10-97': '🟠', '10-11': '🟠', '10-50': '🟠', '10-76': '🔵', '10-78': '🔴', '10-80': '🔴', '10-15': '🔴', '10-99': '🆘' };
+    const TEN_COLOR = { '10-8': '#4ade80', '10-6': '#facc15', '10-97': '#fb923c', '10-11': '#fb923c', '10-50': '#fb923c', '10-76': '#60a5fa', '10-78': '#f87171', '10-80': '#f87171', '10-15': '#f87171', '10-99': '#ef4444' };
     const TEN_LABELS = { '10-8': 'Available', '10-6': 'Busy', '10-97': 'On Scene', '10-11': 'Traffic Stop', '10-50': 'Accident', '10-76': 'En Route', '10-78': 'Need Assist', '10-80': 'Pursuit', '10-15': 'Prisoner', '10-99': 'EMERGENCY' };
 
     widget.innerHTML = `
@@ -593,14 +593,17 @@ async function loadHomeOfficers() {
         <span class="home-officers-count">${d.active} active</span>
       </div>
       <div class="home-officers-list">
-        ${d.officers.map(o => `
-          <div class="home-officer-item">
-            <span class="home-officer-icon">${TEN_ICONS[o.tenCode] || '⚪'}</span>
+        ${d.officers.map(o => {
+          const col = TEN_COLOR[o.tenCode] || '#6b7280';
+          const isPanic = o.tenCode === '10-99';
+          return `<div class="home-officer-item${isPanic ? ' home-officer-panic' : ''}">
+            <span class="home-officer-dot" style="background:${col};box-shadow:0 0 5px ${col}66"></span>
             <div class="home-officer-info">
               <span class="home-officer-name">${esc(o.username)}</span>
-              <span class="home-officer-status">${TEN_LABELS[o.tenCode] || o.tenCode}${o.location ? ' &bull; ' + esc(o.location) : ''}</span>
+              <span class="home-officer-status" style="color:${col}">${TEN_LABELS[o.tenCode] || o.tenCode}${o.location ? ' &bull; ' + esc(o.location) : ''}</span>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`;
     widget.classList.remove('hidden');
   } catch {

@@ -2505,7 +2505,13 @@ html, body {
   flex: 1 1 200px;
   min-width: 0;
 }
-.home-officer-icon { font-size: 13px; flex-shrink: 0; line-height: 1; }
+.home-officer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.home-officer-panic { border-left: 2px solid #ef4444; padding-left: 8px; }
 .home-officer-info { min-width: 0; }
 .home-officer-name {
   font-size: 13px;
@@ -2573,7 +2579,7 @@ html, body {
 }
 .home-voice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 6px;
 }
 .home-voice-item {
@@ -2613,10 +2619,13 @@ html, body {
 }
 .home-voice-item:hover .home-voice-arrow { opacity: 0.8; }
 
+@media (max-width: 600px) {
+  .home-voice-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 480px) {
   .hpw-row { padding: 12px 14px; gap: 10px; }
   .hpw-countdown { font-size: 18px; }
-  .home-voice-grid { grid-template-columns: 1fr 1fr; }
   .home-officer-item { flex: 1 1 140px; }
 }
 
