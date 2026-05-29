@@ -730,7 +730,7 @@ export function createPortalApiRouter(client) {
       const charNames = chars.map(c => c.characterName);
       const [bolosRaw, ticketsRaw] = await Promise.all([
         BOLO.find({ guildId, $or: [{ characterId: { $in: charIds } }, { characterName: { $in: charNames } }], active: true }),
-        TrafficTicket.find({ guildId, characterId: { $in: charIds.map(id => id.toString()) } }).sort({ createdAt: -1 }),
+        TrafficTicket.find({ guildId, $or: [{ characterId: { $in: charIds } }, { characterName: { $in: charNames } }] }).sort({ createdAt: -1 }),
       ]);
 
       const bolosByChar = {};
@@ -741,16 +741,29 @@ export function createPortalApiRouter(client) {
       }
       const ticketsByChar = {};
       for (const t of ticketsRaw) {
-        const key = t.characterId.toString();
+        const idKey = t.characterId?.toString();
+        const nameKey = t.characterName;
+        const key = idKey || nameKey;
+        if (!key) continue;
         if (!ticketsByChar[key]) ticketsByChar[key] = [];
         ticketsByChar[key].push(t);
+        if (nameKey && idKey !== nameKey) {
+          if (!ticketsByChar[nameKey]) ticketsByChar[nameKey] = [];
+          ticketsByChar[nameKey].push(t);
+        }
       }
 
-      const results = chars.map(c => ({
-        ...c.toObject(),
-        bolos: bolosByChar[c._id.toString()] || [],
-        tickets: ticketsByChar[c._id.toString()] || [],
-      }));
+      const results = chars.map(c => {
+        const byId = ticketsByChar[c._id.toString()] || [];
+        const byName = ticketsByChar[c.characterName] || [];
+        const seen = new Set();
+        const tickets = [];
+        for (const t of [...byId, ...byName]) {
+          const k = t._id?.toString() || t.ticketId;
+          if (!seen.has(k)) { seen.add(k); tickets.push(t); }
+        }
+        return { ...c.toObject(), bolos: bolosByChar[c._id.toString()] || [], tickets };
+      });
 
       return res.json({ type, results });
     } catch (err) {

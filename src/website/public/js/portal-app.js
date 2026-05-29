@@ -284,12 +284,18 @@ async function loadOverview() {
 async function loadCad() {
   const list = document.getElementById('cad-list');
   try {
-    const chars = await api('/cad');
+    const [chars, fines] = await Promise.all([api('/cad'), api('/traffic-tickets').catch(() => [])]);
     if (!chars?.length) {
       list.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>No characters yet. Create one to get started.</div>`;
       return;
     }
-    list.innerHTML = chars.map(c => renderCharCard(c)).join('');
+    const finesByChar = {};
+    for (const t of (fines || [])) {
+      const key = t.characterId?.toString() || t.characterName;
+      if (!finesByChar[key]) finesByChar[key] = [];
+      finesByChar[key].push(t);
+    }
+    list.innerHTML = chars.map(c => renderCharCard(c, finesByChar[c._id?.toString()] || [])).join('');
     list.querySelectorAll('.char-header').forEach(h => {
       h.addEventListener('click', () => h.closest('.char-card').classList.toggle('open'));
     });
@@ -304,7 +310,7 @@ async function loadCad() {
   }
 }
 
-function renderCharCard(c) {
+function renderCharCard(c, charTickets = []) {
   const initials = c.characterName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
   const details = [
     ['Age', c.age || 'N/A'], ['Gender', c.gender || 'N/A'],
@@ -363,6 +369,20 @@ function renderCharCard(c) {
         </div>
         <div class="gun-list">${guns}</div>
         ${arrests ? `<div class="char-section-header" style="margin-top:14px"><span class="char-section-label">Arrest History (${c.arrestHistory.length})</span></div>${arrests}` : ''}
+        ${charTickets.length ? `
+        <div class="char-section-header" style="margin-top:14px">
+          <span class="char-section-label">Traffic Tickets (${charTickets.length})</span>
+        </div>
+        <div class="vehicle-list">
+          ${charTickets.map(t => `
+            <div class="vehicle-item">
+              <div class="vehicle-item-left">
+                <div class="vehicle-item-name">${esc(t.violation)}${t.fine ? ` — $${Number(t.fine).toLocaleString()}` : ''}</div>
+                <div class="vehicle-item-plate">${t.paid ? 'Paid' : 'Unpaid'} · ${new Date(t.createdAt).toLocaleDateString()}</div>
+              </div>
+              ${!t.paid && t.fine ? `<button class="btn btn-xs btn-primary" style="flex-shrink:0;margin-left:8px" onclick="payFine('${esc(t.ticketId)}', ${t.fine}, '$')">Pay</button>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
           <button class="btn btn-danger btn-sm btn-delete-char" data-char-id="${c._id}">Delete Character</button>
         </div>
