@@ -78,7 +78,8 @@ function buildCategoryButtons(extraRow) {
 function shopItemLines(items, sym) {
   return items.map(i => {
     const price = i.price != null ? `**${sym}${fmt(i.price)}**` : '*No price set*';
-    return `• **${i.name}** — ${price}`;
+    const lock = i.requiredRoleId ? ` · requires <@&${i.requiredRoleId}>` : '';
+    return `• **${i.name}** — ${price}${lock}`;
   });
 }
 
@@ -88,7 +89,7 @@ export function mergeShopItems(guildItems) {
     .filter(v => !guildNames.has(v.name.toLowerCase()))
     .map(v => ({ name: v.name, price: null, description: v.description, category: v.category, isBuiltIn: true }));
   const guildFormatted = guildItems.map(i => ({
-    name: i.name, price: i.price, description: i.description, category: 'Custom', isBuiltIn: false,
+    name: i.name, price: i.price, description: i.description, category: 'Custom', isBuiltIn: false, requiredRoleId: i.requiredRoleId || null,
   }));
   return [...guildFormatted, ...builtIns];
 }
@@ -457,7 +458,7 @@ export async function handleShopCategoryButton(interaction) {
       embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Custom Items').setDescription('No custom items have been added yet. Staff can add items via `/economysetup`.').setFooter({ text: 'RPM' })],
       components: [backRow], content: '',
     });
-    const lines = shopItemLines(guildItems.map(i => ({ name: i.name, price: i.price, description: i.description })), sym);
+    const lines = shopItemLines(guildItems.map(i => ({ name: i.name, price: i.price, description: i.description, requiredRoleId: i.requiredRoleId })), sym);
     return interaction.update({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
         .setTitle('Custom Items')
@@ -520,6 +521,9 @@ export async function runBuy(interaction, itemName, quantity) {
   const isKnownVehicle = GTA_VEHICLES.some(v => v.name.toLowerCase() === itemName.toLowerCase());
   if (!guildItem && !isKnownVehicle) return interaction.reply({ embeds: [errorEmbed(`No item found named **"${itemName}"**. Use \`/shop\` to browse available items.`)], flags: 64 });
   if (!guildItem) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** has no price set. Ask a staff member to price it via \`/economysetup\` before it can be purchased.`)], flags: 64 });
+  if (guildItem.requiredRoleId && !interaction.member?.roles?.cache?.has(guildItem.requiredRoleId)) {
+    return interaction.reply({ embeds: [errorEmbed(`You need the <@&${guildItem.requiredRoleId}> role to purchase **${guildItem.name}**.`)], flags: 64 });
+  }
   const total = guildItem.price * qty;
   const bal = await getBalance(guildId, userId, config.startingBalance);
   if (bal.cash < total) return interaction.reply({ embeds: [errorEmbed(`You need ${sym}${fmt(total)} but only have ${sym}${fmt(bal.cash)} cash.`)], flags: 64 });
