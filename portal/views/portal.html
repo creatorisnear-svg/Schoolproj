@@ -199,6 +199,20 @@
       <div id="tab-economy" class="tab-pane">
         <div class="page-header"><h2>Economy</h2></div>
         <div id="economy-balance" class="balance-grid"></div>
+
+        <div class="eco-actions-row">
+          <div class="eco-action-block">
+            <input id="deposit-input" class="form-input" type="text" placeholder="Amount or all">
+            <button class="btn btn-secondary btn-sm" onclick="doDeposit()">Deposit</button>
+          </div>
+          <div class="eco-action-block">
+            <input id="withdraw-input" class="form-input" type="text" placeholder="Amount or all">
+            <button class="btn btn-secondary btn-sm" onclick="doWithdraw()">Withdraw</button>
+          </div>
+          <button id="btn-work" class="btn btn-primary btn-sm" onclick="doWork()">Work</button>
+        </div>
+        <div id="eco-action-msg" class="eco-action-msg hidden"></div>
+
         <div class="economy-grid">
           <div class="economy-col">
             <div class="section-label">Shop</div>

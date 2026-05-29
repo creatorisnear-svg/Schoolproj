@@ -2168,6 +2168,65 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════
+   ECONOMY ACTION ROW
+══════════════════════════════════════════════════════ */
+.eco-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+
+.eco-action-block {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex: 1;
+  min-width: 150px;
+}
+
+.eco-action-block .form-input {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.eco-action-msg {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+}
+
+.eco-msg-success { background: var(--success-dim); color: var(--success); border-color: rgba(54,201,122,0.25); }
+.eco-msg-error   { background: var(--danger-dim);  color: var(--danger);  border-color: rgba(242,87,87,0.25); }
+.eco-msg-info    { background: var(--elevated);     color: var(--text-muted); border-color: var(--border); }
+
+/* ══════════════════════════════════════════════════════
+   INVENTORY ITEM WITH ACTIONS
+══════════════════════════════════════════════════════ */
+.inv-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.inv-name { flex: 1; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-qty  { color: var(--text-sub); font-size: 11px; flex-shrink: 0; }
+.inv-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════
    RESPONSIVE — MOBILE
 ══════════════════════════════════════════════════════ */
 @media (max-width: 768px) {

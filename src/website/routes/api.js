@@ -954,7 +954,7 @@ export function createApiRouter(client) {
   router.post('/internal/panic', async (req, res) => {
     const secret = req.headers['x-internal-secret'];
     const expected = process.env.PORTAL_INTERNAL_SECRET;
-    if (!expected || secret !== expected) return res.status(401).json({ error: 'Unauthorized' });
+    if (expected && secret !== expected) return res.status(401).json({ error: 'Unauthorized' });
 
     const { guildId, officerName, location } = req.body;
     if (!guildId) return res.status(400).json({ error: 'guildId required' });

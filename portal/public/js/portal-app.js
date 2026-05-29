@@ -406,7 +406,7 @@ function renderCharCard(c) {
         </div>
       </div>
       <div class="char-body">
-        ${c.status === 'wanted' && c.wantedReason ? `<div class="wanted-banner">⚠️ Wanted: ${c.wantedReason}</div>` : ''}
+        ${c.status === 'wanted' && c.wantedReason ? `<div class="wanted-banner">Wanted: ${c.wantedReason}</div>` : ''}
         <div class="char-details-grid">
           ${details.map(([l, v]) => `<div class="detail-item"><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`).join('')}
         </div>
@@ -450,7 +450,7 @@ async function loadDispatch() {
 
     document.getElementById('dispatch-active').innerHTML = active.length
       ? active.map(c => renderDispatchCall(c, true)).join('')
-      : `<div class="empty-state" style="padding:20px 0"><div class="empty-state-icon">✅</div>No active calls.</div>`;
+      : `<div class="empty-state" style="padding:20px 0">No active calls.</div>`;
 
     document.getElementById('dispatch-history').innerHTML = closed.length
       ? closed.slice(0, 8).map(c => renderDispatchCall(c, false)).join('')
@@ -619,7 +619,15 @@ async function loadEconomy() {
 
     const inv = ecoRes.inventory || [];
     document.getElementById('inventory-list').innerHTML = inv.length
-      ? inv.map(i => `<div class="inv-item"><span>${i.itemName}</span><span class="inv-qty">×${i.quantity}</span></div>`).join('')
+      ? inv.map(i => `
+        <div class="inv-item">
+          <span class="inv-name">${i.itemName}</span>
+          <span class="inv-qty">x${i.quantity}</span>
+          <div class="inv-actions">
+            <button class="btn btn-secondary btn-xs" onclick="sellItem(${JSON.stringify(i.itemName)}, 1)">Sell</button>
+            <button class="btn btn-primary btn-xs" onclick="useItem(${JSON.stringify(i.itemName)})">Use</button>
+          </div>
+        </div>`).join('')
       : '<div class="empty-state" style="padding:16px 0">Inventory is empty.</div>';
 
     const cur2 = lbRes.currency || cur;
@@ -691,6 +699,86 @@ async function confirmBuy() {
 }
 
 /* ══════════════════════════════════════════════════════
+   ECONOMY ACTIONS
+══════════════════════════════════════════════════════ */
+function showEcoMsg(text, type = 'info') {
+  const el = document.getElementById('eco-action-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = `eco-action-msg eco-msg-${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function updateBalanceDisplay(cash, bank, cur) {
+  const fmt2 = v => `${cur}${Number(v).toLocaleString()}`;
+  document.getElementById('economy-balance').innerHTML = [
+    { label: 'Cash', value: fmt2(cash), sub: 'on hand' },
+    { label: 'Bank', value: fmt2(bank), sub: 'saved' },
+    { label: 'Total', value: fmt2(cash + bank), sub: 'wealth' },
+  ].map(c => `
+    <div class="balance-card">
+      <div class="balance-label">${c.label}</div>
+      <div class="balance-amount">${c.value}</div>
+      <div class="balance-sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+async function doDeposit() {
+  const amount = document.getElementById('deposit-input').value.trim();
+  if (!amount) return showEcoMsg('Enter an amount to deposit.', 'error');
+  try {
+    const r = await apiPost('/economy/deposit', { amount });
+    document.getElementById('deposit-input').value = '';
+    showEcoMsg(`Deposited. Cash: ${r.cash.toLocaleString()} | Bank: ${r.bank.toLocaleString()}`, 'success');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) { showEcoMsg(err.message, 'error'); }
+}
+
+async function doWithdraw() {
+  const amount = document.getElementById('withdraw-input').value.trim();
+  if (!amount) return showEcoMsg('Enter an amount to withdraw.', 'error');
+  try {
+    const r = await apiPost('/economy/withdraw', { amount });
+    document.getElementById('withdraw-input').value = '';
+    showEcoMsg(`Withdrawn. Cash: ${r.cash.toLocaleString()} | Bank: ${r.bank.toLocaleString()}`, 'success');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) { showEcoMsg(err.message, 'error'); }
+}
+
+async function doWork() {
+  const btn = document.getElementById('btn-work');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await apiPost('/economy/work', {});
+    showEcoMsg(`Worked and earned ${r.earned.toLocaleString()}. Cash: ${r.cash.toLocaleString()}`, 'success');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) {
+    showEcoMsg(err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function sellItem(itemName, qty) {
+  try {
+    const r = await apiPost('/economy/sell', { itemName, quantity: qty });
+    const msg = r.refund > 0 ? `Sold ${r.sold}x ${itemName} for ${r.currency}${r.refund.toLocaleString()}.` : `Sold ${r.sold}x ${itemName}.`;
+    showEcoMsg(msg, 'success');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) { showEcoMsg(err.message, 'error'); }
+}
+
+async function useItem(itemName) {
+  try {
+    await apiPost('/economy/use', { itemName });
+    showEcoMsg(`Used ${itemName}.`, 'info');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) { showEcoMsg(err.message, 'error'); }
+}
+
+/* ══════════════════════════════════════════════════════
    TICKETS
 ══════════════════════════════════════════════════════ */
 async function loadTickets() {
@@ -701,7 +789,7 @@ async function loadTickets() {
 
     document.getElementById('tickets-open').innerHTML = open.length
       ? open.map(t => renderTicket(t)).join('')
-      : '<div class="empty-state" style="padding:20px 0"><div class="empty-state-icon">✅</div>No open tickets.</div>';
+      : '<div class="empty-state" style="padding:20px 0">No open tickets.</div>';
 
     document.getElementById('tickets-closed').innerHTML = closed.length
       ? closed.slice(0, 5).map(t => renderTicket(t)).join('')
@@ -1264,7 +1352,7 @@ async function leoSearch() {
       const tickets = c.trafficTickets || [];
       const boloWarning = bolos.length > 0
         ? `<div style="margin:6px 0 4px;padding:6px 10px;background:var(--danger-dim);border:1px solid rgba(242,87,87,0.3);border-radius:6px;font-size:11px;font-weight:700;color:var(--danger)">
-            ⚠ BOLO ACTIVE (${bolos.length}) — ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
+            BOLO ACTIVE (${bolos.length}) — ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
            </div>`
         : '';
       const ticketRows = tickets.length > 0

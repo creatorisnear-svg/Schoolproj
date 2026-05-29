@@ -551,6 +551,109 @@ export function createApiRouter() {
     } catch { res.status(500).json({ error: 'Purchase failed' }); }
   });
 
+  router.post('/economy/deposit', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const rawAmt = String(req.body.amount || '').trim().toLowerCase();
+      const balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      if (!balance) return res.status(400).json({ error: 'No economy account. Use /balance in Discord first.' });
+      const amount = rawAmt === 'all' ? balance.cash : parseInt(rawAmt, 10);
+      if (!amount || amount <= 0) return res.status(400).json({ error: 'Enter a valid amount.' });
+      if (balance.cash < amount) return res.status(400).json({ error: 'Not enough cash.' });
+      balance.cash -= amount;
+      balance.bank += amount;
+      await balance.save();
+      res.json({ success: true, cash: balance.cash, bank: balance.bank });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  router.post('/economy/withdraw', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const rawAmt = String(req.body.amount || '').trim().toLowerCase();
+      const balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      if (!balance) return res.status(400).json({ error: 'No economy account. Use /balance in Discord first.' });
+      const amount = rawAmt === 'all' ? balance.bank : parseInt(rawAmt, 10);
+      if (!amount || amount <= 0) return res.status(400).json({ error: 'Enter a valid amount.' });
+      if (balance.bank < amount) return res.status(400).json({ error: 'Not enough in bank.' });
+      balance.bank -= amount;
+      balance.cash += amount;
+      await balance.save();
+      res.json({ success: true, cash: balance.cash, bank: balance.bank });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  const workCooldowns = new Map();
+  router.post('/economy/work', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const cooldownKey = `${guildId}:${req.portalUser.userId}`;
+      const config = await EconomyConfig.findOne({ guildId });
+      if (config && !config.work?.enabled) return res.status(400).json({ error: 'Work is disabled on this server.' });
+      const cdMinutes = config?.work?.cooldown ?? 60;
+      const lastWork = workCooldowns.get(cooldownKey);
+      if (lastWork) {
+        const elapsed = Date.now() - lastWork;
+        const remaining = cdMinutes * 60 * 1000 - elapsed;
+        if (remaining > 0) {
+          const mins = Math.ceil(remaining / 60000);
+          return res.status(429).json({ error: `On cooldown. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.` });
+        }
+      }
+      const min = config?.work?.minPayout ?? 100;
+      const max = config?.work?.maxPayout ?? 500;
+      const earned = Math.floor(Math.random() * (max - min + 1)) + min;
+      let balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      if (!balance) return res.status(400).json({ error: 'No economy account. Use /balance in Discord first.' });
+      balance.cash += earned;
+      await balance.save();
+      workCooldowns.set(cooldownKey, Date.now());
+      res.json({ success: true, earned, cash: balance.cash, bank: balance.bank });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  router.post('/economy/sell', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { itemName, quantity = 1 } = req.body;
+      const qty = Math.max(1, parseInt(quantity) || 1);
+      const inv = await EconomyInventory.findOne({ guildId, userId: req.portalUser.userId });
+      const entry = inv?.items?.find(i => i.itemName === itemName);
+      if (!entry || entry.quantity < qty) return res.status(400).json({ error: 'Not enough of that item.' });
+      const storeItem = await EconomyStore.findOne({ guildId, name: itemName });
+      const sellPrice = storeItem ? Math.floor(storeItem.price * 0.5) * qty : 0;
+      entry.quantity -= qty;
+      if (entry.quantity <= 0) inv.items = inv.items.filter(i => i.itemName !== itemName);
+      await inv.save();
+      const config = await EconomyConfig.findOne({ guildId });
+      const cur = config?.currencySymbol || '$';
+      if (sellPrice > 0) {
+        const balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+        if (balance) { balance.cash += sellPrice; await balance.save(); }
+      }
+      res.json({ success: true, sold: qty, refund: sellPrice, currency: cur });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  router.post('/economy/use', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { itemName } = req.body;
+      const inv = await EconomyInventory.findOne({ guildId, userId: req.portalUser.userId });
+      const entry = inv?.items?.find(i => i.itemName === itemName);
+      if (!entry || entry.quantity < 1) return res.status(400).json({ error: 'You do not have that item.' });
+      entry.quantity -= 1;
+      if (entry.quantity <= 0) inv.items = inv.items.filter(i => i.itemName !== itemName);
+      await inv.save();
+      res.json({ success: true, itemName });
+    } catch { res.status(500).json({ error: 'Internal error' }); }
+  });
+
   router.get('/economy/leaderboard', portalAuth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
@@ -927,12 +1030,12 @@ export function createApiRouter() {
 
       const botUrl = process.env.BOT_INTERNAL_URL;
       const secret = process.env.PORTAL_INTERNAL_SECRET;
-      if (botUrl && secret) {
+      if (botUrl) {
         axios.post(
           `${botUrl}/api/internal/panic`,
           { guildId, officerName: displayName, location: location?.trim() || null },
-          { headers: { 'x-internal-secret': secret }, timeout: 5000 }
-        ).catch(() => {});
+          { headers: secret ? { 'x-internal-secret': secret } : {}, timeout: 8000 }
+        ).catch(err => console.error('[Portal panic → bot]', err.message));
       }
 
       res.json({ success: true });
