@@ -669,29 +669,125 @@ export function createPortalApiRouter(client) {
       const { type, query } = req.query;
       if (!query?.trim()) return res.status(400).json({ error: 'Query required' });
 
+      let chars = [];
       if (type === 'plate') {
-        const chars = await CADCharacter.find({
+        chars = await CADCharacter.find({
           guildId,
           $or: [
             { licensePlate: { $regex: query.trim(), $options: 'i' } },
             { 'vehicles.licensePlate': { $regex: query.trim(), $options: 'i' } },
           ],
         }).limit(10);
-        return res.json({ type: 'plate', results: chars });
-      }
-
-      if (type === 'character') {
-        const chars = await CADCharacter.find({
+      } else if (type === 'character') {
+        chars = await CADCharacter.find({
           guildId,
           characterName: { $regex: query.trim(), $options: 'i' },
         }).limit(10);
-        return res.json({ type: 'character', results: chars });
+      } else {
+        return res.status(400).json({ error: 'type must be plate or character' });
       }
 
-      res.status(400).json({ error: 'type must be plate or character' });
+      const charIds = chars.map(c => c._id);
+      const [bolosRaw, ticketsRaw] = await Promise.all([
+        BOLO.find({ guildId, characterId: { $in: charIds }, active: true }),
+        TrafficTicket.find({ guildId, characterId: { $in: charIds.map(id => id.toString()) } }).sort({ createdAt: -1 }),
+      ]);
+
+      const bolosByChar = {};
+      for (const b of bolosRaw) {
+        const key = b.characterId.toString();
+        if (!bolosByChar[key]) bolosByChar[key] = [];
+        bolosByChar[key].push(b);
+      }
+      const ticketsByChar = {};
+      for (const t of ticketsRaw) {
+        const key = t.characterId.toString();
+        if (!ticketsByChar[key]) ticketsByChar[key] = [];
+        ticketsByChar[key].push(t);
+      }
+
+      const results = chars.map(c => ({
+        ...c.toObject(),
+        bolos: bolosByChar[c._id.toString()] || [],
+        tickets: ticketsByChar[c._id.toString()] || [],
+      }));
+
+      return res.json({ type, results });
     } catch (err) {
       console.error('[PORTAL /leo/search]', err);
       res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.delete('/leo/bolos/:boloId', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const bolo = await BOLO.findOneAndDelete({ guildId, boloId: req.params.boloId });
+      if (!bolo) return res.status(404).json({ error: 'BOLO not found' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /leo/bolos/delete]', err);
+      res.status(500).json({ error: 'Failed to delete BOLO' });
+    }
+  });
+
+  router.post('/leo/bolos/create', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { characterName, reason, description, vehicles } = req.body;
+      if (!characterName?.trim()) return res.status(400).json({ error: 'Character name required' });
+      if (!reason?.trim()) return res.status(400).json({ error: 'Reason required' });
+
+      const character = await CADCharacter.findOne({ guildId, characterName: { $regex: characterName.trim(), $options: 'i' } });
+      if (!character) return res.status(404).json({ error: `No character found for "${characterName.trim()}"` });
+
+      const boloId = `BOLO-${Date.now()}`;
+      const bolo = new BOLO({
+        guildId,
+        boloId,
+        characterId: character._id,
+        characterName: character.characterName,
+        reason: reason.trim(),
+        description: description?.trim() || '',
+        vehicles: Array.isArray(vehicles) ? vehicles : [],
+        issuedBy: req.portalUser.userId,
+        active: true,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      await bolo.save();
+      res.json({ success: true, bolo });
+    } catch (err) {
+      console.error('[PORTAL /leo/bolos/create]', err);
+      res.status(500).json({ error: 'Failed to create BOLO' });
+    }
+  });
+
+  router.post('/leo/issue-ticket', auth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { characterName, violation, description, fine } = req.body;
+      if (!characterName?.trim()) return res.status(400).json({ error: 'Character name required' });
+      if (!violation?.trim()) return res.status(400).json({ error: 'Violation required' });
+
+      const character = await CADCharacter.findOne({ guildId, characterName: { $regex: characterName.trim(), $options: 'i' } });
+      if (!character) return res.status(404).json({ error: `No character found for "${characterName.trim()}"` });
+
+      const ticketId = `TKT-${Date.now()}`;
+      const ticket = new TrafficTicket({
+        guildId,
+        ticketId,
+        characterId: character._id,
+        characterName: character.characterName,
+        issuedBy: req.portalUser.displayName || req.portalUser.username,
+        violation: violation.trim(),
+        description: description?.trim() || '',
+        fine: parseInt(fine) || 0,
+      });
+      await ticket.save();
+      res.json({ success: true, ticket });
+    } catch (err) {
+      console.error('[PORTAL /leo/issue-ticket]', err);
+      res.status(500).json({ error: 'Failed to issue ticket' });
     }
   });
 

@@ -1459,7 +1459,10 @@ html, body {
   font-size: 12px;
 }
 .bolo-subject, .bolo-name { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
-.bolo-meta, .bolo-reason { color: var(--text-muted); }
+.bolo-meta, .bolo-reason { color: var(--text-muted); font-size: 11px; margin-bottom: 2px; }
+.bolo-desc { color: var(--text-muted); font-size: 11px; margin-bottom: 3px; }
+.bolo-item-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.bolo-item-header .bolo-name { margin-bottom: 0; }
 
 .call-item {
   background: var(--elevated);
@@ -1473,6 +1476,62 @@ html, body {
 .call-issue { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
 .call-loc { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
 .call-meta { font-size: 11px; color: var(--text-sub); }
+
+/* ══════════════════════════════════════════════════════
+   LEO CARD HEADER + ACTION HEADER
+══════════════════════════════════════════════════════ */
+.leo-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.leo-card-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-sub); }
+.leo-header-actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* ══════════════════════════════════════════════════════
+   SEARCH RESULT OVERHAUL
+══════════════════════════════════════════════════════ */
+.leo-result-card { font-size: 12px; }
+.leo-result-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.leo-result-name { font-size: 13px; font-weight: 700; }
+.leo-result-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.result-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.05em; padding: 2px 5px; border-radius: 3px; text-transform: uppercase; white-space: nowrap; }
+.badge-wanted { background: rgba(240,71,71,0.15); color: var(--danger); border: 1px solid rgba(240,71,71,0.3); }
+.badge-clean { background: rgba(67,181,129,0.12); color: var(--success); border: 1px solid rgba(67,181,129,0.25); }
+.badge-bolo { background: rgba(250,166,26,0.15); color: var(--warning); border: 1px solid rgba(250,166,26,0.3); }
+.leo-result-fields { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+.leo-result-row { display: flex; gap: 6px; }
+.leo-result-row span { color: var(--text); }
+.result-key { color: var(--text-sub); font-size: 11px; min-width: 52px; flex-shrink: 0; }
+.leo-wanted-row { background: rgba(240,71,71,0.07); border-radius: 3px; padding: 3px 5px; }
+.leo-wanted-row .result-key, .leo-wanted-row span { color: var(--danger); }
+.result-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.result-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-sub); margin-bottom: 5px; }
+.result-bolo-item { background: rgba(250,166,26,0.07); border: 1px solid rgba(250,166,26,0.2); border-radius: 3px; padding: 5px 8px; margin-bottom: 4px; font-size: 11px; }
+.result-bolo-reason { font-weight: 600; color: var(--warning); margin-bottom: 2px; }
+.result-bolo-desc { color: var(--text-muted); margin-bottom: 2px; }
+.result-bolo-meta { font-size: 10px; color: var(--text-sub); }
+.result-ticket-item { background: var(--elevated); border: 1px solid var(--border); border-radius: 3px; padding: 5px 8px; margin-bottom: 4px; font-size: 11px; }
+.result-ticket-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; font-weight: 500; }
+.result-ticket-fine { font-size: 10px; color: var(--danger); font-weight: 700; }
+.result-ticket-desc { color: var(--text-muted); font-size: 10px; margin-bottom: 2px; }
+.leo-result-actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+/* Extra small button */
+.btn-xs { padding: 4px 9px; font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+.btn.btn-xs { padding: 4px 9px; font-size: 10px; }
+
+/* Danger icon button */
+.btn-icon-danger {
+  background: none;
+  border: none;
+  padding: 3px;
+  border-radius: 3px;
+  color: var(--text-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+.btn-icon-danger:hover { color: var(--danger); background: rgba(240,71,71,0.1); }
 
 /* ══════════════════════════════════════════════════════
    BOTTOM NAV DISPATCH ACCENT

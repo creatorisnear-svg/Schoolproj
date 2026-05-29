@@ -228,7 +228,19 @@
 
       <!-- LEO DASHBOARD -->
       <div id="tab-leo" class="tab-pane">
-        <div class="page-header"><h2>LEO Dashboard</h2></div>
+        <div class="page-header">
+          <h2>LEO Dashboard</h2>
+          <div class="leo-header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openCreateBoloModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Create BOLO
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="openIssueTicketModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Issue Ticket
+            </button>
+          </div>
+        </div>
 
         <!-- Panic Button -->
         <div class="panic-panel" id="panic-panel">
@@ -285,26 +297,37 @@
           <span id="board-refresh-label" style="font-size:10px;color:var(--text-sub);font-weight:400;letter-spacing:0">Refreshes in <span id="board-countdown">30</span>s</span>
         </div>
         <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
+
         <div class="leo-grid" style="margin-top:20px">
-          <div class="card">
-            <div class="section-label" style="margin-top:0">Search Records</div>
+          <!-- Left: Search + Results -->
+          <div class="card leo-search-card">
+            <div class="leo-card-header">
+              <span class="leo-card-title">Search Records</span>
+            </div>
             <div class="leo-search-controls">
-              <select id="leo-search-type">
-                <option value="plate">Plate</option>
-                <option value="character">Name</option>
+              <select id="leo-search-type" class="form-select">
+                <option value="plate">License Plate</option>
+                <option value="character">Character Name</option>
               </select>
-              <input id="leo-search-input" type="text" placeholder="Enter query...">
+              <input id="leo-search-input" class="form-input" type="text" placeholder="Enter query..." onkeydown="if(event.key==='Enter')leoSearch()">
               <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
             </div>
             <div id="leo-results" class="leo-results"></div>
           </div>
+
+          <!-- Right: BOLOs + Calls -->
           <div class="leo-right">
             <div class="card">
-              <div class="section-label" style="margin-top:0">Active BOLOs</div>
+              <div class="leo-card-header">
+                <span class="leo-card-title">Active BOLOs</span>
+                <button class="btn btn-secondary btn-xs" onclick="openCreateBoloModal()">+ Create</button>
+              </div>
               <div id="leo-bolos" class="bolo-list"><div class="empty-state">Loading...</div></div>
             </div>
-            <div class="card">
-              <div class="section-label" style="margin-top:0">All Active 911 Calls</div>
+            <div class="card" style="margin-top:16px">
+              <div class="leo-card-header">
+                <span class="leo-card-title">Active 911 Calls</span>
+              </div>
               <div id="leo-calls" class="call-list"><div class="empty-state">Loading...</div></div>
             </div>
           </div>
@@ -455,6 +478,49 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
         <button type="submit" class="btn btn-primary">Add Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Issue Ticket ══════════ -->
+<div id="modal-issue-ticket" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Issue Traffic Ticket</h3>
+      <button class="modal-close" onclick="closeModal('modal-issue-ticket')">&times;</button>
+    </div>
+    <form id="form-issue-ticket" onsubmit="submitIssueTicket(event)">
+      <div class="form-group"><label class="form-label">Character Name *</label><input class="form-input" id="ticket-char-name" name="characterName" type="text" required placeholder="e.g. John Smith"></div>
+      <div class="form-group"><label class="form-label">Violation *</label><input class="form-input" name="violation" type="text" required placeholder="e.g. Reckless Driving, Running Red Light"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" name="description" rows="3" placeholder="Additional details about the violation..."></textarea></div>
+      <div class="form-group"><label class="form-label">Fine ($)</label><input class="form-input" name="fine" type="number" min="0" placeholder="0"></div>
+      <div id="form-ticket-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-issue-ticket')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Issue Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Create BOLO ══════════ -->
+<div id="modal-create-bolo" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Create BOLO</h3>
+      <button class="modal-close" onclick="closeModal('modal-create-bolo')">&times;</button>
+    </div>
+    <form id="form-create-bolo" onsubmit="submitCreateBolo(event)">
+      <div class="form-group"><label class="form-label">Character Name *</label><input class="form-input" id="bolo-char-name" name="characterName" type="text" required placeholder="e.g. John Smith"></div>
+      <div class="form-group"><label class="form-label">Reason *</label><input class="form-input" name="reason" type="text" required placeholder="e.g. Armed and dangerous, Homicide suspect"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" name="description" rows="3" placeholder="Additional details, known associates, last known location..."></textarea></div>
+      <div id="form-bolo-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-bolo')">Cancel</button>
+        <button type="submit" class="btn btn-danger">Issue BOLO</button>
       </div>
     </form>
   </div>

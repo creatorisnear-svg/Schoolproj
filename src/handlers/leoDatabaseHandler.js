@@ -1344,21 +1344,30 @@ export async function handleLEODeleteBOLO(interaction) {
     const bolo = await BOLO.findOneAndDelete({ boloId, guildId: interaction.guildId });
 
     if (!bolo) {
-      return interaction.reply({
+      const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = await import('discord.js');
+      const backRow = new ARB().addComponents(
+        new BB().setCustomId('back_to_leo_menu').setLabel('← Back').setStyle(BS.Secondary)
+      );
+      return interaction.update({
         embeds: [errorEmbed('BOLO not found or already deleted.')],
-        flags: 64,
+        components: [backRow],
       });
     }
 
-    return interaction.reply({
-      embeds: [successEmbed('BOLO Deleted', `BOLO **${boloId}** for ${bolo.characterName} has been removed.`)],
-      flags: 64,
+    const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = await import('discord.js');
+    const backRow = new ARB().addComponents(
+      new BB().setCustomId('back_to_leo_menu').setLabel('← Back to Menu').setStyle(BS.Secondary)
+    );
+
+    return interaction.update({
+      embeds: [successEmbed('BOLO Deleted', `BOLO for **${bolo.characterName}** has been removed.`)],
+      components: [backRow],
     });
   } catch (error) {
     console.error('Error deleting BOLO:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      flags: 64,
+    return interaction.update({
+      embeds: [errorEmbed('An error occurred while deleting the BOLO.')],
+      components: [],
     });
   }
 }

@@ -968,14 +968,7 @@ async function loadLeo() {
     applyMyStatusToUI(myStatus);
     startBoardRefresh();
 
-    boloEl.innerHTML = bolos?.length
-      ? bolos.map(b => `
-          <div class="bolo-item">
-            <div class="bolo-name">${b.characterName}</div>
-            <div class="bolo-reason">${b.reason}</div>
-            <div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()}</div>
-          </div>`).join('')
-      : '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
+    renderBoloList(boloEl, bolos || []);
 
     callEl.innerHTML = calls?.length
       ? calls.map(c => `
@@ -993,6 +986,104 @@ async function loadLeo() {
   }
 }
 
+function renderBoloList(el, bolos) {
+  if (!bolos.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
+    return;
+  }
+  el.innerHTML = bolos.map(b => `
+    <div class="bolo-item" data-bolo-id="${esc(b.boloId)}">
+      <div class="bolo-item-header">
+        <div class="bolo-name">${esc(b.characterName)}</div>
+        <button class="btn-icon-danger" onclick="deleteBolo('${esc(b.boloId)}')" title="Delete BOLO">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+      <div class="bolo-reason">${esc(b.reason)}</div>
+      ${b.description ? `<div class="bolo-desc">${esc(b.description)}</div>` : ''}
+      <div class="bolo-meta">${new Date(b.createdAt).toLocaleDateString()} · Expires ${timeAgo(new Date(b.expiresAt))}</div>
+    </div>`).join('');
+}
+
+async function deleteBolo(boloId) {
+  if (!confirm('Delete this BOLO? This cannot be undone.')) return;
+  try {
+    await apiDel(`/leo/bolos/${encodeURIComponent(boloId)}`);
+    toast('BOLO deleted.', 'success');
+    const el = document.querySelector(`[data-bolo-id="${CSS.escape(boloId)}"]`);
+    if (el) el.remove();
+    const boloEl = document.getElementById('leo-bolos');
+    if (boloEl && !boloEl.querySelector('.bolo-item')) {
+      boloEl.innerHTML = '<div class="empty-state" style="padding:12px 0">No active BOLOs.</div>';
+    }
+  } catch (err) {
+    toast(err.message || 'Failed to delete BOLO.', 'error');
+  }
+}
+
+function openIssueTicketModal(prefillName = '') {
+  document.getElementById('form-issue-ticket').reset();
+  document.getElementById('form-ticket-error').classList.add('hidden');
+  if (prefillName) document.getElementById('ticket-char-name').value = prefillName;
+  openModal('modal-issue-ticket');
+}
+
+async function submitIssueTicket(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  const errEl = document.getElementById('form-ticket-error');
+  const btn = e.target.querySelector('[type="submit"]');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Issuing...';
+  try {
+    await apiPost('/leo/issue-ticket', data);
+    closeModal('modal-issue-ticket');
+    toast('Ticket issued successfully.', 'success');
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Issue Ticket';
+  }
+}
+
+function openCreateBoloModal(prefillName = '') {
+  document.getElementById('form-create-bolo').reset();
+  document.getElementById('form-bolo-error').classList.add('hidden');
+  if (prefillName) document.getElementById('bolo-char-name').value = prefillName;
+  openModal('modal-create-bolo');
+}
+
+async function submitCreateBolo(e) {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  const errEl = document.getElementById('form-bolo-error');
+  const btn = e.target.querySelector('[type="submit"]');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+  try {
+    const result = await apiPost('/leo/bolos/create', data);
+    closeModal('modal-create-bolo');
+    toast('BOLO created.', 'success');
+    const boloEl = document.getElementById('leo-bolos');
+    if (boloEl && result.bolo) {
+      const existing = Array.from(boloEl.querySelectorAll('.bolo-item'));
+      const currentBolos = [...existing.map(el => ({ boloId: el.dataset.boloId })), result.bolo];
+      const freshBolos = await api('/leo/bolos');
+      renderBoloList(boloEl, freshBolos || []);
+    }
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Issue BOLO';
+  }
+}
+
 async function leoSearch() {
   const type = document.getElementById('leo-search-type').value;
   const query = document.getElementById('leo-search-input').value.trim();
@@ -1003,15 +1094,54 @@ async function leoSearch() {
     const data = await api(`/leo/search?type=${type}&query=${encodeURIComponent(query)}`);
     const chars = data.results || [];
     if (!chars.length) { results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No results found.</p>'; return; }
-    results.innerHTML = chars.map(c => `
+    results.innerHTML = chars.map(c => {
+      const isWanted = c.status === 'wanted';
+      const bolos = c.bolos || [];
+      const tickets = c.tickets || [];
+      return `
       <div class="leo-result-card">
-        <div class="leo-result-name">${c.characterName} <span class="char-status ${c.status === 'wanted' ? 'status-wanted' : 'status-clean'}" style="font-size:10px">${c.status?.toUpperCase()}</span></div>
-        <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> · Gender: <span>${c.gender || 'N/A'}</span></div>
-        <div class="leo-result-row">Address: <span>${c.address || 'N/A'}</span></div>
-        <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> · Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
-        ${c.vehicles?.length ? `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>` : ''}
-        ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
-      </div>`).join('');
+        <div class="leo-result-header">
+          <div class="leo-result-name">${esc(c.characterName)}</div>
+          <div class="leo-result-badges">
+            ${isWanted ? `<span class="result-badge badge-wanted">WANTED</span>` : `<span class="result-badge badge-clean">CLEAN</span>`}
+            ${bolos.length ? `<span class="result-badge badge-bolo">BOLO ×${bolos.length}</span>` : ''}
+          </div>
+        </div>
+        <div class="leo-result-fields">
+          <div class="leo-result-row"><span class="result-key">Age</span><span>${c.age || 'N/A'}</span></div>
+          <div class="leo-result-row"><span class="result-key">Gender</span><span>${c.gender || 'N/A'}</span></div>
+          <div class="leo-result-row"><span class="result-key">Address</span><span>${esc(c.address || 'N/A')}</span></div>
+          <div class="leo-result-row"><span class="result-key">License</span><span>${esc(c.driversLicense || 'N/A')} · ${esc(c.driverLicenseStatus || 'Valid')}</span></div>
+          ${c.vehicles?.length ? `<div class="leo-result-row"><span class="result-key">Vehicles</span><span>${c.vehicles.map(v => `${esc(v.color || '')} ${esc(v.make)} ${esc(v.model)} (${esc(v.licensePlate || 'no plate')})`).join(', ')}</span></div>` : ''}
+          ${isWanted && c.wantedReason ? `<div class="leo-result-row leo-wanted-row"><span class="result-key">Wanted</span><span>${esc(c.wantedReason)}</span></div>` : ''}
+        </div>
+        ${bolos.length ? `
+        <div class="result-section">
+          <div class="result-section-title">Active BOLOs</div>
+          ${bolos.map(b => `
+            <div class="result-bolo-item">
+              <div class="result-bolo-reason">${esc(b.reason)}</div>
+              ${b.description ? `<div class="result-bolo-desc">${esc(b.description)}</div>` : ''}
+              <div class="result-bolo-meta">Issued ${timeAgo(new Date(b.createdAt))}</div>
+            </div>`).join('')}
+        </div>` : ''}
+        ${tickets.length ? `
+        <div class="result-section">
+          <div class="result-section-title">Ticket History (${tickets.length})</div>
+          ${tickets.slice(0, 3).map(t => `
+            <div class="result-ticket-item">
+              <div class="result-ticket-row"><span>${esc(t.violation)}</span>${t.fine ? `<span class="result-ticket-fine">$${Number(t.fine).toLocaleString()}</span>` : ''}</div>
+              ${t.description ? `<div class="result-ticket-desc">${esc(t.description)}</div>` : ''}
+              <div class="result-bolo-meta">${new Date(t.createdAt).toLocaleDateString()} · ${esc(t.paid ? 'Paid' : 'Unpaid')}</div>
+            </div>`).join('')}
+          ${tickets.length > 3 ? `<div class="result-bolo-meta" style="margin-top:4px">+${tickets.length - 3} more tickets</div>` : ''}
+        </div>` : ''}
+        <div class="leo-result-actions">
+          <button class="btn btn-secondary btn-xs" onclick="openIssueTicketModal('${esc(c.characterName)}')">Issue Ticket</button>
+          <button class="btn btn-xs" style="background:var(--danger-dim,rgba(240,71,71,0.12));color:var(--danger);border-color:rgba(240,71,71,0.25)" onclick="openCreateBoloModal('${esc(c.characterName)}')">Create BOLO</button>
+        </div>
+      </div>`;
+    }).join('');
   } catch (err) {
     results.innerHTML = `<p style="color:var(--danger);font-size:13px">${err.message}</p>`;
   }
