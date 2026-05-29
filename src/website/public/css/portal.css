@@ -1392,20 +1392,89 @@ html, body {
 .my-status-sub.busy { color: var(--warning); }
 .my-status-sub.urgent { color: var(--danger); }
 
-.my-status-controls {
+/* ── Status quick grid ── */
+.status-quick-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: end;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
 }
-.status-select, .status-input { font-size: 13px; padding: 9px 12px; }
-.status-select { grid-column: 1 / -1; }
-#btn-update-status { grid-column: 1 / -1; justify-content: center; padding: 11px; }
+.status-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--elevated);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+  min-width: 0;
+}
+.status-btn:active { transform: scale(0.95); }
+.status-btn-code { font-size: 11px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; }
+.status-btn-label { font-size: 9px; color: var(--text-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
-@media (min-width: 540px) {
-  .my-status-controls { grid-template-columns: 1.5fr 1fr 1fr auto; }
-  .status-select { grid-column: auto; }
-  #btn-update-status { grid-column: auto; padding: 9px 18px; }
+.status-btn-available { border-color: rgba(47,198,114,0.18); }
+.status-btn-available .status-btn-code { color: var(--success); }
+.status-btn-available:hover, .status-btn-available.active { background: var(--success-dim); border-color: rgba(47,198,114,0.5); }
+
+.status-btn-busy { border-color: rgba(232,154,26,0.18); }
+.status-btn-busy .status-btn-code { color: var(--warning); }
+.status-btn-busy:hover, .status-btn-busy.active { background: var(--warning-dim); border-color: rgba(232,154,26,0.5); }
+
+.status-btn-enroute, .status-btn-scene, .status-btn-traffic { border-color: rgba(72,112,239,0.18); }
+.status-btn-enroute .status-btn-code, .status-btn-scene .status-btn-code, .status-btn-traffic .status-btn-code { color: var(--accent); }
+.status-btn-enroute:hover, .status-btn-enroute.active,
+.status-btn-scene:hover, .status-btn-scene.active,
+.status-btn-traffic:hover, .status-btn-traffic.active { background: var(--accent-dim); border-color: rgba(72,112,239,0.5); }
+
+.status-btn-pursuit, .status-btn-prisoner { border-color: rgba(232,79,79,0.18); }
+.status-btn-pursuit .status-btn-code, .status-btn-prisoner .status-btn-code { color: var(--danger); }
+.status-btn-pursuit:hover, .status-btn-pursuit.active,
+.status-btn-prisoner:hover, .status-btn-prisoner.active { background: var(--danger-dim); border-color: rgba(232,79,79,0.5); }
+
+.status-btn-oos { border-color: var(--border); }
+.status-btn-oos .status-btn-code { color: var(--text-muted); }
+.status-btn-oos:hover, .status-btn-oos.active { background: var(--card); border-color: var(--border-light); }
+
+.status-detail-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.status-detail-row .form-input { flex: 1; font-size: 12px; padding: 8px 10px; margin-bottom: 0; }
+.status-detail-row .btn { flex-shrink: 0; white-space: nowrap; }
+@media (max-width: 540px) {
+  .status-quick-grid { gap: 5px; }
+  .status-btn { padding: 9px 4px; }
+  .status-btn-code { font-size: 10px; }
+  .status-btn-label { font-size: 8px; }
+  .status-detail-row { flex-wrap: wrap; }
+  .status-detail-row .form-input { min-width: calc(50% - 4px); }
+  .status-detail-row .btn { width: 100%; justify-content: center; }
+}
+
+/* ── Live dot ── */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  animation: livePulse 2s ease-in-out infinite;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1442,9 +1511,11 @@ html, body {
   white-space: nowrap;
 }
 .officer-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.officer-detail-label { display: inline-block; font-size: 9px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.3px; min-width: 36px; margin-right: 4px; }
+.officer-dispatch-line { font-style: italic; color: var(--text-muted); }
 .officer-time { font-size: 10px; color: var(--text-sub); margin-top: 6px; }
+.officer-you-badge { display: inline-block; font-size: 9px; font-weight: 700; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(72,112,239,0.25); padding: 1px 6px; border-radius: 10px; margin-left: 4px; vertical-align: middle; }
 .officer-card.is-me { border-color: var(--accent); background: linear-gradient(135deg, var(--accent-dim), var(--card)); }
-.officer-card.is-me .officer-name::after { content: ' (you)'; font-size: 10px; color: var(--accent); font-weight: 400; }
 
 /* ══════════════════════════════════════════════════════
    LEO SEARCH / BOLOS / CALLS

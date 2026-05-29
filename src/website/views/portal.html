@@ -346,28 +346,51 @@
               <button class="btn btn-danger btn-sm" id="btn-go-offduty" onclick="goOffDuty()" style="display:none">Go Off Duty</button>
             </div>
           </div>
-          <div class="my-status-controls">
-            <select id="status-tencode" class="form-select status-select">
-              <option value="">Select ten-code...</option>
-              <option value="10-8">10-8 — Available</option>
-              <option value="10-6">10-6 — Busy</option>
-              <option value="10-97">10-97 — On Scene</option>
-              <option value="10-50">10-50 — Traffic Stop</option>
-              <option value="10-15">10-15 — In Pursuit</option>
-              <option value="10-99">10-99 — Emergency</option>
-              <option value="10-7">10-7 — Out of Service</option>
-              <option value="10-10">10-10 — Off Duty</option>
-            </select>
-            <input id="status-location" class="form-input status-input" type="text" placeholder="Location (optional)">
-            <input id="status-subject" class="form-input status-input" type="text" placeholder="Subject / notes (optional)">
-            <button class="btn btn-primary" id="btn-update-status" onclick="updateOfficerStatus()">Update Status</button>
+          <div class="status-quick-grid">
+            <button class="status-btn status-btn-available" data-code="10-8" onclick="selectQuickStatus('10-8')">
+              <span class="status-btn-code">10-8</span>
+              <span class="status-btn-label">Available</span>
+            </button>
+            <button class="status-btn status-btn-busy" data-code="10-6" onclick="selectQuickStatus('10-6')">
+              <span class="status-btn-code">10-6</span>
+              <span class="status-btn-label">Busy</span>
+            </button>
+            <button class="status-btn status-btn-enroute" data-code="10-76" onclick="selectQuickStatus('10-76')">
+              <span class="status-btn-code">10-76</span>
+              <span class="status-btn-label">En Route</span>
+            </button>
+            <button class="status-btn status-btn-scene" data-code="10-97" onclick="selectQuickStatus('10-97')">
+              <span class="status-btn-code">10-97</span>
+              <span class="status-btn-label">On Scene</span>
+            </button>
+            <button class="status-btn status-btn-traffic" data-code="10-11" onclick="selectQuickStatus('10-11')">
+              <span class="status-btn-code">10-11</span>
+              <span class="status-btn-label">Traffic Stop</span>
+            </button>
+            <button class="status-btn status-btn-pursuit" data-code="10-80" onclick="selectQuickStatus('10-80')">
+              <span class="status-btn-code">10-80</span>
+              <span class="status-btn-label">Pursuit</span>
+            </button>
+            <button class="status-btn status-btn-prisoner" data-code="10-15" onclick="selectQuickStatus('10-15')">
+              <span class="status-btn-code">10-15</span>
+              <span class="status-btn-label">Prisoner</span>
+            </button>
+            <button class="status-btn status-btn-oos" data-code="10-7" onclick="selectQuickStatus('10-7')">
+              <span class="status-btn-code">10-7</span>
+              <span class="status-btn-label">Off Service</span>
+            </button>
+          </div>
+          <div id="status-detail-row" class="status-detail-row hidden">
+            <input id="status-location" class="form-input" type="text" placeholder="Location (optional)">
+            <input id="status-subject" class="form-input" type="text" placeholder="Subject / notes (optional)">
+            <button class="btn btn-primary" id="btn-update-status" onclick="confirmStatusUpdate()">Confirm</button>
           </div>
           <div id="status-error" class="form-error hidden" style="margin-top:8px"></div>
         </div>
 
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
           <span>Officer Status Board</span>
-          <span id="board-refresh-label" style="font-size:10px;color:var(--text-sub);font-weight:400;letter-spacing:0">Refreshes in <span id="board-countdown">30</span>s</span>
+          <span id="board-refresh-label" style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-sub);font-weight:400"><span class="live-dot"></span>Live · <span id="board-countdown">10</span>s</span>
         </div>
         <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
 

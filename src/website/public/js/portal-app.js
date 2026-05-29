@@ -851,18 +851,21 @@ async function submitRoleRequest() {
 /* ══════════════════════════════════════════════════════
    LEO — STATUS UPDATE
 ══════════════════════════════════════════════════════ */
+let pendingTenCode = null;
+const STATUS_NEEDS_DETAILS = new Set(['10-97', '10-76', '10-11', '10-80', '10-15', '10-50']);
+
 let boardRefreshTimer = null;
-let boardCountdown = 30;
+let boardCountdown = 10;
 
 function startBoardRefresh() {
   stopBoardRefresh();
-  boardCountdown = 30;
+  boardCountdown = 10;
   updateCountdown();
   boardRefreshTimer = setInterval(() => {
     boardCountdown--;
     updateCountdown();
     if (boardCountdown <= 0) {
-      boardCountdown = 30;
+      boardCountdown = 10;
       refreshOfficerBoard();
     }
   }, 1000);
@@ -879,13 +882,32 @@ function updateCountdown() {
 
 async function refreshOfficerBoard() {
   try {
-    const [officers, myStatus] = await Promise.all([
+    const [officers, myStatus, bolos, calls] = await Promise.all([
       api('/leo/officers'),
       api('/leo/mystatus'),
+      api('/leo/bolos'),
+      api('/leo/calls'),
     ]);
     renderOfficerBoard(officers || []);
     applyMyStatusToUI(myStatus);
+    const boloEl = document.getElementById('leo-bolos');
+    if (boloEl) renderBoloList(boloEl, bolos || []);
+    renderCallsList(calls || []);
   } catch { /* silent */ }
+}
+
+function renderCallsList(calls) {
+  const callEl = document.getElementById('leo-calls');
+  if (!callEl) return;
+  callEl.innerHTML = calls?.length
+    ? calls.map(c => `
+        <div class="call-item">
+          <div class="call-id">${c.callId}</div>
+          <div class="call-issue">${c.issue}</div>
+          ${c.location ? `<div class="call-loc">${c.location}</div>` : ''}
+          <div class="call-meta">${timeAgo(new Date(c.timestamp))} ${c.respondingLeoUsername ? '· ' + c.respondingLeoUsername : '· No response'}</div>
+        </div>`).join('')
+    : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
 }
 
 function renderOfficerBoard(officers) {
@@ -901,11 +923,12 @@ function renderOfficerBoard(officers) {
     return `
       <div class="officer-card${isMe ? ' is-me' : ''}">
         <div class="officer-header">
-          <div class="officer-name">${o.username}</div>
+          <div class="officer-name">${o.username}${isMe ? ' <span class="officer-you-badge">You</span>' : ''}</div>
           <span class="officer-badge" style="background:${info.color}18;color:${info.color};border-color:${info.color}40">${info.label}</span>
         </div>
-        ${o.location ? `<div class="officer-detail">${o.location}</div>` : ''}
-        ${o.subject ? `<div class="officer-detail">${o.subject}</div>` : ''}
+        ${o.location ? `<div class="officer-detail"><span class="officer-detail-label">Loc</span>${o.location}</div>` : ''}
+        ${o.subject ? `<div class="officer-detail"><span class="officer-detail-label">Subj</span>${o.subject}</div>` : ''}
+        ${o.rawCall ? `<div class="officer-detail officer-dispatch-line"><span class="officer-detail-label">Dispatch</span>${o.rawCall}</div>` : ''}
         <div class="officer-time">Updated ${timeAgo(new Date(o.updatedAt))}</div>
       </div>`;
   }).join('');
@@ -917,6 +940,9 @@ function applyMyStatusToUI(status) {
   if (!status) {
     if (sub) { sub.textContent = 'Not on duty'; sub.className = 'my-status-sub'; }
     if (offDutyBtn) offDutyBtn.style.display = 'none';
+    pendingTenCode = null;
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     panicActive = false;
     const idleEl = document.getElementById('panic-idle');
     const activeEl = document.getElementById('panic-active');
@@ -938,19 +964,15 @@ function applyMyStatusToUI(status) {
   if (status.location) parts.push(status.location);
   if (sub) {
     sub.textContent = parts.join(' · ');
-    const urgentCodes = new Set(['10-15','10-99']);
-    const busyCodes = new Set(['10-6','10-50','10-97']);
+    const urgentCodes = new Set(['10-15','10-99','10-80']);
+    const busyCodes = new Set(['10-6','10-50','10-97','10-76','10-11']);
     if (urgentCodes.has(status.tenCode)) sub.className = 'my-status-sub urgent';
     else if (busyCodes.has(status.tenCode)) sub.className = 'my-status-sub busy';
     else sub.className = 'my-status-sub on-duty';
   }
   if (offDutyBtn) offDutyBtn.style.display = '';
-  const tcEl = document.getElementById('status-tencode');
-  if (tcEl && status.tenCode) tcEl.value = status.tenCode;
-  const locEl = document.getElementById('status-location');
-  if (locEl) locEl.value = status.location || '';
-  const subEl = document.getElementById('status-subject');
-  if (subEl) subEl.value = status.subject || '';
+  pendingTenCode = status.tenCode;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === status.tenCode));
 }
 
 let panicActive = false;
@@ -968,11 +990,12 @@ async function triggerPanic() {
     document.getElementById('panic-idle').classList.add('hidden');
     document.getElementById('panic-active').classList.remove('hidden');
     applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
-    document.getElementById('status-tencode').value = '10-99';
+    pendingTenCode = '10-99';
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === '10-99'));
     toast('10-99 sent — dispatch alerted', 'error');
     boardCountdown = 1;
     await refreshOfficerBoard();
-    boardCountdown = 30;
+    boardCountdown = 10;
   } catch (err) {
     toast(err.message || 'Failed to send panic', 'error');
     btn.disabled = false;
@@ -992,10 +1015,10 @@ async function clearPanic() {
     const panicBtn = document.getElementById('btn-panic');
     panicBtn.disabled = false;
     panicBtn.querySelector('.panic-label').textContent = 'PANIC';
+    pendingTenCode = null;
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     applyMyStatusToUI(null);
-    document.getElementById('status-tencode').value = '';
-    document.getElementById('status-location').value = '';
-    document.getElementById('status-subject').value = '';
     toast('Panic cleared — 10-99 cancelled', 'info');
     await refreshOfficerBoard();
   } catch (err) {
@@ -1007,28 +1030,29 @@ async function clearPanic() {
 }
 
 async function updateOfficerStatus() {
-  const tenCode = document.getElementById('status-tencode').value;
-  const location = document.getElementById('status-location').value;
-  const subject = document.getElementById('status-subject').value;
+  const tenCode = pendingTenCode;
+  const location = document.getElementById('status-location')?.value?.trim() || '';
+  const subject = document.getElementById('status-subject')?.value?.trim() || '';
   const errEl = document.getElementById('status-error');
   const btn = document.getElementById('btn-update-status');
-  errEl.classList.add('hidden');
-  if (!tenCode) { errEl.textContent = 'Please select a ten-code.'; errEl.classList.remove('hidden'); return; }
-  btn.disabled = true;
-  btn.textContent = 'Updating...';
+  if (errEl) errEl.classList.add('hidden');
+  if (!tenCode) {
+    if (errEl) { errEl.textContent = 'Select a status first.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
   try {
     const result = await apiPost('/leo/status', { tenCode, location, subject });
     applyMyStatusToUI(result.status);
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     toast(`Status updated to ${tenCode}`, 'success');
     boardCountdown = 1;
     await refreshOfficerBoard();
-    boardCountdown = 30;
+    boardCountdown = 10;
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
+    if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Update Status';
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm'; }
   }
 }
 
@@ -1036,13 +1060,42 @@ async function goOffDuty() {
   if (!confirm('Go off duty? Your status will be removed from the board.')) return;
   try {
     await apiDel('/leo/status');
+    pendingTenCode = null;
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('status-detail-row')?.classList.add('hidden');
     applyMyStatusToUI(null);
-    document.getElementById('status-tencode').value = '';
-    document.getElementById('status-location').value = '';
-    document.getElementById('status-subject').value = '';
     toast('You are now off duty.', 'info');
     await refreshOfficerBoard();
   } catch (err) { toast(err.message, 'error'); }
+}
+
+function selectQuickStatus(code) {
+  pendingTenCode = code;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === code));
+  const errEl = document.getElementById('status-error');
+  if (errEl) errEl.classList.add('hidden');
+  const detailRow = document.getElementById('status-detail-row');
+  if (STATUS_NEEDS_DETAILS.has(code)) {
+    if (detailRow) {
+      detailRow.classList.remove('hidden');
+      const locEl = document.getElementById('status-location');
+      const subjEl = document.getElementById('status-subject');
+      if (locEl) { locEl.value = ''; locEl.focus(); }
+      if (subjEl) subjEl.value = '';
+    }
+  } else {
+    if (detailRow) detailRow.classList.add('hidden');
+    updateOfficerStatus();
+  }
+}
+
+function confirmStatusUpdate() {
+  if (!pendingTenCode) {
+    const errEl = document.getElementById('status-error');
+    if (errEl) { errEl.textContent = 'Select a status first.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  updateOfficerStatus();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1078,17 +1131,8 @@ async function loadLeo() {
     applyMyStatusToUI(myStatus);
     startBoardRefresh();
 
-    renderBoloList(boloEl, bolos || []);
-
-    callEl.innerHTML = calls?.length
-      ? calls.map(c => `
-          <div class="call-item">
-            <div class="call-id">${c.callId}</div>
-            <div class="call-issue">${c.issue}</div>
-            ${c.location ? `<div class="call-loc">${c.location}</div>` : ''}
-            <div class="call-meta">${timeAgo(new Date(c.timestamp))} ${c.respondingLeoUsername ? '• ' + c.respondingLeoUsername : '• No response'}</div>
-          </div>`).join('')
-      : '<div class="empty-state" style="padding:12px 0">No active calls.</div>';
+    if (boloEl) renderBoloList(boloEl, bolos || []);
+    renderCallsList(calls || []);
   } catch {
     document.getElementById('leo-officers').innerHTML = '<div class="empty-state">Failed to load.</div>';
     if (boloEl) boloEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
