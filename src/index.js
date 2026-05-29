@@ -841,6 +841,9 @@ client.on('interactionCreate', async interaction => {
         }
         const { handleShopCategoryButton } = await import('./handlers/economyActions.js');
         await handleShopCategoryButton(interaction);
+      } else if (interaction.customId.startsWith('civjob_apply_')) {
+        const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
+        await handleCivilianJobApply(interaction);
       } else if (interaction.customId === 'collect_income' || interaction.customId.startsWith('economy')) {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);
@@ -874,4 +877,14 @@ connectDatabase().then(() => {
     console.log(`HTTP server running on port ${PORT}`);
     console.log(`Health check available at /health`);
   });
+
+  // Expire civilian job role assignments
+  setInterval(async () => {
+    try {
+      const { expireCivilianJobs } = await import('./handlers/economyHandler.js');
+      await expireCivilianJobs(client);
+    } catch (err) {
+      console.error('[CivilianJobs] Expiry check error:', err.message);
+    }
+  }, 5 * 60 * 1000);
 }).catch(() => {});

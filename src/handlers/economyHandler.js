@@ -8,6 +8,8 @@ import EconomyConfig from '../models/EconomyConfig.js';
 import EconomyBalance from '../models/EconomyBalance.js';
 import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
+import CivilianJobConfig from '../models/CivilianJobConfig.js';
+import JobAssignment from '../models/JobAssignment.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import { GTA_VEHICLES } from '../data/gtaVehicles.js';
@@ -166,6 +168,7 @@ export function getEconomySetupMenu() {
             { label: 'Set Log Channel',          value: 'setlogchannel',       description: 'Economy transaction log channel' },
             { label: 'Income Tax',               value: 'incometax',           description: 'Set tax rate deducted from income (%)' },
             { label: 'Income Board',             value: 'incomeboard',         description: 'Post income redemption embed to a channel' },
+            { label: 'Civilian Jobs',            value: 'civilian_jobs',       description: 'Manage the civilian jobs assignment panel' },
             { label: 'Done',                     value: 'done',                description: 'Close this menu' },
           ])
       ),
@@ -202,6 +205,34 @@ function backBtn(type = 'economy') {
       .setLabel(type === 'setup' ? '← Setup Menu' : '← Economy Menu')
       .setStyle(ButtonStyle.Secondary)
   );
+}
+
+function civJobsSetupMenu(config) {
+  const jobs = config?.jobs || [];
+  const jobList = jobs.length
+    ? jobs.map((j, i) => `**${i + 1}.** ${j.name} — <@&${j.roleId}> · ${j.durationHours}h`).join('\n')
+    : 'No jobs added yet.';
+  return {
+    embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+      .setTitle('Civilian Jobs Setup')
+      .setDescription(
+        `**Channel:** ${config?.channelId ? `<#${config.channelId}>` : 'Not set'}\n**Jobs:** ${jobs.length}\n\n${jobList}`
+      )
+      .setFooter({ text: 'RPM' })],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder().setCustomId('economy_civjobs_setup_menu').setPlaceholder('Choose an action...')
+          .addOptions([
+            { label: 'Set Jobs Channel',    value: 'set_channel',  description: 'Channel where the jobs panel will be posted' },
+            { label: 'Add Job',             value: 'add_job',      description: 'Add a new civilian job to the panel' },
+            { label: 'Remove Job',          value: 'remove_job',   description: 'Remove an existing job from the panel' },
+            { label: 'Post / Update Panel', value: 'post_panel',   description: 'Send or refresh the jobs panel now' },
+            { label: '← Back to Setup',    value: 'back',         description: 'Return to economy setup menu' },
+          ])
+      ),
+    ],
+    content: '',
+  };
 }
 
 function buildStoreMenu(items, sym, mode, query = null) {
@@ -530,6 +561,11 @@ export async function handleEconomyMenu(interaction) {
       });
     }
 
+    if (value === 'civilian_jobs') {
+      const jobConfig = await CivilianJobConfig.findOne({ guildId });
+      return interaction.update(civJobsSetupMenu(jobConfig));
+    }
+
     if (value === 'roleincome') {
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income — Select Role').setDescription('Pick the role that will receive income.').setFooter({ text: 'RPM' })],
@@ -678,6 +714,91 @@ export async function handleEconomyMenu(interaction) {
     return interaction.update({ embeds: [successEmbed('Income Panel Sent', `Income collection panel posted to ${channel}.\n\nMembers can click the button there to claim their income and see any deductions applied.`)], components: [backBtn('setup')], content: '' });
   }
 
+  // ── Civilian Jobs setup sub-menu ──────────────────────────────────────────
+  if (interaction.customId === 'economy_civjobs_setup_menu') {
+    if (!await checkStaffPermission(interaction)) {
+      return interaction.update({ embeds: [errorEmbed('You do not have permission.')], components: [], content: '' });
+    }
+    const value = interaction.values[0];
+    if (value === 'back') return interaction.update(getEconomySetupMenu());
+    let jobConfig = await CivilianJobConfig.findOne({ guildId });
+    if (!jobConfig) jobConfig = new CivilianJobConfig({ guildId });
+
+    if (value === 'set_channel') {
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Civilian Jobs — Set Channel').setDescription('Select the channel where the civilian jobs panel will be posted.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('economy_civjobs_channel_select').setPlaceholder('Select a text channel...').setChannelTypes(ChannelType.GuildText))],
+        content: '',
+      });
+    }
+
+    if (value === 'add_job') {
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Add Civilian Job — Select Role').setDescription('Pick the role members will receive when they take this job.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_civjobs_addjob_role_select').setPlaceholder('Select a role...'))],
+        content: '',
+      });
+    }
+
+    if (value === 'remove_job') {
+      if (!jobConfig.jobs?.length) return interaction.update({ embeds: [errorEmbed('No jobs to remove.')], components: [backBtn('setup')], content: '' });
+      const opts = jobConfig.jobs.slice(0, 25).map(j => ({
+        label: j.name.slice(0, 100),
+        value: j.jobId,
+        description: `Role: ${j.roleId} · Expires: ${j.durationHours}h`,
+      }));
+      return interaction.update({
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Remove Civilian Job').setDescription('Select the job to remove from the panel.').setFooter({ text: 'RPM' })],
+        components: [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('economy_civjobs_removejob_select').setPlaceholder('Select a job...').addOptions(opts))],
+        content: '',
+      });
+    }
+
+    if (value === 'post_panel') {
+      if (!jobConfig.channelId) return interaction.update({ embeds: [errorEmbed('Set a jobs channel first using "Set Jobs Channel".')], components: [backBtn('setup')], content: '' });
+      if (!jobConfig.jobs?.length) return interaction.update({ embeds: [errorEmbed('Add at least one job before posting the panel.')], components: [backBtn('setup')], content: '' });
+      await postCivilianJobsPanel(interaction.guild, jobConfig);
+      const ch = interaction.guild.channels.cache.get(jobConfig.channelId);
+      return interaction.update({ embeds: [successEmbed('Panel Updated', `Civilian jobs panel posted${ch ? ` in ${ch}` : ''}.`)], components: [backBtn('setup')], content: '' });
+    }
+  }
+
+  if (interaction.customId === 'economy_civjobs_channel_select') {
+    const channel = interaction.channels.first();
+    if (!channel) return interaction.update({ embeds: [errorEmbed('No channel selected.')], components: [backBtn('setup')], content: '' });
+    let jobConfig = await CivilianJobConfig.findOne({ guildId });
+    if (!jobConfig) jobConfig = new CivilianJobConfig({ guildId });
+    jobConfig.channelId = channel.id;
+    jobConfig.messageId = null;
+    await jobConfig.save();
+    if (jobConfig.jobs?.length) await postCivilianJobsPanel(interaction.guild, jobConfig);
+    return interaction.update({ embeds: [successEmbed('Channel Set', `Civilian jobs channel set to ${channel}.${jobConfig.jobs?.length ? '\n\nPanel has been posted.' : '\n\nAdd jobs using "Add Job" and then post the panel.'}`)], components: [backBtn('setup')], content: '' });
+  }
+
+  if (interaction.customId === 'economy_civjobs_addjob_role_select') {
+    const role = interaction.roles.first();
+    if (!role) return interaction.update({ embeds: [errorEmbed('No role selected.')], components: [backBtn('setup')], content: '' });
+    const modal = new ModalBuilder().setCustomId(`economysetup_civjobs_addjob_modal_${role.id}`).setTitle('Add Civilian Job');
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('name').setLabel('Job Name').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. Taxi Driver')),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('description').setLabel('Job Description (optional)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('e.g. Drive passengers around the city')),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('duration').setLabel('Role Duration (hours)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 24')),
+    );
+    return interaction.showModal(modal);
+  }
+
+  if (interaction.customId === 'economy_civjobs_removejob_select') {
+    const jobId = interaction.values[0];
+    let jobConfig = await CivilianJobConfig.findOne({ guildId });
+    if (!jobConfig) return interaction.update({ embeds: [errorEmbed('No jobs config found.')], components: [backBtn('setup')], content: '' });
+    const job = jobConfig.jobs.find(j => j.jobId === jobId);
+    jobConfig.jobs = jobConfig.jobs.filter(j => j.jobId !== jobId);
+    jobConfig.markModified('jobs');
+    await jobConfig.save();
+    if (jobConfig.channelId) await postCivilianJobsPanel(interaction.guild, jobConfig);
+    return interaction.update({ embeds: [successEmbed('Job Removed', `**${job?.name || jobId}** has been removed from the civilian jobs panel.`)], components: [backBtn('setup')], content: '' });
+  }
+
   // ── economysetup_storeremove_select ───────────────────────────────────────
   if (interaction.customId === 'economysetup_storeremove_select') {
     const itemId = interaction.values[0];
@@ -711,6 +832,103 @@ export async function handleEconomyMenu(interaction) {
       ),
     );
     return interaction.showModal(modal);
+  }
+}
+
+// ── Civilian Jobs Panel ───────────────────────────────────────────────────────
+export async function postCivilianJobsPanel(guild, jobConfig) {
+  if (!jobConfig?.channelId) return;
+  const channel = guild.channels.cache.get(jobConfig.channelId);
+  if (!channel) return;
+
+  const jobs = jobConfig.jobs || [];
+  const desc = jobs.length
+    ? jobs.map(j => `**${j.name}**${j.description ? `\n-# ${j.description}` : ''}\n-# Role: <@&${j.roleId}> · Expires after ${j.durationHours}h`).join('\n\n')
+    : 'No civilian jobs are available at this time.';
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2d2d2d)
+    .setTitle('Civilian Jobs')
+    .setDescription(`Click a job below to apply. Your role will be assigned automatically and expire after the listed duration.\n\n${desc}`)
+    .setFooter({ text: 'RPM' });
+
+  const rows = [];
+  for (let i = 0; i < Math.min(jobs.length, 25); i += 5) {
+    rows.push(new ActionRowBuilder().addComponents(
+      jobs.slice(i, i + 5).map(j =>
+        new ButtonBuilder()
+          .setCustomId(`civjob_apply_${j.jobId}`)
+          .setLabel(j.name.slice(0, 80))
+          .setStyle(ButtonStyle.Primary)
+      )
+    ));
+  }
+
+  try {
+    if (jobConfig.messageId) {
+      const existing = await channel.messages.fetch(jobConfig.messageId).catch(() => null);
+      if (existing) {
+        await existing.edit({ embeds: [embed], components: rows });
+        return;
+      }
+    }
+    const msg = await channel.send({ embeds: [embed], components: rows });
+    jobConfig.messageId = msg.id;
+    await jobConfig.save();
+  } catch (err) {
+    console.error('[CivilianJobs] Failed to post panel:', err.message);
+  }
+}
+
+export async function handleCivilianJobApply(interaction) {
+  const guildId = interaction.guildId;
+  const userId  = interaction.user.id;
+  const jobId   = interaction.customId.replace('civjob_apply_', '');
+
+  const jobConfig = await CivilianJobConfig.findOne({ guildId });
+  const job = jobConfig?.jobs?.find(j => j.jobId === jobId);
+  if (!job) return interaction.reply({ embeds: [errorEmbed('This job no longer exists.')], flags: 64 });
+
+  const existing = await JobAssignment.findOne({ guildId, userId, jobId, expiresAt: { $gt: new Date() } });
+  if (existing) {
+    const ts = Math.floor(existing.expiresAt.getTime() / 1000);
+    return interaction.reply({ embeds: [errorEmbed(`You already hold this job. Your role expires <t:${ts}:R>.`)], flags: 64 });
+  }
+
+  try {
+    await interaction.member.roles.add(job.roleId);
+  } catch {
+    return interaction.reply({ embeds: [errorEmbed('Could not assign your role. Make sure the bot has permission to manage roles and that its role is above the job role.')], flags: 64 });
+  }
+
+  const expiresAt = new Date(Date.now() + job.durationHours * 3600 * 1000);
+  await JobAssignment.findOneAndDelete({ guildId, userId, jobId });
+  await new JobAssignment({ guildId, userId, jobId, roleId: job.roleId, expiresAt }).save();
+
+  return interaction.reply({
+    embeds: [new EmbedBuilder().setColor(0x43b581)
+      .setTitle('Job Assigned')
+      .setDescription(`You have been assigned the **${job.name}** job.\n**Role:** <@&${job.roleId}>\n**Expires:** <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`)
+      .setFooter({ text: 'RPM' })],
+    flags: 64,
+  });
+}
+
+export async function expireCivilianJobs(client) {
+  try {
+    const expired = await JobAssignment.find({ expiresAt: { $lte: new Date() } });
+    for (const assignment of expired) {
+      try {
+        const guild = client.guilds.cache.get(assignment.guildId);
+        if (guild) {
+          const member = await guild.members.fetch(assignment.userId).catch(() => null);
+          if (member) await member.roles.remove(assignment.roleId).catch(() => {});
+        }
+      } catch {}
+      await assignment.deleteOne();
+    }
+  } catch (err) {
+    console.error('[CivilianJobs] Expiry check error:', err.message);
   }
 }
 
@@ -1195,6 +1413,24 @@ export async function handleEconomyModal(interaction) {
     const roleNote = rewardRoleId ? `\n**Reward Role:** <@&${rewardRoleId}>` : '';
     const reqNote  = requiredRoleId ? `\n**Required to Buy:** <@&${requiredRoleId}>` : '';
     return interaction.reply({ embeds: [successEmbed('Item Added', `**${name}** added for ${sym}${fmt(price)}.${roleNote}${reqNote}\n-# ${desc}`)], flags: 64 });
+  }
+
+  if (customId.startsWith('economysetup_civjobs_addjob_modal_')) {
+    const roleId = customId.replace('economysetup_civjobs_addjob_modal_', '');
+    const name = interaction.fields.getTextInputValue('name')?.trim();
+    const description = interaction.fields.getTextInputValue('description')?.trim() || '';
+    const durationHours = parseFloat(interaction.fields.getTextInputValue('duration'));
+    if (!name) return interaction.reply({ embeds: [errorEmbed('Job name is required.')], flags: 64 });
+    if (isNaN(durationHours) || durationHours <= 0) return interaction.reply({ embeds: [errorEmbed('Duration must be a positive number (e.g. 24).')], flags: 64 });
+    let jobConfig = await CivilianJobConfig.findOne({ guildId });
+    if (!jobConfig) jobConfig = new CivilianJobConfig({ guildId });
+    if ((jobConfig.jobs?.length || 0) >= 25) return interaction.reply({ embeds: [errorEmbed('Maximum of 25 jobs per server.')], flags: 64 });
+    const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    jobConfig.jobs.push({ jobId, name, description, roleId, durationHours });
+    jobConfig.markModified('jobs');
+    await jobConfig.save();
+    if (jobConfig.channelId) await postCivilianJobsPanel(interaction.guild, jobConfig);
+    return interaction.reply({ embeds: [successEmbed('Job Added', `**${name}** added to the civilian jobs panel.\n**Role:** <@&${roleId}> · **Expires:** ${durationHours}h${jobConfig.channelId ? '\n\nPanel has been updated.' : '\n\nSet a jobs channel and post the panel to make this visible to members.'}`)], flags: 64 });
   }
 
   if (customId.startsWith('economysetup_storeedit_modal_')) {
