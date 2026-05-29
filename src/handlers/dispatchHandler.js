@@ -2333,8 +2333,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         await guild.channels.fetch(pursuitAlert.pursuitChannelId).catch(() => null);
 
       if (pursuitChannel && member?.voice?.channelId) {
-        await member.voice.setChannel(pursuitChannel).catch(() => {});
-        console.log(`[Dispatch] ${responderName} responding to pursuit — moved to channel "${pursuitChannel.name}"`);
+        console.log(`[Dispatch] ${responderName} verbally responding to pursuit`);
 
         if (config.dispatchChannelId) {
           const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
@@ -2849,10 +2848,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
 
     let dispatchResponse = null;
     let aiActions = [];
+    // Skip AI for simple status transitions — these have instant pre-built TTS handlers
+    // that are much faster than a GPT round-trip (~2-3s saved per call).
+    const preComputedAction = parsed.codeInfo?.action;
+    const skipAIForSpeed = preComputedAction === 'available' || preComputedAction === 'out_of_service';
     // Only generate an AI response when a real dispatch trigger was heard (trigger word,
     // call sign, or emergency phrase). Ten-codes spoken without a trigger word just
     // update the officer's status silently — no AI chat-back.
-    if (hadTrigger && !isSimpleAck && config.aiEnabled && hasAIKey()) {
+    if (hadTrigger && !isSimpleAck && !skipAIForSpeed && config.aiEnabled && hasAIKey()) {
       try {
         const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign, officerDbStatus);
         dispatchResponse = aiResult.text;
@@ -3005,7 +3008,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       // If bot is currently in the stop channel with this officer, move back to patrol
       let handledStopReturn = false;
       try {
-        const { getCurrentChannelId, clearExtendedStay, moveToChannel } = await import('../utils/voiceListener.js');
+        const { getCurrentChannelId, clearExtendedStay } = await import('../utils/voiceListener.js');
         const currentBotChannelId = getCurrentChannelId(guild.id);
         const officerVoiceChannelId = member?.voice?.channelId;
         const isInStopWithOfficer = currentBotChannelId &&
@@ -3015,44 +3018,30 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
         if (isInStopWithOfficer) {
           handledStopReturn = true;
           clearExtendedStay(guild.id);
-          const patrolChannelId = config.patrolChannelIds?.[0];
-          if (patrolChannelId) {
-            const patrolCh = guild.channels.cache.get(patrolChannelId) ||
-              await guild.channels.fetch(patrolChannelId).catch(() => null);
-            if (patrolCh) {
-              await member.voice.setChannel(patrolCh).catch(() => {});
-              await moveToChannel(patrolCh).catch(() => {});
-            }
-          }
-          if (config.aiEnabled && hasAIKey() && !dispatchResponse) {
-            try {
-              const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsBuffer = await generateDispatchTTS(`Copy ${ttsName}, showing you ten eight. Stop is clear.`);
-              playDispatchVoice(guild.id, ttsBuffer);
-            } catch {}
-          }
         }
       } catch (err) {
         console.error('[Dispatch] 10-8 auto-return error:', err.message);
       }
 
-      // Always acknowledge 10-8 with a brief TTS — even without a trigger word,
-      // dispatchers always confirm when an officer goes available.
-      if (!dispatchResponse && !handledStopReturn && config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          let ackText;
-          if (wasOnStop) {
-            ackText = `Ten-four ${ttsName}, showing you ten eight. Stop is clear.`;
-          } else if (wasOnScene) {
-            ackText = `Copy ${ttsName}, ten eight. You're clear.`;
-          } else {
-            ackText = `Ten-four ${ttsName}, showing you ten eight.`;
+      // Acknowledge 10-8 — deduped per officer (30s cooldown) and batched
+      // across multiple officers announcing available within the same 2-second window.
+      if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
+        const ackKey = `${guild.id}:${userId}:10-8`;
+        const lastAck = recentStatusAcks.get(ackKey) || 0;
+        if (Date.now() - lastAck < 30_000) {
+          console.log(`[Dispatch] Suppressing duplicate 10-8 TTS for ${officerName} (within 30s cooldown)`);
+        } else {
+          recentStatusAcks.set(ackKey, Date.now());
+          // Add to per-guild batch queue; flush after 2s so multiple officers are grouped
+          const q = pending10_8Queues.get(guild.id) || { officers: [], timer: null };
+          if (!q.officers.find(o => o.userId === userId)) {
+            q.officers.push({ userId, name: officerName, wasOnStop, wasOnScene: wasOnScene || handledStopReturn });
           }
-          addToRadioLog(guild.id, cleanNameForTTS(officerName), transcript, ackText);
-          const ttsBuffer = await generateDispatchTTS(ackText);
-          playDispatchVoice(guild.id, ttsBuffer);
-        } catch {}
+          if (!q.timer) {
+            q.timer = setTimeout(() => flush10_8Queue(guild, config), 2000);
+          }
+          pending10_8Queues.set(guild.id, q);
+        }
       }
 
     } else if (voiceAction === 'out_of_service') {
@@ -3828,8 +3817,53 @@ export async function handlePanicAckButton(interaction) {
 // Map<guildId, { officerId, officerName, pursuitChannelId, patrolChannelId, timestamp }>
 const activePursuitAlerts = new Map();
 
+// Per-officer TTS dedup: Map<"guildId:userId:code", timestamp>
+const recentStatusAcks = new Map();
+
+// Per-guild 10-8 batch queue: officers who went 10-8 within the same 2-second window
+// are announced together in one TTS instead of back-to-back individual announcements.
+const pending10_8Queues = new Map();
+
+async function flush10_8Queue(guild, config) {
+  const q = pending10_8Queues.get(guild.id);
+  pending10_8Queues.delete(guild.id);
+  if (!q?.officers?.length) return;
+
+  try {
+    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+    const officers = q.officers;
+    let ackText;
+
+    if (officers.length === 1) {
+      const o = officers[0];
+      const n = cleanNameForTTS(o.name);
+      if (o.wasOnStop) ackText = `Ten-four ${n}, showing you ten eight. Stop is clear.`;
+      else if (o.wasOnScene) ackText = `Copy ${n}, ten eight. You're clear.`;
+      else ackText = `Ten-four ${n}, showing you ten eight.`;
+    } else {
+      const names = officers.map(o => cleanNameForTTS(o.name));
+      const nameList = names.length === 2
+        ? names.join(' and ')
+        : names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+      ackText = `Showing ${nameList} ten eight. All units available.`;
+    }
+
+    const ttsBuffer = await generateDispatchTTS(ackText);
+    playDispatchVoice(guild.id, ttsBuffer);
+  } catch (err) {
+    console.error('[Dispatch] flush10_8Queue error:', err.message);
+  }
+}
+
 async function triggerPursuitBroadcast(guild, config, officerId, officerName, pursuitChannelId) {
   try {
+    // Dedup — skip if same officer already has an active pursuit within the last 2 minutes
+    const existingAlert = activePursuitAlerts.get(guild.id);
+    if (existingAlert && existingAlert.officerId === officerId && Date.now() - existingAlert.timestamp < 2 * 60 * 1000) {
+      console.log(`[Dispatch] 10-80 duplicate suppressed for ${officerName} (already active)`);
+      return;
+    }
+
     const patrolChannelId = config.patrolChannelIds?.[0];
 
     activePursuitAlerts.set(guild.id, {
