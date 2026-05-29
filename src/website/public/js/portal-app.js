@@ -2,6 +2,7 @@
    STATE
 ══════════════════════════════════════════════════════ */
 let me = null;
+let portalMode = 'civilian';
 let shopItems = [];
 let shopCurrency = '$';
 let currentBuyItem = null;
@@ -85,9 +86,13 @@ function showApp() {
   }
 
   if (me.isLeo) {
+    portalMode = 'leo';
     document.getElementById('nav-leo')?.classList.remove('hidden');
     document.getElementById('nav-leo-section')?.classList.remove('hidden');
     document.getElementById('more-leo')?.classList.remove('hidden');
+    document.getElementById('nav-civ-section')?.classList.add('hidden');
+    document.querySelectorAll('.bnav-civ').forEach(el => el.classList.add('hidden'));
+    document.getElementById('btn-mode-toggle')?.classList.remove('hidden');
   }
 
   if (me.isStaff) {
@@ -109,6 +114,11 @@ function showApp() {
 const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo','staff']);
 
 function switchTab(tab) {
+  if (tab === 'leo' && !me?.isLeo) return;
+  if (tab === 'staff' && !me?.isStaff) return;
+  const civTabs = ['cad','economy','dispatch','fines','tickets','calendar','rolerequest'];
+  if (civTabs.includes(tab) && me?.isLeo && portalMode === 'leo') return;
+
   const leavingLeo = document.getElementById('tab-leo')?.classList.contains('active');
   if (leavingLeo && tab !== 'leo') stopBoardRefresh();
 
@@ -161,6 +171,25 @@ function closeMoreDrawer() {
   drawer.classList.remove('open');
   overlay.classList.remove('open');
   setTimeout(() => { drawer.classList.add('hidden'); overlay.classList.add('hidden'); }, 260);
+}
+
+function togglePortalMode() {
+  if (!me?.isLeo) return;
+  if (portalMode === 'leo') {
+    portalMode = 'civilian';
+    document.getElementById('nav-civ-section')?.classList.remove('hidden');
+    document.querySelectorAll('.bnav-civ').forEach(el => el.classList.remove('hidden'));
+    const lbl = document.getElementById('btn-mode-toggle-label');
+    if (lbl) lbl.textContent = 'LEO Mode';
+    switchTab('cad');
+  } else {
+    portalMode = 'leo';
+    document.getElementById('nav-civ-section')?.classList.add('hidden');
+    document.querySelectorAll('.bnav-civ').forEach(el => el.classList.add('hidden'));
+    const lbl = document.getElementById('btn-mode-toggle-label');
+    if (lbl) lbl.textContent = 'Civilian Mode';
+    switchTab('leo');
+  }
 }
 
 function moreNav(tab) {

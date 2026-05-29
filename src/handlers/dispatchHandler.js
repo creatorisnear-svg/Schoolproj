@@ -3672,7 +3672,7 @@ async function clearPanicAlert(guild, config, userId, officerName) {
 
 // 10-99 PANIC ALERT
 // ────────────────────────────────────────────────────────────────────────────
-async function triggerPanicAlert(guild, config, userId, officerName, voiceChannelId) {
+export async function triggerPanicAlert(guild, config, userId, officerName, voiceChannelId) {
   try {
     const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
       await guild.channels.fetch(config.dispatchChannelId).catch(() => null);

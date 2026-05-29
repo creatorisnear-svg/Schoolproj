@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { portalAuth } from './portal.js';
+import { triggerPanicAlert } from '../../handlers/dispatchHandler.js';
 import CADCharacter from '../../models/CADCharacter.js';
 import CADConfig from '../../models/CADConfig.js';
 import EconomyBalance from '../../models/EconomyBalance.js';
@@ -715,8 +716,9 @@ export function createPortalApiRouter(client) {
       }
 
       const charIds = chars.map(c => c._id);
+      const charNames = chars.map(c => c.characterName);
       const [bolosRaw, ticketsRaw] = await Promise.all([
-        BOLO.find({ guildId, characterId: { $in: charIds }, active: true }),
+        BOLO.find({ guildId, $or: [{ characterId: { $in: charIds } }, { characterName: { $in: charNames } }], active: true }),
         TrafficTicket.find({ guildId, characterId: { $in: charIds.map(id => id.toString()) } }).sort({ createdAt: -1 }),
       ]);
 
@@ -749,7 +751,11 @@ export function createPortalApiRouter(client) {
   router.delete('/leo/bolos/:boloId', auth, requireLeo, async (req, res) => {
     try {
       const guildId = GUILD_ID();
-      const bolo = await BOLO.findOneAndDelete({ guildId, boloId: req.params.boloId });
+      const id = req.params.boloId;
+      let bolo = await BOLO.findOneAndDelete({ guildId, boloId: id });
+      if (!bolo) {
+        try { bolo = await BOLO.findOneAndDelete({ guildId, _id: id }); } catch {}
+      }
       if (!bolo) return res.status(404).json({ error: 'BOLO not found' });
       res.json({ success: true });
     } catch (err) {
@@ -1009,9 +1015,10 @@ export function createPortalApiRouter(client) {
 
       const { location } = req.body;
       const username = req.portalUser.displayName || req.portalUser.username;
+      const userId = req.portalUser.userId;
 
       await OfficerStatus.findOneAndUpdate(
-        { guildId, userId: req.portalUser.userId },
+        { guildId, userId },
         {
           username,
           tenCode: '10-99',
@@ -1023,20 +1030,12 @@ export function createPortalApiRouter(client) {
       );
 
       const dispatchCfg = await DispatchConfig.findOne({ guildId });
+      const guild = client.guilds.cache.get(guildId);
 
-      if (dispatchCfg?.enabled && dispatchCfg.dispatchChannelId) {
-        const embed = new EmbedBuilder()
-          .setColor('#f04747')
-          .setTitle('10-99 PANIC — Officer Emergency')
-          .setDescription([
-            `**Officer:** ${username}`,
-            location ? `**Location:** ${location}` : null,
-            `**Status:** Officer needs immediate assistance — all units respond`,
-          ].filter(Boolean).join('\n'))
-          .setTimestamp()
-          .setFooter({ text: 'RPM Portal • Panic Alert' });
-
-        await sendToChannel(client, dispatchCfg.dispatchChannelId, { embeds: [embed] });
+      if (guild && dispatchCfg?.dispatchChannelId) {
+        await triggerPanicAlert(guild, dispatchCfg, userId, username, null).catch(err => {
+          console.error('[PORTAL panic] triggerPanicAlert error:', err.message);
+        });
       }
 
       await rebuildStatusBoard(client, guildId, dispatchCfg);
