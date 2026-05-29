@@ -16,6 +16,10 @@ import TrafficTicket from '../../models/TrafficTicket.js';
 import Ticket from '../../models/Ticket.js';
 import RoleplayCalendar from '../../models/RoleplayCalendar.js';
 import Priority from '../../models/Priority.js';
+import Staff from '../../models/Staff.js';
+import { StrikeUser } from '../../models/Strike.js';
+import PendingVerification from '../../models/PendingVerification.js';
+import Verification from '../../models/Verification.js';
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,6 +30,19 @@ function isLeo(user, cadConfig) {
   const userRoleIds = user.roles.map(r => r.id);
   return cadConfig.leoRoleIds?.some(id => userRoleIds.includes(id))
     || cadConfig.staffRoleIds?.some(id => userRoleIds.includes(id));
+}
+
+async function checkIsStaff(user, guildId) {
+  if (!guildId || !user) return false;
+  const userRoleIds = (user.roles || []).map(r => r.id);
+  const entry = await Staff.findOne({
+    guildId,
+    $or: [
+      { type: 'user', userId: user.userId },
+      { type: 'role', roleId: { $in: userRoleIds } },
+    ],
+  });
+  return !!entry;
 }
 
 // ── Discord helpers ─────────────────────────────────────────────────────────
@@ -107,12 +124,21 @@ export function createPortalApiRouter(client) {
   const auth = portalAuth(client);
 
   // ── /me ──────────────────────────────────────────────────────────────────
+  async function requireStaff(req, res, next) {
+    const guildId = GUILD_ID();
+    if (!guildId) return res.status(403).json({ error: 'Not configured' });
+    const staff = await checkIsStaff(req.portalUser, guildId);
+    if (!staff) return res.status(403).json({ error: 'Staff access required' });
+    next();
+  }
+
   router.get('/me', auth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
       const { userId, username, avatar, roles = [], displayName } = req.portalUser;
       const cadConfig = guildId ? await CADConfig.findOne({ guildId }) : null;
       const guild = guildId && client ? client.guilds.cache.get(guildId) : null;
+      const isStaff = await checkIsStaff(req.portalUser, guildId);
 
       res.json({
         userId,
@@ -123,6 +149,7 @@ export function createPortalApiRouter(client) {
           : `https://cdn.discordapp.com/embed/avatars/${parseInt(userId) % 5}.png`,
         roles,
         isLeo: isLeo(req.portalUser, cadConfig),
+        isStaff,
         serverName: guild?.name || process.env.PORTAL_SERVER_NAME || 'Member Portal',
         serverIcon: guild?.iconURL() || null,
       });
@@ -1018,6 +1045,171 @@ export function createPortalApiRouter(client) {
     } catch (err) {
       console.error('[PORTAL /leo/panic]', err);
       res.status(500).json({ error: 'Failed to send panic' });
+    }
+  });
+
+  // ── STAFF PANEL ───────────────────────────────────────────────────────────
+
+  router.get('/staff/stats', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const [pendingVerifs, openTickets, activeBolos, strikeCount] = await Promise.all([
+        PendingVerification.countDocuments({ guildId }),
+        Ticket.countDocuments({ guildId, status: 'open' }),
+        BOLO.countDocuments({ guildId, active: true }),
+        StrikeUser.countDocuments({ guildId, currentStrikeLevel: { $gt: 0 } }),
+      ]);
+      res.json({ pendingVerifs, openTickets, activeBolos, strikeCount });
+    } catch (err) {
+      console.error('[PORTAL /staff/stats]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.get('/staff/members', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { q } = req.query;
+      if (!q?.trim()) return res.json([]);
+      if (!client) return res.json([]);
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return res.json([]);
+      const members = await guild.members.search({ query: q.trim(), limit: 10 });
+      const results = members.map(m => ({
+        userId: m.id,
+        username: m.user.username,
+        displayName: m.displayName,
+        avatar: m.user.avatar
+          ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png?size=64`
+          : `https://cdn.discordapp.com/embed/avatars/${parseInt(m.id) % 5}.png`,
+        roles: m.roles.cache
+          .filter(r => r.id !== guild.id)
+          .map(r => ({ id: r.id, name: r.name, color: r.hexColor }))
+          .slice(0, 5),
+      }));
+      res.json(results);
+    } catch (err) {
+      console.error('[PORTAL /staff/members]', err);
+      res.status(500).json({ error: 'Failed to search members' });
+    }
+  });
+
+  router.get('/staff/member/:userId', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { userId } = req.params;
+      const [strikeDoc, cadChars, tickets, trafficTickets] = await Promise.all([
+        StrikeUser.findOne({ guildId, userId }),
+        CADCharacter.find({ guildId, userId }).select('characterName status wantedReason vehicles').limit(5),
+        Ticket.find({ guildId, userId }).sort({ createdAt: -1 }).limit(5),
+        TrafficTicket.find({ guildId }).populate({ path: 'characterId' }).sort({ createdAt: -1 }).limit(0),
+      ]);
+      const userTickets = await TrafficTicket.find({
+        guildId,
+        characterId: { $in: cadChars.map(c => c._id) },
+      }).sort({ createdAt: -1 }).limit(5);
+      res.json({
+        strikeLevel: strikeDoc?.currentStrikeLevel || 0,
+        cadChars,
+        supportTickets: tickets,
+        trafficTickets: userTickets,
+      });
+    } catch (err) {
+      console.error('[PORTAL /staff/member/:userId]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/staff/member/:userId/strike', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { userId } = req.params;
+      let strike = await StrikeUser.findOne({ guildId, userId });
+      if (!strike) strike = new StrikeUser({ guildId, userId, currentStrikeLevel: 0 });
+      if (strike.currentStrikeLevel >= 4) return res.status(400).json({ error: 'Maximum strike level (4) already reached' });
+      strike.currentStrikeLevel += 1;
+      await strike.save();
+      res.json({ success: true, strikeLevel: strike.currentStrikeLevel });
+    } catch (err) {
+      console.error('[PORTAL /staff/member/strike POST]', err);
+      res.status(500).json({ error: 'Failed to add strike' });
+    }
+  });
+
+  router.delete('/staff/member/:userId/strike', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { userId } = req.params;
+      const strike = await StrikeUser.findOne({ guildId, userId });
+      if (!strike || strike.currentStrikeLevel <= 0) return res.status(400).json({ error: 'No strikes to remove' });
+      strike.currentStrikeLevel -= 1;
+      await strike.save();
+      res.json({ success: true, strikeLevel: strike.currentStrikeLevel });
+    } catch (err) {
+      console.error('[PORTAL /staff/member/strike DELETE]', err);
+      res.status(500).json({ error: 'Failed to remove strike' });
+    }
+  });
+
+  router.get('/staff/verifications', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const pending = await PendingVerification.find({ guildId }).sort({ createdAt: -1 }).limit(30);
+      res.json(pending);
+    } catch (err) {
+      console.error('[PORTAL /staff/verifications]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/staff/verifications/:userId/approve', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { userId } = req.params;
+      const pending = await PendingVerification.findOne({ guildId, userId });
+      if (!pending) return res.status(404).json({ error: 'No pending verification found' });
+
+      const verif = await Verification.findOne({ guildId });
+      if (client && verif) {
+        const guild = client.guilds.cache.get(guildId);
+        if (guild) {
+          try {
+            const member = await guild.members.fetch(userId);
+            if (verif.verifiedRoleId) await member.roles.add(verif.verifiedRoleId).catch(() => {});
+            if (verif.unverifiedRoleId) await member.roles.remove(verif.unverifiedRoleId).catch(() => {});
+          } catch { /* member may have left */ }
+        }
+      }
+
+      await PendingVerification.deleteOne({ guildId, userId });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /staff/verifications/approve]', err);
+      res.status(500).json({ error: 'Failed to approve verification' });
+    }
+  });
+
+  router.delete('/staff/verifications/:userId/deny', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { userId } = req.params;
+      const result = await PendingVerification.deleteOne({ guildId, userId });
+      if (!result.deletedCount) return res.status(404).json({ error: 'No pending verification found' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[PORTAL /staff/verifications/deny]', err);
+      res.status(500).json({ error: 'Failed to deny verification' });
+    }
+  });
+
+  router.get('/staff/tickets', auth, requireStaff, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const tickets = await Ticket.find({ guildId, status: 'open' }).sort({ createdAt: -1 }).limit(30);
+      res.json(tickets);
+    } catch (err) {
+      console.error('[PORTAL /staff/tickets]', err);
+      res.status(500).json({ error: 'Internal error' });
     }
   });
 

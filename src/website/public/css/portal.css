@@ -1534,6 +1534,61 @@ html, body {
 .btn-icon-danger:hover { color: var(--danger); background: rgba(240,71,71,0.1); }
 
 /* ══════════════════════════════════════════════════════
+   STAFF PANEL
+══════════════════════════════════════════════════════ */
+.staff-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.staff-stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; text-align: center; }
+.staff-stat-value { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 4px; }
+.staff-stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-sub); }
+.staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Member search results */
+.staff-member-results { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.staff-member-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  cursor: pointer; transition: border-color 0.12s, background 0.12s; font-size: 12px;
+}
+.staff-member-card:hover { border-color: var(--accent); background: var(--accent-dim); }
+.staff-member-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+.staff-member-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.staff-member-info { flex: 1; min-width: 0; }
+.staff-member-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.staff-member-tag { font-size: 10px; color: var(--text-sub); }
+.staff-member-roles { display: flex; flex-wrap: wrap; gap: 3px; }
+.role-badge-xs { font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+
+/* Member detail card */
+.staff-detail-card { background: var(--elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-top: 6px; font-size: 12px; }
+.staff-detail-header { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.staff-detail-name { font-size: 14px; font-weight: 700; }
+.staff-strike-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.staff-strike-label { font-size: 11px; color: var(--text-sub); min-width: 64px; }
+.staff-strike-dots { display: flex; gap: 4px; }
+.strike-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--border); border: 1px solid var(--border); transition: background 0.12s; }
+.strike-dot-active { background: var(--danger); border-color: var(--danger); }
+.staff-strike-num { font-size: 11px; color: var(--text-sub); min-width: 24px; }
+.staff-strike-actions { display: flex; gap: 5px; margin-left: auto; }
+.staff-detail-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.staff-detail-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-sub); margin-bottom: 5px; }
+.staff-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 11px; }
+
+/* Verif/ticket list */
+.staff-list { display: flex; flex-direction: column; gap: 6px; }
+.staff-list-item { display: flex; align-items: flex-start; gap: 10px; background: var(--elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 12px; }
+.staff-list-info { flex: 1; min-width: 0; }
+.staff-list-name { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.staff-list-sub { color: var(--text-muted); font-size: 11px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.staff-list-time { font-size: 10px; color: var(--text-sub); }
+.staff-list-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+
+@media (max-width: 768px) {
+  .staff-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .staff-grid { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════
    BOTTOM NAV DISPATCH ACCENT
 ══════════════════════════════════════════════════════ */
 .bnav-dispatch { color: var(--danger) !important; }

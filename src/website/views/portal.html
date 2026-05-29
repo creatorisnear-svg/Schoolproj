@@ -111,6 +111,13 @@
           LEO Dashboard
         </a>
       </div>
+      <div id="nav-staff-section" class="hidden">
+        <div class="nav-section-label">Staff</div>
+        <a class="nav-item" data-tab="staff" id="nav-staff">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          Staff Panel
+        </a>
+      </div>
     </nav>
     <div class="sidebar-bottom">
       <a href="/portal/logout" class="btn-logout">
@@ -222,6 +229,66 @@
           <div>
             <div class="section-label">Your Recent Requests</div>
             <div id="rr-history" class="rr-history"><div class="empty-state">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAFF PANEL -->
+      <div id="tab-staff" class="tab-pane">
+        <div class="page-header"><h2>Staff Panel</h2></div>
+
+        <!-- Stats row -->
+        <div id="staff-stats" class="staff-stats-grid">
+          <div class="staff-stat-card">
+            <div class="staff-stat-value" id="stat-verifs">—</div>
+            <div class="staff-stat-label">Pending Verifs</div>
+          </div>
+          <div class="staff-stat-card">
+            <div class="staff-stat-value" id="stat-tickets">—</div>
+            <div class="staff-stat-label">Open Tickets</div>
+          </div>
+          <div class="staff-stat-card">
+            <div class="staff-stat-value" id="stat-bolos">—</div>
+            <div class="staff-stat-label">Active BOLOs</div>
+          </div>
+          <div class="staff-stat-card">
+            <div class="staff-stat-value" id="stat-strikes">—</div>
+            <div class="staff-stat-label">Members Struck</div>
+          </div>
+        </div>
+
+        <div class="staff-grid">
+          <!-- Left: Member Lookup -->
+          <div>
+            <div class="card">
+              <div class="leo-card-header">
+                <span class="leo-card-title">Member Lookup</span>
+              </div>
+              <div class="leo-search-controls" style="margin-bottom:10px">
+                <input class="form-input" id="staff-member-query" type="text" placeholder="Search by username..." onkeydown="if(event.key==='Enter')staffMemberSearch()">
+                <button class="btn btn-primary btn-sm" onclick="staffMemberSearch()">Search</button>
+              </div>
+              <div id="staff-member-results" class="staff-member-results"></div>
+              <div id="staff-member-detail" class="hidden"></div>
+            </div>
+          </div>
+
+          <!-- Right: Verifications + Tickets -->
+          <div>
+            <div class="card">
+              <div class="leo-card-header">
+                <span class="leo-card-title">Pending Verifications</span>
+                <button class="btn btn-secondary btn-xs" onclick="loadStaffVerifications()">Refresh</button>
+              </div>
+              <div id="staff-verifs" class="staff-list"><div class="empty-state">Loading...</div></div>
+            </div>
+            <div class="card" style="margin-top:16px">
+              <div class="leo-card-header">
+                <span class="leo-card-title">Open Support Tickets</span>
+                <button class="btn btn-secondary btn-xs" onclick="loadStaffTickets()">Refresh</button>
+              </div>
+              <div id="staff-tickets" class="staff-list"><div class="empty-state">Loading...</div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -388,6 +455,10 @@
       <button class="more-item hidden" data-tab="leo" id="more-leo" onclick="moreNav('leo')">
         <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
         <span class="more-item-label">LEO</span>
+      </button>
+      <button class="more-item hidden" data-tab="staff" id="more-staff" onclick="moreNav('staff')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="more-item-label">Staff</span>
       </button>
     </div>
     <a href="/portal/logout" class="more-logout">Sign Out</a>

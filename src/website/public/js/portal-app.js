@@ -90,6 +90,12 @@ function showApp() {
     document.getElementById('more-leo')?.classList.remove('hidden');
   }
 
+  if (me.isStaff) {
+    document.getElementById('nav-staff')?.classList.remove('hidden');
+    document.getElementById('nav-staff-section')?.classList.remove('hidden');
+    document.getElementById('more-staff')?.classList.remove('hidden');
+  }
+
   document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(el => {
     el.addEventListener('click', () => switchTab(el.dataset.tab));
   });
@@ -100,7 +106,7 @@ function showApp() {
 /* ══════════════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════════════ */
-const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo']);
+const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo','staff']);
 
 function switchTab(tab) {
   const leavingLeo = document.getElementById('tab-leo')?.classList.contains('active');
@@ -130,6 +136,7 @@ function switchTab(tab) {
     if (tab === 'calendar') loadCalendar();
     if (tab === 'rolerequest') loadRoleRequest();
     if (tab === 'leo') loadLeo();
+    if (tab === 'staff') loadStaff();
   }
 }
 
@@ -984,6 +991,191 @@ async function loadLeo() {
     if (boloEl) boloEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
     if (callEl) callEl.innerHTML = '<div class="empty-state">Failed to load.</div>';
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   STAFF PANEL
+══════════════════════════════════════════════════════ */
+async function loadStaff() {
+  try {
+    const stats = await api('/staff/stats');
+    if (stats) {
+      document.getElementById('stat-verifs').textContent = stats.pendingVerifs ?? '—';
+      document.getElementById('stat-tickets').textContent = stats.openTickets ?? '—';
+      document.getElementById('stat-bolos').textContent = stats.activeBolos ?? '—';
+      document.getElementById('stat-strikes').textContent = stats.strikeCount ?? '—';
+    }
+  } catch { /* silent */ }
+  loadStaffVerifications();
+  loadStaffTickets();
+}
+
+async function staffMemberSearch() {
+  const q = document.getElementById('staff-member-query').value.trim();
+  const resultsEl = document.getElementById('staff-member-results');
+  const detailEl = document.getElementById('staff-member-detail');
+  if (!q) return;
+  resultsEl.innerHTML = '<p style="color:var(--text-muted);font-size:12px">Searching...</p>';
+  detailEl.classList.add('hidden');
+  try {
+    const members = await api(`/staff/members?q=${encodeURIComponent(q)}`);
+    if (!members?.length) { resultsEl.innerHTML = '<p style="color:var(--text-muted);font-size:12px">No members found.</p>'; return; }
+    resultsEl.innerHTML = members.map(m => `
+      <div class="staff-member-card" onclick="staffSelectMember('${esc(m.userId)}', '${esc(m.displayName || m.username)}', this)">
+        <img class="staff-member-avatar" src="${esc(m.avatar)}" alt="">
+        <div class="staff-member-info">
+          <div class="staff-member-name">${esc(m.displayName || m.username)}</div>
+          <div class="staff-member-tag">${esc(m.username)}</div>
+        </div>
+        ${m.roles?.length ? `<div class="staff-member-roles">${m.roles.slice(0,3).map(r => `<span class="role-badge-xs" style="color:${r.color||'#666'};border-color:${r.color||'#666'}40;background:${r.color||'#666'}18">${esc(r.name)}</span>`).join('')}</div>` : ''}
+      </div>`).join('');
+  } catch (err) {
+    resultsEl.innerHTML = `<p style="color:var(--danger);font-size:12px">${err.message}</p>`;
+  }
+}
+
+async function staffSelectMember(userId, displayName, cardEl) {
+  document.querySelectorAll('.staff-member-card').forEach(c => c.classList.remove('selected'));
+  if (cardEl) cardEl.classList.add('selected');
+  const detailEl = document.getElementById('staff-member-detail');
+  detailEl.classList.remove('hidden');
+  detailEl.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:8px 0">Loading member data...</p>';
+  try {
+    const data = await api(`/staff/member/${userId}`);
+    const sl = data.strikeLevel || 0;
+    const dots = [1,2,3,4].map(i => `<span class="strike-dot${i <= sl ? ' strike-dot-active' : ''}"></span>`).join('');
+    detailEl.innerHTML = `
+      <div class="staff-detail-card">
+        <div class="staff-detail-header">
+          <div class="staff-detail-name">${esc(displayName)}</div>
+          <div class="staff-detail-userid" style="font-size:10px;color:var(--text-sub);font-family:monospace">${esc(userId)}</div>
+        </div>
+
+        <div class="staff-strike-row">
+          <div class="staff-strike-label">Strike Level</div>
+          <div class="staff-strike-dots">${dots}</div>
+          <div class="staff-strike-num">${sl}/4</div>
+          <div class="staff-strike-actions">
+            <button class="btn btn-xs btn-secondary" onclick="staffAddStrike('${esc(userId)}', '${esc(displayName)}')" ${sl >= 4 ? 'disabled' : ''}>+ Strike</button>
+            <button class="btn btn-xs" style="background:rgba(240,71,71,0.1);color:var(--danger);border-color:rgba(240,71,71,0.25)" onclick="staffRemoveStrike('${esc(userId)}', '${esc(displayName)}')" ${sl <= 0 ? 'disabled' : ''}>Remove</button>
+          </div>
+        </div>
+
+        ${data.cadChars?.length ? `
+        <div class="staff-detail-section">
+          <div class="staff-detail-section-title">CAD Characters (${data.cadChars.length})</div>
+          ${data.cadChars.map(c => `
+            <div class="staff-detail-row">
+              <span>${esc(c.characterName)}</span>
+              <span class="result-badge ${c.status === 'wanted' ? 'badge-wanted' : 'badge-clean'}">${c.status?.toUpperCase() || 'CLEAN'}</span>
+            </div>`).join('')}
+        </div>` : ''}
+
+        ${data.trafficTickets?.length ? `
+        <div class="staff-detail-section">
+          <div class="staff-detail-section-title">Recent Traffic Tickets (${data.trafficTickets.length})</div>
+          ${data.trafficTickets.map(t => `
+            <div class="staff-detail-row">
+              <span>${esc(t.violation)}</span>
+              ${t.fine ? `<span style="color:var(--danger);font-size:11px;font-weight:600">$${Number(t.fine).toLocaleString()}</span>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
+
+        ${data.supportTickets?.length ? `
+        <div class="staff-detail-section">
+          <div class="staff-detail-section-title">Support Tickets (${data.supportTickets.length})</div>
+          ${data.supportTickets.map(t => `
+            <div class="staff-detail-row">
+              <span>${esc(t.ticketType)}</span>
+              <span class="result-badge ${t.status === 'open' ? 'badge-bolo' : 'badge-clean'}">${t.status.toUpperCase()}</span>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+  } catch (err) {
+    detailEl.innerHTML = `<p style="color:var(--danger);font-size:12px">${err.message}</p>`;
+  }
+}
+
+async function staffAddStrike(userId, displayName) {
+  if (!confirm(`Add a strike to ${displayName}?`)) return;
+  try {
+    const result = await apiPost(`/staff/member/${userId}/strike`, {});
+    toast(`Strike added. ${displayName} is now at level ${result.strikeLevel}/4.`, 'warning');
+    staffSelectMember(userId, displayName, null);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function staffRemoveStrike(userId, displayName) {
+  if (!confirm(`Remove a strike from ${displayName}?`)) return;
+  try {
+    const result = await apiDel(`/staff/member/${userId}/strike`);
+    toast(`Strike removed. ${displayName} is now at level ${result.strikeLevel}/4.`, 'success');
+    staffSelectMember(userId, displayName, null);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function loadStaffVerifications() {
+  const el = document.getElementById('staff-verifs');
+  el.innerHTML = '<div class="empty-state" style="padding:10px 0">Loading...</div>';
+  try {
+    const verifs = await api('/staff/verifications');
+    if (!verifs?.length) { el.innerHTML = '<div class="empty-state" style="padding:10px 0">No pending verifications.</div>'; return; }
+    el.innerHTML = verifs.map(v => `
+      <div class="staff-list-item" id="verif-${esc(v.userId)}">
+        <div class="staff-list-info">
+          <div class="staff-list-name">${esc(v.username)}</div>
+          <div class="staff-list-sub">PSN/Xbox: ${esc(v.psnxbox)}${v.customAnswer ? ` · ${esc(v.customAnswer)}` : ''}</div>
+          <div class="staff-list-time">${timeAgo(new Date(v.createdAt))}</div>
+        </div>
+        <div class="staff-list-actions">
+          <button class="btn btn-xs" style="background:rgba(67,181,129,0.12);color:var(--success);border-color:rgba(67,181,129,0.25)" onclick="staffApproveVerif('${esc(v.userId)}')">Approve</button>
+          <button class="btn btn-xs" style="background:rgba(240,71,71,0.1);color:var(--danger);border-color:rgba(240,71,71,0.25)" onclick="staffDenyVerif('${esc(v.userId)}')">Deny</button>
+        </div>
+      </div>`).join('');
+  } catch (err) { el.innerHTML = `<p style="color:var(--danger);font-size:12px">${err.message}</p>`; }
+}
+
+async function staffApproveVerif(userId) {
+  try {
+    await apiPost(`/staff/verifications/${userId}/approve`, {});
+    document.getElementById(`verif-${userId}`)?.remove();
+    const el = document.getElementById('staff-verifs');
+    if (el && !el.querySelector('.staff-list-item')) el.innerHTML = '<div class="empty-state" style="padding:10px 0">No pending verifications.</div>';
+    const statEl = document.getElementById('stat-verifs');
+    if (statEl) statEl.textContent = Math.max(0, parseInt(statEl.textContent || '0') - 1);
+    toast('Verification approved — member role assigned.', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function staffDenyVerif(userId) {
+  if (!confirm('Deny this verification request?')) return;
+  try {
+    await apiDel(`/staff/verifications/${userId}/deny`);
+    document.getElementById(`verif-${userId}`)?.remove();
+    const el = document.getElementById('staff-verifs');
+    if (el && !el.querySelector('.staff-list-item')) el.innerHTML = '<div class="empty-state" style="padding:10px 0">No pending verifications.</div>';
+    const statEl = document.getElementById('stat-verifs');
+    if (statEl) statEl.textContent = Math.max(0, parseInt(statEl.textContent || '0') - 1);
+    toast('Verification denied and removed.', 'info');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function loadStaffTickets() {
+  const el = document.getElementById('staff-tickets');
+  el.innerHTML = '<div class="empty-state" style="padding:10px 0">Loading...</div>';
+  try {
+    const tickets = await api('/staff/tickets');
+    if (!tickets?.length) { el.innerHTML = '<div class="empty-state" style="padding:10px 0">No open tickets.</div>'; return; }
+    el.innerHTML = tickets.map(t => `
+      <div class="staff-list-item">
+        <div class="staff-list-info">
+          <div class="staff-list-name">${esc(t.ticketType)}</div>
+          <div class="staff-list-sub">User ID: ${esc(t.userId)}${t.description ? ` · ${esc(t.description.slice(0,60))}${t.description.length > 60 ? '…' : ''}` : ''}</div>
+          <div class="staff-list-time">${timeAgo(new Date(t.createdAt))} · ${esc(t.ticketId)}</div>
+        </div>
+        <span class="result-badge badge-bolo">OPEN</span>
+      </div>`).join('');
+  } catch (err) { el.innerHTML = `<p style="color:var(--danger);font-size:12px">${err.message}</p>`; }
 }
 
 function renderBoloList(el, bolos) {
