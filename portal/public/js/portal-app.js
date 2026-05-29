@@ -2,6 +2,159 @@
    STATE
 ══════════════════════════════════════════════════════ */
 let me = null;
+
+/* ══════════════════════════════════════════════════════
+   NOTIFICATIONS (LEO only)
+══════════════════════════════════════════════════════ */
+const notif = {
+  enabled: localStorage.getItem('leoNotif') === '1',
+  seenCalls: new Set(),
+  seenPanics: new Set(),
+  callPollTimer: null,
+  panicPollTimer: null,
+  primed: false,
+
+  get isLeo() {
+    return (localStorage.getItem('portalMode') === 'leo') && !!me?.isLeo;
+  },
+
+  async requestPermission() {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    return (await Notification.requestPermission()) === 'granted';
+  },
+
+  async toggle() {
+    if (!this.isLeo) return;
+    if (!this.enabled) {
+      const granted = await this.requestPermission();
+      if (!granted) {
+        toast('Notifications are blocked — enable them in browser settings then try again.', 'error');
+        return;
+      }
+      this.enabled = true;
+      localStorage.setItem('leoNotif', '1');
+      this.start();
+      toast('Notifications enabled', 'success');
+    } else {
+      this.enabled = false;
+      localStorage.setItem('leoNotif', '0');
+      this.stop();
+      toast('Notifications disabled', 'info');
+    }
+    this.updateUI();
+  },
+
+  start() {
+    this.stop();
+    this.primed = false;
+    this._prime().then(() => {
+      this.primed = true;
+      this.callPollTimer  = setInterval(() => this._pollCalls(),  20000);
+      this.panicPollTimer = setInterval(() => this._pollPanics(), 15000);
+    });
+  },
+
+  stop() {
+    if (this.callPollTimer)  { clearInterval(this.callPollTimer);  this.callPollTimer  = null; }
+    if (this.panicPollTimer) { clearInterval(this.panicPollTimer); this.panicPollTimer = null; }
+    this.primed = false;
+  },
+
+  async _prime() {
+    try {
+      const [calls, officers] = await Promise.all([
+        api('/leo/calls').catch(() => []),
+        api('/officers/overview').catch(() => ({ officers: [] })),
+      ]);
+      (calls || []).forEach(c => this.seenCalls.add(c.callId));
+      (officers?.officers || [])
+        .filter(o => o.tenCode === '10-99')
+        .forEach(o => this.seenPanics.add(o.username));
+    } catch {}
+  },
+
+  async _pollCalls() {
+    if (!this.primed || !this.enabled || !this.isLeo) return;
+    try {
+      const calls = await api('/leo/calls');
+      for (const call of (calls || [])) {
+        if (!this.seenCalls.has(call.callId)) {
+          this.seenCalls.add(call.callId);
+          this._fire(
+            'New 911 Call',
+            `${call.issue}${call.location ? ' — ' + call.location : ''}`,
+            { tag: 'call-' + call.callId }
+          );
+        }
+      }
+    } catch {}
+  },
+
+  async _pollPanics() {
+    if (!this.primed || !this.enabled || !this.isLeo) return;
+    try {
+      const d = await api('/officers/overview');
+      const active = new Set(
+        (d?.officers || []).filter(o => o.tenCode === '10-99').map(o => o.username)
+      );
+      for (const username of active) {
+        if (!this.seenPanics.has(username)) {
+          this.seenPanics.add(username);
+          const officer = d.officers.find(o => o.username === username);
+          this._fire(
+            '10-99 — OFFICER DOWN',
+            `${username}${officer?.location ? ' at ' + officer.location : ''} — respond immediately`,
+            { tag: 'panic-' + username, requireInteraction: true }
+          );
+        }
+      }
+      for (const username of this.seenPanics) {
+        if (!active.has(username)) this.seenPanics.delete(username);
+      }
+    } catch {}
+  },
+
+  _fire(title, body, opts = {}) {
+    if (Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(title, { body, icon: '/favicon.ico', ...opts });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch {}
+  },
+
+  updateUI() {
+    const isOn = this.enabled && ('Notification' in window) && Notification.permission === 'granted';
+    document.querySelectorAll('.leo-only-el.notif-bell-btn, .btn-sidebar-notif.leo-only-el').forEach(el => {
+      el.classList.toggle('notif-on', isOn);
+    });
+    document.querySelectorAll('.notif-bell-dot').forEach(dot => {
+      dot.classList.toggle('notif-dot-active', isOn);
+    });
+    const label = document.getElementById('notif-sidebar-label');
+    if (label) label.textContent = isOn ? 'Notifications On' : 'Notifications';
+  },
+
+  onModeChange(mode) {
+    const isLeo = mode === 'leo' && !!me?.isLeo;
+    document.querySelectorAll('.leo-only-el').forEach(el => {
+      el.classList.toggle('hidden', !isLeo);
+    });
+    if (isLeo) {
+      if (this.enabled && ('Notification' in window) && Notification.permission === 'granted') {
+        this.start();
+      }
+      this.updateUI();
+    } else {
+      this.stop();
+    }
+  },
+
+  init() {
+    this.updateUI();
+  },
+};
 let shopItems = [];
 let shopCurrency = '$';
 let currentBuyItem = null;
@@ -109,6 +262,7 @@ function showApp() {
   } else {
     document.getElementById('mode-screen').classList.remove('hidden');
   }
+  notif.init();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -164,6 +318,8 @@ function applyModeNav(mode) {
 
   const modeLabel = document.getElementById('topbar-mode-label');
   if (modeLabel) modeLabel.textContent = isLeo ? 'LEO' : 'Civilian';
+
+  notif.onModeChange(mode);
 
   if (isLeo && !loaded['leo']) switchTab('leo');
   else if (isCiv) {
