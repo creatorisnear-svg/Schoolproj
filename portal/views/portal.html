@@ -140,6 +140,10 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         Role Requests
       </a>
+      <a class="nav-item" data-tab="priority">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        Priority
+      </a>
       <div id="nav-leo-section" class="hidden">
         <div class="nav-section-label">Law Enforcement</div>
         <a class="nav-item" data-tab="leo" id="nav-leo">
@@ -264,6 +268,16 @@
             <div id="rr-history" class="rr-history"><div class="empty-state">Loading...</div></div>
           </div>
         </div>
+      </div>
+
+      <!-- PRIORITY TRACKER -->
+      <div id="tab-priority" class="tab-pane">
+        <div class="page-header"><h2>Priority Tracker</h2></div>
+        <div id="priority-status-hero" class="priority-hero">
+          <div class="priority-hero-loading">Loading...</div>
+        </div>
+        <div id="priority-detail-card" class="priority-detail hidden"></div>
+        <div class="priority-footer-note">Status refreshes automatically every 30 seconds.</div>
       </div>
 
       <!-- LEO DASHBOARD -->
@@ -482,6 +496,10 @@
       <button class="more-item" data-tab="rolerequest" onclick="moreNav('rolerequest')">
         <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         <span class="more-item-label">Role Requests</span>
+      </button>
+      <button class="more-item" data-tab="priority" onclick="moreNav('priority')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        <span class="more-item-label">Priority</span>
       </button>
       <button class="more-item hidden" data-tab="leo" id="more-leo" onclick="moreNav('leo')">
         <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>

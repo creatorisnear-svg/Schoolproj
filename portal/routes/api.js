@@ -226,11 +226,24 @@ export function createApiRouter() {
   router.get('/priority', portalAuth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
-      if (!guildId) return res.json({ active: false });
+      if (!guildId) return res.json({ active: false, cooldown: false });
       const p = await Priority.findOne({ guildId });
-      if (!p?.priorityActive) return res.json({ active: false });
-      res.json({ active: true, issuedBy: p.priorityIssuedBy, activatedAt: p.activatedAt, customMessage: p.customMessage });
-    } catch { res.json({ active: false }); }
+      if (!p) return res.json({ active: false, cooldown: false });
+      const now = new Date();
+      const cooldownActive = !!(p.cooldownEndsAt && p.cooldownEndsAt > now);
+      res.json({
+        active: !!p.priorityActive,
+        issuedBy: p.priorityIssuedBy,
+        activatedAt: p.activatedAt,
+        expiresAt: p.expiresAt,
+        customMessage: p.customMessage,
+        hostUserId: p.hostUserId,
+        cooldown: cooldownActive,
+        cooldownEndsAt: cooldownActive ? p.cooldownEndsAt : null,
+        cooldownIssuedBy: cooldownActive ? p.cooldownIssuedBy : null,
+        cooldownMinutes: p.cooldownMinutes,
+      });
+    } catch { res.json({ active: false, cooldown: false }); }
   });
 
   /* ══════════════════════ /strikes ══════════════════════ */

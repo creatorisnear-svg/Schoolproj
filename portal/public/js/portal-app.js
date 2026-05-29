@@ -196,6 +196,7 @@ function switchTab(tab) {
     if (tab === 'tickets') loadTickets();
     if (tab === 'calendar') loadCalendar();
     if (tab === 'rolerequest') loadRoleRequest();
+    if (tab === 'priority') { loadPriority(); schedulePriorityRefresh(); }
     if (tab === 'leo') loadLeo();
   }
 }
@@ -1348,6 +1349,106 @@ async function submitAddVehicle(e) {
     loadCad();
   } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
   finally { btn.disabled = false; }
+}
+
+/* ══════════════════════════════════════════════════════
+   PRIORITY TRACKER
+══════════════════════════════════════════════════════ */
+let priorityRefreshTimer = null;
+
+async function loadPriority() {
+  const hero = document.getElementById('priority-status-hero');
+  const detail = document.getElementById('priority-detail-card');
+  if (!hero) return;
+
+  try {
+    const d = await api('/priority');
+
+    if (d.active) {
+      hero.innerHTML = `
+        <div class="priority-hero-state priority-hero-active">
+          <div class="priority-state-dot priority-dot-active"></div>
+          <div class="priority-state-label">PRIORITY ACTIVE</div>
+        </div>`;
+
+      const elapsed = d.activatedAt ? elapsedSince(d.activatedAt) : null;
+      const rows = [
+        d.issuedBy ? `<div class="priority-row"><span class="priority-row-key">Issued By</span><span class="priority-row-val">${d.issuedBy}</span></div>` : '',
+        elapsed ? `<div class="priority-row"><span class="priority-row-key">Duration</span><span class="priority-row-val" id="priority-timer">${elapsed}</span></div>` : '',
+        d.customMessage ? `<div class="priority-row"><span class="priority-row-key">Message</span><span class="priority-row-val">${d.customMessage}</span></div>` : '',
+        d.expiresAt ? `<div class="priority-row"><span class="priority-row-key">Expires</span><span class="priority-row-val">${formatRelativeTime(d.expiresAt)}</span></div>` : '',
+      ].filter(Boolean).join('');
+
+      detail.innerHTML = rows || '<div class="priority-row-empty">No additional details.</div>';
+      detail.classList.remove('hidden');
+      startPriorityElapsedTimer(d.activatedAt);
+
+    } else if (d.cooldown) {
+      hero.innerHTML = `
+        <div class="priority-hero-state priority-hero-cooldown">
+          <div class="priority-state-dot priority-dot-cooldown"></div>
+          <div class="priority-state-label">ON COOLDOWN</div>
+        </div>`;
+
+      const rows = [
+        d.cooldownIssuedBy ? `<div class="priority-row"><span class="priority-row-key">Last Host</span><span class="priority-row-val">${d.cooldownIssuedBy}</span></div>` : '',
+        d.cooldownMinutes ? `<div class="priority-row"><span class="priority-row-key">Cooldown</span><span class="priority-row-val">${d.cooldownMinutes} minutes</span></div>` : '',
+        d.cooldownEndsAt ? `<div class="priority-row"><span class="priority-row-key">Ends</span><span class="priority-row-val" id="priority-timer">${formatRelativeTime(d.cooldownEndsAt)}</span></div>` : '',
+      ].filter(Boolean).join('');
+
+      detail.innerHTML = rows || '<div class="priority-row-empty">Cooldown in progress.</div>';
+      detail.classList.remove('hidden');
+
+    } else {
+      hero.innerHTML = `
+        <div class="priority-hero-state priority-hero-inactive">
+          <div class="priority-state-dot priority-dot-inactive"></div>
+          <div class="priority-state-label">NO PRIORITY</div>
+        </div>`;
+      detail.innerHTML = '';
+      detail.classList.add('hidden');
+    }
+  } catch {
+    hero.innerHTML = `<div class="priority-hero-loading">Unable to load priority status.</div>`;
+  }
+}
+
+function elapsedSince(dateStr) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  const m = Math.floor(diff / 60), s = diff % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  return `${h}h ${rm}m`;
+}
+
+function formatRelativeTime(dateStr) {
+  const diff = Math.floor((new Date(dateStr).getTime() - Date.now()) / 1000);
+  if (diff <= 0) return 'now';
+  if (diff < 60) return `in ${diff}s`;
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `in ${m}m`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  return `in ${h}h ${rm}m`;
+}
+
+function startPriorityElapsedTimer(activatedAt) {
+  if (priorityRefreshTimer) clearInterval(priorityRefreshTimer);
+  priorityRefreshTimer = setInterval(() => {
+    const el = document.getElementById('priority-timer');
+    if (!el) { clearInterval(priorityRefreshTimer); return; }
+    el.textContent = elapsedSince(activatedAt);
+  }, 1000);
+}
+
+let priorityAutoRefresh = null;
+function schedulePriorityRefresh() {
+  if (priorityAutoRefresh) clearInterval(priorityAutoRefresh);
+  priorityAutoRefresh = setInterval(() => {
+    const pane = document.getElementById('tab-priority');
+    if (pane?.classList.contains('active')) loadPriority();
+    else clearInterval(priorityAutoRefresh);
+  }, 30000);
 }
 
 /* ══════════════════════════════════════════════════════
