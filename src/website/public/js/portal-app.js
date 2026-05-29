@@ -879,8 +879,12 @@ function updateCountdown() {
 
 async function refreshOfficerBoard() {
   try {
-    const officers = await api('/leo/officers');
+    const [officers, myStatus] = await Promise.all([
+      api('/leo/officers'),
+      api('/leo/mystatus'),
+    ]);
     renderOfficerBoard(officers || []);
+    applyMyStatusToUI(myStatus);
   } catch { /* silent */ }
 }
 
