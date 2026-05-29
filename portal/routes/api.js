@@ -1115,5 +1115,68 @@ export function createApiRouter() {
     }
   });
 
+  /* ══════════════════════ /voice/channels ══════════════════════ */
+  router.get('/voice/channels', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const r = await axios.get(`${DISCORD_BASE}/guilds/${guildId}/channels`, { headers: botHeaders() });
+      const voice = r.data
+        .filter(c => c.type === 2)
+        .sort((a, b) => (a.parent_id || '').localeCompare(b.parent_id || '') || a.position - b.position)
+        .map(c => ({ id: c.id, name: c.name }));
+      res.json(voice);
+    } catch (err) {
+      console.error('[API GET /voice/channels]', err.message);
+      res.json([]);
+    }
+  });
+
+  router.post('/voice/move', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { channelId } = req.body;
+      if (!channelId) return res.status(400).json({ error: 'channelId required' });
+      await axios.patch(
+        `${DISCORD_BASE}/guilds/${guildId}/members/${req.portalUser.userId}`,
+        { channel_id: channelId },
+        { headers: botHeaders() }
+      );
+      res.json({ success: true });
+    } catch (err) {
+      const s = err.response?.status;
+      if (s === 400) return res.status(400).json({ error: 'You must be in a voice channel to be moved' });
+      if (s === 403) return res.status(403).json({ error: 'Bot lacks permission to move members' });
+      console.error('[API POST /voice/move]', err.message);
+      res.status(500).json({ error: 'Failed to move to channel' });
+    }
+  });
+
+  /* ══════════════════════ /officers/overview (civ read-only) ══════════════════════ */
+  router.get('/officers/overview', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json({ active: 0, officers: [] });
+      const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      const officers = await OfficerStatus.find({
+        guildId,
+        updatedAt: { $gte: cutoff },
+        tenCode: { $nin: ['10-10', '10-7'] },
+      }).sort({ updatedAt: -1 }).limit(10);
+      res.json({
+        active: officers.length,
+        officers: officers.map(o => ({
+          username: o.username,
+          tenCode: o.tenCode,
+          location: o.location || null,
+        })),
+      });
+    } catch (err) {
+      console.error('[API GET /officers/overview]', err.message);
+      res.json({ active: 0, officers: [] });
+    }
+  });
+
   return router;
 }

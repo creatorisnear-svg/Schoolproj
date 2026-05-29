@@ -84,6 +84,26 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
     - **Search:** `/shop search:keyword` filters by item name or category. No modal — plain text option.
     - **Key Mechanics:** Balance system (cash, bank), work/crime with success/fail, betting from cash, periodic role income, chat-based money earning, store/inventory (buy, sell 50%, use, give).
 
+## Portal (Civ/LEO Web App)
+- Separate Express SPA at `portal/server.js`, runs on same port as bot (`PORT` env var, defaults 5000) but mounted at `/portal`.
+- Auth: Discord OAuth2 → HMAC-signed `portal_session` cookie. `portal/routes/auth.js`. Callback at `/portal/auth/callback`.
+- API: `portal/routes/api.js` — all routes under `/api/portal/`, all require `portalAuth` middleware.
+- Required env vars: `PORTAL_GUILD_ID`, `PORTAL_DOMAIN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_TOKEN`, `MONGODB_URI`.
+- Frontend SPA: `portal/views/portal.html` (single HTML), `portal/public/js/portal-app.js` (1800+ lines), `portal/public/css/portal.css` (2500+ lines).
+- Mode switching: Civilian vs LEO (stored in `localStorage.portalMode`). LEO mode locked to users with `isLeo: true` from Discord roles.
+- **Panic button flow (10-99):** Portal upserts `OfficerStatus` with `tenCode:'10-99', panicAnnounced:false`. Bot's `voiceListener.js` runs a `_startPanicPoller` every 5s (started by `setupDispatchForGuild()` on bot startup when dispatch is configured). Poller finds `panicAnnounced:false` records and fires TTS announcement in voice channel. Portal also calls `BOT_INTERNAL_URL/internal/panic` if env var is set (optional direct trigger). TTS announcement requires the bot to be configured for AI dispatch (`/dispatchsetup`) in the guild.
+- **Voice mover:** `GET /api/portal/voice/channels` lists guild voice channels; `POST /api/portal/voice/move` moves the authenticated user to a channel (requires user to already be in voice; requires bot `Move Members` permission).
+- **Officer overview (civ):** `GET /api/portal/officers/overview` returns read-only active officer count + status list for civs. Excludes 10-7/10-10. Filters to last 6 hours.
+- **Civ Home (Overview tab):** Priority/cooldown widget with live countdown, officers on duty strip (read-only), voice channel mover, stats grid, quick access buttons.
+
+## Conversation Context (for future AI sessions)
+- User runs bot on Koyeb instance 1, portal on Koyeb instance 2, shared MongoDB Atlas.
+- Both services share the same codebase — `npm start` runs both via `portal/server.js` importing into `src/index.js`.
+- Completed: Replit migration, civ home redesign with priority widget + countdown, voice mover, officers strip, panic poller confirmation.
+- Portal CSS design language: dark theme, `--surface`, `--card`, `--elevated` backgrounds; `--accent` (#5865f2 Discord blue); `--danger` red; `--warning` amber. Cards have `var(--radius)` (10px) corners, `var(--border)` borders.
+- No emojis in UI (user preference). Minimalist Discord embed color `#2d2d2d`, footer `RPM`.
+- Replit UDP bypass in voiceListener.js is CRITICAL — do not remove. Discord voice UDP inbound is blocked on Replit; the bypass emits a fake 74-byte IP discovery response to unblock `performIPDiscovery()`.
+
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with the Discord API.
 - **MongoDB Atlas:** Cloud-hosted NoSQL database for persistent data storage.

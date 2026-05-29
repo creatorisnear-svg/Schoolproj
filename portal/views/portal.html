@@ -168,17 +168,39 @@
   <main id="main">
     <div class="main-inner">
 
-      <!-- OVERVIEW -->
+      <!-- HOME / OVERVIEW -->
       <div id="tab-overview" class="tab-pane active">
-        <div class="page-header"><h2>Overview</h2></div>
-        <div id="priority-banner" class="priority-banner hidden">
-          <div class="priority-banner-dot"></div>
-          <div class="priority-banner-text">
-            <div class="priority-banner-title">Priority Event Active</div>
-            <div id="priority-banner-sub" class="priority-banner-sub">Server-wide priority is currently in session</div>
+        <div class="page-header">
+          <h2>Home</h2>
+          <span id="overview-mode-pill" class="mode-pill mode-pill-civ">Civilian</span>
+        </div>
+
+        <!-- Priority / Cooldown Status Widget -->
+        <div id="home-priority-widget" class="home-priority-widget">
+          <div id="home-priority-inner" class="home-priority-loading">Loading...</div>
+        </div>
+
+        <!-- Officers On Duty (civ read-only) -->
+        <div id="home-officers-widget" class="home-officers-widget hidden"></div>
+
+        <!-- Voice Channel Mover -->
+        <div id="home-voice-widget" class="home-voice-widget hidden">
+          <div class="home-voice-header">
+            <div class="home-voice-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              Voice Channels
+            </div>
+            <button class="btn-ghost-sm" onclick="refreshVoiceChannels()" id="voice-refresh-btn">Refresh</button>
+          </div>
+          <div id="home-voice-list" class="home-voice-list">
+            <div class="home-voice-loading">Loading channels...</div>
           </div>
         </div>
+
+        <!-- Stats -->
         <div id="overview-stats" class="stat-grid"></div>
+
+        <!-- Quick Access -->
         <div class="section-label">Quick Access</div>
         <div class="quick-actions" id="quick-actions"></div>
       </div>

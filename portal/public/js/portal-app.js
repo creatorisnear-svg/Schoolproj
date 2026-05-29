@@ -241,24 +241,34 @@ function moreNav(tab) {
 /* ══════════════════════════════════════════════════════
    OVERVIEW
 ══════════════════════════════════════════════════════ */
+let homePriorityCountdownTimer = null;
+
 async function loadOverview() {
+  const isLeoMode = (localStorage.getItem('portalMode') === 'leo') && me?.isLeo;
+
+  const pill = document.getElementById('overview-mode-pill');
+  if (pill) {
+    pill.textContent = isLeoMode ? 'LEO' : 'Civilian';
+    pill.className = 'mode-pill ' + (isLeoMode ? 'mode-pill-leo' : 'mode-pill-civ');
+  }
+
   try {
     const [cadRes, ecoRes, ticketsRes, priorityRes, strikeRes, finesRes] = await Promise.all([
-      api('/cad'),
-      api('/economy'),
-      api('/tickets'),
-      api('/priority'),
-      api('/strikes'),
-      api('/traffic-tickets'),
+      api('/cad').catch(() => []),
+      api('/economy').catch(() => ({ cash: 0, bank: 0, currency: '$' })),
+      api('/tickets').catch(() => []),
+      api('/priority').catch(() => ({ active: false, cooldown: false })),
+      api('/strikes').catch(() => ({ level: 0 })),
+      api('/traffic-tickets').catch(() => []),
     ]);
 
-    if (priorityRes?.active) {
-      const banner = document.getElementById('priority-banner');
-      banner.classList.remove('hidden');
-      const sub = document.getElementById('priority-banner-sub');
-      if (priorityRes.customMessage) sub.textContent = priorityRes.customMessage;
-      else if (priorityRes.issuedBy) sub.textContent = `Issued by ${priorityRes.issuedBy}`;
-    }
+    renderHomePriorityWidget(priorityRes);
+
+    const voiceWidget = document.getElementById('home-voice-widget');
+    if (voiceWidget) voiceWidget.classList.remove('hidden');
+    loadVoiceChannels();
+
+    if (!isLeoMode) loadHomeOfficers();
 
     const openTickets = (ticketsRes || []).filter(t => t.status === 'open').length;
     const strikeLevel = strikeRes?.level ?? 0;
@@ -269,31 +279,28 @@ async function loadOverview() {
       { label: 'Characters', value: cadRes?.length ?? 0, sub: 'in CAD' },
       { label: 'Cash', value: fmt(ecoRes?.cash ?? 0, cur), sub: 'on hand' },
       { label: 'Bank', value: fmt(ecoRes?.bank ?? 0, cur), sub: 'balance' },
-      { label: 'Open Tickets', value: openTickets, sub: 'support tickets' },
+      { label: 'Open Tickets', value: openTickets, sub: 'support' },
     ].map(s => `
       <div class="stat-card">
         <div class="stat-label">${s.label}</div>
         <div class="stat-value">${s.value}</div>
         <div class="stat-sub">${s.sub}</div>
-      </div>
-    `).join('');
+      </div>`).join('');
 
     if (unpaidFines > 0) {
-      statsHtml += `
-        <div class="stat-card" style="--accent:var(--warning)">
-          <div class="stat-label">Unpaid Fines</div>
-          <div class="stat-value" style="color:var(--warning)">${unpaidFines}</div>
-          <div class="stat-sub">traffic violations</div>
-        </div>`;
+      statsHtml += `<div class="stat-card">
+        <div class="stat-label">Unpaid Fines</div>
+        <div class="stat-value" style="color:var(--warning)">${unpaidFines}</div>
+        <div class="stat-sub">traffic violations</div>
+      </div>`;
     }
-
     if (strikeLevel > 0) {
-      statsHtml += `
-        <div class="stat-card" style="--accent:${strikeLevel >= 3 ? 'var(--danger)' : 'var(--warning)'}">
-          <div class="stat-label">Strike Level</div>
-          <div class="stat-value" style="color:${strikeLevel >= 3 ? 'var(--danger)' : 'var(--warning)'}">${strikeLevel}/4</div>
-          <div class="stat-sub">active strikes</div>
-        </div>`;
+      const col = strikeLevel >= 3 ? 'var(--danger)' : 'var(--warning)';
+      statsHtml += `<div class="stat-card">
+        <div class="stat-label">Strikes</div>
+        <div class="stat-value" style="color:${col}">${strikeLevel}/4</div>
+        <div class="stat-sub">active</div>
+      </div>`;
     }
 
     document.getElementById('overview-stats').innerHTML = statsHtml;
@@ -309,13 +316,13 @@ async function loadOverview() {
       leo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
       priority: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
     };
-    const isLeoMode = (localStorage.getItem('portalMode') === 'leo') && me.isLeo;
+
     const actions = isLeoMode ? [
       { tab: 'leo', label: 'LEO Dashboard' },
       { tab: 'economy', label: 'Economy' },
       { tab: 'calendar', label: 'RP Calendar' },
       { tab: 'rolerequest', label: 'Role Requests' },
-      { tab: 'priority', label: 'Priority Status' },
+      { tab: 'priority', label: 'Priority' },
     ] : [
       { tab: 'cad', label: 'CAD System' },
       { tab: 'dispatch', label: 'Dispatch / 911' },
@@ -329,11 +336,156 @@ async function loadOverview() {
     document.getElementById('quick-actions').innerHTML = actions.map(a => `
       <button class="quick-btn" onclick="switchTab('${a.tab}')">
         <span class="quick-btn-icon">${SVG[a.tab] || ''}</span>${a.label}
-      </button>
-    `).join('');
+      </button>`).join('');
 
+  } catch {
+    document.getElementById('overview-stats').innerHTML = '<p style="color:var(--text-muted);font-size:13px">Could not load overview.</p>';
+  }
+}
+
+function renderHomePriorityWidget(d) {
+  const inner = document.getElementById('home-priority-inner');
+  if (!inner) return;
+  if (homePriorityCountdownTimer) { clearInterval(homePriorityCountdownTimer); homePriorityCountdownTimer = null; }
+
+  if (d?.active) {
+    inner.innerHTML = `
+      <div class="hpw-row hpw-active">
+        <div class="hpw-left">
+          <span class="hpw-dot hpw-dot-active"></span>
+          <div class="hpw-text">
+            <div class="hpw-title">Priority Active</div>
+            ${d.issuedBy ? `<div class="hpw-sub">Hosted by ${esc(d.issuedBy)}</div>` : ''}
+            ${d.customMessage ? `<div class="hpw-msg">${esc(d.customMessage)}</div>` : ''}
+          </div>
+        </div>
+        <div class="hpw-right">
+          <div class="hpw-countdown" id="hpw-timer">--:--</div>
+          <div class="hpw-countdown-label">${d.expiresAt ? 'remaining' : 'elapsed'}</div>
+        </div>
+      </div>`;
+
+    if (d.expiresAt) {
+      const tick = () => {
+        const el = document.getElementById('hpw-timer');
+        if (!el) return clearInterval(homePriorityCountdownTimer);
+        const diff = Math.max(0, Math.floor((new Date(d.expiresAt).getTime() - Date.now()) / 1000));
+        const m = Math.floor(diff / 60), s = diff % 60;
+        el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      };
+      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
+    } else if (d.activatedAt) {
+      const tick = () => {
+        const el = document.getElementById('hpw-timer');
+        if (!el) return clearInterval(homePriorityCountdownTimer);
+        el.textContent = elapsedSince(d.activatedAt);
+      };
+      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
+    }
+
+  } else if (d?.cooldown) {
+    inner.innerHTML = `
+      <div class="hpw-row hpw-cooldown">
+        <div class="hpw-left">
+          <span class="hpw-dot hpw-dot-cooldown"></span>
+          <div class="hpw-text">
+            <div class="hpw-title">Cooldown</div>
+            ${d.cooldownIssuedBy ? `<div class="hpw-sub">Last host: ${esc(d.cooldownIssuedBy)}</div>` : ''}
+          </div>
+        </div>
+        ${d.cooldownEndsAt ? `<div class="hpw-right"><div class="hpw-countdown hpw-countdown-cd" id="hpw-timer">--:--</div><div class="hpw-countdown-label">remaining</div></div>` : ''}
+      </div>`;
+
+    if (d.cooldownEndsAt) {
+      const tick = () => {
+        const el = document.getElementById('hpw-timer');
+        if (!el) return clearInterval(homePriorityCountdownTimer);
+        const diff = Math.max(0, Math.floor((new Date(d.cooldownEndsAt).getTime() - Date.now()) / 1000));
+        const m = Math.floor(diff / 60), s = diff % 60;
+        el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      };
+      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
+    }
+
+  } else {
+    inner.innerHTML = `
+      <div class="hpw-row hpw-inactive">
+        <span class="hpw-dot hpw-dot-inactive"></span>
+        <div class="hpw-text">
+          <div class="hpw-title hpw-title-inactive">No priority — server open</div>
+        </div>
+      </div>`;
+  }
+}
+
+async function loadHomeOfficers() {
+  const widget = document.getElementById('home-officers-widget');
+  if (!widget) return;
+  try {
+    const d = await api('/officers/overview').catch(() => null);
+    if (!d?.active) { widget.classList.add('hidden'); return; }
+
+    const TEN_ICONS = { '10-8': '🟢', '10-6': '🟡', '10-97': '🟠', '10-11': '🟠', '10-50': '🟠', '10-76': '🔵', '10-78': '🔴', '10-80': '🔴', '10-15': '🔴', '10-99': '🆘' };
+    const TEN_LABELS = { '10-8': 'Available', '10-6': 'Busy', '10-97': 'On Scene', '10-11': 'Traffic Stop', '10-50': 'Accident', '10-76': 'En Route', '10-78': 'Need Assist', '10-80': 'Pursuit', '10-15': 'Prisoner', '10-99': 'EMERGENCY' };
+
+    widget.innerHTML = `
+      <div class="home-officers-header">
+        <div class="home-officers-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Officers On Duty
+        </div>
+        <span class="home-officers-count">${d.active} active</span>
+      </div>
+      <div class="home-officers-list">
+        ${d.officers.map(o => `
+          <div class="home-officer-item">
+            <span class="home-officer-icon">${TEN_ICONS[o.tenCode] || '⚪'}</span>
+            <div class="home-officer-info">
+              <span class="home-officer-name">${esc(o.username)}</span>
+              <span class="home-officer-status">${TEN_LABELS[o.tenCode] || o.tenCode}${o.location ? ' &bull; ' + esc(o.location) : ''}</span>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    widget.classList.remove('hidden');
+  } catch {
+    widget.classList.add('hidden');
+  }
+}
+
+async function loadVoiceChannels() {
+  const list = document.getElementById('home-voice-list');
+  if (!list) return;
+  list.innerHTML = '<div class="home-voice-loading">Loading...</div>';
+  try {
+    const channels = await api('/voice/channels');
+    if (!channels?.length) {
+      list.innerHTML = '<div class="home-voice-empty">No voice channels available.</div>';
+      return;
+    }
+    list.innerHTML = `<div class="home-voice-grid">${channels.map(c => `
+      <button class="home-voice-item" onclick="moveToVoiceChannel('${c.id}','${c.name.replace(/'/g, "\\'")}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span class="home-voice-name">${esc(c.name)}</span>
+        <svg class="home-voice-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`).join('')}</div>`;
+  } catch {
+    list.innerHTML = '<div class="home-voice-empty">Could not load channels.</div>';
+  }
+}
+
+async function refreshVoiceChannels() {
+  const btn = document.getElementById('voice-refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  await loadVoiceChannels();
+  if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; }
+}
+
+async function moveToVoiceChannel(channelId, channelName) {
+  try {
+    await apiPost('/voice/move', { channelId });
+    toast(`Moved to ${channelName}`, 'success');
   } catch (err) {
-    document.getElementById('overview-stats').innerHTML = '<p style="color:var(--text-muted);font-size:13px">Could not load stats.</p>';
+    toast(err.message || 'Must be in a voice channel to be moved', 'error');
   }
 }
 
