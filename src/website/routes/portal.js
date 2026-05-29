@@ -39,7 +39,7 @@ function isLocal(domain) {
 }
 
 function getPortalDomain() {
-  const d = (process.env.PORTAL_DOMAIN || process.env.DOMAIN || 'localhost:5000')
+  const d = (process.env.PORTAL_DOMAIN || process.env.REPLIT_DEV_DOMAIN || process.env.DOMAIN || 'localhost:5000')
     .toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
   return d;
 }

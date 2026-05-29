@@ -8,7 +8,7 @@ export function createAuthRouter() {
   const router = Router();
 
   router.get('/login', (req, res) => {
-    const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    const domain = process.env.DOMAIN || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
     const redirectUri = encodeURIComponent(`https://${cleanDomain}/dashboard/callback`);
     const clientId = process.env.DISCORD_CLIENT_ID;
@@ -39,7 +39,7 @@ export function createAuthRouter() {
     res.clearCookie('oauth_state');
 
     try {
-      const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+      const domain = process.env.DOMAIN || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
       const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
       const redirectUri = `https://${cleanDomain}/dashboard/callback`;
 
