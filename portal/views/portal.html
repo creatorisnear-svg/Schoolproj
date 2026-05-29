@@ -32,6 +32,38 @@
   </div>
 </div>
 
+<!-- ══════════ MODE PICKER ══════════ -->
+<div id="mode-screen" class="hidden">
+  <div class="mode-card">
+    <div class="mode-card-logo">
+      <img id="mode-logo-img" src="" alt="" style="display:none">
+      <div id="mode-logo-placeholder" class="mode-logo-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+    </div>
+    <div id="mode-greeting" class="mode-greeting">Welcome back</div>
+    <div class="mode-sub">How are you playing today?</div>
+    <div class="mode-options">
+      <button class="mode-btn" onclick="setPortalMode('civilian')">
+        <div class="mode-btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="mode-btn-title">Civilian</div>
+        <div class="mode-btn-desc">Characters, 911, economy &amp; more</div>
+      </button>
+      <button class="mode-btn mode-btn-leo" id="mode-btn-leo" onclick="setPortalMode('leo')" disabled>
+        <div class="mode-btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="mode-btn-title">Law Enforcement</div>
+        <div class="mode-btn-desc">Status board, intel, patrol tools</div>
+        <div class="mode-btn-badge" id="mode-leo-badge">LEO access required</div>
+      </button>
+    </div>
+    <a href="/auth/logout" class="mode-signout">Sign out</a>
+  </div>
+</div>
+
 <!-- ══════════ APP ══════════ -->
 <div id="app" class="hidden">
 
@@ -48,6 +80,10 @@
       <img id="topbar-avatar" class="topbar-avatar" src="" alt="">
       <span id="topbar-username" class="topbar-username"></span>
     </div>
+    <button id="topbar-mode-switch" class="topbar-mode-switch" onclick="showModeScreen()" title="Switch mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span id="topbar-mode-label">Civilian</span>
+    </button>
     <a href="/auth/logout" class="topbar-logout" title="Sign out">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </a>
@@ -113,6 +149,10 @@
       </div>
     </nav>
     <div class="sidebar-bottom">
+      <button class="btn-mode-switch" onclick="showModeScreen()">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        Switch Mode
+      </button>
       <a href="/auth/logout" class="btn-logout">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
         Sign Out
@@ -308,6 +348,7 @@
           <button class="leo-innertab active" data-leotab="officers" onclick="switchLeoTab('officers')">Officers</button>
           <button class="leo-innertab" data-leotab="records" onclick="switchLeoTab('records')">Search Records</button>
           <button class="leo-innertab" data-leotab="intel" onclick="switchLeoTab('intel')">BOLOs &amp; Calls<span id="intel-dot" class="leo-dot hidden">!</span></button>
+          <button class="leo-innertab" data-leotab="actions" onclick="switchLeoTab('actions')">Actions</button>
           <span id="board-refresh-label" class="board-refresh-label">Refreshes in <span id="board-countdown">30</span>s</span>
         </div>
 
@@ -342,6 +383,52 @@
 
           <div class="section-label" style="margin-top:20px">Active BOLOs</div>
           <div id="leo-bolos"><div class="empty-state" style="padding:12px 0">Loading...</div></div>
+        </div>
+
+        <!-- Actions Pane (BOLO Create + Ticket Issue) -->
+        <div id="leo-innerpane-actions" class="leo-innerpane hidden">
+
+          <div class="section-label" style="margin-top:0">Create BOLO</div>
+          <div class="leo-action-card">
+            <div class="leo-action-search-row">
+              <input id="bolo-char-search" class="form-input" type="text" placeholder="Search character by name...">
+              <button class="btn btn-secondary btn-sm" onclick="searchForBolo()">Search</button>
+            </div>
+            <div id="bolo-char-results" class="leo-char-results"></div>
+            <div id="bolo-details" class="hidden">
+              <input type="hidden" id="bolo-char-id">
+              <div id="bolo-selected-info" class="leo-selected-char"></div>
+              <div class="form-group"><label class="form-label">Reason *</label><input id="bolo-reason" class="form-input" type="text" placeholder="Armed robbery suspect, fleeing arrest..."></div>
+              <div class="form-group"><label class="form-label">Description</label><textarea id="bolo-description" class="form-input" rows="2" placeholder="Additional details..."></textarea></div>
+              <div id="bolo-error" class="form-error hidden"></div>
+              <div class="leo-action-btns">
+                <button class="btn btn-secondary btn-sm" onclick="cancelBoloSearch()">Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="submitCreateBolo()">Issue BOLO</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top:24px">Issue Traffic Ticket</div>
+          <div class="leo-action-card">
+            <div class="leo-action-search-row">
+              <input id="ticket-char-search" class="form-input" type="text" placeholder="Search character by name...">
+              <button class="btn btn-secondary btn-sm" onclick="searchForTicket()">Search</button>
+            </div>
+            <div id="ticket-char-results" class="leo-char-results"></div>
+            <div id="ticket-details" class="hidden">
+              <input type="hidden" id="ticket-char-id">
+              <div id="ticket-selected-info" class="leo-selected-char"></div>
+              <div class="form-group"><label class="form-label">Violation *</label><input id="ticket-violation" class="form-input" type="text" placeholder="Speeding, Running red light, No registration..."></div>
+              <div class="form-group"><label class="form-label">Description</label><input id="ticket-description" class="form-input" type="text" placeholder="Additional notes..."></div>
+              <div class="form-group"><label class="form-label">Fine Amount ($)</label><input id="ticket-fine" class="form-input" type="number" min="0" placeholder="500"></div>
+              <div id="ticket-error" class="form-error hidden"></div>
+              <div class="leo-action-btns">
+                <button class="btn btn-secondary btn-sm" onclick="cancelTicketSearch()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitIssueLeoTicket()">Issue Ticket</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -457,6 +544,16 @@
         <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" name="phoneNumber" type="text" placeholder="555-0100"></div>
         <div class="form-group"><label class="form-label">Emergency Contact</label><input class="form-input" name="emergencyContact" type="text" placeholder="Name – Number"></div>
       </div>
+      <div class="form-group"><label class="form-label">Social Security Number</label><input class="form-input" name="socialSecurityNumber" type="text" placeholder="XXX-XX-XXXX"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Driver's License #</label><input class="form-input" name="driversLicense" type="text" placeholder="DL-0000000"></div>
+        <div class="form-group"><label class="form-label">License Status</label>
+          <select class="form-input" name="driverLicenseStatus">
+            <option value="valid">Valid</option>
+            <option value="invalid">Revoked / Suspended</option>
+          </select>
+        </div>
+      </div>
       <div id="form-char-error" class="form-error hidden"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-char')">Cancel</button>
@@ -489,6 +586,27 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
         <button type="submit" class="btn btn-primary">Add Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Add Firearm ══════════ -->
+<div id="modal-add-firearm" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Register Firearm</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-firearm')">&times;</button>
+    </div>
+    <form id="form-add-firearm" onsubmit="submitAddFirearm(event)">
+      <input type="hidden" id="firearm-char-id">
+      <div class="form-group"><label class="form-label">Firearm Name / Model *</label><input class="form-input" name="name" type="text" required placeholder="Glock 19, AR-15, Mossberg 500..."></div>
+      <div class="form-group"><label class="form-label">Serial Number</label><input class="form-input" name="serialNumber" type="text" placeholder="SN-XXXXXXXX"></div>
+      <div id="form-firearm-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-firearm')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Register</button>
       </div>
     </form>
   </div>

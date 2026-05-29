@@ -41,8 +41,6 @@ function showLogin(error) {
 }
 
 function showApp() {
-  document.getElementById('app').classList.remove('hidden');
-
   const serverName = me.serverName || 'Member Portal';
   ['login-server-name','sidebar-server-name','topbar-server-name'].forEach(id => {
     const el = document.getElementById(id);
@@ -60,6 +58,10 @@ function showApp() {
     });
     const loginLogo = document.getElementById('login-logo');
     if (loginLogo) { loginLogo.src = me.serverIcon; loginLogo.style.display = 'block'; }
+    const modeImg = document.getElementById('mode-logo-img');
+    if (modeImg) { modeImg.src = me.serverIcon; modeImg.style.display = 'block'; }
+    const modePh = document.getElementById('mode-logo-placeholder');
+    if (modePh) modePh.style.display = 'none';
   }
 
   const displayName = me.displayName || me.username;
@@ -84,17 +86,82 @@ function showApp() {
     rolesEl.style.display = 'none';
   }
 
+  const modeGreeting = document.getElementById('mode-greeting');
+  if (modeGreeting) modeGreeting.textContent = `Welcome, ${displayName}`;
+
   if (me.isLeo) {
-    document.getElementById('nav-leo')?.classList.remove('hidden');
-    document.getElementById('nav-leo-section')?.classList.remove('hidden');
-    document.getElementById('more-leo')?.classList.remove('hidden');
+    const btn = document.getElementById('mode-btn-leo');
+    if (btn) btn.removeAttribute('disabled');
+    const badge = document.getElementById('mode-leo-badge');
+    if (badge) badge.style.display = 'none';
   }
 
   document.querySelectorAll('.nav-item[data-tab], .bnav-item[data-tab]').forEach(el => {
     el.addEventListener('click', () => switchTab(el.dataset.tab));
   });
 
-  loadOverview();
+  const savedMode = localStorage.getItem('portalMode');
+  const validMode = (savedMode === 'leo' && !me.isLeo) ? null : savedMode;
+  if (validMode) {
+    document.getElementById('app').classList.remove('hidden');
+    applyModeNav(validMode);
+    loadOverview();
+  } else {
+    document.getElementById('mode-screen').classList.remove('hidden');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   MODE PICKER
+══════════════════════════════════════════════════════ */
+function setPortalMode(mode) {
+  if (mode === 'leo' && !me?.isLeo) return;
+  localStorage.setItem('portalMode', mode);
+  document.getElementById('mode-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  applyModeNav(mode);
+  if (!loaded['overview']) loadOverview();
+}
+
+function showModeScreen() {
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('mode-screen').classList.remove('hidden');
+}
+
+const CIV_ONLY_TABS = ['cad', 'dispatch', 'fines', 'tickets'];
+const LEO_ONLY_TABS = ['leo'];
+
+function applyModeNav(mode) {
+  const isCiv = mode === 'civilian';
+  const isLeo = mode === 'leo';
+
+  CIV_ONLY_TABS.forEach(tab => {
+    document.querySelectorAll(`[data-tab="${tab}"]`).forEach(el => {
+      if (isCiv) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    });
+  });
+
+  const leoSection = document.getElementById('nav-leo-section');
+  const moreLeo = document.getElementById('more-leo');
+  if (isLeo && me?.isLeo) {
+    document.getElementById('nav-leo')?.classList.remove('hidden');
+    leoSection?.classList.remove('hidden');
+    moreLeo?.classList.remove('hidden');
+  } else {
+    document.getElementById('nav-leo')?.classList.add('hidden');
+    leoSection?.classList.add('hidden');
+    moreLeo?.classList.add('hidden');
+  }
+
+  const modeLabel = document.getElementById('topbar-mode-label');
+  if (modeLabel) modeLabel.textContent = isLeo ? 'LEO' : 'Civilian';
+
+  if (isLeo && !loaded['leo']) switchTab('leo');
+  else if (isCiv) {
+    const pane = document.getElementById('tab-overview');
+    if (pane && !pane.classList.contains('active')) switchTab('overview');
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -274,6 +341,12 @@ async function loadCad() {
     list.querySelectorAll('.btn-delete-char').forEach(btn => {
       btn.addEventListener('click', e => { e.stopPropagation(); deleteChar(btn.dataset.charId); });
     });
+    list.querySelectorAll('.btn-add-firearm').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); openAddFirearmModal(btn.dataset.charId); });
+    });
+    list.querySelectorAll('.btn-remove-gun').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); removeFirearm(btn.dataset.charId, btn.dataset.gunIndex); });
+    });
   } catch {
     list.innerHTML = `<div class="empty-state">Failed to load characters.</div>`;
   }
@@ -301,7 +374,7 @@ function renderCharCard(c) {
     : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No vehicles registered.</div>';
 
   const guns = c.guns?.length
-    ? c.guns.map(g => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${g.name}</div>${g.serialNumber ? `<div class="vehicle-item-plate">${g.serialNumber}</div>` : ''}</div></div>`).join('')
+    ? c.guns.map((g, i) => `<div class="vehicle-item"><div class="vehicle-item-left"><div class="vehicle-item-name">${g.name}</div>${g.serialNumber ? `<div class="vehicle-item-plate">${g.serialNumber}</div>` : ''}</div><button class="btn btn-danger btn-xs btn-remove-gun" data-char-id="${c._id}" data-gun-index="${i}">Remove</button></div>`).join('')
     : '<div style="color:var(--text-muted);font-size:12px;font-style:italic;padding:4px 0">No firearms registered.</div>';
 
   const arrests = c.arrestHistory?.length
@@ -335,6 +408,7 @@ function renderCharCard(c) {
         <div class="vehicle-list">${vehicles}</div>
         <div class="char-section-header" style="margin-top:14px">
           <span class="char-section-label">Firearms (${c.guns?.length || 0})</span>
+          <button class="btn btn-primary btn-sm btn-add-firearm" data-char-id="${c._id}">+ Register</button>
         </div>
         <div class="gun-list">${guns}</div>
         ${arrests ? `<div class="char-section-header" style="margin-top:14px"><span class="char-section-label">Arrest History (${c.arrestHistory.length})</span></div>${arrests}` : ''}
@@ -1213,6 +1287,42 @@ async function submitCreateChar(e) {
   finally { btn.disabled = false; }
 }
 
+function openAddFirearmModal(charId) {
+  document.getElementById('firearm-char-id').value = charId;
+  document.getElementById('form-add-firearm').reset();
+  document.getElementById('firearm-char-id').value = charId;
+  document.getElementById('form-firearm-error').classList.add('hidden');
+  openModal('modal-add-firearm');
+}
+
+async function submitAddFirearm(e) {
+  e.preventDefault();
+  const charId = document.getElementById('firearm-char-id').value;
+  const data = Object.fromEntries(new FormData(e.target));
+  const errEl = document.getElementById('form-firearm-error');
+  const btn = e.target.querySelector('[type="submit"]');
+  errEl.classList.add('hidden');
+  btn.disabled = true;
+  try {
+    await apiPost(`/cad/${charId}/gun`, data);
+    closeModal('modal-add-firearm');
+    toast('Firearm registered.', 'success');
+    loaded['cad'] = false;
+    loadCad();
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+  finally { btn.disabled = false; }
+}
+
+async function removeFirearm(charId, gunIndex) {
+  if (!confirm('Remove this firearm registration? This cannot be undone.')) return;
+  try {
+    await apiDel(`/cad/${charId}/gun/${gunIndex}`);
+    toast('Firearm removed.', 'info');
+    loaded['cad'] = false;
+    loadCad();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
 function openAddVehicleModal(charId) {
   document.getElementById('vehicle-char-id').value = charId;
   document.getElementById('form-add-vehicle').reset();
@@ -1238,6 +1348,109 @@ async function submitAddVehicle(e) {
     loadCad();
   } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
   finally { btn.disabled = false; }
+}
+
+/* ══════════════════════════════════════════════════════
+   LEO ACTIONS — BOLO & TICKET
+══════════════════════════════════════════════════════ */
+async function searchForBolo() {
+  const q = document.getElementById('bolo-char-search').value.trim();
+  const results = document.getElementById('bolo-char-results');
+  if (!q) { results.innerHTML = ''; return; }
+  results.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">Searching...</div>';
+  try {
+    const data = await api(`/leo/search?type=character&query=${encodeURIComponent(q)}`);
+    if (!data.results?.length) { results.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">No characters found.</div>'; return; }
+    results.innerHTML = data.results.map(c => `
+      <div class="leo-char-result-item" onclick="selectBoloChar('${c._id}','${c.characterName.replace(/'/g,"\\'")}')">
+        <div class="leo-char-result-name">${c.characterName}</div>
+        <div class="leo-char-result-sub">${c.occupation || 'No occupation'} &bull; ${c.status === 'wanted' ? '<span style="color:var(--danger)">Wanted</span>' : 'Clean'}</div>
+      </div>`).join('');
+  } catch (err) { results.innerHTML = `<div style="color:var(--danger);font-size:12px;padding:6px 0">${err.message}</div>`; }
+}
+
+function selectBoloChar(charId, charName) {
+  document.getElementById('bolo-char-id').value = charId;
+  document.getElementById('bolo-selected-info').innerHTML = `<span class="leo-selected-tag">Selected: <strong>${charName}</strong></span>`;
+  document.getElementById('bolo-char-results').innerHTML = '';
+  document.getElementById('bolo-details').classList.remove('hidden');
+  document.getElementById('bolo-reason').focus();
+}
+
+function cancelBoloSearch() {
+  document.getElementById('bolo-char-id').value = '';
+  document.getElementById('bolo-char-search').value = '';
+  document.getElementById('bolo-char-results').innerHTML = '';
+  document.getElementById('bolo-reason').value = '';
+  document.getElementById('bolo-description').value = '';
+  document.getElementById('bolo-error').classList.add('hidden');
+  document.getElementById('bolo-details').classList.add('hidden');
+}
+
+async function submitCreateBolo() {
+  const charId = document.getElementById('bolo-char-id').value;
+  const reason = document.getElementById('bolo-reason').value.trim();
+  const description = document.getElementById('bolo-description').value.trim();
+  const errEl = document.getElementById('bolo-error');
+  if (!charId || !reason) { errEl.textContent = 'Character and reason are required.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  try {
+    await apiPost('/leo/bolo', { characterId: charId, reason, description });
+    toast('BOLO issued.', 'success');
+    cancelBoloSearch();
+    loaded['leo'] = false;
+    switchLeoTab('intel');
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+}
+
+async function searchForTicket() {
+  const q = document.getElementById('ticket-char-search').value.trim();
+  const results = document.getElementById('ticket-char-results');
+  if (!q) { results.innerHTML = ''; return; }
+  results.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">Searching...</div>';
+  try {
+    const data = await api(`/leo/search?type=character&query=${encodeURIComponent(q)}`);
+    if (!data.results?.length) { results.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:6px 0">No characters found.</div>'; return; }
+    results.innerHTML = data.results.map(c => `
+      <div class="leo-char-result-item" onclick="selectTicketChar('${c._id}','${c.characterName.replace(/'/g,"\\'")}')">
+        <div class="leo-char-result-name">${c.characterName}</div>
+        <div class="leo-char-result-sub">${c.occupation || 'No occupation'} &bull; ${c.driversLicense ? 'DL: ' + c.driversLicense : 'No DL on file'}</div>
+      </div>`).join('');
+  } catch (err) { results.innerHTML = `<div style="color:var(--danger);font-size:12px;padding:6px 0">${err.message}</div>`; }
+}
+
+function selectTicketChar(charId, charName) {
+  document.getElementById('ticket-char-id').value = charId;
+  document.getElementById('ticket-selected-info').innerHTML = `<span class="leo-selected-tag">Issuing to: <strong>${charName}</strong></span>`;
+  document.getElementById('ticket-char-results').innerHTML = '';
+  document.getElementById('ticket-details').classList.remove('hidden');
+  document.getElementById('ticket-violation').focus();
+}
+
+function cancelTicketSearch() {
+  document.getElementById('ticket-char-id').value = '';
+  document.getElementById('ticket-char-search').value = '';
+  document.getElementById('ticket-char-results').innerHTML = '';
+  document.getElementById('ticket-violation').value = '';
+  document.getElementById('ticket-description').value = '';
+  document.getElementById('ticket-fine').value = '';
+  document.getElementById('ticket-error').classList.add('hidden');
+  document.getElementById('ticket-details').classList.add('hidden');
+}
+
+async function submitIssueLeoTicket() {
+  const charId = document.getElementById('ticket-char-id').value;
+  const violation = document.getElementById('ticket-violation').value.trim();
+  const description = document.getElementById('ticket-description').value.trim();
+  const fine = document.getElementById('ticket-fine').value;
+  const errEl = document.getElementById('ticket-error');
+  if (!charId || !violation) { errEl.textContent = 'Character and violation are required.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  try {
+    await apiPost('/leo/ticket', { characterId: charId, violation, description, fine });
+    toast('Traffic ticket issued.', 'success');
+    cancelTicketSearch();
+  } catch (err) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
 }
 
 /* ══════════════════════════════════════════════════════

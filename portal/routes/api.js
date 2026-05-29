@@ -97,7 +97,7 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
         if (o.subject) value += `\n📋 ${o.subject}`;
         const mins = Math.floor((Date.now() - new Date(o.updatedAt).getTime()) / 60000);
         value += `\n*Updated ${mins < 1 ? 'just now' : `${mins}m ago`}*`;
-        return { name: `👮  ${o.username}`, value, inline: true };
+        return { name: o.username, value: `<@${o.userId}>\n` + value, inline: true };
       });
 
       const dominantCode = activeOfficers.find(o => o.tenCode === '10-99')?.tenCode
@@ -421,7 +421,7 @@ export function createApiRouter() {
     try {
       const guildId = GUILD_ID();
       if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
-      const { characterName, age, gender, hairColor, eyeColor, height, occupation, address, phoneNumber, emergencyContact } = req.body;
+      const { characterName, age, gender, hairColor, eyeColor, height, occupation, address, phoneNumber, emergencyContact, socialSecurityNumber, driversLicense, driverLicenseStatus } = req.body;
       if (!characterName?.trim()) return res.status(400).json({ error: 'Character name is required' });
       const count = await CADCharacter.countDocuments({ guildId, userId: req.portalUser.userId });
       if (count >= 5) return res.status(400).json({ error: 'Maximum of 5 characters reached' });
@@ -432,11 +432,41 @@ export function createApiRouter() {
         hairColor: hairColor || null, eyeColor: eyeColor || null,
         height: height || null, occupation: occupation || null,
         address: address || null, phoneNumber: phoneNumber || null,
-        emergencyContact: emergencyContact || null, status: 'clean',
+        emergencyContact: emergencyContact || null,
+        socialSecurityNumber: socialSecurityNumber || null,
+        driversLicense: driversLicense || null,
+        driverLicenseStatus: ['valid', 'invalid'].includes(driverLicenseStatus) ? driverLicenseStatus : 'valid',
+        status: 'clean',
       });
       await char.save();
       res.json(char);
     } catch { res.status(500).json({ error: 'Failed to create character' }); }
+  });
+
+  router.post('/cad/:charId/gun', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const char = await CADCharacter.findOne({ _id: req.params.charId, guildId, userId: req.portalUser.userId });
+      if (!char) return res.status(404).json({ error: 'Character not found' });
+      const { name, serialNumber } = req.body;
+      if (!name?.trim()) return res.status(400).json({ error: 'Firearm name required' });
+      char.guns.push({ name: name.trim(), serialNumber: serialNumber?.trim() || '', addedAt: new Date() });
+      await char.save();
+      res.json(char);
+    } catch { res.status(500).json({ error: 'Failed to register firearm' }); }
+  });
+
+  router.delete('/cad/:charId/gun/:index', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const char = await CADCharacter.findOne({ _id: req.params.charId, guildId, userId: req.portalUser.userId });
+      if (!char) return res.status(404).json({ error: 'Character not found' });
+      const idx = parseInt(req.params.index);
+      if (isNaN(idx) || idx < 0 || idx >= char.guns.length) return res.status(400).json({ error: 'Invalid firearm index' });
+      char.guns.splice(idx, 1);
+      await char.save();
+      res.json(char);
+    } catch { res.status(500).json({ error: 'Failed to remove firearm' }); }
   });
 
   router.post('/cad/:charId/vehicle', portalAuth, async (req, res) => {
@@ -869,6 +899,75 @@ export function createApiRouter() {
     } catch (err) {
       console.error('[API POST /leo/panic]', err.message);
       res.status(500).json({ error: 'Failed to trigger panic' });
+    }
+  });
+
+  router.post('/leo/bolo', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { characterId, reason, description } = req.body;
+      if (!characterId || !reason?.trim()) return res.status(400).json({ error: 'characterId and reason are required' });
+      const char = await CADCharacter.findOne({ _id: characterId, guildId });
+      if (!char) return res.status(404).json({ error: 'Character not found' });
+      const boloId = `BOLO-${Date.now().toString(36).toUpperCase()}`;
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+      const bolo = new BOLO({
+        guildId, boloId,
+        characterId: char._id,
+        characterName: char.characterName,
+        reason: reason.trim(),
+        description: description?.trim() || '',
+        issuedBy: displayName,
+        active: true,
+      });
+      await bolo.save();
+      res.json({ success: true, bolo });
+    } catch (err) {
+      console.error('[API POST /leo/bolo]', err.message);
+      res.status(500).json({ error: 'Failed to create BOLO' });
+    }
+  });
+
+  router.delete('/leo/bolo/:boloId', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const bolo = await BOLO.findOneAndUpdate(
+        { guildId, boloId: req.params.boloId },
+        { active: false },
+        { new: true }
+      );
+      if (!bolo) return res.status(404).json({ error: 'BOLO not found' });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API DELETE /leo/bolo]', err.message);
+      res.status(500).json({ error: 'Failed to revoke BOLO' });
+    }
+  });
+
+  router.post('/leo/ticket', portalAuth, requireLeo, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      const { characterId, violation, description, fine } = req.body;
+      if (!characterId || !violation?.trim()) return res.status(400).json({ error: 'characterId and violation are required' });
+      const char = await CADCharacter.findOne({ _id: characterId, guildId });
+      if (!char) return res.status(404).json({ error: 'Character not found' });
+      const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
+      const displayName = req.portalUser.displayName || req.portalUser.username;
+      const ticket = new TrafficTicket({
+        guildId, ticketId,
+        characterId: char._id,
+        characterName: char.characterName,
+        issuedBy: displayName,
+        violation: violation.trim(),
+        description: description?.trim() || '',
+        fine: fine ? Math.max(0, parseInt(fine) || 0) : 0,
+        paid: false,
+      });
+      await ticket.save();
+      res.json({ success: true, ticket });
+    } catch (err) {
+      console.error('[API POST /leo/ticket]', err.message);
+      res.status(500).json({ error: 'Failed to issue ticket' });
     }
   });
 
