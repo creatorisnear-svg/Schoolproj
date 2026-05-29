@@ -200,7 +200,7 @@
         <div class="page-header"><h2>Economy</h2></div>
         <div id="economy-balance" class="balance-grid"></div>
 
-        <div class="eco-actions-row">
+        <div class="eco-actions-row" id="eco-actions-row">
           <div class="eco-action-block">
             <input id="deposit-input" class="form-input" type="text" placeholder="Amount or all">
             <button class="btn btn-secondary btn-sm" onclick="doDeposit()">Deposit</button>
@@ -388,11 +388,11 @@
         <!-- Search Records Pane -->
         <div id="leo-innerpane-records" class="leo-innerpane hidden">
           <div class="leo-search-controls">
-            <select id="leo-search-type">
-              <option value="plate">Plate</option>
-              <option value="character">Name</option>
-            </select>
-            <input id="leo-search-input" type="text" placeholder="Enter query...">
+            <div class="search-type-toggle">
+              <button class="search-type-btn active" id="srch-btn-plate" onclick="setSearchType('plate')">Plate</button>
+              <button class="search-type-btn" id="srch-btn-character" onclick="setSearchType('character')">Person</button>
+            </div>
+            <input id="leo-search-input" type="text" placeholder="Search by plate..." style="flex:1">
             <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
           </div>
           <div id="leo-results" class="leo-results"></div>
@@ -470,17 +470,23 @@
         <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
         <span class="bnav-label">Home</span>
       </button>
-      <button class="bnav-item" data-tab="cad">
+      <!-- Civilian tabs -->
+      <button class="bnav-item bnav-civ" data-tab="cad">
         <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
         <span class="bnav-label">CAD</span>
       </button>
-      <button class="bnav-item bnav-dispatch" data-tab="dispatch">
+      <button class="bnav-item bnav-dispatch bnav-civ" data-tab="dispatch">
         <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></span>
         <span class="bnav-label">911</span>
       </button>
-      <button class="bnav-item" data-tab="economy">
+      <button class="bnav-item bnav-civ" data-tab="economy">
         <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
         <span class="bnav-label">Economy</span>
+      </button>
+      <!-- LEO tab (shown only in LEO mode) -->
+      <button class="bnav-item bnav-leo hidden" data-tab="leo">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="bnav-label">LEO</span>
       </button>
       <button class="bnav-item" id="bnav-more" onclick="toggleMoreDrawer()">
         <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>

@@ -142,16 +142,24 @@ function applyModeNav(mode) {
     });
   });
 
+  document.querySelectorAll('.bnav-civ').forEach(el => {
+    if (isCiv) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+
+  const leoBnav = document.querySelector('.bnav-leo');
   const leoSection = document.getElementById('nav-leo-section');
   const moreLeo = document.getElementById('more-leo');
   if (isLeo && me?.isLeo) {
     document.getElementById('nav-leo')?.classList.remove('hidden');
     leoSection?.classList.remove('hidden');
     moreLeo?.classList.remove('hidden');
+    leoBnav?.classList.remove('hidden');
   } else {
     document.getElementById('nav-leo')?.classList.add('hidden');
     leoSection?.classList.add('hidden');
     moreLeo?.classList.add('hidden');
+    leoBnav?.classList.add('hidden');
   }
 
   const modeLabel = document.getElementById('topbar-mode-label');
@@ -592,11 +600,26 @@ async function payFine(ticketId, amount, cur) {
    ECONOMY
 ══════════════════════════════════════════════════════ */
 async function loadEconomy() {
+  const isLeoMode = localStorage.getItem('portalMode') === 'leo';
+
+  const ecoActionsRow = document.getElementById('eco-actions-row') || document.querySelector('.eco-actions-row');
+  const ecoMsgEl = document.getElementById('eco-action-msg');
+  const economyGrid = document.querySelector('#tab-economy .economy-grid');
+
+  if (isLeoMode) {
+    if (ecoActionsRow) ecoActionsRow.style.display = 'none';
+    if (ecoMsgEl) ecoMsgEl.style.display = 'none';
+    if (economyGrid) economyGrid.style.display = 'none';
+  } else {
+    if (ecoActionsRow) ecoActionsRow.style.display = '';
+    if (economyGrid) economyGrid.style.display = '';
+  }
+
   try {
     const [ecoRes, shopRes, lbRes] = await Promise.all([
       api('/economy'),
-      api('/economy/shop'),
-      api('/economy/leaderboard'),
+      isLeoMode ? Promise.resolve([]) : api('/economy/shop'),
+      isLeoMode ? Promise.resolve({ entries: [] }) : api('/economy/leaderboard'),
     ]);
 
     const cur = ecoRes.currency || '$';
@@ -613,6 +636,8 @@ async function loadEconomy() {
         <div class="balance-sub">${c.sub}</div>
       </div>
     `).join('');
+
+    if (isLeoMode) return;
 
     shopItems = shopRes || [];
     renderShop(shopItems, cur);
@@ -1337,8 +1362,18 @@ async function dismissCall(callId) {
   } catch (err) { toast(err.message || 'Failed to dismiss call', 'error'); }
 }
 
+let leoSearchType = 'plate';
+
+function setSearchType(type) {
+  leoSearchType = type;
+  document.querySelectorAll('.search-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`srch-btn-${type}`)?.classList.add('active');
+  const inp = document.getElementById('leo-search-input');
+  if (inp) inp.placeholder = type === 'plate' ? 'Search by plate...' : 'Search by name...';
+}
+
 async function leoSearch() {
-  const type = document.getElementById('leo-search-type').value;
+  const type = leoSearchType;
   const query = document.getElementById('leo-search-input').value.trim();
   const results = document.getElementById('leo-results');
   if (!query) { results.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Enter a search query.</p>'; return; }
@@ -1350,6 +1385,30 @@ async function leoSearch() {
     results.innerHTML = chars.map(c => {
       const bolos = c.activeBolos || [];
       const tickets = c.trafficTickets || [];
+
+      const matchedVehicle = type === 'plate'
+        ? (c.vehicles || []).find(v => v.licensePlate?.toLowerCase().includes(query.toLowerCase()))
+        : null;
+
+      const vehicleSection = (() => {
+        if (type === 'plate' && matchedVehicle) {
+          const mv = matchedVehicle;
+          return `<div style="margin:6px 0 4px;padding:8px 10px;background:var(--elevated);border:1px solid var(--border);border-radius:6px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-sub);margin-bottom:4px">Matched Vehicle</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${mv.color || ''} ${mv.make} ${mv.model}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+              Plate: <strong style="color:var(--accent)">${mv.licensePlate || 'N/A'}</strong>
+              ${mv.year ? ` · ${mv.year}` : ''}
+              ${mv.stolen ? ' · <span style="color:var(--danger);font-weight:700">STOLEN</span>' : ''}
+            </div>
+          </div>`;
+        }
+        if (c.vehicles?.length) {
+          return `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>`;
+        }
+        return '';
+      })();
+
       const boloWarning = bolos.length > 0
         ? `<div style="margin:6px 0 4px;padding:6px 10px;background:var(--danger-dim);border:1px solid rgba(242,87,87,0.3);border-radius:6px;font-size:11px;font-weight:700;color:var(--danger)">
             BOLO ACTIVE (${bolos.length}) — ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
@@ -1375,10 +1434,10 @@ async function leoSearch() {
           ${bolos.length > 0 ? '<span style="font-size:10px;font-weight:800;color:var(--danger);background:var(--danger-dim);border:1px solid rgba(242,87,87,0.25);padding:1px 7px;border-radius:10px">BOLO</span>' : ''}
         </div>
         ${boloWarning}
+        ${vehicleSection}
         <div class="leo-result-row">Age: <span>${c.age || 'N/A'}</span> · Gender: <span>${c.gender || 'N/A'}</span></div>
         <div class="leo-result-row">Address: <span>${c.address || 'N/A'}</span></div>
         <div class="leo-result-row">License: <span>${c.driversLicense || 'N/A'}</span> · Status: <span>${c.driverLicenseStatus || 'Valid'}</span></div>
-        ${c.vehicles?.length ? `<div class="leo-result-row">Vehicles: <span>${c.vehicles.map(v => `${v.color || ''} ${v.make} ${v.model} (${v.licensePlate || 'no plate'})`).join(', ')}</span></div>` : ''}
         ${c.status === 'wanted' && c.wantedReason ? `<div class="leo-result-row" style="color:var(--danger)">Wanted: <span style="color:var(--danger)">${c.wantedReason}</span></div>` : ''}
         ${ticketRows}
       </div>`;
