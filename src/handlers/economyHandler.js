@@ -93,7 +93,7 @@ function handTotal(hand) {
 function handStr(hand) { return hand.map(c => `\`${c.r}${c.s}\``).join(' '); }
 
 // ── Slots engine ──────────────────────────────────────────────────────────────
-const SLOT_SYMS = ['🍒','🍋','🍊','🍇','⭐','💎'];
+const SLOT_SYMS = ['CHR','LMN','ORG','GRP','STR','DMD'];
 const SLOT_W    = [30, 25, 20, 15, 7, 3];
 function spinSlot() {
   const r = Math.random() * 100; let acc = 0;
@@ -102,7 +102,7 @@ function spinSlot() {
 }
 function slotMult(reels) {
   const [a,b,c] = reels;
-  if (a===b && b===c) { if (a==='💎') return 10; if (a==='⭐') return 5; return 3; }
+  if (a===b && b===c) { if (a==='DMD') return 10; if (a==='STR') return 5; return 3; }
   if (a===b || b===c || a===c) return 1.5;
   return 0;
 }

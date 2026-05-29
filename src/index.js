@@ -268,7 +268,7 @@ app.get('/callback', async (req, res) => {
         h1 { color: #43b581; }
       </style>
       <div class="container">
-        <h1>✅ Authorization Successful!</h1>
+        <h1>Authorization Successful</h1>
         <p>RolePlayManager has securely authorized your account.</p>
         <p>You can close this window now.</p>
       </div>
@@ -576,19 +576,19 @@ for (const file of commandFiles) {
     const command = await import(`file://${join(__dirname, 'commands', file)}`);
     if (command.data && command.execute) {
       client.commands.set(command.data.name, command);
-      console.log(`✅ Loaded command: ${command.data.name}`);
+      console.log(`[OK] Loaded command: ${command.data.name}`);
     }
   } catch (error) {
-    console.error(`❌ Failed to load command ${file}:`, error.message);
+    console.error(`[FAIL] Failed to load command ${file}:`, error.message);
   }
 }
 
 client.once('clientReady', async () => {
-  console.log('Instance is healthy. All health checks are passing.');
-  console.log(`✅ Connected to MongoDB Atlas successfully`);
-  console.log(`✅ Bot logged in as ${client.user.tag}`);
-  console.log('🧹 Clearing old command cache...');
-  console.log(`🤖 Bot ID: ${client.user.id}`);
+  console.log('[READY] Instance is healthy. All health checks are passing.');
+  console.log('[DB] Connected to MongoDB Atlas');
+  console.log(`[BOT] Logged in as ${client.user.tag}`);
+  console.log('[SYNC] Clearing old command cache...');
+  console.log(`[BOT] Bot ID: ${client.user.id}`);
   
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
@@ -596,34 +596,34 @@ client.once('clientReady', async () => {
   try {
     const existingGlobal = await rest.get(Routes.applicationCommands(client.user.id));
     if (existingGlobal.length > 0) {
-      console.log(`🗑️  Found ${existingGlobal.length} global command(s) to clear: ${existingGlobal.map(c => c.name).join(', ')}`);
+      console.log(`[CLEAR] Found ${existingGlobal.length} global command(s) to clear: ${existingGlobal.map(c => c.name).join(', ')}`);
       await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-      console.log('✨ Global commands cleared successfully');
+      console.log('[DONE] Global commands cleared');
     } else {
-      console.log('✅ No global commands found — nothing to clear');
+      console.log('[OK] No global commands found — nothing to clear');
     }
   } catch (e) {
-    console.error('⚠️ Could not clear global commands:', e.message);
+    console.error('[WARN] Could not clear global commands:', e.message);
   }
 
-  console.log(`📋 Registering clean commands to ${client.guilds.cache.size} server(s)...`);
+  console.log(`[SYNC] Registering commands to ${client.guilds.cache.size} server(s)...`);
   console.log('');
-  console.log('📊 COMMAND SYNC DETAILS:');
-  console.log(`🏢 Total servers: ${client.guilds.cache.size}`);
-  console.log(`📝 Commands to register: ${commandData.length}`);
+  console.log('[STATS] COMMAND SYNC DETAILS:');
+  console.log(`  Total servers: ${client.guilds.cache.size}`);
+  console.log(`  Commands to register: ${commandData.length}`);
   console.log('');
 
   let count = 0;
   for (const [guildId, guild] of client.guilds.cache) {
     count++;
-    console.log(`[${count}/${client.guilds.cache.size}] 🔄 Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
+    console.log(`[${count}/${client.guilds.cache.size}] [PROC] Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
     try {
       const startTime = Date.now();
       await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandData });
       const endTime = Date.now();
-      console.log(`  ✅ SUCCESS: ${commandData.length} commands registered in ${endTime - startTime}ms`);
+      console.log(`  [OK] ${commandData.length} commands registered in ${endTime - startTime}ms`);
     } catch (error) {
-      console.log(`  ❌ FAILED: ${guild.name} (${guildId}) - ${error.message}`);
+      console.log(`  [FAIL] ${guild.name} (${guildId}) - ${error.message}`);
     }
   }
 
@@ -640,10 +640,10 @@ client.once('clientReady', async () => {
 
   console.log('');
   console.log('============================================================');
-  console.log('✨ Command sync process completed');
-  console.log('📊 SYNC SUMMARY:');
-  console.log(`   ✅ Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
-  console.log('   ❌ Failed: 0/14'); // Static as per user's request for mock look
+  console.log('[DONE] Command sync completed');
+  console.log('[STATS] SYNC SUMMARY:');
+  console.log(`  Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
+  console.log('  Failed: 0/14'); // Static as per user's request for mock look
   console.log('============================================================');
   console.log('');
 
@@ -666,9 +666,9 @@ client.once('clientReady', async () => {
         added++;
       }
     }
-    console.log(`🔑 Premium keys: ${envKeys.length} loaded from env (${added} new)`);
+    console.log(`[KEYS] Premium keys: ${envKeys.length} loaded from env (${added} new)`);
   } else {
-    console.log('🔑 No premium keys found in environment variables');
+    console.log('[KEYS] No premium keys found in environment variables');
   }
 
   setInterval(async () => {
@@ -707,7 +707,7 @@ client.once('clientReady', async () => {
       console.error('[911 Cleanup] Error:', err.message);
     }
   }, 60 * 1000);
-  console.log('🚨 Emergency call auto-delete started (10-minute timeout for all calls)');
+  console.log('[ALERT] Emergency call auto-delete started (10-minute timeout for all calls)');
 
   setInterval(async () => {
     try {
@@ -720,7 +720,7 @@ client.once('clientReady', async () => {
       console.error('[BOLO Cleanup] Error:', err.message);
     }
   }, 5 * 60 * 1000);
-  console.log('🚨 BOLO auto-delete started (1-hour expiration for all BOLOs)');
+  console.log('[ALERT] BOLO auto-delete started (1-hour expiration for all BOLOs)');
 
   console.log('⏰ Priority tracker countdown updater started');
   console.log('⏰ Priority auto-deactivate started (10-minute timeout for active priorities)');
@@ -753,7 +753,7 @@ client.once('clientReady', async () => {
     }
     if (dispatchCount > 0) {
       const keyCount = [process.env.GROQ_API_KEY, ...Array.from({length: 10}, (_, i) => process.env[`GROQ_API_KEY_${i+1}`])].filter(Boolean).length;
-      console.log(`🎙️ AI Dispatch initialized for ${dispatchCount} guild(s) — ${keyCount} Groq key(s) loaded`);
+      console.log(`[DISPATCH] AI Dispatch initialized for ${dispatchCount} guild(s) — ${keyCount} Groq key(s) loaded`);
     }
   } catch (err) {
     console.error('[Dispatch] Startup initialization error:', err.message);

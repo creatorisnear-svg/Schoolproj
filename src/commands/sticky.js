@@ -100,12 +100,12 @@ export async function execute(interaction) {
       const formattedMessage = `__**Stickied Message:**__\n\n${messageContent}`;
 
       // Post the sticky message
-      console.log(`📌 Posting sticky message to ${channel.name}...`);
+      console.log(`[pin] Posting sticky message to ${channel.name}...`);
       const stickyMessage = await channel.send(formattedMessage);
-      console.log(`📌 Sticky message posted with ID: ${stickyMessage.id}`);
+      console.log(`[pin] Sticky message posted with ID: ${stickyMessage.id}`);
 
       // Save to database
-      console.log(`📌 Saving sticky to database for guild ${guildId}, channel ${channel.id}...`);
+      console.log(`[pin] Saving sticky to database for guild ${guildId}, channel ${channel.id}...`);
       const savedSticky = await Sticky.create({
         guildId,
         channelId: channel.id,
@@ -114,7 +114,7 @@ export async function execute(interaction) {
         createdBy: userId,
         messageCount: 0,
       });
-      console.log(`📌 Sticky saved to database with ID: ${savedSticky._id}`);
+      console.log(`[pin] Sticky saved to database with ID: ${savedSticky._id}`);
 
       return interaction.reply({
         embeds: [successEmbed(`Sticky Message Created`, `Sticky message created in ${channel}`)],
@@ -138,7 +138,7 @@ export async function execute(interaction) {
         const msg = await channel.messages.fetch(existingSticky.messageId).catch(() => null);
         if (msg) {
           await msg.delete();
-          console.log(`📌 Sticky message deleted from ${channel.name}`);
+          console.log(`[pin] Sticky message deleted from ${channel.name}`);
         }
       } catch (error) {
         console.error('Error deleting sticky message:', error);
@@ -146,7 +146,7 @@ export async function execute(interaction) {
 
       // Delete from database
       await Sticky.deleteOne({ _id: existingSticky._id });
-      console.log(`📌 Sticky removed from database for channel ${channel.id}`);
+      console.log(`[pin] Sticky removed from database for channel ${channel.id}`);
 
       return interaction.reply({
         embeds: [successEmbed(`Sticky Message Deleted`, `Sticky message removed from ${channel}`)],

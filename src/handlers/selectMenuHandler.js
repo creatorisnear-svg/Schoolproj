@@ -2104,7 +2104,7 @@ async function handleReactionRoleMainMenu(interaction) {
             .setCustomId('emoji_input')
             .setLabel('Emoji')
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('e.g., 🎮')
+            .setPlaceholder('e.g., /roleplaying')
             .setRequired(true)
         )
       );

@@ -633,10 +633,10 @@ function newDeck() { return [...SUITS.flatMap(s => RANKS.map(r => ({ r, s })))].
 function cardValue(c) { if (['J','Q','K'].includes(c.r)) return 10; if (c.r === 'A') return 11; return parseInt(c.r); }
 function handTotal(hand) { let t = hand.reduce((s,c) => s + cardValue(c), 0); let aces = hand.filter(c => c.r === 'A').length; while (t > 21 && aces-- > 0) t -= 10; return t; }
 function handStr(hand) { return hand.map(c => `\`${c.r}${c.s}\``).join(' '); }
-const SLOT_SYMS = ['🍒','🍋','🍊','🍇','⭐','💎'];
+const SLOT_SYMS = ['CHR','LMN','ORG','GRP','STR','DMD'];
 const SLOT_W    = [30, 25, 20, 15, 7, 3];
 function spinSlot() { const r = Math.random() * 100; let acc = 0; for (let i = 0; i < SLOT_SYMS.length; i++) { acc += SLOT_W[i]; if (r < acc) return SLOT_SYMS[i]; } return SLOT_SYMS[0]; }
-function slotMult(reels) { const [a,b,c] = reels; if (a===b && b===c) { if (a==='💎') return 10; if (a==='⭐') return 5; return 3; } if (a===b || b===c || a===c) return 1.5; return 0; }
+function slotMult(reels) { const [a,b,c] = reels; if (a===b && b===c) { if (a==='DMD') return 10; if (a==='STR') return 5; return 3; } if (a===b || b===c || a===c) return 1.5; return 0; }
 
 async function checkGamblingEligible(interaction, config, bet) {
   const sym = config.currencySymbol;

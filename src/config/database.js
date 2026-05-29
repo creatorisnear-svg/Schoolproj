@@ -10,18 +10,18 @@ export async function connectDatabase() {
       throw new Error('Invalid MONGODB_URI. Please ensure it starts with mongodb:// or mongodb+srv://');
     }
     await mongoose.connect(uri);
-    console.log('✅ Connected to MongoDB Atlas successfully');
+    console.log('[DB] Connected to MongoDB Atlas successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
+    console.error('[DB ERROR] MongoDB connection error:', error.message);
     // Don't exit process here, allow bot to start without DB for limited features
     // Or at least log clearly what's wrong.
   }
 }
 
 mongoose.connection.on('disconnected', () => {
-  console.log('📴 MongoDB disconnected');
+  console.log('[DB] MongoDB disconnected');
 });
 
 mongoose.connection.on('error', (error) => {
-  console.error('❌ MongoDB error:', error);
+  console.error('[DB ERROR] MongoDB error:', error);
 });

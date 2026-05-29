@@ -1,33 +1,34 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0a0a0c;
-  --surface: #111114;
-  --card: #18181d;
-  --elevated: #222228;
-  --border: #28282f;
-  --border-light: #38383f;
-  --text: #ededf2;
-  --text-muted: #7f7f96;
-  --text-sub: #454558;
-  --accent: #4c78f5;
-  --accent-dim: rgba(76,120,245,0.12);
-  --accent-hover: #3a66e0;
-  --success: #36c97a;
-  --success-dim: rgba(54,201,122,0.10);
-  --danger: #f25757;
-  --danger-dim: rgba(242,87,87,0.10);
-  --warning: #f0a020;
-  --warning-dim: rgba(240,160,32,0.10);
-  --purple: #9d7cfa;
-  --purple-dim: rgba(157,124,250,0.10);
-  --sidebar-w: 240px;
-  --bottom-nav-h: 62px;
-  --top-bar-h: 56px;
-  --radius: 10px;
-  --radius-sm: 7px;
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.35);
-  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+  --bg: #08080a;
+  --surface: #0e0e11;
+  --card: #15151a;
+  --elevated: #1e1e24;
+  --border: #242429;
+  --border-light: #32323a;
+  --text: #e8e8f0;
+  --text-muted: #707088;
+  --text-sub: #40404e;
+  --accent: #4870ef;
+  --accent-dim: rgba(72,112,239,0.11);
+  --accent-hover: #3660d8;
+  --success: #2fc672;
+  --success-dim: rgba(47,198,114,0.10);
+  --danger: #e84f4f;
+  --danger-dim: rgba(232,79,79,0.10);
+  --warning: #e89a1a;
+  --warning-dim: rgba(232,154,26,0.10);
+  --purple: #9170f0;
+  --purple-dim: rgba(145,112,240,0.10);
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, 'Cascadia Code', monospace;
+  --sidebar-w: 236px;
+  --bottom-nav-h: 60px;
+  --top-bar-h: 54px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.4);
+  --shadow: 0 4px 24px rgba(0,0,0,0.55);
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -261,7 +262,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   text-decoration: none;
@@ -271,9 +272,11 @@ html, body {
   transition: background 0.12s, color 0.12s;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
+  border-left: 2px solid transparent;
+  margin-left: 2px;
 }
-.nav-item:hover { background: var(--card); color: var(--text); }
-.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-item:hover { background: var(--card); color: var(--text); border-left-color: var(--border-light); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
 .nav-item.active .nav-icon svg { stroke: var(--accent); }
 
 .nav-icon {
@@ -430,10 +433,11 @@ html, body {
 .stat-card::after {
   content: '';
   position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
-  opacity: 0.3;
+  top: 0; left: 0; bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.45;
+  border-radius: 0 0 0 var(--radius);
 }
 
 .stat-label { font-size: 10px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
@@ -633,8 +637,8 @@ html, body {
   margin-bottom: 16px;
 }
 
-.detail-item .detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sub); margin-bottom: 2px; font-weight: 600; }
-.detail-item .detail-value { font-size: 13px; color: var(--text); }
+.detail-item .detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sub); margin-bottom: 3px; font-weight: 600; }
+.detail-item .detail-value { font-size: 13px; color: var(--text); font-family: var(--font-mono); letter-spacing: -0.3px; }
 
 .char-section-header {
   display: flex;
@@ -665,7 +669,7 @@ html, body {
 }
 .vehicle-item-left { min-width: 0; }
 .vehicle-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vehicle-item-plate { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.vehicle-item-plate { font-size: 11px; color: var(--text-muted); margin-top: 1px; font-family: var(--font-mono); letter-spacing: 0.04em; }
 
 /* ══════════════════════════════════════════════════════
    ECONOMY

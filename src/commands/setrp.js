@@ -164,14 +164,14 @@ function cleanupOldEvents(calendar) {
 
 async function updateCalendarMessage(interaction, calendar) {
   try {
-    console.log(`📌 updateCalendarMessage called for guild ${interaction.guildId}`);
+    console.log(`[pin] updateCalendarMessage called for guild ${interaction.guildId}`);
     const channel = await interaction.guild.channels.fetch(calendar.channelId);
     if (!channel) {
       console.error('Channel not found:', calendar.channelId);
       return;
     }
 
-    console.log(`📍 Channel found: ${channel.name}`);
+    console.log(`[loc] Channel found: ${channel.name}`);
 
     // Clean up old events before displaying
     cleanupOldEvents(calendar);
@@ -179,13 +179,13 @@ async function updateCalendarMessage(interaction, calendar) {
     console.log(`Events after cleanup: ${calendar.events.length}`);
 
     const embed = buildCalendarEmbed(calendar);
-    console.log(`🎨 Embed built successfully`);
+    console.log(`[color] Embed built successfully`);
 
     if (calendar.messageId) {
       console.log(`Fetching existing message: ${calendar.messageId}`);
       try {
         const message = await channel.messages.fetch(calendar.messageId);
-        console.log(`✏️ Editing existing message...`);
+        console.log(`[edit]️ Editing existing message...`);
         await message.edit({ embeds: [embed] });
         console.log(`Message edited successfully`);
       } catch (err) {
@@ -193,10 +193,10 @@ async function updateCalendarMessage(interaction, calendar) {
         const message = await channel.send({ embeds: [embed] });
         calendar.messageId = message.id;
         await calendar.save();
-        console.log(`📨 New message sent with ID: ${message.id}`);
+        console.log(`[mail] New message sent with ID: ${message.id}`);
       }
     } else {
-      console.log(`📨 No messageId found, sending new message...`);
+      console.log(`[mail] No messageId found, sending new message...`);
       const message = await channel.send({ embeds: [embed] });
       calendar.messageId = message.id;
       await calendar.save();
