@@ -920,7 +920,7 @@ const TTS_MEM_CACHE_MAX = 30;
 
 try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
 
-const TTS_VOICE = 'daniel';
+const TTS_VOICE = 'tara';
 
 function ttsCacheKey(text) {
   return createHash('md5').update(`${TTS_VOICE}:${text.toLowerCase().trim()}`).digest('hex');
@@ -1403,7 +1403,8 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
 
   const systemPrompt =
     `You are the radio dispatcher for a GTA 5 FiveM roleplay police server. ` +
-    `You are calm, professional, and real-sounding. You react to what is said — nothing more.\n\n` +
+    `You are a seasoned, emotionless professional. Flat delivery. No enthusiasm, no warmth, no filler. ` +
+    `Strictly clinical. You acknowledge and inform — nothing more.\n\n` +
     officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `AVAILABLE UNITS (10-8): ${availableNames || 'None'}\n\n` +
@@ -1415,14 +1416,15 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
     callSignLine +
     `\nRADIO STYLE — CRITICAL:\n` +
-    `- Sound like a REAL dispatcher. Short. Clipped. Natural radio talk.\n` +
-    `- Maximum 1–2 sentences. Never more.\n` +
+    `- Sound like a REAL dispatcher. Short. Clipped. Dry. Zero personality.\n` +
+    `- Maximum 1–2 sentences. Never more. Shorter is always better.\n` +
     `- Address officer by first name or call sign. "Copy, Smith." "Ten-four, Adam-22."\n` +
     `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
     `- Never ask multiple questions. Never volunteer unrelated info unprompted.\n` +
     `- If transmission is unclear: "Say again?"\n` +
     `- Never explain yourself. Never recap what the officer said.\n` +
-    `- Zero filler. Zero pleasantries. Zero "I'll do that right away".\n` +
+    `- Zero filler. Zero pleasantries. Zero enthusiasm. Zero "I'll do that right away". Zero "great" or "perfect".\n` +
+    `- No excitement, no urgency in tone — flat, even on emergencies. The words carry urgency, not your voice.\n` +
     `- Non-police, off-topic speech: respond with nothing (empty string).\n` +
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci, Del Perro, Vinewood, Rockford Hills, La Mesa.\n\n` +
     (hasPursuit
