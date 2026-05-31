@@ -1,5 +1,7 @@
 import Sticky from '../models/Sticky.js';
 
+const STICKY_THRESHOLD = 5;
+
 export async function handleStickyMessages(message) {
   if (!message.guild) return;
 
@@ -9,9 +11,11 @@ export async function handleStickyMessages(message) {
 
     sticky.messageCount += 1;
 
-    if (sticky.messageCount >= 1) {
+    if (sticky.messageCount >= STICKY_THRESHOLD) {
       const oldMessage = await message.channel.messages.fetch(sticky.messageId).catch(() => null);
-      if (oldMessage) await oldMessage.delete().catch(() => {});
+      if (oldMessage && oldMessage.author.id === message.client.user.id) {
+        await oldMessage.delete().catch(() => {});
+      }
 
       const formattedMessage = `__**Stickied Message:**__\n\n${sticky.messageContent}`;
       const newStickyMessage = await message.channel.send(formattedMessage);

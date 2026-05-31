@@ -427,14 +427,20 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   for (const [roleId] of addedRoles) {
     const config = await AutoJoin.findOne({ guildId: newMember.guild.id, roleId, enabled: true });
     if (config) {
-      const userData = await AuthorizedUser.findOne({ userId: newMember.id });
-      if (userData?.accessToken) {
-        await axios.put(
-          `https://discord.com/api/guilds/${config.targetServerId}/members/${newMember.id}`,
-          { access_token: userData.accessToken },
-          { headers: { 'Authorization': `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
-        ).catch(() => {});
-      }
+      // Notify the user via DM so they can choose to join — silent forced joins violate Discord ToS
+      try {
+        const targetGuild = client.guilds.cache.get(config.targetServerId);
+        const targetName = targetGuild?.name || 'a linked server';
+        const embed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Server Invitation')
+          .setDescription(
+            `You have been given a role in **${newMember.guild.name}** that grants access to **${targetName}**.\n\n` +
+            `Use the invite link provided by your server staff to join.`
+          )
+          .setFooter({ text: 'RPM' });
+        await newMember.send({ embeds: [embed] }).catch(() => {});
+      } catch {}
     }
   }
 });

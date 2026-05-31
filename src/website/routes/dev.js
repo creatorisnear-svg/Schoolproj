@@ -241,6 +241,7 @@ export function createDevRouter(client) {
   router.post('/broadcast', devAuth, async (req, res) => {
     const { message } = req.body;
     if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
+    if (message.trim().length > 1500) return res.status(400).json({ error: 'Message too long (max 1500 chars)' });
     if (!client || !client.isReady()) return res.status(503).json({ error: 'Bot is not connected to Discord' });
 
     const guilds = [...client.guilds.cache.values()];
@@ -256,6 +257,8 @@ export function createDevRouter(client) {
         failed++;
         errors.push({ guild: guild.name, reason: err.message });
       }
+      // Rate limit: 1 DM per second to avoid Discord spam detection
+      await new Promise(r => setTimeout(r, 1000));
     }
 
     res.json({ total: guilds.length, sent, failed, errors });
