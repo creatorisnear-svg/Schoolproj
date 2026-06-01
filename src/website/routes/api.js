@@ -686,14 +686,27 @@ export function createApiRouter(client) {
               { label: 'Total Money in Server', value: (ec?.currencySymbol || '$') + totalMoney.toLocaleString() },
             ];
           } catch {}
-          if (ec?.roleIncome?.length > 0) {
-            result.roleIncomeList = ec.roleIncome.map(r => ({
-              roleId: r.roleId,
-              roleName: guild.roles.cache.get(r.roleId)?.name || 'Unknown Role',
-              amount: r.amount,
-              cooldown: r.cooldown,
+          result.roleIncomeList = (ec?.roleIncome || []).map(r => ({
+            roleId: r.roleId,
+            roleName: guild.roles.cache.get(r.roleId)?.name || 'Unknown Role',
+            amount: r.amount,
+            cooldown: r.cooldown,
+          }));
+          result.roles = roles;
+          // Store items
+          try {
+            const { default: EconomyStore } = await import('../../models/EconomyStore.js');
+            const items = await EconomyStore.find({ guildId: guild.id }).lean();
+            result.storeItems = items.map(i => ({
+              id: i._id.toString(),
+              name: i.name,
+              price: i.price,
+              description: i.description || '',
+              usable: !!i.usable,
+              roleId: i.roleId || null,
+              roleName: i.roleId ? (guild.roles.cache.get(i.roleId)?.name || 'Unknown Role') : null,
             }));
-          }
+          } catch { result.storeItems = []; }
           break;
         }
 
@@ -1127,6 +1140,123 @@ export function createApiRouter(client) {
       console.error('[DASHBOARD] Premium activation error:', err.message);
       res.status(500).json({ error: 'Failed to activate premium key' });
     }
+  });
+
+  /* ── Economy Store CRUD ── */
+  router.get('/guild/:id/economy/store', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { default: EconomyStore } = await import('../../models/EconomyStore.js');
+      const items = await EconomyStore.find({ guildId: req.params.id }).lean();
+      res.json(items.map(i => ({
+        id: i._id.toString(), name: i.name, price: i.price,
+        description: i.description || '', usable: !!i.usable,
+        roleId: i.roleId || null,
+        roleName: i.roleId ? (guild.roles.cache.get(i.roleId)?.name || 'Unknown Role') : null,
+      })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/guild/:id/economy/store', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { name, price, description, usable, roleId } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Item name is required' });
+    if (price === undefined || isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Valid price is required' });
+    try {
+      const { default: EconomyStore } = await import('../../models/EconomyStore.js');
+      const item = await EconomyStore.create({
+        guildId: req.params.id, name: name.trim(), price: Number(price),
+        description: description?.trim() || '', usable: !!usable,
+        roleId: roleId || null,
+      });
+      res.json({ success: true, id: item._id.toString() });
+    } catch (err) {
+      if (err.code === 11000) return res.status(400).json({ error: 'An item with that name already exists' });
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/guild/:id/economy/store/:itemId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: EconomyStore } = await import('../../models/EconomyStore.js');
+      await EconomyStore.findOneAndDelete({ _id: req.params.itemId, guildId: req.params.id });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Economy Role Income CRUD ── */
+  router.post('/guild/:id/economy/roleincome', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { roleId, amount, cooldown } = req.body;
+    if (!roleId) return res.status(400).json({ error: 'Role is required' });
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ error: 'Valid amount is required' });
+    const hours = Math.max(1, Math.min(720, parseInt(cooldown) || 24));
+    try {
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const { clearPremiumCache, isPremiumGuild } = await import('../../utils/premiumCheck.js');
+      const isPremium = await isPremiumGuild(req.params.id);
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id }) || new EconomyConfig({ guildId: req.params.id });
+      const limit = isPremium ? Infinity : 2;
+      if ((ec.roleIncome || []).length >= limit) {
+        return res.status(403).json({ error: 'Free servers can have up to 2 role income entries. Upgrade to Premium for unlimited.' });
+      }
+      const existing = (ec.roleIncome || []).findIndex(r => r.roleId === roleId);
+      if (existing >= 0) {
+        ec.roleIncome[existing].amount = Number(amount);
+        ec.roleIncome[existing].cooldown = hours;
+      } else {
+        ec.roleIncome.push({ roleId, amount: Number(amount), cooldown: hours });
+      }
+      ec.markModified('roleIncome');
+      await ec.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/economy/roleincome/:roleId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id });
+      if (ec) {
+        ec.roleIncome = (ec.roleIncome || []).filter(r => r.roleId !== req.params.roleId);
+        ec.markModified('roleIncome');
+        await ec.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
   /* ── Internal panic endpoint — called by the portal when an officer hits the panic button ── */

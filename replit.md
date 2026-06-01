@@ -103,6 +103,26 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 - Portal CSS design language: dark theme, `--surface`, `--card`, `--elevated` backgrounds; `--accent` (#5865f2 Discord blue); `--danger` red; `--warning` amber. Cards have `var(--radius)` (10px) corners, `var(--border)` borders.
 - No emojis in UI (user preference). Minimalist Discord embed color `#2d2d2d`, footer `RPM`.
 - Replit UDP bypass in voiceListener.js is CRITICAL — do not remove. Discord voice UDP inbound is blocked on Replit; the bypass emits a fake 74-byte IP discovery response to unblock `performIPDiscovery()`.
+- Static site (`site/` folder) is deployed on Cloudflare Pages linked to GitHub repo. Build output directory = `site`, no build command. Custom domain `roleplaymanager.xyz` points to Pages via CNAME. Auto-deploys on every GitHub push.
+- Bot (Koyeb) and site (Cloudflare Pages) share the same GitHub repo — one push deploys both.
+
+**Stripe Fixes (June 2026):**
+- `customer_creation: 'always'` was incorrectly included in shared checkout params for both monthly and lifetime plans. Stripe only allows it in `payment` mode. Fixed: moved it to the `lifetime` branch only (`mode: 'payment'`). Monthly subscriptions (`mode: 'subscription'`) auto-create customers and must not include this param.
+- Added `invoice.payment_failed` webhook handler — marks subscription as `past_due` and clears premium cache immediately when a payment attempt fails.
+- Added `clearPremiumCache()` calls to `customer.subscription.deleted` and `customer.subscription.updated` webhook handlers so status changes are reflected instantly (no waiting for 5-min cache to expire).
+- Webhook file: `src/website/routes/checkout.js`. Premium cache util: `src/utils/premiumCheck.js`.
+- `STRIPE_WEBHOOK_SECRET` must be set on Koyeb for key creation via webhook; lifecycle events (cancel/update/payment_failed) work even without it.
+
+**Economy Dashboard (June 2026):**
+- Economy settings page in the dashboard now includes full **Store Management** and **Role Income** CRUD — no longer redirects to Discord commands.
+- New API endpoints in `src/website/routes/api.js`:
+  - `GET /api/guild/:id/economy/store` — list custom store items
+  - `POST /api/guild/:id/economy/store` — add item (name, price, description, usable, roleId)
+  - `DELETE /api/guild/:id/economy/store/:itemId` — remove item
+  - `POST /api/guild/:id/economy/roleincome` — add/update role income entry (roleId, amount, cooldown hours); enforces 2-entry free limit
+  - `DELETE /api/guild/:id/economy/roleincome/:roleId` — remove role income entry
+- Economy GET settings response now includes `storeItems`, `roleIncomeList` (always, even if empty), and `roles` (for role selectors).
+- Dashboard JS (`src/website/public/js/dashboard.js`): `renderEconomySettings` now renders Role Income section with add/remove UI and Store Items section with add/remove UI. New functions: `addRoleIncome`, `deleteRoleIncome`, `addStoreItem`, `deleteStoreItem`.
 
 ## External Dependencies
 - **Discord.js v14:** Primary library for interacting with the Discord API.

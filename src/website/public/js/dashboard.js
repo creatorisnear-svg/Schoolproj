@@ -881,29 +881,131 @@ function renderEconomySettings(data) {
 
   html += '<div id="save-bar-container"></div>';
 
-  if (data.roleIncomeList && data.roleIncomeList.length > 0) {
-    var riLimit = currentGuild.premium ? '∞' : '2';
-    html += '<div class="config-section" style="margin-top:4px;">' +
-      '<div class="config-section-header"><h3>Role Income</h3>' +
-      '<span style="font-size:11px;color:var(--text-dim);">' + data.roleIncomeList.length + ' / ' + riLimit + ' entries</span></div>';
-    data.roleIncomeList.forEach(function(r) {
-      html += '<div class="config-row"><div class="config-left">' +
-        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
-        '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div></div></div>';
-    });
-    if (!currentGuild.premium && data.roleIncomeList.length >= 2) {
-      html += '<div class="config-row" style="background:var(--amber-bg);">' +
-        '<span style="font-size:12px;color:var(--amber);">Free limit reached (2 entries). Upgrade to Premium for unlimited role income.</span></div>';
-    }
-    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/economysetup roleincome</code> in Discord to manage entries.</span></div></div>';
+  /* ── Role Income ── */
+  var riList = data.roleIncomeList || [];
+  var riLimit = currentGuild.premium ? Infinity : 2;
+  var riLimitLabel = currentGuild.premium ? '∞' : '2';
+  var riRoles = data.roles || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Role Income</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + riList.length + ' / ' + riLimitLabel + ' entries</span></div>';
+  if (riList.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No role income entries yet. Add one below.</span></div>';
   } else {
-    html += '<div class="config-section" style="margin-top:4px;">' +
-      '<div class="config-section-header"><h3>Role Income</h3></div>' +
-      '<div class="config-row"><span class="config-sublabel">No role income set up. Use <code>/economysetup roleincome</code> in Discord to give roles periodic income.</span></div>' +
+    riList.forEach(function(r) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleIncome(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  if (!currentGuild.premium && riList.length >= 2) {
+    html += '<div class="config-row" style="background:var(--amber-bg);">' +
+      '<span style="font-size:12px;color:var(--amber);">Free limit reached (2 entries). Upgrade to Premium for unlimited.</span></div>';
+  } else {
+    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+      '<select id="ri-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Select role...</option>' +
+      riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+      '</select>' +
+      '<input id="ri-amount" type="number" class="config-input" placeholder="Amount" min="1" style="width:100px;">' +
+      '<input id="ri-cooldown" type="number" class="config-input" placeholder="Hours" min="1" max="720" style="width:80px;">' +
+      '<button class="btn btn-success btn-sm" onclick="addRoleIncome()">Add</button>' +
+      '</div>' +
+      '<span class="config-sublabel">Role → amount earned → cooldown in hours</span>' +
       '</div>';
   }
+  html += '</div>';
+
+  /* ── Store Management ── */
+  var storeItems = data.storeItems || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Store Items</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + storeItems.length + ' custom item(s)</span></div>';
+  if (storeItems.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No custom store items yet. GTA V built-in vehicles are always available. Add custom items below.</span></div>';
+  } else {
+    storeItems.forEach(function(item) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(item.name) + ' — ' + esc(String(item.price)) + '</span>' +
+        '<div class="config-sublabel">' +
+        (item.description ? esc(item.description) : 'No description') +
+        (item.roleName ? ' | Grants: @' + esc(item.roleName) : '') +
+        (item.usable ? ' | Usable' : '') +
+        '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(\'' + esc(item.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<input id="store-name" type="text" class="config-input" placeholder="Item name" style="flex:2;min-width:120px;">' +
+    '<input id="store-price" type="number" class="config-input" placeholder="Price" min="0" style="width:100px;">' +
+    '</div>' +
+    '<input id="store-desc" type="text" class="config-input" placeholder="Description (optional)" style="width:100%;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+    '<select id="store-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Grant role on buy (optional)</option>' +
+    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
+    '<input id="store-usable" type="checkbox"> Usable item</label>' +
+    '<button class="btn btn-success btn-sm" onclick="addStoreItem()">Add Item</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   return html;
+}
+
+function deleteRoleIncome(roleId) {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); }
+  });
+}
+
+function addRoleIncome() {
+  var roleId = document.getElementById('ri-role')?.value;
+  var amount = document.getElementById('ri-amount')?.value;
+  var cooldown = document.getElementById('ri-cooldown')?.value || '24';
+  if (!roleId) { toast('Select a role'); return; }
+  if (!amount || Number(amount) <= 0) { toast('Enter a valid amount'); return; }
+  api('/guild/' + currentGuild.id + '/economy/roleincome', {
+    method: 'POST',
+    body: JSON.stringify({ roleId: roleId, amount: Number(amount), cooldown: Number(cooldown) })
+  }).then(function(r) {
+    if (r && r.success) { toast('Role income added'); renderSettings('economy'); }
+    else if (r && r.error) { toast(r.error); }
+  });
+}
+
+function deleteStoreItem(itemId) {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+  });
+}
+
+function addStoreItem() {
+  var name = document.getElementById('store-name')?.value?.trim();
+  var price = document.getElementById('store-price')?.value;
+  var desc = document.getElementById('store-desc')?.value?.trim() || '';
+  var roleId = document.getElementById('store-role')?.value || null;
+  var usable = document.getElementById('store-usable')?.checked || false;
+  if (!name) { toast('Item name is required'); return; }
+  if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price'); return; }
+  api('/guild/' + currentGuild.id + '/economy/store', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null })
+  }).then(function(r) {
+    if (r && r.success) { toast('Item added'); renderSettings('economy'); }
+    else if (r && r.error) { toast(r.error); }
+  });
 }
 
 /* ── Generic settings fields ── */
