@@ -53,17 +53,26 @@ async function getStripeClient() {
 
 // Auto-create Stripe products & prices on first use.
 // Stores price IDs in MongoDB so no manual env vars are needed.
+// MongoDB operations are wrapped in try/catch — if DB is unavailable the
+// checkout still works; prices just won't be cached for the next call.
 async function getOrCreatePrices(stripe) {
-  const { default: StripeConfig } = await import('../../models/StripeConfig.js');
-  const cfg = await StripeConfig.findOne({ key: 'global' });
+  let monthlyPriceId = null;
+  let lifetimePriceId = null;
 
-  if (cfg?.monthlyPriceId && cfg?.lifetimePriceId) {
-    return { monthlyPriceId: cfg.monthlyPriceId, lifetimePriceId: cfg.lifetimePriceId };
+  // Try to load cached price IDs from DB first
+  try {
+    const { default: StripeConfig } = await import('../../models/StripeConfig.js');
+    const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
+    if (cfg?.monthlyPriceId && cfg?.lifetimePriceId) {
+      return { monthlyPriceId: cfg.monthlyPriceId, lifetimePriceId: cfg.lifetimePriceId };
+    }
+    monthlyPriceId = cfg?.monthlyPriceId || null;
+    lifetimePriceId = cfg?.lifetimePriceId || null;
+  } catch (dbErr) {
+    console.warn('[Stripe] DB lookup failed, proceeding without cache:', dbErr.message);
   }
 
-  let monthlyPriceId = cfg?.monthlyPriceId || null;
-  let lifetimePriceId = cfg?.lifetimePriceId || null;
-
+  // Create any missing prices via Stripe API
   if (!monthlyPriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium — Monthly',
@@ -95,11 +104,17 @@ async function getOrCreatePrices(stripe) {
     console.log(`[Stripe] Auto-created lifetime price: ${lifetimePriceId}`);
   }
 
-  await StripeConfig.findOneAndUpdate(
-    { key: 'global' },
-    { monthlyPriceId, lifetimePriceId },
-    { upsert: true, new: true }
-  );
+  // Try to cache the IDs for future calls — non-fatal if this fails
+  try {
+    const { default: StripeConfig } = await import('../../models/StripeConfig.js');
+    await StripeConfig.findOneAndUpdate(
+      { key: 'global' },
+      { monthlyPriceId, lifetimePriceId },
+      { upsert: true, new: true }
+    );
+  } catch (dbErr) {
+    console.warn('[Stripe] DB save failed (prices still usable this request):', dbErr.message);
+  }
 
   return { monthlyPriceId, lifetimePriceId };
 }
@@ -195,8 +210,15 @@ export function createCheckoutRouter() {
       res.json({ url: session.url });
 
     } catch (err) {
-      console.error('[Checkout] Create error:', err.message);
-      res.status(500).json({ error: 'Failed to create checkout session. Please try again.' });
+      const detail = err?.raw?.message || err?.message || String(err);
+      console.error('[Checkout] Create error:', detail);
+      // Surface Stripe-specific errors to the user for clarity
+      const stripeMsg = err?.raw?.message;
+      res.status(500).json({
+        error: stripeMsg
+          ? `Stripe error: ${stripeMsg}`
+          : 'Failed to create checkout session. Please try again.',
+      });
     }
   });
 
