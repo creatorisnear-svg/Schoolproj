@@ -281,10 +281,20 @@ export function createApiRouter(client) {
       } catch {}
 
       let premium = false;
+      let premiumDetails = null;
       try {
         const { default: PremiumKey } = await import('../../models/PremiumKey.js');
         const key = await PremiumKey.findOne({ guildId: guild.id });
         premium = !!key;
+        if (key) {
+          premiumDetails = {
+            plan: key.plan || 'manual',
+            subscriptionStatus: key.subscriptionStatus || null,
+            subscriptionCurrentPeriodEnd: key.subscriptionCurrentPeriodEnd || null,
+            hasStripeSubscription: !!key.stripeSubscriptionId,
+            activatedAt: key.activatedAt || null,
+          };
+        }
       } catch (err) {
         console.error('[DASHBOARD] Premium check error:', err.message);
       }
@@ -295,6 +305,7 @@ export function createApiRouter(client) {
         icon: guild.iconURL(),
         memberCount: guild.memberCount,
         premium,
+        premiumDetails,
         config,
       });
     } catch (err) {
@@ -895,6 +906,49 @@ export function createApiRouter(client) {
     } catch (err) {
       console.error(`[DASHBOARD] Settings save error (${mod}):`, err.message);
       res.status(500).json({ error: 'Failed to save settings' });
+    }
+  });
+
+  router.post('/guild/:id/premium/cancel', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+      const premiumKey = await PremiumKey.findOne({ guildId });
+      if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+      if (premiumKey.plan !== 'monthly') return res.status(400).json({ error: 'Only monthly subscriptions can be cancelled. Lifetime keys do not expire.' });
+      if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No subscription found. This key was not purchased through Stripe.' });
+      if (premiumKey.subscriptionStatus === 'canceled' || premiumKey.subscriptionStatus === 'cancelled') {
+        return res.status(400).json({ error: 'This subscription is already cancelled.' });
+      }
+
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) return res.status(503).json({ error: 'Payment processing not configured.' });
+
+      const { default: Stripe } = await import('stripe');
+      const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' });
+
+      await stripe.subscriptions.update(premiumKey.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      premiumKey.subscriptionStatus = 'cancelling';
+      await premiumKey.save();
+
+      res.json({ success: true, periodEnd: premiumKey.subscriptionCurrentPeriodEnd });
+    } catch (err) {
+      console.error('[DASHBOARD] Premium cancel error:', err.message);
+      res.status(500).json({ error: 'Failed to cancel subscription. Please try again.' });
     }
   });
 

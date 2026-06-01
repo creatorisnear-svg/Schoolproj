@@ -224,14 +224,53 @@ function transferPremium() {
 
 function renderPremiumSection(g) {
   if (g.premium) {
+    var d = g.premiumDetails || {};
+    var planLabel = d.plan === 'monthly' ? 'Monthly' : d.plan === 'lifetime' ? 'Lifetime' : 'Manual';
+    var isCancelling = d.subscriptionStatus === 'cancelling';
+    var isCancelled = d.subscriptionStatus === 'canceled' || d.subscriptionStatus === 'cancelled';
+    var statusColor = isCancelling ? 'var(--amber)' : isCancelled ? 'var(--red)' : 'var(--green)';
+    var statusLabel = isCancelling ? 'Cancels at period end' : isCancelled ? 'Cancelled' : 'Active';
+
+    var renewalLine = '';
+    if (d.plan === 'monthly' && d.subscriptionCurrentPeriodEnd) {
+      var endDate = new Date(d.subscriptionCurrentPeriodEnd);
+      var formatted = endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      renewalLine = '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' +
+        (isCancelling ? 'Access ends' : 'Renews') + ' on <strong style="color:var(--text);">' + formatted + '</strong></div>';
+    }
+
+    var cancelBtn = '';
+    if (d.plan === 'monthly' && d.hasStripeSubscription && !isCancelling && !isCancelled) {
+      cancelBtn = '<button id="cancel-sub-btn" class="btn btn-sm" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;" onclick="cancelSubscription()">Cancel Subscription</button>';
+    }
+
     return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
       '<div class="config-section-header"><h3>Premium</h3>' +
       '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>' +
       '</div>' +
-      '<div class="config-row" style="justify-content:space-between;">' +
-      '<div><span class="config-label">Premium is active on this server.</span>' +
-      '<div class="config-sublabel">All premium features are unlocked. Need to move to another server?</div></div>' +
+      '<div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
+      '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
+      '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Plan</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--text);">' + planLabel + '</div>' +
+      '</div>' +
+      '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
+      '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Status</div>' +
+      '<div style="font-size:14px;font-weight:700;color:' + statusColor + ';">' + statusLabel + '</div>' +
+      '</div>' +
+      (d.plan === 'monthly' && d.subscriptionCurrentPeriodEnd ? (
+        '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">' + (isCancelling ? 'Access Ends' : 'Next Renewal') + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text);">' + new Date(d.subscriptionCurrentPeriodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + '</div>' +
+        '</div>'
+      ) : '') +
+      '</div>' +
+      (isCancelling ? '<div style="background:rgba(250,166,26,0.08);border:1px solid rgba(250,166,26,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber);">Subscription is set to cancel. Premium features remain active until the period ends.</div>' : '') +
+      (isCancelled ? '<div style="background:rgba(240,71,71,0.08);border:1px solid rgba(240,71,71,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);">Subscription cancelled. Premium features will stop working. Transfer your key or purchase a new subscription.</div>' : '') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
       '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
+      cancelBtn +
+      '</div>' +
       '</div></div>';
   }
   return '<div class="config-section" id="premium-section" style="margin-top:20px;border-color:rgba(88,101,242,0.4);">' +
@@ -249,6 +288,23 @@ function renderPremiumSection(g) {
     '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
     '<button class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
     '</div></div></div>';
+}
+
+function cancelSubscription() {
+  if (!confirm('Cancel your monthly subscription? You will keep premium access until the end of the current billing period, then it will stop. This cannot be undone.')) return;
+  var btn = document.getElementById('cancel-sub-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
+  api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      if (currentGuild.premiumDetails) {
+        currentGuild.premiumDetails.subscriptionStatus = 'cancelling';
+      }
+      toast('Subscription cancelled. Access continues until the billing period ends.');
+      renderDashboard();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+    }
+  });
 }
 
 function renderDashboard() {
