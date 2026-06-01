@@ -168,6 +168,7 @@ var FEATURES = [
   { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
   { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
+  { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -180,11 +181,14 @@ var SIDEBAR_GROUPS = [
     { id: 'verification', label: 'Verification' },
     { id: 'strikes',      label: 'Strike System' },
     { id: 'antipromo',    label: 'Anti-Promoting' },
+    { id: 'staff',        label: 'Staff Management' },
   ]},
   { title: 'Community', items: [
     { id: 'tickets',     label: 'Ticket Support' },
     { id: 'welcome',     label: 'Welcome System' },
     { id: 'rolerequest', label: 'Role Request' },
+    { id: 'moveme',      label: 'Voice Mover' },
+    { id: 'civjobs',     label: 'Civilian Jobs' },
   ]},
   { title: 'Economy', items: [
     { id: 'economy',     label: 'Economy' },
@@ -297,6 +301,9 @@ function renderDashboard() {
     { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',         featureKey: 'calendarEnabled' },
     { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
     { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
+    { id: 'moveme',       label: 'Voice Mover',        desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
+    { id: 'civjobs',      label: 'Civilian Jobs',      desc: 'Job board, roles, shift hours',  featureKey: null },
+    { id: 'staff',        label: 'Staff Management',   desc: 'Staff roles and users',          featureKey: null },
   ];
 
   html += '<div class="overview-section" style="margin-top:16px;">' +
@@ -622,6 +629,12 @@ function renderSettings(mod) {
       html += renderEconomySettings(data);
     } else if (mod === 'rolerequest') {
       html += renderRoleRequestSettings(data);
+    } else if (mod === 'moveme') {
+      html += renderMovemeSettings(data);
+    } else if (mod === 'civjobs') {
+      html += renderCivJobsSettings(data);
+    } else if (mod === 'staff') {
+      html += renderStaffSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -1334,6 +1347,221 @@ function addStoreItem() {
   }).then(function(r) {
     if (r && r.success) { toast('Item added'); renderSettings('economy'); }
     else if (r && r.error) { toast(r.error); }
+  });
+}
+
+/* ── Voice Mover Settings ── */
+function renderMovemeSettings(data) {
+  var fields = data.fields || [];
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Settings</h3></div>';
+  fields.forEach(function(field) { html += renderOneField(field, 'moveme'); });
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Voice Mover Panel</h3>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendMovemePanel(event)">Send Panel to Discord</button>' +
+    '</div>' +
+    '<div class="config-row"><span class="config-sublabel">Posts a voice channel selector embed to the configured Panel Channel. Members must already be in a voice channel to use it. Run this after setting and saving the channel above.</span></div>' +
+    (data.panelChannelId
+      ? '<div class="config-row"><span style="font-size:12px;color:var(--text-dim);">Current panel channel: <code>' + esc(data.panelChannelId) + '</code>' + (data.panelMessageId ? ' — panel exists' : ' — no panel sent yet') + '</span></div>'
+      : '<div class="config-row"><span style="font-size:12px;color:var(--amber);">Save a Panel Channel above before sending the panel.</span></div>') +
+    '</div>';
+
+  return html;
+}
+
+function sendMovemePanel(e) {
+  if (!currentGuild) return;
+  var btn = e && e.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/moveme/panel/send', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
+    if (r && r.success) toast('Voice Mover panel sent to Discord');
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+/* ── Civilian Jobs Settings ── */
+function renderCivJobsSettings(data) {
+  var fields = data.fields || [];
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Job Board Channel</h3></div>';
+  fields.forEach(function(field) { html += renderOneField(field, 'civjobs'); });
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
+
+  var roles = data.roles || [];
+  var jobs = data.jobs || [];
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Civilian Jobs</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + jobs.length + ' job(s)</span></div>';
+
+  if (jobs.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No jobs configured yet. Add one below.</span></div>';
+  } else {
+    jobs.forEach(function(j) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(j.name) + ' — @' + esc(j.roleName) + '</span>' +
+        '<div class="config-sublabel">' +
+        (j.description ? esc(j.description) + ' | ' : '') +
+        'Shift: ' + esc(String(j.durationHours)) + 'h' +
+        '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCivJob(\'' + esc(j.jobId) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<input id="cj-name" type="text" class="config-input" placeholder="Job name" style="flex:2;min-width:120px;">' +
+    '<select id="cj-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Assign role...</option>' +
+    roles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<input id="cj-hours" type="number" class="config-input" placeholder="Hours" min="0.1" step="0.5" style="width:90px;">' +
+    '</div>' +
+    '<input id="cj-desc" type="text" class="config-input" placeholder="Description (optional)" style="width:100%;">' +
+    '<button class="btn btn-success btn-sm" onclick="addCivJob()">Add Job</button>' +
+    '</div>' +
+    '</div>';
+
+  return html;
+}
+
+function addCivJob() {
+  if (!currentGuild) return;
+  var name = document.getElementById('cj-name')?.value?.trim();
+  var roleId = document.getElementById('cj-role')?.value;
+  var hours = document.getElementById('cj-hours')?.value;
+  var desc = document.getElementById('cj-desc')?.value?.trim() || '';
+  if (!name) { toast('Job name is required', 'error'); return; }
+  if (!roleId) { toast('Select a role', 'error'); return; }
+  if (!hours || Number(hours) <= 0) { toast('Enter a valid shift duration', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/civjobs/job', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, description: desc, roleId: roleId, durationHours: Number(hours) })
+  }).then(function(r) {
+    if (r && r.success) { toast('Job added'); renderSettings('civjobs'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteCivJob(jobId) {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/civjobs/job/' + jobId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); }
+  });
+}
+
+/* ── Staff Management Settings ── */
+function renderStaffSettings(data) {
+  var roles = data.roles || [];
+  var staffRoles = data.staffRoles || [];
+  var staffUsers = data.staffUsers || [];
+
+  var html = '';
+
+  html += '<div class="config-section">' +
+    '<div class="config-section-header"><h3>Staff Roles</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + staffRoles.length + ' role(s)</span></div>';
+
+  if (staffRoles.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No staff roles added. Members with these roles will have staff-level bot permissions.</span></div>';
+  } else {
+    staffRoles.forEach(function(s) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">@' + esc(s.roleName) + '</span>' +
+        '<div class="config-sublabel">' + (s.position === 'manager' ? 'Manager' : 'Staff') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStaffEntry(\'' + esc(s.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="sr-role" class="config-select" style="flex:2;min-width:160px;"><option value="">Select role to add...</option>' +
+    roles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<select id="sr-pos" class="config-select" style="width:130px;">' +
+    '<option value="staff">Staff</option>' +
+    '<option value="manager">Manager</option>' +
+    '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addStaffRole()">Add Role</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Staff can use moderation commands. Managers inherit all staff permissions.</span>' +
+    '</div>' +
+    '</div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Staff Users</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + staffUsers.length + ' user(s)</span></div>';
+
+  if (staffUsers.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No staff users added. Add individual users by their Discord user ID.</span></div>';
+  } else {
+    staffUsers.forEach(function(s) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(s.username) + '</span>' +
+        '<div class="config-sublabel">User ID: ' + esc(s.userId) + ' — ' + (s.position === 'manager' ? 'Manager' : 'Staff') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStaffEntry(\'' + esc(s.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<input id="su-id" type="text" class="config-input" placeholder="Discord user ID" style="flex:2;min-width:160px;">' +
+    '<select id="su-pos" class="config-select" style="width:130px;">' +
+    '<option value="staff">Staff</option>' +
+    '<option value="manager">Manager</option>' +
+    '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addStaffUser()">Add User</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Right-click a Discord user and copy their User ID (Developer Mode must be enabled in Discord settings).</span>' +
+    '</div>' +
+    '</div>';
+
+  return html;
+}
+
+function addStaffRole() {
+  if (!currentGuild) return;
+  var roleId = document.getElementById('sr-role')?.value;
+  var position = document.getElementById('sr-pos')?.value || 'staff';
+  if (!roleId) { toast('Select a role', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/staff/add', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'role', roleId: roleId, position: position })
+  }).then(function(r) {
+    if (r && r.success) { toast('Staff role added'); renderSettings('staff'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function addStaffUser() {
+  if (!currentGuild) return;
+  var userId = document.getElementById('su-id')?.value?.trim();
+  var position = document.getElementById('su-pos')?.value || 'staff';
+  if (!userId) { toast('Enter a user ID', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/staff/add', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'user', userId: userId, position: position })
+  }).then(function(r) {
+    if (r && r.success) { toast('Staff user added'); renderSettings('staff'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteStaffEntry(entryId) {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/staff/' + entryId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Staff entry removed'); renderSettings('staff'); }
   });
 }
 

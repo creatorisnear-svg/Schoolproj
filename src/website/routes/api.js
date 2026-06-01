@@ -205,6 +205,8 @@ export function createApiRouter(client) {
         calendarEnabled: false,
         roleplayEnabled: false,
         roleRequestEnabled: false,
+        movemeEnabled: false,
+        civJobsEnabled: false,
       };
 
       try {
@@ -278,6 +280,18 @@ export function createApiRouter(client) {
         const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
         const ec = await EconomyConfig.findOne({ guildId: guild.id });
         if (ec) config.economyEnabled = !!ec.enabled;
+      } catch {}
+
+      try {
+        const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
+        const mmc = await MemberMovementConfig.findOne({ guildId: guild.id });
+        if (mmc) config.movemeEnabled = !!mmc.enabled;
+      } catch {}
+
+      try {
+        const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+        const cjc = await CivilianJobConfig.findOne({ guildId: guild.id });
+        if (cjc) config.civJobsEnabled = !!(cjc.channelId || (cjc.jobs && cjc.jobs.length > 0));
       } catch {}
 
       let premium = false;
@@ -398,6 +412,11 @@ export function createApiRouter(client) {
         case 'economy': {
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           await EconomyConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'moveme': {
+          const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
+          await MemberMovementConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
         default:
@@ -709,6 +728,71 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'moveme': {
+          result.name = 'Voice Mover';
+          result.description = 'Let members move themselves between voice channels via a panel';
+          const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
+          const mmc = await MemberMovementConfig.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'enabled', label: 'Enable Voice Mover', description: 'Allow members to move themselves between voice channels', type: 'toggle', value: mmc?.enabled ?? false },
+            { key: 'panelChannelId', label: 'Panel Channel', description: 'Channel where the voice mover panel is posted', type: 'select', value: mmc?.panelChannelId || '', options: channels },
+          ];
+          result.panelChannelId = mmc?.panelChannelId || null;
+          result.panelMessageId = mmc?.panelMessageId || null;
+          break;
+        }
+
+        case 'civjobs': {
+          result.name = 'Civilian Jobs';
+          result.description = 'Set up civilian job roles with shift durations — members check in through a job board';
+          const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+          const cjc = await CivilianJobConfig.findOne({ guildId: guild.id });
+          result.fields = [
+            { key: 'channelId', label: 'Job Board Channel', description: 'Channel where the civilian job board embed is posted', type: 'select', value: cjc?.channelId || '', options: channels },
+          ];
+          result.jobs = (cjc?.jobs || []).map(j => ({
+            jobId: j.jobId,
+            name: j.name,
+            description: j.description || '',
+            roleId: j.roleId,
+            roleName: guild.roles.cache.get(j.roleId)?.name || 'Unknown Role',
+            durationHours: j.durationHours,
+          }));
+          result.roles = roles;
+          result.stats = [{ label: 'Jobs Configured', value: (cjc?.jobs || []).length }];
+          break;
+        }
+
+        case 'staff': {
+          result.name = 'Staff Management';
+          result.description = 'Manage who has staff and manager permissions on this server';
+          const { default: Staff } = await import('../../models/Staff.js');
+          const staffEntries = await Staff.find({ guildId: guild.id }).lean();
+          result.fields = [];
+          result.staffRoles = staffEntries
+            .filter(s => s.type === 'role')
+            .map(s => ({
+              id: s._id.toString(),
+              roleId: s.roleId,
+              roleName: guild.roles.cache.get(s.roleId)?.name || s.roleName || 'Unknown Role',
+              position: s.position,
+            }));
+          result.staffUsers = staffEntries
+            .filter(s => s.type === 'user')
+            .map(s => ({
+              id: s._id.toString(),
+              userId: s.userId,
+              username: s.username || s.userId,
+              position: s.position,
+            }));
+          result.roles = roles;
+          result.stats = [
+            { label: 'Staff Roles', value: result.staffRoles.length },
+            { label: 'Staff Users', value: result.staffUsers.length },
+          ];
+          break;
+        }
+
         default:
           return res.status(404).json({ error: 'Module not found' });
       }
@@ -910,6 +994,28 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'moveme': {
+          const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
+          const allowed = ['enabled', 'panelChannelId'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await MemberMovementConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
+        case 'civjobs': {
+          const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+          const allowed = ['channelId'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await CivilianJobConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
         default:
           return res.status(404).json({ error: 'Module not found' });
       }
@@ -1099,6 +1205,149 @@ export function createApiRouter(client) {
         rc.events = rc.events.filter(e => e._id?.toString() !== req.params.eventId);
         await rc.save();
       }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Voice Mover Panel Send ── */
+  router.post('/guild/:id/settings/moveme/panel/send', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
+      const mmc = await MemberMovementConfig.findOne({ guildId: req.params.id });
+      if (!mmc?.panelChannelId) return res.status(400).json({ error: 'Set a Panel Channel first, then save, before sending the panel.' });
+      const channel = guild.channels.cache.get(mmc.panelChannelId);
+      if (!channel) return res.status(404).json({ error: 'Panel channel not found in Discord. Check bot permissions.' });
+      const { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType } = await import('discord.js');
+      const panelEmbed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Voice Channel Mover')
+        .setDescription(
+          'Select a voice channel from the menu below to be instantly moved to it.\n\n' +
+          '**You must already be connected to a voice channel to use this.**\n\n' +
+          '-# Be aware: moving you may interrupt your voice chat or cause audio issues.'
+        )
+        .setFooter({ text: 'RPM' });
+      const selectRow = new ActionRowBuilder().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId('membermove_panel_select')
+          .setPlaceholder('Choose a voice channel...')
+          .addChannelTypes(ChannelType.GuildVoice)
+          .setMinValues(1).setMaxValues(1)
+      );
+      try {
+        if (mmc.panelMessageId) {
+          const old = await channel.messages.fetch(mmc.panelMessageId).catch(() => null);
+          if (old) await old.delete().catch(() => null);
+        }
+      } catch {}
+      const msg = await channel.send({ embeds: [panelEmbed], components: [selectRow] });
+      mmc.panelMessageId = msg.id;
+      await mmc.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Civilian Jobs CRUD ── */
+  router.post('/guild/:id/civjobs/job', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { name, description, roleId, durationHours } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Job name is required' });
+    if (!roleId) return res.status(400).json({ error: 'Role is required' });
+    if (!durationHours || Number(durationHours) <= 0) return res.status(400).json({ error: 'Duration must be greater than 0' });
+    try {
+      const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+      const { v4: uuidv4 } = await import('uuid');
+      const cjc = await CivilianJobConfig.findOne({ guildId: req.params.id }) || new CivilianJobConfig({ guildId: req.params.id });
+      cjc.jobs.push({ jobId: uuidv4(), name: name.trim(), description: (description || '').trim(), roleId, durationHours: Number(durationHours) });
+      cjc.markModified('jobs');
+      await cjc.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/civjobs/job/:jobId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+      const cjc = await CivilianJobConfig.findOne({ guildId: req.params.id });
+      if (cjc) {
+        cjc.jobs = cjc.jobs.filter(j => j.jobId !== req.params.jobId);
+        cjc.markModified('jobs');
+        await cjc.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Staff Management CRUD ── */
+  router.post('/guild/:id/staff/add', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    let addedByUserId = 'dashboard';
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+      try {
+        const meRes = await axios.get('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+        addedByUserId = meRes.data.id || 'dashboard';
+      } catch {}
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { type, roleId, userId, position } = req.body;
+    if (!type || !['role', 'user'].includes(type)) return res.status(400).json({ error: 'type must be role or user' });
+    const pos = ['staff', 'manager'].includes(position) ? position : 'staff';
+    try {
+      const { default: Staff } = await import('../../models/Staff.js');
+      if (type === 'role') {
+        if (!roleId) return res.status(400).json({ error: 'roleId is required' });
+        const role = guild.roles.cache.get(roleId);
+        if (!role) return res.status(404).json({ error: 'Role not found in this server' });
+        const existing = await Staff.findOne({ guildId: req.params.id, type: 'role', roleId });
+        if (existing) { existing.position = pos; await existing.save(); return res.json({ success: true }); }
+        await Staff.create({ guildId: req.params.id, type: 'role', roleId, roleName: role.name, position: pos, addedBy: addedByUserId });
+      } else {
+        if (!userId) return res.status(400).json({ error: 'userId is required' });
+        let member = null;
+        try { member = await guild.members.fetch(userId); } catch {}
+        const existing = await Staff.findOne({ guildId: req.params.id, type: 'user', userId });
+        if (existing) { existing.position = pos; await existing.save(); return res.json({ success: true }); }
+        await Staff.create({ guildId: req.params.id, type: 'user', userId, username: member?.user?.username || userId, position: pos, addedBy: addedByUserId });
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/staff/:entryId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: Staff } = await import('../../models/Staff.js');
+      await Staff.deleteOne({ _id: req.params.entryId, guildId: req.params.id });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
