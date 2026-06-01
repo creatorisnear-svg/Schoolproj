@@ -995,6 +995,65 @@ export function createApiRouter(client) {
     }
   });
 
+  router.get('/guild/:id/premium/billing', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+      const premiumKey = await PremiumKey.findOne({ guildId });
+      if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+
+      const billing = {
+        plan: premiumKey.plan || 'manual',
+        status: premiumKey.subscriptionStatus || null,
+        activatedAt: premiumKey.activatedAt || null,
+        purchasedAt: premiumKey.tosAcceptedAt || premiumKey.createdAt || null,
+        currentPeriodEnd: premiumKey.subscriptionCurrentPeriodEnd || null,
+        hasStripeSubscription: !!premiumKey.stripeSubscriptionId,
+        invoices: [],
+      };
+
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (stripeKey && premiumKey.stripeCustomerId) {
+        try {
+          const { default: Stripe } = await import('stripe');
+          const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' });
+          const invoiceList = await stripe.invoices.list({
+            customer: premiumKey.stripeCustomerId,
+            limit: 12,
+          });
+          billing.invoices = invoiceList.data.map(inv => ({
+            id: inv.id,
+            date: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+            amount: inv.amount_paid,
+            currency: inv.currency,
+            status: inv.status,
+            receiptUrl: inv.hosted_invoice_url || null,
+            periodStart: inv.period_start ? new Date(inv.period_start * 1000).toISOString() : null,
+            periodEnd: inv.period_end ? new Date(inv.period_end * 1000).toISOString() : null,
+          }));
+        } catch (stripeErr) {
+          console.error('[BILLING] Stripe invoice fetch error:', stripeErr.message);
+        }
+      }
+
+      res.json(billing);
+    } catch (err) {
+      console.error('[DASHBOARD] Billing error:', err.message);
+      res.status(500).json({ error: 'Failed to load billing information' });
+    }
+  });
+
   router.post('/guild/:id/premium/transfer', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });

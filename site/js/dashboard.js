@@ -185,6 +185,11 @@ var SIDEBAR_MODULES = [
 ];
 
 function renderSidebar(active) {
+  var premiumSection = currentGuild && currentGuild.premium
+    ? '<div class="sidebar-section"><div class="sidebar-section-title">Premium</div>' +
+      '<div class="sidebar-item ' + (active === 'billing' ? 'active' : '') + '" onclick="renderBilling()">Billing</div>' +
+      '</div>'
+    : '';
   return '<div class="sidebar">' +
     '<div class="sidebar-section"><div class="sidebar-section-title">Server</div>' +
     '<div class="sidebar-item ' + (active === 'overview' ? 'active' : '') + '" onclick="renderDashboard()">Overview</div>' +
@@ -194,7 +199,9 @@ function renderSidebar(active) {
     SIDEBAR_MODULES.map(function(m) {
       return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
     }).join('') +
-    '</div></div>';
+    '</div>' +
+    premiumSection +
+    '</div>';
 }
 
 function transferPremium() {
@@ -323,6 +330,103 @@ function reactivateSubscription() {
       if (btn) { btn.disabled = false; btn.textContent = 'Reactivate Subscription'; }
     }
   });
+}
+
+/* ── Billing Page ── */
+function renderBilling() {
+  app.innerHTML = '<div class="dashboard-layout">' + renderSidebar('billing') +
+    '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading billing info...</div></div></div>';
+
+  api('/guild/' + currentGuild.id + '/premium/billing').then(function(data) {
+    if (!data) return;
+
+    var planLabel = data.plan === 'monthly' ? 'Monthly' : data.plan === 'lifetime' ? 'Lifetime' : 'Manual / Gifted';
+    var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : 'var(--text-muted)';
+    var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status || 'Active';
+
+    var periodRow = '';
+    if (data.currentPeriodEnd) {
+      var pEnd = new Date(data.currentPeriodEnd);
+      var pLabel = data.status === 'cancelling' ? 'Access ends' : (data.plan === 'monthly' ? 'Next renewal' : 'Valid through');
+      periodRow = billingRow(pLabel, pEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
+    }
+
+    var activatedRow = data.activatedAt
+      ? billingRow('Activated on server', new Date(data.activatedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
+      : '';
+
+    var purchasedRow = data.purchasedAt
+      ? billingRow('Purchase date', new Date(data.purchasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
+      : '';
+
+    var cancelBtn = '';
+    if (data.hasStripeSubscription && data.plan === 'monthly') {
+      if (data.status === 'cancelling') {
+        cancelBtn = '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="reactivateSubscription()">Reactivate Subscription</button>';
+      } else if (data.status === 'active') {
+        cancelBtn = '<button id="cancel-sub-btn" class="btn btn-secondary btn-sm" style="margin-top:16px;color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="cancelSubscription()">Cancel Subscription</button>';
+      }
+    }
+
+    var invoiceHtml = '';
+    if (data.invoices && data.invoices.length > 0) {
+      invoiceHtml = '<div class="config-section" style="margin-top:16px;">' +
+        '<div class="config-section-header"><h3>Payment History</h3></div>' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr>' +
+        '<th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;">Date</th>' +
+        '<th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;">Amount</th>' +
+        '<th style="text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;">Status</th>' +
+        '<th style="text-align:right;font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;">Receipt</th>' +
+        '</tr></thead><tbody>';
+
+      data.invoices.forEach(function(inv) {
+        var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+        var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '—';
+        var invStatus = inv.status === 'paid'
+          ? '<span style="color:var(--green);font-size:12px;">Paid</span>'
+          : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '—') + '</span>';
+        var receipt = inv.receiptUrl
+          ? '<a href="' + esc(inv.receiptUrl) + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);">View</a>'
+          : '<span style="font-size:12px;color:var(--text-dim);">—</span>';
+        invoiceHtml += '<tr>' +
+          '<td style="font-size:13px;color:var(--text-muted);padding:10px 0;border-bottom:1px solid var(--border);">' + invDate + '</td>' +
+          '<td style="font-size:13px;color:var(--text);font-weight:600;padding:10px 0;border-bottom:1px solid var(--border);">' + amount + '</td>' +
+          '<td style="padding:10px 0;border-bottom:1px solid var(--border);">' + invStatus + '</td>' +
+          '<td style="text-align:right;padding:10px 0;border-bottom:1px solid var(--border);">' + receipt + '</td>' +
+          '</tr>';
+      });
+      invoiceHtml += '</tbody></table></div>';
+    } else if (data.hasStripeSubscription) {
+      invoiceHtml = '<div class="config-section" style="margin-top:16px;">' +
+        '<div class="config-section-header"><h3>Payment History</h3></div>' +
+        '<p style="font-size:13px;color:var(--text-muted);padding:12px 0;">No invoices found.</p></div>';
+    }
+
+    var html = '<div class="dashboard-layout">' + renderSidebar('billing') +
+      '<div class="dashboard-content">' +
+      '<div class="dash-header"><h1>Billing</h1><p>Your premium plan and payment history</p></div>' +
+      '<div class="config-section">' +
+      '<div class="config-section-header"><h3>Current Plan</h3></div>' +
+      billingRow('Plan', planLabel) +
+      billingRow('Status', '<span style="color:' + statusColor + ';font-weight:600;">' + statusText + '</span>') +
+      purchasedRow +
+      activatedRow +
+      periodRow +
+      cancelBtn +
+      '</div>' +
+      invoiceHtml +
+      '</div></div>';
+
+    app.innerHTML = html;
+  });
+}
+
+function billingRow(label, value) {
+  return '<div class="config-row" style="padding:10px 0;">' +
+    '<span class="config-label" style="min-width:160px;">' + esc(label) + '</span>' +
+    '<span style="font-size:13px;color:var(--text);">' + value + '</span>' +
+    '</div>';
 }
 
 function renderDashboard() {
