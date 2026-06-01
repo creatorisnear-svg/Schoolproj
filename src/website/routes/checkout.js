@@ -188,11 +188,11 @@ export function createCheckoutRouter() {
         cancel_url: `${domain}/checkout/cancel`,
         metadata: { discordId: String(discordId), plan, tosAccepted: 'true' },
         allow_promotion_codes: true,
-        customer_creation: 'always',
       };
 
       let session;
       if (plan === 'monthly') {
+        // subscription mode: Stripe auto-creates the customer — customer_creation not allowed here
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
@@ -200,9 +200,11 @@ export function createCheckoutRouter() {
           subscription_data: { metadata: { discordId: String(discordId) } },
         });
       } else {
+        // payment mode: explicitly create a customer record for lifetime purchases
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'payment',
+          customer_creation: 'always',
           line_items: [{ price: lifetimePriceId, quantity: 1 }],
         });
       }
