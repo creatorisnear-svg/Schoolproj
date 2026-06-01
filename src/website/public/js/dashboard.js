@@ -70,6 +70,20 @@ function closeSidebar() {
   if (overlay) overlay.classList.remove('open');
 }
 
+/* ── Session persistence helpers ── */
+function saveSession(guildId, section) {
+  try {
+    if (guildId) sessionStorage.setItem('rpm_guild_id', guildId);
+    if (section) sessionStorage.setItem('rpm_section', section);
+    else sessionStorage.removeItem('rpm_section');
+  } catch(e) {}
+}
+function clearSession() {
+  try { sessionStorage.removeItem('rpm_guild_id'); sessionStorage.removeItem('rpm_section'); } catch(e) {}
+}
+function getSavedGuildId() { try { return sessionStorage.getItem('rpm_guild_id'); } catch(e) { return null; } }
+function getSavedSection() { try { return sessionStorage.getItem('rpm_section'); } catch(e) { return null; } }
+
 /* ── Init ── */
 function init() {
   app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading...</div></div>';
@@ -94,7 +108,14 @@ function init() {
         '<a href="/dashboard/logout" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
         '</div></div>';
     }
-    renderServerSelect();
+    var savedGuildId = getSavedGuildId();
+    if (savedGuildId && guilds.find(function(g) { return g.id === savedGuildId; })) {
+      var savedSection = getSavedSection();
+      selectServer(savedGuildId, savedSection);
+    } else {
+      clearSession();
+      renderServerSelect();
+    }
   });
 }
 
@@ -112,6 +133,7 @@ document.addEventListener('click', function() {
 function renderServerSelect() {
   currentGuild = null;
   pendingChanges = {};
+  clearSession();
   app.innerHTML =
     '<div style="padding-top:80px;max-width:800px;margin:0 auto;padding-left:24px;padding-right:24px;">' +
     '<div class="dash-header"><h1>Select a Server</h1>' +
@@ -140,7 +162,7 @@ function isFlagPremium(featureKey) {
   return featureKey === 'dispatch';
 }
 
-function selectServer(guildId) {
+function selectServer(guildId, section) {
   app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading server...</div></div>';
   Promise.all([
     api('/guild/' + guildId),
@@ -148,10 +170,15 @@ function selectServer(guildId) {
   ]).then(function(results) {
     var data = results[0];
     featureFlags = results[1] || {};
-    if (!data) { renderServerSelect(); return; }
+    if (!data) { clearSession(); renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
-    renderDashboard();
+    saveSession(guildId, section || null);
+    if (section) {
+      renderSettings(section);
+    } else {
+      renderDashboard();
+    }
   });
 }
 
@@ -234,6 +261,7 @@ function sidebarToggleBtn(label) {
 
 /* ── Overview / Dashboard ── */
 function renderDashboard() {
+  if (currentGuild) saveSession(currentGuild.id, null);
   var g = currentGuild;
   var config = g.config || {};
 
@@ -604,11 +632,12 @@ function toggleFeature(el) {
 
 /* ── Settings Page ── */
 function renderSettings(mod) {
+  if (currentGuild) saveSession(currentGuild.id, mod);
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
     '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading...</div></div></div>';
 
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
-    if (!data) return;
+    if (!data) { app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) + '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Failed to load settings. Please try again.</div><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="renderSettings(\'' + mod + '\')">Retry</button></div></div>'; return; }
     pendingChanges = {};
 
     var html = '<div class="dashboard-layout">' + renderSidebar(mod) +
@@ -1365,6 +1394,8 @@ function renderMovemeSettings(data) {
   fields.forEach(function(field) { html += renderOneField(field, 'moveme'); });
   html += '</div>';
 
+  html += '<div id="save-bar-container"></div>';
+
   var voiceOpts = (data.voiceChannels || []).map(function(c) {
     return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
   }).join('');
@@ -1389,8 +1420,6 @@ function renderMovemeSettings(data) {
     '</div>' +
     '</div>' +
     '</div>';
-
-  html += '<div id="save-bar-container"></div>';
 
   html += '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>Voice Mover Panel</h3>' +
