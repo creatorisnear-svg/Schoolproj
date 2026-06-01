@@ -606,6 +606,7 @@ export async function handleEconomyMenu(interaction) {
       rob:       { title: 'Rob Settings',        id: 'economysetup_rob_modal',       fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.rob.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.rob.cooldown) }, { id: 'successrate', label: 'Success Rate % (1-100)', val: String(config.rob.successRate) }, { id: 'maxsteal', label: 'Max Steal % of target cash', val: String(config.rob.maxStealPercent) }] },
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
+      incometax: { title: 'Income Tax',           id: 'economysetup_incometax_modal', fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
       storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }, { id: 'roleid', label: 'Reward Role ID (optional)', val: '', required: false }, { id: 'requiredroleid', label: 'Required Role to Buy (optional)', val: '', required: false }] },
       storeremove: null,
       storeedit: null,
@@ -1360,6 +1361,14 @@ export async function handleEconomyModal(interaction) {
     if (!isNaN(cd))  config2.chatMoney.cooldown  = cd;
     config2.markModified('chatMoney'); await config2.save();
     return interaction.reply({ embeds: [successEmbed('Chat Money Updated', `**Enabled:** ${config2.chatMoney.enabled}\n**Amount:** ${sym}${config2.chatMoney.minAmount}–${sym}${config2.chatMoney.maxAmount}\n**Cooldown:** ${config2.chatMoney.cooldown}s`)], flags: 64 });
+  }
+
+  if (customId === 'economysetup_incometax_modal') {
+    const rate = parseFloat(interaction.fields.getTextInputValue('rate'));
+    if (isNaN(rate) || rate < 0 || rate > 100) return interaction.reply({ embeds: [errorEmbed('Enter a valid tax rate between 0 and 100.')], flags: 64 });
+    config2.incomeTax = rate;
+    await config2.save();
+    return interaction.reply({ embeds: [successEmbed('Income Tax Updated', `Tax rate set to **${rate}%**.\n-# ${rate === 0 ? 'Income tax is now disabled.' : `${rate}% will be deducted from all income collected.`}`)], flags: 64 });
   }
 
   if (customId.startsWith('economysetup_roleincome_modal_')) {

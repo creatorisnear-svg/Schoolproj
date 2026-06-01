@@ -7,5 +7,6 @@ const memberMovementConfigSchema = new mongoose.Schema({
   panelMessageId: { type: String, default: null },
 });
 
-const MemberMovementConfig = mongoose.model('MemberMovementConfig', memberMovementConfigSchema);
+const MemberMovementConfig = mongoose.models.MemberMovementConfig
+  || mongoose.model('MemberMovementConfig', memberMovementConfigSchema);
 export default MemberMovementConfig;

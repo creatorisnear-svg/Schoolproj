@@ -55,13 +55,28 @@ export async function execute(interaction) {
         inline: true,
       },
       {
-        name: 'Economy',
-        value: `\`/economysetup\` Configure economy\n\`/balance\` Check your balance\n\`/work\` \`/crime\` \`/rob\` Earn money\n\`/shop\` \`/buy\` \`/sell\` \`/inventory\` Store\n\`/gamble\` Games (Blackjack/Roulette${pTag})\n\`/leaderboard\` Top ${premium ? '25' : '10'} balances${pTag}`,
+        name: 'Economy - Setup',
+        value: `\`/economysetup\` Configure all economy settings\n-# Includes: currency, work, crime, rob, gambling, chat money, income tax, role income, store management, civilian jobs panel`,
+        inline: false,
+      },
+      {
+        name: 'Economy - Members',
+        value: `\`/balance\` Cash & bank balance\n\`/deposit\` \`/withdraw\` Move between cash/bank\n\`/give\` Send cash to another member\n\`/work\` \`/crime\` \`/rob\` Earn money\n\`/income\` Collect role-based income\n\`/shop\` \`/buy\` \`/sell\` \`/inventory\` Store\n\`/use\` Use an item  \`/giveitems\` Give items\n\`/gamble\` Blackjack, Roulette, Slots & more\n\`/leaderboard\` Server balance rankings`,
+        inline: false,
+      },
+      {
+        name: 'Civilian Jobs',
+        value: '`/economysetup` → **Civilian Jobs** — set a channel, add/remove jobs, post the panel\n-# Members select a job from the panel to receive a temporary role',
+        inline: true,
+      },
+      {
+        name: 'Voice Mover',
+        value: '`/enablecommands` → **Member Movement** to enable\n`/movemesetup` to post the panel in a channel\n-# Members pick any voice channel from the dropdown to be moved',
         inline: true,
       },
       {
         name: 'Community Tools',
-        value: `\`/reactionrolemessage\` Set up reaction roles\n\`/sticky\` Pin a sticky message${pTag}\n\`/stickylist\` View sticky messages\n\`/antipromotingsetup\` Block invite links\n\`/setlogchannel\` Set log channel`,
+        value: `\`/reactionrolemessage\` Set up reaction roles\n\`/sticky\` Pin a sticky message\n\`/stickylist\` View sticky messages\n\`/antipromotingsetup\` Block invite links\n\`/setlogchannel\` Set log channel`,
         inline: true,
       },
       {
