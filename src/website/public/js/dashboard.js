@@ -163,7 +163,7 @@ var FEATURES = [
   { key: 'calendarEnabled',     feature: 'calendar',      name: 'RP Calendar',       icon: 'CAL', desc: 'Weekly event scheduling',         mod: 'calendar' },
   { key: 'ticketEnabled',       feature: 'ticket',        name: 'Ticket Support',    icon: 'TKT', desc: 'Support ticket system',           mod: 'tickets' },
   { key: 'antiPromotingEnabled',feature: 'antipromote',   name: 'Anti-Promoting',    icon: 'AP',  desc: 'Invite link filtering',           mod: 'antipromo' },
-  { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: null },
+  { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: 'rolerequest' },
   { key: 'verifyEnabled',       feature: 'verification',  name: 'Verification',      icon: 'ID',  desc: 'Member verification gate',        mod: 'verification' },
   { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
   { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
@@ -182,6 +182,7 @@ var SIDEBAR_MODULES = [
   { id: 'welcome',       label: 'Welcome System' },
   { id: 'calendar',      label: 'RP Calendar' },
   { id: 'economy',       label: 'Economy' },
+  { id: 'rolerequest',  label: 'Role Request' },
 ];
 
 /* ── Sidebar HTML ── */
@@ -356,9 +357,10 @@ function renderPremiumSection(g) {
         '</div>'
       : '') +
     '<div style="border-top:1px solid var(--border);padding-top:12px;width:100%;">' +
-    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key by joining our Discord support server, then enter it below.</p>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key from the pricing page, then enter it below to unlock all premium features.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm">Join Support Server to Get a Key</a>' +
+    '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
+    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support Server</a>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
     '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
@@ -419,6 +421,8 @@ function renderSettings(mod) {
 
     if (mod === 'economy') {
       html += renderEconomySettings(data);
+    } else if (mod === 'rolerequest') {
+      html += renderRoleRequestSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -654,6 +658,32 @@ function renderTicketTypesSection(data) {
   }
 
   html += '</div>';
+  return html;
+}
+
+/* ── Role Request Settings ── */
+function renderRoleRequestSettings(data) {
+  var roles = data.requestableRoles || [];
+  var html = '<div class="config-section"><div class="config-section-header">' +
+    '<h3>Requestable Roles</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + roles.length + ' configured</span>' +
+    '</div>';
+  if (roles.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No requestable roles set up yet. Use <code>/rolerequestadd</code> in Discord to add roles members can request.</span></div>';
+  } else {
+    roles.forEach(function(r) {
+      var approvers = [];
+      if (r.approverRoleCount > 0) approvers.push(r.approverRoleCount + ' approver role' + (r.approverRoleCount === 1 ? '' : 's'));
+      if (r.approverMemberCount > 0) approvers.push(r.approverMemberCount + ' approver member' + (r.approverMemberCount === 1 ? '' : 's'));
+      html += '<div class="config-row"><div class="config-left">' +
+        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">' + (approvers.length ? approvers.join(' · ') : 'No approvers set') + '</div>' +
+        '</div></div>';
+    });
+    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/rolerequestadd</code> in Discord to add roles or update approvers.</span></div>';
+  }
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
   return html;
 }
 

@@ -162,7 +162,7 @@ var FEATURES = [
   { key: 'calendarEnabled', feature: 'calendar', name: 'RP Calendar', icon: 'C', desc: 'Weekly event scheduling', mod: 'calendar' },
   { key: 'ticketEnabled', feature: 'ticket', name: 'Ticket Support', icon: 'T', desc: 'Support ticket system', mod: 'tickets' },
   { key: 'antiPromotingEnabled', feature: 'antipromote', name: 'Anti-Promoting', icon: 'AP', desc: 'Invite link filtering', mod: 'antipromo' },
-  { key: 'roleRequestEnabled', feature: 'rolerequest', name: 'Role Request', icon: 'RR', desc: 'Self-serve role requests', mod: null },
+  { key: 'roleRequestEnabled', feature: 'rolerequest', name: 'Role Request', icon: 'RR', desc: 'Self-serve role requests', mod: 'rolerequest' },
   { key: 'verifyEnabled', feature: 'verification', name: 'Verification', icon: 'ID', desc: 'Member verification gate', mod: 'verification' },
   { key: 'welcomeEnabled', feature: 'welcome', name: 'Welcome System', icon: 'W', desc: 'New member messages', mod: 'welcome' },
   { key: 'dispatchEnabled', feature: 'dispatch', name: 'AI Voice Dispatch', icon: 'AI', desc: 'AI-powered dispatch (Premium)', mod: 'dispatch', premium: true },
@@ -181,6 +181,7 @@ var SIDEBAR_MODULES = [
   { id: 'welcome', label: 'Welcome System' },
   { id: 'calendar', label: 'RP Calendar' },
   { id: 'economy', label: 'Economy' },
+  { id: 'rolerequest', label: 'Role Request' },
 ];
 
 function renderSidebar(active) {
@@ -233,16 +234,20 @@ function renderPremiumSection(g) {
       '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
       '</div></div>';
   }
-  return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
-    '<div class="config-section-header"><h3>Premium</h3>' +
+  return '<div class="config-section" id="premium-section" style="margin-top:20px;border-color:rgba(88,101,242,0.4);">' +
+    '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
+    '<h3 style="color:#7b8cec;">Premium — Unlock More</h3>' +
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
-    '<div><span class="config-label">Activate Premium Key</span>' +
-    '<div class="config-sublabel">Enter your premium key to unlock premium features like AI Voice Dispatch.</div></div>' +
-    '<div style="display:flex;gap:8px;width:100%;">' +
-    '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;max-width:320px;">' +
-    '<button class="btn btn-primary btn-sm" onclick="activatePremium()">Activate</button>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
+    '<p style="font-size:12px;color:var(--text-muted);margin:0;">Get a premium key from the pricing page, then enter it below to unlock AI Voice Dispatch and all premium features.</p>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<a href="' + API_BASE + '/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
+    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support</a>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
+    '<button class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
     '</div></div></div>';
 }
 
@@ -276,8 +281,10 @@ function renderDashboard() {
       (isPremium ? ' <span class="premium-tag">Premium</span>' : '') +
       '</div><div class="module-desc">' + f.desc + '</div></div>' +
       '</div>' +
+      '<div class="module-actions">' +
+      (f.mod ? '<button class="configure-btn" onclick="renderSettings(\'' + f.mod + '\')">Configure</button>' : '') +
       '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +
-      '</div>';
+      '</div></div>';
   });
   html += '</div></div>';
 
@@ -393,7 +400,17 @@ function renderSettings(mod) {
         'This is a premium feature. A premium key is required for this module to function.</div>';
     }
 
-    html += renderSettingsFields(data, mod);
+    if (mod === 'economy') {
+      html += renderEconomySettings(data);
+    } else if (mod === 'rolerequest') {
+      html += renderRoleRequestSettings(data);
+    } else {
+      html += renderSettingsFields(data, mod);
+    }
+
+    if (mod === 'dispatch') {
+      html += renderDispatchExtras(data);
+    }
 
     if (data.stats && data.stats.length > 0) {
       html += '<div class="dash-grid" style="margin-top:14px;">';
@@ -450,51 +467,198 @@ function renderSettings(mod) {
   });
 }
 
+/* ── Role Request Settings ── */
+function renderRoleRequestSettings(data) {
+  var roles = data.requestableRoles || [];
+  var html = '<div class="config-section"><div class="config-section-header">' +
+    '<h3>Requestable Roles</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + roles.length + ' configured</span>' +
+    '</div>';
+  if (roles.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No requestable roles set up yet. Use <code>/rolerequestadd</code> in Discord to add roles members can request.</span></div>';
+  } else {
+    roles.forEach(function(r) {
+      var approvers = [];
+      if (r.approverRoleCount > 0) approvers.push(r.approverRoleCount + ' approver role' + (r.approverRoleCount === 1 ? '' : 's'));
+      if (r.approverMemberCount > 0) approvers.push(r.approverMemberCount + ' approver member' + (r.approverMemberCount === 1 ? '' : 's'));
+      html += '<div class="config-row"><div class="config-left">' +
+        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">' + (approvers.length ? approvers.join(' · ') : 'No approvers set') + '</div>' +
+        '</div></div>';
+    });
+    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/rolerequestadd</code> in Discord to add roles or update approvers.</span></div>';
+  }
+  html += '</div><div id="save-bar-container"></div>';
+  return html;
+}
+
+/* ── Economy Settings (grouped) ── */
+function renderEconomySettings(data) {
+  var fields = data.fields || [];
+  var groups = {
+    general:   { label: 'General',    keys: ['currencySymbol','startingBalance','maxBalance','logChannelId'] },
+    work:      { label: 'Work',       keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
+    crime:     { label: 'Crime',      keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
+    rob:       { label: 'Robbery',    keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },
+    gambling:  { label: 'Gambling',   keys: ['gambling_enabled','gambling_minBet','gambling_maxBet','gambling_cooldown'] },
+    chatmoney: { label: 'Chat Money', keys: ['chatMoney_enabled','chatMoney_minAmount','chatMoney_maxAmount','chatMoney_cooldown'] },
+  };
+  var fieldMap = {};
+  fields.forEach(function(f) { fieldMap[f.key] = f; });
+  var html = '';
+  ['general','work','crime','rob','gambling','chatmoney'].forEach(function(gKey) {
+    var g = groups[gKey];
+    var groupFields = g.keys.map(function(k) { return fieldMap[k]; }).filter(Boolean);
+    if (groupFields.length === 0) return;
+    html += '<div class="config-section" style="margin-bottom:12px;"><div class="config-section-header"><h3>' + g.label + '</h3></div>';
+    groupFields.forEach(function(field) { html += renderOneField(field, 'economy'); });
+    html += '</div>';
+  });
+  html += '<div id="save-bar-container"></div>';
+  if (data.roleIncomeList && data.roleIncomeList.length > 0) {
+    html += '<div class="config-section" style="margin-top:4px;"><div class="config-section-header"><h3>Role Income</h3></div>';
+    data.roleIncomeList.forEach(function(r) {
+      html += '<div class="config-row"><div class="config-left"><span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div></div></div>';
+    });
+    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/economysetup roleincome</code> in Discord to manage entries.</span></div></div>';
+  } else {
+    html += '<div class="config-section" style="margin-top:4px;"><div class="config-section-header"><h3>Role Income</h3></div>' +
+      '<div class="config-row"><span class="config-sublabel">No role income set up. Use <code>/economysetup roleincome</code> in Discord.</span></div></div>';
+  }
+  return html;
+}
+
+/* ── Dispatch extras (voice channel management) ── */
+window._dispatchState = {};
+function renderDispatchExtras(data) {
+  var html = '';
+  var voiceOpts = (data.voiceChannels || []).map(function(c) {
+    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
+  }).join('');
+  var roleOpts = (data.roles || []).map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
+  function buildTags(ids, list, type) {
+    if (!ids || ids.length === 0) return '<span style="font-size:12px;color:var(--text-dim);">None added yet.</span>';
+    return ids.map(function(id) {
+      var item = (list || []).find(function(x) { return x.value === id; });
+      return '<span class="channel-tag">' + esc(item ? item.label : id) +
+        '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+    }).join('');
+  }
+
+  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Patrol Voice Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Bot listens here</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="patrol-tags">' + buildTags(data.currentPatrolChannels, data.voiceChannels, 'patrol') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="patrol-channel-select"><option value="">Select voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button></div></div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Traffic Stop Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Officers moved here on 10-11</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="traffic-tags">' + buildTags(data.currentTrafficChannels, data.voiceChannels, 'traffic') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="traffic-channel-select"><option value="">Select voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button></div></div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>LEO Roles</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Roles that can trigger dispatch</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="leo-tags">' + buildTags(data.leoRoles, data.roles, 'leo') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="leo-role-select"><option value="">Select role...</option>' + roleOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button></div></div></div>';
+
+  return html;
+}
+
+function addDispatchChannel(type) {
+  var selectId = type === 'leo' ? 'leo-role-select' : (type === 'patrol' ? 'patrol-channel-select' : 'traffic-channel-select');
+  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  var sel = document.getElementById(selectId);
+  if (!sel || !sel.value) { toast('Select a ' + (type === 'leo' ? 'role' : 'channel') + ' first', 'error'); return; }
+  var id = sel.value;
+  var label = sel.options[sel.selectedIndex].text;
+  if (!window._dispatchState[fieldKey]) window._dispatchState[fieldKey] = (pendingChanges[fieldKey] || []).slice();
+  if (window._dispatchState[fieldKey].indexOf(id) !== -1) { toast('Already added', 'error'); return; }
+  window._dispatchState[fieldKey].push(id);
+  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
+  var tagsEl = document.getElementById(tagsId);
+  if (tagsEl) {
+    var span = document.createElement('span');
+    span.className = 'channel-tag';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
+    tagsEl.appendChild(span);
+  }
+  sel.value = '';
+  showSaveBar('dispatch');
+}
+
+function removeDispatchChannel(type, id) {
+  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  if (!window._dispatchState[fieldKey]) window._dispatchState[fieldKey] = (pendingChanges[fieldKey] || []).slice();
+  window._dispatchState[fieldKey] = window._dispatchState[fieldKey].filter(function(x) { return x !== id; });
+  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
+  var tagsEl = document.getElementById(tagsId);
+  if (tagsEl) {
+    tagsEl.querySelectorAll('.channel-tag').forEach(function(tag) {
+      var btn = tag.querySelector('.channel-tag-remove');
+      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) tag.remove();
+    });
+    if (tagsEl.querySelectorAll('.channel-tag').length === 0) {
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">None added yet.</span>';
+    }
+  }
+  showSaveBar('dispatch');
+}
+
+function renderOneField(field, mod) {
+  var isTextarea = field.type === 'textarea';
+  var html = '<div class="config-row' + (isTextarea ? ' textarea-row' : '') + '">';
+  html += '<div class="config-left"><span class="config-label">' + esc(field.label) + '</span>';
+  if (field.description) html += '<div class="config-sublabel">' + esc(field.description) + '</div>';
+  html += '</div>';
+  if (field.type === 'toggle') {
+    html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '"></div>';
+  } else if (field.type === 'select' || field.type === 'role') {
+    html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
+    html += '<option value="">— Not Set —</option>';
+    (field.options || []).forEach(function(opt) {
+      html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
+    });
+    html += '</select>';
+  } else if (field.type === 'action') {
+    html += '<select class="config-action" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
+    (field.options || []).forEach(function(opt) {
+      html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
+    });
+    html += '</select>';
+  } else if (field.type === 'number') {
+    html += '<input type="number" class="config-input" value="' + (field.value !== undefined ? field.value : '') + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" min="' + (field.min || 0) + '" max="' + (field.max || 999999) + '">';
+  } else if (field.type === 'textarea') {
+    html += '<textarea class="config-textarea" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">' + esc(String(field.value || '')) + '</textarea>';
+  } else if (field.type === 'text') {
+    html += '<input type="text" class="config-input" value="' + esc(String(field.value || '')) + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">';
+  } else {
+    html += '<span class="config-value">' + esc(String(field.value != null ? field.value : 'Not Set')) + '</span>';
+  }
+  html += '</div>';
+  return html;
+}
+
 function renderSettingsFields(data, mod) {
   if (!data.fields || data.fields.length === 0) {
     return '<div class="config-section"><div class="config-section-header"><h3>Configuration</h3></div>' +
-      '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No configurable settings. Use Discord commands to set up this module.</span></div></div>';
+      '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No configurable settings. Use Discord commands to set up this module.</span></div></div>' +
+      '<div id="save-bar-container"></div>';
   }
-
-  var html = '<div class="config-section"><div class="config-section-header"><h3>Configuration</h3></div>';
-
-  data.fields.forEach(function(field) {
-    var isTextarea = field.type === 'textarea';
-    html += '<div class="config-row' + (isTextarea ? ' textarea-row' : '') + '">';
-    html += '<div class="config-left"><span class="config-label">' + esc(field.label) + '</span>';
-    if (field.description) html += '<div class="config-sublabel">' + esc(field.description) + '</div>';
-    html += '</div>';
-
-    if (field.type === 'toggle') {
-      html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '"></div>';
-    } else if (field.type === 'select' || field.type === 'role') {
-      html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
-      html += '<option value="">Not Set</option>';
-      (field.options || []).forEach(function(opt) {
-        html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
-      });
-      html += '</select>';
-    } else if (field.type === 'action') {
-      html += '<select class="config-action" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
-      (field.options || []).forEach(function(opt) {
-        html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
-      });
-      html += '</select>';
-    } else if (field.type === 'number') {
-      html += '<input type="number" class="config-input" value="' + (field.value || '') + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" min="' + (field.min || 0) + '" max="' + (field.max || 999) + '">';
-    } else if (field.type === 'textarea') {
-      html += '<textarea class="config-textarea" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">' + esc(String(field.value || '')) + '</textarea>';
-    } else if (field.type === 'text') {
-      html += '<input type="text" class="config-input" value="' + esc(String(field.value || '')) + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">';
-    } else {
-      html += '<span class="config-value">' + esc(String(field.value != null ? field.value : 'Not Set')) + '</span>';
-    }
-
-    html += '</div>';
-  });
-
-  html += '</div>';
-  html += '<div id="save-bar-container"></div>';
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Settings</h3></div>';
+  data.fields.forEach(function(field) { html += renderOneField(field, mod); });
+  html += '</div><div id="save-bar-container"></div>';
   return html;
 }
 
@@ -523,6 +687,8 @@ function showSaveBar(mod) {
 
 function saveSettings(mod) {
   if (Object.keys(pendingChanges).length === 0) return;
+  var saveBtn = document.querySelector('.save-bar .btn-success');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
   api('/guild/' + currentGuild.id + '/settings/' + mod, {
     method: 'POST',
     body: JSON.stringify(pendingChanges)
@@ -530,10 +696,13 @@ function saveSettings(mod) {
     if (result && result.success) {
       toast('Settings saved');
       pendingChanges = {};
+      window._dispatchState = {};
       api('/guild/' + currentGuild.id).then(function(refreshed) {
         if (refreshed) currentGuild = refreshed;
         renderSettings(mod);
       });
+    } else {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     }
   });
 }

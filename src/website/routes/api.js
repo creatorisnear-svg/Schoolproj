@@ -614,6 +614,24 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'rolerequest': {
+          result.name = 'Role Request';
+          result.description = 'Allow members to request roles — staff approve or deny via DM';
+          const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
+          const rrc = await RoleRequestConfig.findOne({ guildId: guild.id });
+          result.fields = [];
+          result.requestableRoles = (rrc?.roles || []).map(r => ({
+            roleId: r.roleId,
+            roleName: guild.roles.cache.get(r.roleId)?.name || r.roleName || 'Unknown Role',
+            approverRoleCount: r.approverRoleIds?.length || 0,
+            approverMemberCount: r.approverMemberIds?.length || 0,
+          }));
+          result.stats = [
+            { label: 'Requestable Roles', value: (rrc?.roles || []).length },
+          ];
+          break;
+        }
+
         case 'economy': {
           result.name = 'Economy';
           result.description = 'Configure the server economy — currency, work, crime, gambling, and more';
@@ -861,6 +879,11 @@ export function createApiRouter(client) {
             }
           }
           await ec.save();
+          break;
+        }
+
+        case 'rolerequest': {
+          // Role request roles are managed via /rolerequestadd in Discord — nothing to save here
           break;
         }
 
