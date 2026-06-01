@@ -85,8 +85,34 @@ function getSavedGuildId() { try { return sessionStorage.getItem('rpm_guild_id')
 function getSavedSection() { try { return sessionStorage.getItem('rpm_section'); } catch(e) { return null; } }
 
 /* ── Init ── */
+function fullPageLoader(msg) {
+  return '<div class="rpm-loader"><div class="rpm-loader-inner">' +
+    '<img src="/img/logo.png" class="rpm-loader-logo" alt="RPM">' +
+    '<div class="rpm-spinner"></div>' +
+    '<span class="rpm-loader-text">' + (msg || 'Loading') + '<span class="rpm-loader-dots"><span></span><span></span><span></span></span></span>' +
+    '</div></div>';
+}
+
+function settingsSkeletonLoader() {
+  function skRow(w1, w2) {
+    return '<div class="skeleton-row">' +
+      '<div class="config-left"><div class="sk-line skeleton" style="width:' + w1 + ';"></div>' +
+      '<div class="sk-line skeleton" style="width:' + Math.round(parseInt(w1)*0.6) + 'px;margin-top:6px;opacity:0.5;"></div></div>' +
+      '<div class="sk-box skeleton" style="width:' + w2 + ';"></div>' +
+      '</div>';
+  }
+  function skSection(rows) {
+    var html = '<div class="skeleton-section"><div class="skeleton-header">' +
+      '<div class="sk-line skeleton" style="width:90px;"></div></div>';
+    rows.forEach(function(r) { html += skRow(r[0], r[1]); });
+    return html + '</div>';
+  }
+  return skSection([['55%','38px'],['40%','120px'],['65%','38px']]) +
+    skSection([['45%','120px'],['60%','38px'],['50%','120px']]);
+}
+
 function init() {
-  app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading...</div></div>';
+  app.innerHTML = fullPageLoader('Loading');
   api('/me').then(function(data) {
     if (!data || !data.user) { window.location.href = '/dashboard/login'; return; }
     currentUser = data.user;
@@ -163,7 +189,7 @@ function isFlagPremium(featureKey) {
 }
 
 function selectServer(guildId, section) {
-  app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading server...</div></div>';
+  app.innerHTML = fullPageLoader('Loading server');
   Promise.all([
     api('/guild/' + guildId),
     fetch('/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
@@ -634,7 +660,7 @@ function toggleFeature(el) {
 function renderSettings(mod) {
   if (currentGuild) saveSession(currentGuild.id, mod);
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
-    '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading...</div></div></div>';
+    '<div class="dashboard-content">' + settingsSkeletonLoader() + '</div></div>';
 
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
     if (!data) { app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) + '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Failed to load settings. Please try again.</div><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="renderSettings(\'' + mod + '\')">Retry</button></div></div>'; return; }
