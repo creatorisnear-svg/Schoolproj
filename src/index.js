@@ -15,6 +15,7 @@ import { createAuthRouter } from './website/routes/auth.js';
 import { createDevRouter } from './website/routes/dev.js';
 import { createPortalRouter } from './website/routes/portal.js';
 import { createPortalApiRouter } from './website/routes/portalApi.js';
+import { createCheckoutRouter } from './website/routes/checkout.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -78,6 +79,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
+// Stripe webhooks need the raw body — must be registered BEFORE express.json()
+app.use('/checkout/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://roleplaymanager.xyz';
@@ -129,6 +132,24 @@ app.get('/sitemap.xml', (req, res) => {
     '    <changefreq>weekly</changefreq>',
     '    <priority>1.0</priority>',
     '  </url>',
+    '  <url>',
+    '    <loc>https://roleplaymanager.xyz/pricing</loc>',
+    `    <lastmod>${now}</lastmod>`,
+    '    <changefreq>monthly</changefreq>',
+    '    <priority>0.9</priority>',
+    '  </url>',
+    '  <url>',
+    '    <loc>https://roleplaymanager.xyz/tos</loc>',
+    `    <lastmod>${now}</lastmod>`,
+    '    <changefreq>monthly</changefreq>',
+    '    <priority>0.5</priority>',
+    '  </url>',
+    '  <url>',
+    '    <loc>https://roleplaymanager.xyz/privacy</loc>',
+    `    <lastmod>${now}</lastmod>`,
+    '    <changefreq>monthly</changefreq>',
+    '    <priority>0.5</priority>',
+    '  </url>',
     '</urlset>',
   ].join('\n');
   const buf = Buffer.from(xml, 'utf-8');
@@ -144,6 +165,15 @@ app.get('/sitemap.xml', (req, res) => {
 
 app.get('/', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/landing.html'), 'utf8'));
+});
+app.get('/pricing', (req, res) => {
+  res.send(readFileSync(resolve('src/website/views/pricing.html'), 'utf8'));
+});
+app.get('/tos', (req, res) => {
+  res.send(readFileSync(resolve('src/website/views/tos.html'), 'utf8'));
+});
+app.get('/privacy', (req, res) => {
+  res.send(readFileSync(resolve('src/website/views/privacy.html'), 'utf8'));
 });
 
 app.get('/dashboard', (req, res) => {
@@ -189,6 +219,8 @@ app.get('/auth/site/callback', async (req, res) => {
 });
 
 app.use('/api', createApiRouter(client));
+app.use('/api/checkout', createCheckoutRouter());
+app.use('/checkout', createCheckoutRouter());
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', createPortalApiRouter(client));
 
