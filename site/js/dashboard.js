@@ -8,19 +8,22 @@ var currentUser = null;
 var currentGuild = null;
 var guilds = [];
 var pendingChanges = {};
+var sidebarOpen = false;
 var featureFlags = { dispatch: true };
 
 function getToken() { return localStorage.getItem('dash_token'); }
 function setToken(t) { localStorage.setItem('dash_token', t); }
 function clearToken() { localStorage.removeItem('dash_token'); }
 
+/* ── Toast ── */
 function toast(msg, type) {
   type = type || 'success';
   toastEl.textContent = msg;
   toastEl.className = 'toast ' + type + ' show';
-  setTimeout(function() { toastEl.classList.remove('show'); }, 3000);
+  setTimeout(function() { toastEl.classList.remove('show'); }, 3500);
 }
 
+/* ── API wrapper ── */
 function api(path, opts) {
   opts = opts || {};
   var token = getToken();
@@ -32,6 +35,16 @@ function api(path, opts) {
     if (res.status === 401) { clearToken(); showLogin(); return null; }
     if (!res.ok) {
       return res.json().catch(function() { return {}; }).then(function(err) {
+        if (err.error === 'premium_required') {
+          toast('Premium required - activate a key in the Premium section below.', 'error');
+          var premSection = document.getElementById('premium-section');
+          if (premSection) {
+            premSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            premSection.style.outline = '2px solid #5865f2';
+            setTimeout(function() { premSection.style.outline = ''; }, 2500);
+          }
+          return { __premium_required: true };
+        }
         toast(err.error || 'Something went wrong', 'error');
         return null;
       });
@@ -43,12 +56,14 @@ function api(path, opts) {
   });
 }
 
+/* ── Escape HTML ── */
 function esc(str) {
   var d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
 }
 
+/* ── Login / Auth ── */
 function showLogin() {
   var clientId = '1441306995641683978';
   var redirectUri = encodeURIComponent(API_BASE + '/auth/site/callback');
@@ -74,6 +89,26 @@ function loadFeatureFlags(callback) {
   });
 }
 
+function logout() { clearToken(); window.location.href = '/'; }
+function switchAccount() { clearToken(); showLogin(); }
+
+/* ── Sidebar toggle (mobile) ── */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  var sb = document.querySelector('.sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  if (sb) sb.classList.toggle('open', sidebarOpen);
+  if (overlay) overlay.classList.toggle('open', sidebarOpen);
+}
+function closeSidebar() {
+  sidebarOpen = false;
+  var sb = document.querySelector('.sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  if (sb) sb.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+}
+
+/* ── Init ── */
 function init() {
   var hash = window.location.hash;
   if (hash && hash.indexOf('#token=') === 0) {
@@ -90,7 +125,6 @@ function init() {
       if (!data || !data.user) { clearToken(); showLogin(); return; }
       currentUser = data.user;
       guilds = data.guilds || [];
-
       var avatar = currentUser.avatar
         ? 'https://cdn.discordapp.com/avatars/' + currentUser.id + '/' + currentUser.avatar + '.png?size=32'
         : null;
@@ -123,31 +157,46 @@ document.addEventListener('click', function() {
   if (dropdown) dropdown.classList.remove('open');
 });
 
-function logout() { clearToken(); window.location.href = '/'; }
-function switchAccount() { clearToken(); showLogin(); }
-
+/* ── Server Select ── */
 function renderServerSelect() {
   currentGuild = null;
   pendingChanges = {};
   app.innerHTML =
     '<div style="padding-top:80px;max-width:800px;margin:0 auto;padding-left:24px;padding-right:24px;">' +
     '<div class="dash-header"><h1>Select a Server</h1>' +
-    '<p>Choose a server to manage. Only servers where you have admin permissions and the bot is present are shown.</p></div>' +
+    '<p>Choose a server to manage. Only servers where you have Admin permissions and the bot is present are shown.</p></div>' +
     '<div class="server-list">' +
-    (guilds.length === 0 ? '<p style="color:var(--text-muted);font-size:13px;">No servers found. Make sure the bot is in your server and you have Administrator permission.</p>' : '') +
-    guilds.map(function(g) {
-      return '<div class="server-card" onclick="selectServer(\'' + g.id + '\')">' +
-        '<div class="server-icon">' +
-        (g.icon ? '<img src="https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64" alt="">' : esc(g.name.charAt(0))) +
-        '</div><div><div class="server-name">' + esc(g.name) + '</div>' +
-        '<div class="server-members">' + (g.memberCount || 0) + ' members</div></div></div>';
-    }).join('') +
+    (guilds.length === 0
+      ? '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;">' +
+        '<p style="color:var(--text-muted);font-size:13px;margin-bottom:8px;">No servers found.</p>' +
+        '<p style="color:var(--text-dim);font-size:12px;">Make sure the bot is in your server and you have the <strong>Administrator</strong> permission, then refresh this page.</p>' +
+        '</div>'
+      : guilds.map(function(g) {
+          return '<div class="server-card" onclick="selectServer(\'' + g.id + '\')">' +
+            '<div class="server-icon">' +
+            (g.icon ? '<img src="https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64" alt="">' : esc(g.name.charAt(0))) +
+            '</div><div style="flex:1;min-width:0;">' +
+            '<div class="server-name">' + esc(g.name) + '</div>' +
+            '<div class="server-members">' + (g.memberCount || 0) + ' members</div></div>' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
+            '</div>';
+        }).join('')) +
     '</div></div>';
+}
+
+function isFlagPremium(featureKey) {
+  if (featureKey in featureFlags) return featureFlags[featureKey] === true;
+  return featureKey === 'dispatch';
 }
 
 function selectServer(guildId) {
   app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading server...</div></div>';
-  api('/guild/' + guildId).then(function(data) {
+  Promise.all([
+    api('/guild/' + guildId),
+    fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+  ]).then(function(results) {
+    var data = results[0];
+    featureFlags = results[1] || {};
     if (!data) { renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
@@ -155,18 +204,19 @@ function selectServer(guildId) {
   });
 }
 
+/* ── Feature definitions ── */
 var FEATURES = [
-  { key: 'roleplayEnabled', feature: 'roleplay', name: 'Roleplay Commands', icon: 'RP', desc: '911, Twitter, Anon tips, CAD', mod: 'roleplay' },
-  { key: 'priorityEnabled', feature: 'priority', name: 'Priority Tracker', icon: 'P', desc: 'Priority event tracking', mod: 'priority' },
-  { key: 'strikeEnabled', feature: 'strike', name: 'Strike System', icon: 'S', desc: 'Multi-level strike punishments', mod: 'strikes' },
-  { key: 'calendarEnabled', feature: 'calendar', name: 'RP Calendar', icon: 'C', desc: 'Weekly event scheduling', mod: 'calendar' },
-  { key: 'ticketEnabled', feature: 'ticket', name: 'Ticket Support', icon: 'T', desc: 'Support ticket system', mod: 'tickets' },
-  { key: 'antiPromotingEnabled', feature: 'antipromote', name: 'Anti-Promoting', icon: 'AP', desc: 'Invite link filtering', mod: 'antipromo' },
-  { key: 'roleRequestEnabled', feature: 'rolerequest', name: 'Role Request', icon: 'RR', desc: 'Self-serve role requests', mod: 'rolerequest' },
-  { key: 'verifyEnabled', feature: 'verification', name: 'Verification', icon: 'ID', desc: 'Member verification gate', mod: 'verification' },
-  { key: 'welcomeEnabled', feature: 'welcome', name: 'Welcome System', icon: 'W', desc: 'New member messages', mod: 'welcome' },
-  { key: 'dispatchEnabled', feature: 'dispatch', name: 'AI Voice Dispatch', icon: 'AI', desc: 'AI-powered dispatch (Premium)', mod: 'dispatch', premium: true },
-  { key: 'economyEnabled', feature: 'economy', name: 'Economy', icon: '$', desc: 'Currency, work, crime, gambling', mod: 'economy' },
+  { key: 'roleplayEnabled',     feature: 'roleplay',      name: 'Roleplay Commands', icon: 'RP',  desc: '911, Twitter, anon tips, CAD',   mod: 'roleplay' },
+  { key: 'priorityEnabled',     feature: 'priority',      name: 'Priority Tracker',  icon: 'PRI', desc: 'Priority event tracking',         mod: 'priority' },
+  { key: 'strikeEnabled',       feature: 'strike',        name: 'Strike System',     icon: 'STR', desc: 'Multi-level strike punishments',  mod: 'strikes' },
+  { key: 'calendarEnabled',     feature: 'calendar',      name: 'RP Calendar',       icon: 'CAL', desc: 'Weekly event scheduling',         mod: 'calendar' },
+  { key: 'ticketEnabled',       feature: 'ticket',        name: 'Ticket Support',    icon: 'TKT', desc: 'Support ticket system',           mod: 'tickets' },
+  { key: 'antiPromotingEnabled',feature: 'antipromote',   name: 'Anti-Promoting',    icon: 'AP',  desc: 'Invite link filtering',           mod: 'antipromo' },
+  { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: 'rolerequest' },
+  { key: 'verifyEnabled',       feature: 'verification',  name: 'Verification',      icon: 'ID',  desc: 'Member verification gate',        mod: 'verification' },
+  { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
+  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
+  { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -194,29 +244,135 @@ var SIDEBAR_GROUPS = [
   ]},
 ];
 
+/* ── Sidebar HTML ── */
 function renderSidebar(active) {
   var premiumSection = currentGuild && currentGuild.premium
     ? '<div class="sidebar-section"><div class="sidebar-section-title">Premium</div>' +
-      '<div class="sidebar-item ' + (active === 'billing' ? 'active' : '') + '" onclick="renderBilling()">Billing</div>' +
+      '<div class="sidebar-item ' + (active === 'billing' ? 'active' : '') + '" onclick="closeSidebar();renderBilling()">Billing</div>' +
       '</div>'
     : '';
   var groupedSections = SIDEBAR_GROUPS.map(function(g) {
     return '<div class="sidebar-section"><div class="sidebar-section-title">' + g.title + '</div>' +
       g.items.map(function(m) {
-        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
+        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
       }).join('') +
       '</div>';
   }).join('');
-  return '<div class="sidebar">' +
+  return '<div class="sidebar" id="main-sidebar">' +
     '<div class="sidebar-section"><div class="sidebar-section-title">Server</div>' +
-    '<div class="sidebar-item ' + (active === 'overview' ? 'active' : '') + '" onclick="renderDashboard()">Overview</div>' +
-    '<div class="sidebar-item" onclick="renderServerSelect()">Switch Server</div>' +
+    '<div class="sidebar-item ' + (active === 'overview' ? 'active' : '') + '" onclick="closeSidebar();renderDashboard()">Overview</div>' +
+    '<div class="sidebar-item" onclick="closeSidebar();renderServerSelect()">Switch Server</div>' +
     '</div>' +
     groupedSections +
     premiumSection +
-    '</div>';
+    '</div>' +
+    '<div class="sidebar-overlay" onclick="closeSidebar()"></div>';
 }
 
+/* ── Sidebar toggle button (mobile) ── */
+function sidebarToggleBtn(label) {
+  return '<button class="sidebar-toggle-btn" onclick="toggleSidebar()">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>' +
+    (label || 'Menu') +
+    '</button>';
+}
+
+/* ── Overview / Dashboard ── */
+function renderDashboard() {
+  var g = currentGuild;
+  var config = g.config || {};
+
+  var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
+  var totalCount = FEATURES.length;
+
+  var html = '<div class="dashboard-layout">' + renderSidebar('overview') +
+    '<div class="dashboard-content">' +
+    sidebarToggleBtn('Menu') +
+    '<div class="mobile-back" onclick="closeSidebar();renderServerSelect()">&#8249; Switch Server</div>' +
+    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>Overview and module management</p></div>';
+
+  html += '<div class="dash-grid" style="margin-bottom:16px;">' +
+    '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0).toLocaleString() + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="font-size:15px;color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">Active Modules</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
+    '</div>';
+
+  /* ── Section 1: Enable / Disable ── */
+  var FEATURE_CATEGORIES = [
+    { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
+    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
+    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome'] },
+    { title: 'Economy',               keys: ['economy'] },
+    { title: 'Advanced',              keys: ['dispatch'] },
+  ];
+
+  html += '<div class="overview-section">' +
+    '<div class="overview-section-header">' +
+    '<h2 class="overview-section-title">Enable / Disable Features</h2>' +
+    '<p class="overview-section-sub">Toggle which modules are active on your server</p>' +
+    '</div><div class="feature-groups">';
+
+  FEATURE_CATEGORIES.forEach(function(cat) {
+    var catFeatures = FEATURES.filter(function(f) { return cat.keys.indexOf(f.feature) !== -1; });
+    if (!catFeatures.length) return;
+    html += '<div class="feature-category">' +
+      '<div class="feature-category-title">' + cat.title + '</div>';
+    catFeatures.forEach(function(f) {
+      var enabled = !!config[f.key];
+      var isPremium = isFlagPremium(f.feature);
+      html += '<div class="feature-row">' +
+        '<div class="feature-row-info">' +
+        '<div class="feature-row-name">' + f.name + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
+        '<div class="feature-row-desc">' + f.desc + '</div>' +
+        '</div>' +
+        '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + f.name + '"></div>' +
+        '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  /* ── Section 2: Configure ── */
+  var CONFIGURE_CARDS = [
+    { id: 'general',      label: 'General Settings',  desc: 'Log channel, general config',    featureKey: null },
+    { id: 'roleplay',     label: 'Roleplay Commands',  desc: '911, CAD, Twitter, anon',        featureKey: 'roleplayEnabled' },
+    { id: 'verification', label: 'Verification',       desc: 'Gate, roles, questions, panel',  featureKey: 'verifyEnabled' },
+    { id: 'strikes',      label: 'Strike System',      desc: 'Levels, punishments',            featureKey: 'strikeEnabled' },
+    { id: 'tickets',      label: 'Ticket Support',     desc: 'Types, channels, panel',         featureKey: 'ticketEnabled' },
+    { id: 'welcome',      label: 'Welcome System',     desc: 'Join messages, DMs',             featureKey: 'welcomeEnabled' },
+    { id: 'antipromo',    label: 'Anti-Promoting',     desc: 'Invite link filtering',          featureKey: 'antiPromotingEnabled' },
+    { id: 'rolerequest',  label: 'Role Request',        desc: 'Self-serve role requests',       featureKey: 'roleRequestEnabled' },
+    { id: 'priority',     label: 'Priority Tracker',   desc: 'Priority event tracking',        featureKey: 'priorityEnabled' },
+    { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',         featureKey: 'calendarEnabled' },
+    { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
+    { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
+  ];
+
+  html += '<div class="overview-section" style="margin-top:16px;">' +
+    '<div class="overview-section-header">' +
+    '<h2 class="overview-section-title">Configure Modules</h2>' +
+    '<p class="overview-section-sub">Set up channels, roles, and options — click any card to open settings</p>' +
+    '</div><div class="configure-module-grid">';
+
+  CONFIGURE_CARDS.forEach(function(m) {
+    var enabled = m.featureKey ? !!config[m.featureKey] : true;
+    html += '<div class="configure-module-card" onclick="renderSettings(\'' + m.id + '\')">' +
+      '<div class="configure-module-header">' +
+      (m.featureKey ? '<span class="configure-status-dot ' + (enabled ? 'on' : 'off') + '"></span>' : '') +
+      '<div class="configure-module-name">' + m.label + '</div>' +
+      '</div>' +
+      '<div class="configure-module-desc">' + m.desc + '</div>' +
+      '<div class="configure-module-cta">Configure ›</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+
+  html += renderPremiumSection(g);
+  html += '</div></div>';
+  app.innerHTML = html;
+}
+
+/* ── Premium Section ── */
 function transferPremium() {
   if (!confirm('This will release the premium key from this server. You will be shown the key to activate it on another server. Continue?')) return;
   var btn = document.getElementById('transfer-btn');
@@ -230,10 +386,10 @@ function transferPremium() {
           '<div class="config-section-header"><h3>Premium</h3>' +
           '<span class="status-badge disabled"><span class="status-dot"></span>Released</span></div>' +
           '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-          '<span class="config-label">Key released successfully. Copy your key below to activate it on another server.</span>' +
-          '<div style="display:flex;gap:8px;align-items:center;">' +
+          '<span class="config-label">Key released successfully. Copy it below to activate on another server.</span>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
           '<code style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:13px;letter-spacing:1px;">' + result.key + '</code>' +
-          '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + result.key + '\').then(function(){toast(\'Key copied!\')})">Copy</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + result.key + '\').then(function(){toast(\'Key copied!\')})">Copy Key</button>' +
           '</div></div>';
       }
     } else {
@@ -242,87 +398,34 @@ function transferPremium() {
   });
 }
 
-function renderPremiumSection(g) {
-  if (g.premium) {
-    var d = g.premiumDetails || {};
-    var planLabel = d.plan === 'monthly' ? 'Monthly' : d.plan === 'lifetime' ? 'Lifetime' : 'Manual';
-    var isCancelling = d.subscriptionStatus === 'cancelling';
-    var isCancelled = d.subscriptionStatus === 'canceled' || d.subscriptionStatus === 'cancelled';
-    var statusColor = isCancelling ? 'var(--amber)' : isCancelled ? 'var(--red)' : 'var(--green)';
-    var statusLabel = isCancelling ? 'Cancels at period end' : isCancelled ? 'Cancelled' : 'Active';
-
-    var renewalLine = '';
-    if (d.plan === 'monthly' && d.subscriptionCurrentPeriodEnd) {
-      var endDate = new Date(d.subscriptionCurrentPeriodEnd);
-      var formatted = endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-      renewalLine = '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' +
-        (isCancelling ? 'Access ends' : 'Renews') + ' on <strong style="color:var(--text);">' + formatted + '</strong></div>';
+function activatePremium() {
+  var input = document.getElementById('premium-key-input');
+  if (!input) return;
+  var key = input.value.trim();
+  if (!key) { toast('Please enter your premium key', 'error'); return; }
+  var btn = document.getElementById('activate-premium-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Activating...'; }
+  api('/guild/' + currentGuild.id + '/premium', {
+    method: 'POST',
+    body: JSON.stringify({ key: key })
+  }).then(function(result) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Activate'; }
+    if (result && result.success) {
+      currentGuild.premium = true;
+      toast('Premium activated! All features are now unlocked.');
+      renderDashboard();
     }
-
-    var cancelBtn = '';
-    if (d.plan === 'monthly' && d.hasStripeSubscription && !isCancelling && !isCancelled) {
-      cancelBtn = '<button id="cancel-sub-btn" class="btn btn-sm" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;" onclick="cancelSubscription()">Cancel Subscription</button>';
-    }
-    var reactivateBtn = '';
-    if (d.plan === 'monthly' && d.hasStripeSubscription && isCancelling) {
-      reactivateBtn = '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate Subscription</button>';
-    }
-
-    return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
-      '<div class="config-section-header"><h3>Premium</h3>' +
-      '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>' +
-      '</div>' +
-      '<div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px;">' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
-      '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
-      '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Plan</div>' +
-      '<div style="font-size:14px;font-weight:700;color:var(--text);">' + planLabel + '</div>' +
-      '</div>' +
-      '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
-      '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Status</div>' +
-      '<div style="font-size:14px;font-weight:700;color:' + statusColor + ';">' + statusLabel + '</div>' +
-      '</div>' +
-      (d.plan === 'monthly' && d.subscriptionCurrentPeriodEnd ? (
-        '<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">' +
-        '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">' + (isCancelling ? 'Access Ends' : 'Next Renewal') + '</div>' +
-        '<div style="font-size:13px;font-weight:600;color:var(--text);">' + new Date(d.subscriptionCurrentPeriodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + '</div>' +
-        '</div>'
-      ) : '') +
-      '</div>' +
-      (isCancelling ? '<div style="background:rgba(250,166,26,0.08);border:1px solid rgba(250,166,26,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber);">Subscription is set to cancel. Premium features remain active until the period ends.</div>' : '') +
-      (isCancelled ? '<div style="background:rgba(240,71,71,0.08);border:1px solid rgba(240,71,71,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);">Subscription cancelled. Premium features will stop working. Transfer your key or purchase a new subscription.</div>' : '') +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-      '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
-      reactivateBtn +
-      cancelBtn +
-      '</div>' +
-      '</div></div>';
-  }
-  return '<div class="config-section" id="premium-section" style="margin-top:20px;border-color:rgba(88,101,242,0.4);">' +
-    '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
-    '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
-    '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
-    '</div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
-    '<p style="font-size:12px;color:var(--text-muted);margin:0;">Get a premium key from the pricing page, then enter it below to unlock AI Voice Dispatch and all premium features.</p>' +
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="' + SITE_URL + '/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
-    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support</a>' +
-    '</div>' +
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
-    '<button class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
-    '</div></div></div>';
+  });
 }
 
 function cancelSubscription() {
-  if (!confirm('Cancel your monthly subscription? You will keep premium access until the end of the current billing period, then it will stop. This cannot be undone.')) return;
+  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
     if (result && result.success) {
       if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'cancelling';
-      toast('Subscription cancelled. Access continues until the billing period ends.');
+      toast('Subscription cancelled. Premium stays active until the billing period ends.');
       renderDashboard();
     } else {
       if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
@@ -331,18 +434,94 @@ function cancelSubscription() {
 }
 
 function reactivateSubscription() {
-  if (!confirm('Reactivate your subscription? It will continue to renew monthly as normal.')) return;
   var btn = document.getElementById('reactivate-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Reactivating...'; }
   api('/guild/' + currentGuild.id + '/premium/reactivate', { method: 'POST' }).then(function(result) {
     if (result && result.success) {
       if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'active';
-      toast('Subscription reactivated. It will renew as normal.');
+      toast('Subscription reactivated! Billing will continue as normal.');
       renderDashboard();
     } else {
-      if (btn) { btn.disabled = false; btn.textContent = 'Reactivate Subscription'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Reactivate'; }
     }
   });
+}
+
+function renderPremiumSection(g) {
+  var premiumItems = [];
+  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
+  premiumItems.push('Blackjack & Roulette gambling games');
+  premiumItems.push('Top-25 leaderboard (free: top 10)');
+  premiumItems.push('Unlimited ticket types (free: 3)');
+  premiumItems.push('Unlimited role income entries (free: 2)');
+  premiumItems.push('Unlimited CAD, vehicles, BOLOs & stickies');
+
+  if (g.premium) {
+    var pd = g.premiumDetails || {};
+    var subStatus = pd.subscriptionStatus || null;
+    var isCancelling = subStatus === 'cancelling';
+    var isMonthly = pd.hasStripeSubscription;
+    var periodEnd = pd.subscriptionCurrentPeriodEnd ? new Date(pd.subscriptionCurrentPeriodEnd) : null;
+    var periodEndStr = periodEnd ? periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
+    var statusBadge = isCancelling
+      ? '<span class="status-badge" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);"><span class="status-dot" style="background:#fbbf24;"></span>Cancelling</span>'
+      : '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>';
+
+    var sublabel = isCancelling && periodEndStr
+      ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
+      : premiumItems.join(', ') + ' - all unlocked.';
+
+    var planLabel = isMonthly
+      ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
+      : (pd.subscriptionStatus === null && !isMonthly ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
+
+    var actionBtns = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+    actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
+    if (isMonthly) {
+      if (isCancelling) {
+        actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';
+      } else {
+        actionBtns += '<button id="cancel-sub-btn" class="btn btn-secondary btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="cancelSubscription()">Cancel Subscription</button>';
+      }
+    }
+    actionBtns += '</div>';
+
+    return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:' + (isCancelling ? 'rgba(251,191,36,0.3)' : 'rgba(52,211,153,0.3)') + ';">' +
+      '<div class="config-section-header"><h3>Premium' + planLabel + '</h3>' + statusBadge + '</div>' +
+      '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
+      '<div><span class="config-label">' + (isCancelling ? 'Subscription is set to cancel.' : 'Premium is active on this server.') + '</span>' +
+      '<div class="config-sublabel">' + sublabel + '</div></div>' +
+      actionBtns +
+      '</div></div>';
+  }
+
+  return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(88,101,242,0.4);">' +
+    '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
+    '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
+    '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
+    '</div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
+    (premiumItems.length > 0
+      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;width:100%;">' +
+        premiumItems.map(function(t) { return premFeatureItem(t); }).join('') +
+        '</div>'
+      : '') +
+    '<div style="border-top:1px solid var(--border);padding-top:12px;width:100%;">' +
+    '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key from the pricing page, then enter it below to unlock all premium features.</p>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
+    '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support Server</a>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
+    '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
+    '<button id="activate-premium-btn" class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
+    '</div></div></div></div>';
+}
+
+function premFeatureItem(text) {
+  return '<div style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--text-muted);">' +
+    '<span style="color:#7b8cec;margin-top:1px;flex-shrink:0;">✦</span>' + esc(text) + '</div>';
 }
 
 /* ── Billing Page ── */
@@ -396,15 +575,13 @@ function renderBilling() {
       data.invoices.forEach(function(inv) {
         var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
         var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '-';
-        var invStatus = inv.status === 'paid'
-          ? '<span style="color:var(--green);font-size:12px;">Paid</span>'
-          : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '-') + '</span>';
+        var invStatus = inv.status === 'paid' ? '<span style="color:var(--green);font-size:12px;">Paid</span>' : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '-') + '</span>';
         var receipt = inv.receiptUrl
           ? '<a href="' + esc(inv.receiptUrl) + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);">View</a>'
           : '<span style="font-size:12px;color:var(--text-dim);">-</span>';
         invoiceHtml += '<tr>' +
           '<td style="font-size:13px;color:var(--text-muted);padding:10px 0;border-bottom:1px solid var(--border);">' + invDate + '</td>' +
-          '<td style="font-size:13px;color:var(--text);font-weight:600;padding:10px 0;border-bottom:1px solid var(--border);">' + amount + '</td>' +
+          '<td style="font-size:13px;color:var(--text);padding:10px 0;border-bottom:1px solid var(--border);font-weight:600;">' + amount + '</td>' +
           '<td style="padding:10px 0;border-bottom:1px solid var(--border);">' + invStatus + '</td>' +
           '<td style="text-align:right;padding:10px 0;border-bottom:1px solid var(--border);">' + receipt + '</td>' +
           '</tr>';
@@ -417,7 +594,9 @@ function renderBilling() {
     }
 
     var html = '<div class="dashboard-layout">' + renderSidebar('billing') +
-      '<div class="dashboard-content">' +
+      '<div class="dashboard-content" id="billing-content">' +
+      sidebarToggleBtn('Menu') +
+      '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
       '<div class="dash-header"><h1>Billing</h1><p>Your premium plan and payment history</p></div>' +
       '<div class="config-section">' +
       '<div class="config-section-header"><h3>Current Plan</h3></div>' +
@@ -442,179 +621,30 @@ function billingRow(label, value) {
     '</div>';
 }
 
-function renderDashboard() {
-  var g = currentGuild;
-  var config = g.config || {};
-
-  var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
-  var totalCount = FEATURES.length;
-
-  var html = '<div class="dashboard-layout">' + renderSidebar('overview') +
-    '<div class="dashboard-content">' +
-    '<div class="mobile-back" onclick="renderServerSelect()">&#8249; Switch Server</div>' +
-    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>Overview and module management</p></div>';
-
-  html += '<div class="dash-grid" style="margin-bottom:16px;">' +
-    '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0).toLocaleString() + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="font-size:15px;color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Active Modules</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
-    '</div>';
-
-  /* ── Section 1: Enable / Disable ── */
-  var FEATURE_CATEGORIES = [
-    { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
-    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
-    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome'] },
-    { title: 'Economy',               keys: ['economy'] },
-    { title: 'Advanced',              keys: ['dispatch'] },
-  ];
-
-  html += '<div class="overview-section">' +
-    '<div class="overview-section-header">' +
-    '<h2 class="overview-section-title">Enable / Disable Features</h2>' +
-    '<p class="overview-section-sub">Toggle which modules are active on your server</p>' +
-    '</div><div class="feature-groups">';
-
-  FEATURE_CATEGORIES.forEach(function(cat) {
-    var catFeatures = FEATURES.filter(function(f) { return cat.keys.indexOf(f.feature) !== -1; });
-    if (!catFeatures.length) return;
-    html += '<div class="feature-category">' +
-      '<div class="feature-category-title">' + cat.title + '</div>';
-    catFeatures.forEach(function(f) {
-      var enabled = !!config[f.key];
-      var isPremium = featureFlags[f.feature] === true || (featureFlags[f.feature] === undefined && f.premium);
-      html += '<div class="feature-row">' +
-        '<div class="feature-row-info">' +
-        '<div class="feature-row-name">' + f.name + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
-        '<div class="feature-row-desc">' + f.desc + '</div>' +
-        '</div>' +
-        '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +
-        '</div>';
-    });
-    html += '</div>';
-  });
-  html += '</div></div>';
-
-  /* ── Section 2: Configure ── */
-  var CONFIGURE_CARDS = [
-    { id: 'general',      label: 'General Settings',  desc: 'Log channel, general config',   featureKey: null },
-    { id: 'roleplay',     label: 'Roleplay Commands',  desc: '911, CAD, Twitter, anon',       featureKey: 'roleplayEnabled' },
-    { id: 'verification', label: 'Verification',       desc: 'Gate, roles, questions, panel', featureKey: 'verifyEnabled' },
-    { id: 'strikes',      label: 'Strike System',      desc: 'Levels, punishments',           featureKey: 'strikeEnabled' },
-    { id: 'tickets',      label: 'Ticket Support',     desc: 'Types, channels, panel',        featureKey: 'ticketEnabled' },
-    { id: 'welcome',      label: 'Welcome System',     desc: 'Join messages, DMs',            featureKey: 'welcomeEnabled' },
-    { id: 'antipromo',    label: 'Anti-Promoting',     desc: 'Invite link filtering',         featureKey: 'antiPromotingEnabled' },
-    { id: 'rolerequest',  label: 'Role Request',        desc: 'Self-serve role requests',      featureKey: 'roleRequestEnabled' },
-    { id: 'priority',     label: 'Priority Tracker',   desc: 'Priority event tracking',       featureKey: 'priorityEnabled' },
-    { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',        featureKey: 'calendarEnabled' },
-    { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',         featureKey: 'economyEnabled' },
-    { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',          featureKey: 'dispatchEnabled' },
-  ];
-
-  html += '<div class="overview-section" style="margin-top:16px;">' +
-    '<div class="overview-section-header">' +
-    '<h2 class="overview-section-title">Configure Modules</h2>' +
-    '<p class="overview-section-sub">Set up channels, roles, and options — click any card to open settings</p>' +
-    '</div><div class="configure-module-grid">';
-
-  CONFIGURE_CARDS.forEach(function(m) {
-    var enabled = m.featureKey ? !!config[m.featureKey] : true;
-    html += '<div class="configure-module-card" onclick="renderSettings(\'' + m.id + '\')">' +
-      '<div class="configure-module-header">' +
-      (m.featureKey ? '<span class="configure-status-dot ' + (enabled ? 'on' : 'off') + '"></span>' : '') +
-      '<div class="configure-module-name">' + m.label + '</div>' +
-      '</div>' +
-      '<div class="configure-module-desc">' + m.desc + '</div>' +
-      '<div class="configure-module-cta">Configure ›</div>' +
-      '</div>';
-  });
-  html += '</div></div>';
-
-  html += renderPremiumSection(g);
-  html += '</div></div>';
-  app.innerHTML = html;
-}
-
-function activatePremium() {
-  var input = document.getElementById('premium-key-input');
-  if (!input) return;
-  var key = input.value.trim();
-  if (!key) { toast('Please enter a premium key', 'error'); return; }
-
-  var btn = input.nextElementSibling;
-  btn.disabled = true;
-  btn.textContent = 'Activating...';
-
-  api('/guild/' + currentGuild.id + '/premium', {
-    method: 'POST',
-    body: JSON.stringify({ key: key })
-  }).then(function(result) {
-    btn.disabled = false;
-    btn.textContent = 'Activate';
-    if (result && result.success) {
-      currentGuild.premium = true;
-      toast('Premium activated!');
-      renderDashboard();
-    }
-  });
-}
-
+/* ── Feature Toggle ── */
 function toggleFeature(el) {
   if (el.classList.contains('loading')) return;
-
   var feature = el.getAttribute('data-feature');
   var key = el.getAttribute('data-key');
   var newVal = !el.classList.contains('active');
-
   el.classList.add('loading');
   el.classList.toggle('active');
-
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/feature/' + feature, {
+  api('/guild/' + currentGuild.id + '/feature/' + feature, {
     method: 'POST',
-    headers: headers,
     body: JSON.stringify({ enabled: newVal })
-  }).then(function(res) {
+  }).then(function(result) {
     el.classList.remove('loading');
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    if (res.status === 403) {
+    if (result && result.success) {
+      if (!currentGuild.config) currentGuild.config = {};
+      currentGuild.config[key] = newVal;
+      toast(newVal ? 'Module enabled' : 'Module disabled');
+    } else {
       el.classList.toggle('active');
-      res.json().then(function(err) {
-        if (err && err.error === 'premium_required') {
-          toast('Premium required - activate a key in the Premium section below.', 'error');
-        } else {
-          toast(err.error || 'Access denied', 'error');
-        }
-      }).catch(function() { toast('Access denied', 'error'); });
-      return;
     }
-    if (!res.ok) {
-      el.classList.toggle('active');
-      res.json().catch(function() { return {}; }).then(function(err) {
-        toast(err.error || 'Something went wrong', 'error');
-      });
-      return;
-    }
-    res.json().then(function(result) {
-      if (result && result.success) {
-        if (!currentGuild.config) currentGuild.config = {};
-        currentGuild.config[key] = newVal;
-        toast(newVal ? 'Feature enabled' : 'Feature disabled');
-      } else {
-        el.classList.toggle('active');
-        toast('Something went wrong', 'error');
-      }
-    });
-  }).catch(function() {
-    el.classList.remove('loading');
-    el.classList.toggle('active');
-    toast('Connection error. Please try again.', 'error');
   });
 }
 
+/* ── Settings Page ── */
 function renderSettings(mod) {
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
     '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading...</div></div></div>';
@@ -622,14 +652,19 @@ function renderSettings(mod) {
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
     if (!data) return;
     pendingChanges = {};
+
     var html = '<div class="dashboard-layout">' + renderSidebar(mod) +
       '<div class="dashboard-content" id="settings-content">' +
-      '<div class="mobile-back" onclick="renderDashboard()">&#8249; Back</div>' +
+      sidebarToggleBtn('Menu') +
+      '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
       '<div class="dash-header"><h1>' + esc(data.name) + '</h1><p>' + esc(data.description) + '</p></div>';
 
     if (data.premium) {
-      html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--amber);">' +
-        'This is a premium feature. A premium key is required for this module to function.</div>';
+      html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px;">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+        'Premium feature - requires an active premium key on this server.' +
+        (!currentGuild.premium ? ' <a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;margin-left:4px;">Activate Premium</a>' : '') +
+        '</div>';
     }
 
     if (mod === 'economy') {
@@ -640,15 +675,11 @@ function renderSettings(mod) {
       html += renderSettingsFields(data, mod);
     }
 
-    if (mod === 'dispatch') {
-      html += renderDispatchExtras(data);
-    }
-
     if (data.stats && data.stats.length > 0) {
       html += '<div class="dash-grid" style="margin-top:14px;">';
       data.stats.forEach(function(s) {
         html += '<div class="dash-card"><div class="dash-label">' + esc(s.label) + '</div>' +
-          '<div class="dash-value">' + esc(String(s.value)) + '</div></div>';
+          '<div class="dash-value" style="font-size:18px;">' + esc(String(s.value)) + '</div></div>';
       });
       html += '</div>';
     }
@@ -663,6 +694,10 @@ function renderSettings(mod) {
 
     if (data.whitelistedLinks !== undefined) {
       html += renderWhitelistedLinksSection(data);
+    }
+
+    if (mod === 'dispatch') {
+      html += renderDispatchExtras(data);
     }
 
     if (mod === 'verification') {
@@ -691,6 +726,270 @@ function sendVerifyPanel(e) {
   api('/guild/' + currentGuild.id + '/settings/verification/panel/send', { method: 'POST' }).then(function(r) {
     if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
     if (r && r.success) toast('Verification panel sent to Discord');
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+/* ── Dispatch extras (voice channel management) ── */
+function renderDispatchExtras(data) {
+  initDispatchState(data);
+  var html = '';
+  var voiceOpts = (data.voiceChannels || []).map(function(c) {
+    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
+  }).join('');
+
+  var patrolCount = (data.currentPatrolChannels || []).length;
+  var trafficCount = (data.currentTrafficChannels || []).length;
+  var leoCount = (data.leoRoles || []).length;
+
+  html += '<div class="config-section" style="margin-top:14px;background:rgba(88,101,242,0.03);">' +
+    '<div class="config-section-header"><h3>How AI Dispatch Works</h3></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;width:100%;">' +
+    dispatchStep('1', 'Set patrol channels below', 'The bot joins these voice channels to listen to officers', patrolCount > 0 ? 'var(--green)' : 'var(--text-dim)') +
+    dispatchStep('2', 'Assign LEO roles', 'Only members with these roles can trigger dispatch responses', leoCount > 0 ? 'var(--green)' : 'var(--text-dim)') +
+    dispatchStep('3', 'Enable AI Responses', 'Toggle it on above so the bot generates realistic dispatcher replies', null) +
+    dispatchStep('4', 'Set a dispatch channel', 'AI responses and logs are posted in this text channel', null) +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:10px;width:100%;">' +
+    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels - the bot transcribes the audio, ' +
+    'generates an AI dispatcher reply, and reads it back in the channel. On a 10-11, the officer is automatically moved to a traffic stop channel.' +
+    '</div>' +
+    '</div></div>';
+
+  var statusItems = [
+    { label: 'Patrol channels', count: patrolCount, ok: patrolCount > 0 },
+    { label: 'Traffic stop channels', count: trafficCount, ok: true },
+    { label: 'LEO roles', count: leoCount, ok: leoCount > 0 },
+  ];
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Configuration Status</h3></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:0 16px 12px;">';
+  statusItems.forEach(function(s) {
+    html += '<div style="background:var(--bg-secondary);border:1px solid ' + (s.ok ? 'rgba(52,211,153,0.25)' : 'var(--border)') + ';border-radius:8px;padding:10px 12px;">' +
+      '<div style="font-size:18px;font-weight:700;color:' + (s.ok ? 'var(--green)' : 'var(--text-dim)') + ';">' + s.count + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + esc(s.label) + '</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Patrol Voice Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Bot listens here for officer speech</span></div>';
+
+  var patrolTags = (data.currentPatrolChannels || []).map(function(id) {
+    var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
+    var name = ch ? ch.label : id;
+    return '<span class="channel-tag">' + esc(name) +
+      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'patrol\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+  }).join('');
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet - add at least one so the bot can listen.</span>') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select class="config-select" id="patrol-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button>' +
+    '</div></div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Traffic Stop Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Officers auto-moved here on 10-11</span></div>';
+
+  var trafficTags = (data.currentTrafficChannels || []).map(function(id) {
+    var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
+    var name = ch ? ch.label : id;
+    return '<span class="channel-tag">' + esc(name) +
+      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'traffic\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+  }).join('');
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional - officers move here when they call a 10-11.</span>') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select class="config-select" id="traffic-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button>' +
+    '</div></div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>LEO Roles</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Roles that can activate dispatch</span></div>';
+
+  var roleOpts = (data.roles || []).map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
+  var leoTags = (data.leoRoles || []).map(function(id) {
+    var r = (data.roles || []).find(function(r) { return r.value === id; });
+    var name = r ? r.label : id;
+    return '<span class="channel-tag">' + esc(name) +
+      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'leo\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+  }).join('');
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added - add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select class="config-select" id="leo-role-select"><option value="">Select a role...</option>' + roleOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button>' +
+    '</div></div></div>';
+
+  return html;
+}
+
+function dispatchStep(num, title, desc, dotColor) {
+  return '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+    '<div style="width:22px;height:22px;border-radius:50%;background:var(--bg-secondary);border:1px solid ' + (dotColor || 'var(--border)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:' + (dotColor || 'var(--text-dim)') + ';flex-shrink:0;margin-top:1px;">' + num + '</div>' +
+    '<div><div style="font-size:12px;font-weight:600;color:var(--text);">' + esc(title) + '</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + esc(desc) + '</div></div>' +
+    '</div>';
+}
+
+/* Dispatch channel add/remove helpers */
+window._dispatchState = {};
+
+function initDispatchState(data) {
+  window._dispatchState = {
+    patrolChannelIds: (data.currentPatrolChannels || []).slice(),
+    trafficStopChannelIds: (data.currentTrafficChannels || []).slice(),
+    leoRoleIds: (data.leoRoles || []).slice()
+  };
+}
+
+function addDispatchChannel(type) {
+  var selectId = type === 'leo' ? 'leo-role-select' : (type === 'patrol' ? 'patrol-channel-select' : 'traffic-channel-select');
+  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  var sel = document.getElementById(selectId);
+  if (!sel || !sel.value) { toast('Please select a ' + (type === 'leo' ? 'role' : 'channel') + ' first', 'error'); return; }
+  var id = sel.value;
+  var label = sel.options[sel.selectedIndex].text;
+  if (!window._dispatchState[fieldKey]) {
+    window._dispatchState[fieldKey] = JSON.parse(JSON.stringify(pendingChanges[fieldKey] || []));
+  }
+  if (window._dispatchState[fieldKey].indexOf(id) !== -1) { toast('Already added', 'error'); return; }
+  window._dispatchState[fieldKey].push(id);
+  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
+  var tagsEl = document.getElementById(tagsId);
+  if (tagsEl) {
+    var span = document.createElement('span');
+    span.className = 'channel-tag';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
+    tagsEl.appendChild(span);
+  }
+  sel.value = '';
+  showSaveBar('dispatch');
+}
+
+function removeDispatchChannel(type, id) {
+  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  if (!window._dispatchState[fieldKey]) {
+    window._dispatchState[fieldKey] = JSON.parse(JSON.stringify(pendingChanges[fieldKey] || []));
+  }
+  window._dispatchState[fieldKey] = window._dispatchState[fieldKey].filter(function(x) { return x !== id; });
+  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
+  var tagsEl = document.getElementById(tagsId);
+  if (tagsEl) {
+    var tags = tagsEl.querySelectorAll('.channel-tag');
+    tags.forEach(function(tag) {
+      var btn = tag.querySelector('.channel-tag-remove');
+      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) {
+        tag.remove();
+      }
+    });
+    if (tagsEl.querySelectorAll('.channel-tag').length === 0) {
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels added yet.</span>';
+    }
+  }
+  showSaveBar('dispatch');
+}
+
+/* ── Ticket types section ── */
+function renderTicketTypesSection(data) {
+  var limit = currentGuild.premium ? '\u221e' : '3';
+  var count = (data.ticketTypes || []).length;
+  var atLimit = !currentGuild.premium && count >= 3;
+  var roleOpts = (data.roles || []).map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Ticket Types</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendTicketPanel()">Send Panel to Discord</button>' +
+    '</div>';
+
+  if (count === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
+  } else {
+    (data.ticketTypes || []).forEach(function(t) {
+      var roleNames = (t.allowedRoleIds || []).map(function(id) {
+        var r = (data.roles || []).find(function(r) { return r.value === id; });
+        return r ? r.label : id;
+      }).join(', ');
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(t.label) + '</span>' +
+        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'No staff roles - all can see') + ' \u00b7 ' + esc(t.buttonColor || 'Primary') + ' button</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  if (atLimit) {
+    html += '<div class="config-row" style="background:var(--amber-bg);">' +
+      '<span style="font-size:12px;color:var(--amber);">Free limit reached (3 types). Upgrade to Premium for unlimited ticket types.</span></div>';
+  } else {
+    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+      '<input id="tt-label" type="text" class="config-input" placeholder="Type label (e.g. General Support)" style="flex:2;min-width:160px;">' +
+      '<select id="tt-color" class="config-select" style="width:130px;">' +
+      '<option value="Primary">Primary (Blue)</option>' +
+      '<option value="Secondary">Secondary (Grey)</option>' +
+      '<option value="Success">Success (Green)</option>' +
+      '<option value="Danger">Danger (Red)</option>' +
+      '</select>' +
+      '</div>' +
+      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
+      '<span style="font-size:11px;color:var(--text-dim);">After adding types, run <code>/ticketsupportsetup</code> in Discord to post the ticket panel.</span>' +
+      '</div>' +
+      '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function addTicketType() {
+  var label = document.getElementById('tt-label') && document.getElementById('tt-label').value.trim();
+  var color = document.getElementById('tt-color') && document.getElementById('tt-color').value || 'Primary';
+  var roleId = document.getElementById('tt-role') && document.getElementById('tt-role').value || null;
+  if (!label) { toast('Enter a ticket type label', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/settings/tickets/types', {
+    method: 'POST',
+    body: JSON.stringify({ label: label, buttonColor: color, allowedRoleIds: roleId ? [roleId] : [] })
+  }).then(function(r) {
+    if (r && r.success) { toast('Ticket type added'); renderSettings('tickets'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteTicketType(typeId) {
+  if (!confirm('Remove this ticket type?')) return;
+  api('/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
+  });
+}
+
+function sendTicketPanel() {
+  if (!currentGuild) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/tickets/panel/send', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
+    if (r && r.success) toast('Panel sent to Discord successfully');
     else if (r && r.error) toast(r.error, 'error');
   });
 }
@@ -741,15 +1040,9 @@ function addRoleRequest() {
   var roleId = document.getElementById('rr-role') && document.getElementById('rr-role').value;
   var approverId = document.getElementById('rr-approver') && document.getElementById('rr-approver').value || null;
   if (!roleId) { toast('Select a role to make requestable', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/rolerequest/roles', {
-    method: 'POST', headers: headers,
+  api('/guild/' + currentGuild.id + '/rolerequest/roles', {
+    method: 'POST',
     body: JSON.stringify({ roleId: roleId, approverRoleIds: approverId ? [approverId] : [] })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
   }).then(function(r) {
     if (r && r.success) { toast('Role added'); renderSettings('rolerequest'); }
     else if (r && r.error) toast(r.error, 'error');
@@ -758,121 +1051,8 @@ function addRoleRequest() {
 
 function deleteRoleRequest(roleId) {
   if (!confirm('Remove this role from the request list?')) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, {
-    method: 'DELETE', headers: headers
-  }).then(function(res) { return res.json(); }).then(function(r) {
+  api('/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Role removed'); renderSettings('rolerequest'); }
-  });
-}
-
-/* ── Ticket Types Section ── */
-function renderTicketTypesSection(data) {
-  var limit = currentGuild.premium ? '\u221e' : '3';
-  var count = (data.ticketTypes || []).length;
-  var atLimit = !currentGuild.premium && count >= 3;
-  var roleOpts = (data.roles || []).map(function(r) {
-    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
-  }).join('');
-
-  var html = '<div class="config-section" style="margin-top:14px;">' +
-    '<div class="config-section-header"><h3>Ticket Types</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
-    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendTicketPanel()">Send Panel to Discord</button>' +
-    '</div>';
-
-  if (count === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
-  } else {
-    (data.ticketTypes || []).forEach(function(t) {
-      var roleNames = (t.allowedRoleIds || []).map(function(id) {
-        var r = (data.roles || []).find(function(r) { return r.value === id; });
-        return r ? r.label : id;
-      }).join(', ');
-      html += '<div class="config-row" style="justify-content:space-between;">' +
-        '<div class="config-left">' +
-        '<span class="config-label">' + esc(t.label) + '</span>' +
-        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'No staff roles - all can see') + ' \u00b7 ' + esc(t.buttonColor || 'Primary') + ' button</div>' +
-        '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
-        '</div>';
-    });
-  }
-
-  if (atLimit) {
-    html += '<div class="config-row" style="background:var(--amber-bg);">' +
-      '<span style="font-size:12px;color:var(--amber);">Free limit reached (3 types). Upgrade to Premium for unlimited ticket types.</span></div>';
-  } else {
-    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
-      '<input id="tt-label" type="text" class="config-input" placeholder="Type label (e.g. General Support)" style="flex:2;min-width:160px;">' +
-      '<select id="tt-color" class="config-select" style="width:130px;">' +
-      '<option value="Primary">Primary (Blue)</option>' +
-      '<option value="Secondary">Secondary (Grey)</option>' +
-      '<option value="Success">Success (Green)</option>' +
-      '<option value="Danger">Danger (Red)</option>' +
-      '</select></div>' +
-      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
-      '<div style="display:flex;gap:8px;align-items:center;">' +
-      '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
-      '<span style="font-size:11px;color:var(--text-dim);">After adding types, run <code>/ticketsupportsetup</code> in Discord to post the ticket panel.</span>' +
-      '</div></div>';
-  }
-
-  html += '</div>';
-  return html;
-}
-
-function addTicketType() {
-  var label = document.getElementById('tt-label') && document.getElementById('tt-label').value.trim();
-  var color = document.getElementById('tt-color') && document.getElementById('tt-color').value || 'Primary';
-  var roleId = document.getElementById('tt-role') && document.getElementById('tt-role').value || null;
-  if (!label) { toast('Enter a ticket type label', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/tickets/types', {
-    method: 'POST', headers: headers,
-    body: JSON.stringify({ label: label, buttonColor: color, allowedRoleIds: roleId ? [roleId] : [] })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
-  }).then(function(r) {
-    if (r && r.success) { toast('Ticket type added'); renderSettings('tickets'); }
-    else if (r && r.error) toast(r.error, 'error');
-  });
-}
-
-function deleteTicketType(typeId) {
-  if (!confirm('Remove this ticket type?')) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, {
-    method: 'DELETE', headers: headers
-  }).then(function(res) { return res.json(); }).then(function(r) {
-    if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
-  });
-}
-
-function sendTicketPanel() {
-  if (!currentGuild) return;
-  var btn = event && event.target;
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/tickets/panel/send', {
-    method: 'POST', headers: headers
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
-  }).then(function(r) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
-    if (r && r.success) toast('Panel sent to Discord successfully');
-    else if (r && r.error) toast(r.error, 'error');
   });
 }
 
@@ -925,15 +1105,9 @@ function addCalendarEvent() {
   var desc = document.getElementById('cal-desc') && document.getElementById('cal-desc').value.trim();
   var person = document.getElementById('cal-person') && document.getElementById('cal-person').value.trim() || '';
   if (!desc) { toast('Enter an event description', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/calendar/events', {
-    method: 'POST', headers: headers,
+  api('/guild/' + currentGuild.id + '/settings/calendar/events', {
+    method: 'POST',
     body: JSON.stringify({ day: day, time: time, timezone: tz, description: desc, person: person })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
   }).then(function(r) {
     if (r && r.success) { toast('Event added'); renderSettings('calendar'); }
     else if (r && r.error) toast(r.error, 'error');
@@ -942,12 +1116,7 @@ function addCalendarEvent() {
 
 function deleteCalendarEvent(eventId) {
   if (!confirm('Remove this event?')) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, {
-    method: 'DELETE', headers: headers
-  }).then(function(res) { return res.json(); }).then(function(r) {
+  api('/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Event removed'); renderSettings('calendar'); }
   });
 }
@@ -956,15 +1125,7 @@ function postCalendar() {
   if (!currentGuild) return;
   var btn = event && event.target;
   if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/calendar/post', {
-    method: 'POST', headers: headers
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
-  }).then(function(r) {
+  api('/guild/' + currentGuild.id + '/settings/calendar/post', { method: 'POST' }).then(function(r) {
     if (btn) { btn.disabled = false; btn.textContent = 'Post Calendar to Discord'; }
     if (r && r.success) toast('Calendar posted to Discord successfully');
     else if (r && r.error) toast(r.error, 'error');
@@ -1002,15 +1163,9 @@ function renderWhitelistedLinksSection(data) {
 function addWhitelistedLink() {
   var link = document.getElementById('wl-link') && document.getElementById('wl-link').value.trim();
   if (!link) { toast('Enter an invite link', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/antipromo/links', {
-    method: 'POST', headers: headers,
+  api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'POST',
     body: JSON.stringify({ link: link })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
   }).then(function(r) {
     if (r && r.success) { toast('Link whitelisted'); renderSettings('antipromo'); }
     else if (r && r.error) toast(r.error, 'error');
@@ -1019,13 +1174,10 @@ function addWhitelistedLink() {
 
 function deleteWhitelistedLink(link) {
   if (!confirm('Remove "' + link + '" from whitelist?')) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/antipromo/links', {
-    method: 'DELETE', headers: headers,
+  api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'DELETE',
     body: JSON.stringify({ link: link })
-  }).then(function(res) { return res.json(); }).then(function(r) {
+  }).then(function(r) {
     if (r && r.success) { toast('Link removed'); renderSettings('antipromo'); }
   });
 }
@@ -1034,29 +1186,36 @@ function deleteWhitelistedLink(link) {
 function renderEconomySettings(data) {
   var fields = data.fields || [];
   var groups = {
-    general:   { label: 'General',    keys: ['currencySymbol','startingBalance','maxBalance','logChannelId'] },
-    work:      { label: 'Work',       keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
-    crime:     { label: 'Crime',      keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
-    rob:       { label: 'Robbery',    keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },
-    gambling:  { label: 'Gambling',   keys: ['gambling_enabled','gambling_minBet','gambling_maxBet','gambling_cooldown'] },
+    general:   { label: 'General', keys: ['currencySymbol','startingBalance','maxBalance','logChannelId'] },
+    work:      { label: 'Work',    keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
+    crime:     { label: 'Crime',   keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
+    rob:       { label: 'Robbery', keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },
+    gambling:  { label: 'Gambling', keys: ['gambling_enabled','gambling_minBet','gambling_maxBet','gambling_cooldown'] },
     chatmoney: { label: 'Chat Money', keys: ['chatMoney_enabled','chatMoney_minAmount','chatMoney_maxAmount','chatMoney_cooldown'] },
   };
+
   var fieldMap = {};
   fields.forEach(function(f) { fieldMap[f.key] = f; });
+
   var html = '';
-  ['general','work','crime','rob','gambling','chatmoney'].forEach(function(gKey) {
+  var groupOrder = ['general','work','crime','rob','gambling','chatmoney'];
+  groupOrder.forEach(function(gKey) {
     var g = groups[gKey];
     var groupFields = g.keys.map(function(k) { return fieldMap[k]; }).filter(Boolean);
     if (groupFields.length === 0) return;
-    html += '<div class="config-section" style="margin-bottom:12px;"><div class="config-section-header"><h3>' + g.label + '</h3></div>';
-    groupFields.forEach(function(field) { html += renderOneField(field, 'economy'); });
+
+    html += '<div class="config-section" style="margin-bottom:12px;">' +
+      '<div class="config-section-header"><h3>' + g.label + '</h3></div>';
+    groupFields.forEach(function(field) {
+      html += renderOneField(field, 'economy');
+    });
     html += '</div>';
   });
+
   html += '<div id="save-bar-container"></div>';
 
   /* ── Role Income ── */
   var riList = data.roleIncomeList || [];
-  var riLimit = currentGuild.premium ? Infinity : 2;
   var riLimitLabel = currentGuild.premium ? '\u221e' : '2';
   var riRoles = data.roles || [];
   html += '<div class="config-section" style="margin-top:4px;">' +
@@ -1093,13 +1252,13 @@ function renderEconomySettings(data) {
   }
   html += '</div>';
 
-  /* ── Store Items ── */
+  /* ── Store Management ── */
   var storeItems = data.storeItems || [];
   html += '<div class="config-section" style="margin-top:4px;">' +
     '<div class="config-section-header"><h3>Store Items</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + storeItems.length + ' custom item(s)</span></div>';
   if (storeItems.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No custom store items yet. Add custom items below.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No custom store items yet. GTA V built-in vehicles are always available. Add custom items below.</span></div>';
   } else {
     storeItems.forEach(function(item) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
@@ -1109,7 +1268,8 @@ function renderEconomySettings(data) {
         (item.description ? esc(item.description) : 'No description') +
         (item.roleName ? ' | Grants: @' + esc(item.roleName) : '') +
         (item.usable ? ' | Usable' : '') +
-        '</div></div>' +
+        '</div>' +
+        '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(\'' + esc(item.id) + '\')">Remove</button>' +
         '</div>';
     });
@@ -1140,15 +1300,9 @@ function addRoleIncome() {
   var cooldown = document.getElementById('ri-cooldown') && document.getElementById('ri-cooldown').value || '24';
   if (!roleId) { toast('Select a role', 'error'); return; }
   if (!amount || Number(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/roleincome', {
-    method: 'POST', headers: headers,
+  api('/guild/' + currentGuild.id + '/economy/roleincome', {
+    method: 'POST',
     body: JSON.stringify({ roleId: roleId, amount: Number(amount), cooldown: Number(cooldown) })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
   }).then(function(r) {
     if (r && r.success) { toast('Role income added'); renderSettings('economy'); }
     else if (r && r.error) toast(r.error, 'error');
@@ -1157,12 +1311,7 @@ function addRoleIncome() {
 
 function deleteRoleIncome(roleId) {
   if (!currentGuild) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, {
-    method: 'DELETE', headers: headers
-  }).then(function(res) { return res.json(); }).then(function(r) {
+  api('/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Role income removed'); renderSettings('economy'); }
   });
 }
@@ -1175,15 +1324,9 @@ function addStoreItem() {
   var usable = document.getElementById('store-usable') && document.getElementById('store-usable').checked || false;
   if (!name) { toast('Item name is required', 'error'); return; }
   if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price', 'error'); return; }
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/store', {
-    method: 'POST', headers: headers,
+  api('/guild/' + currentGuild.id + '/economy/store', {
+    method: 'POST',
     body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null })
-  }).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return; }
-    return res.json();
   }).then(function(r) {
     if (r && r.success) { toast('Item added'); renderSettings('economy'); }
     else if (r && r.error) toast(r.error, 'error');
@@ -1192,106 +1335,25 @@ function addStoreItem() {
 
 function deleteStoreItem(itemId) {
   if (!currentGuild) return;
-  var token = getToken();
-  var headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/store/' + itemId, {
-    method: 'DELETE', headers: headers
-  }).then(function(res) { return res.json(); }).then(function(r) {
+  api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
   });
 }
 
-/* ── Dispatch extras (voice channel management) ── */
-window._dispatchState = {};
-function renderDispatchExtras(data) {
-  window._dispatchState = {
-    patrolChannelIds: (data.currentPatrolChannels || []).slice(),
-    trafficStopChannelIds: (data.currentTrafficChannels || []).slice(),
-    leoRoleIds: (data.leoRoles || []).slice()
-  };
-  var html = '';
-  var voiceOpts = (data.voiceChannels || []).map(function(c) {
-    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
-  }).join('');
-  var roleOpts = (data.roles || []).map(function(r) {
-    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
-  }).join('');
-
-  function buildTags(ids, list, type) {
-    if (!ids || ids.length === 0) return '<span style="font-size:12px;color:var(--text-dim);">None added yet.</span>';
-    return ids.map(function(id) {
-      var item = (list || []).find(function(x) { return x.value === id; });
-      return '<span class="channel-tag">' + esc(item ? item.label : id) +
-        '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
-    }).join('');
+/* ── Generic settings fields ── */
+function renderSettingsFields(data, mod) {
+  if (!data.fields || data.fields.length === 0) {
+    return '<div class="config-section"><div class="config-section-header"><h3>Configuration</h3></div>' +
+      '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No configurable settings for this module. Use Discord commands to set it up.</span></div></div>' +
+      '<div id="save-bar-container"></div>';
   }
-
-  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Patrol Voice Channels</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Bot listens here</span></div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="patrol-tags">' + buildTags(data.currentPatrolChannels, data.voiceChannels, 'patrol') + '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="patrol-channel-select"><option value="">Select voice channel...</option>' + voiceOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button></div></div></div>';
-
-  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Traffic Stop Channels</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Officers moved here on 10-11</span></div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="traffic-tags">' + buildTags(data.currentTrafficChannels, data.voiceChannels, 'traffic') + '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="traffic-channel-select"><option value="">Select voice channel...</option>' + voiceOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button></div></div></div>';
-
-  html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>LEO Roles</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Roles that can trigger dispatch</span></div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="leo-tags">' + buildTags(data.leoRoles, data.roles, 'leo') + '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select class="config-select" id="leo-role-select"><option value="">Select role...</option>' + roleOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button></div></div></div>';
-
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Settings</h3></div>';
+  data.fields.forEach(function(field) {
+    html += renderOneField(field, mod);
+  });
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
   return html;
-}
-
-function addDispatchChannel(type) {
-  var selectId = type === 'leo' ? 'leo-role-select' : (type === 'patrol' ? 'patrol-channel-select' : 'traffic-channel-select');
-  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
-  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
-  var sel = document.getElementById(selectId);
-  if (!sel || !sel.value) { toast('Select a ' + (type === 'leo' ? 'role' : 'channel') + ' first', 'error'); return; }
-  var id = sel.value;
-  var label = sel.options[sel.selectedIndex].text;
-  if (!window._dispatchState[fieldKey]) window._dispatchState[fieldKey] = (pendingChanges[fieldKey] || []).slice();
-  if (window._dispatchState[fieldKey].indexOf(id) !== -1) { toast('Already added', 'error'); return; }
-  window._dispatchState[fieldKey].push(id);
-  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
-  var tagsEl = document.getElementById(tagsId);
-  if (tagsEl) {
-    var span = document.createElement('span');
-    span.className = 'channel-tag';
-    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
-    if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
-    tagsEl.appendChild(span);
-  }
-  sel.value = '';
-  showSaveBar('dispatch');
-}
-
-function removeDispatchChannel(type, id) {
-  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
-  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
-  if (!window._dispatchState[fieldKey]) window._dispatchState[fieldKey] = (pendingChanges[fieldKey] || []).slice();
-  window._dispatchState[fieldKey] = window._dispatchState[fieldKey].filter(function(x) { return x !== id; });
-  pendingChanges[fieldKey] = window._dispatchState[fieldKey].slice();
-  var tagsEl = document.getElementById(tagsId);
-  if (tagsEl) {
-    tagsEl.querySelectorAll('.channel-tag').forEach(function(tag) {
-      var btn = tag.querySelector('.channel-tag-remove');
-      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) tag.remove();
-    });
-    if (tagsEl.querySelectorAll('.channel-tag').length === 0) {
-      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">None added yet.</span>';
-    }
-  }
-  showSaveBar('dispatch');
 }
 
 function renderOneField(field, mod) {
@@ -1300,8 +1362,9 @@ function renderOneField(field, mod) {
   html += '<div class="config-left"><span class="config-label">' + esc(field.label) + '</span>';
   if (field.description) html += '<div class="config-sublabel">' + esc(field.description) + '</div>';
   html += '</div>';
+
   if (field.type === 'toggle') {
-    html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '"></div>';
+    html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '" title="' + esc(field.label) + '"></div>';
   } else if (field.type === 'select' || field.type === 'role') {
     html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
     html += '<option value="">- Not Set -</option>';
@@ -1324,22 +1387,12 @@ function renderOneField(field, mod) {
   } else {
     html += '<span class="config-value">' + esc(String(field.value != null ? field.value : 'Not Set')) + '</span>';
   }
+
   html += '</div>';
   return html;
 }
 
-function renderSettingsFields(data, mod) {
-  if (!data.fields || data.fields.length === 0) {
-    return '<div class="config-section"><div class="config-section-header"><h3>Configuration</h3></div>' +
-      '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No configurable settings. Use Discord commands to set up this module.</span></div></div>' +
-      '<div id="save-bar-container"></div>';
-  }
-  var html = '<div class="config-section"><div class="config-section-header"><h3>Settings</h3></div>';
-  data.fields.forEach(function(field) { html += renderOneField(field, mod); });
-  html += '</div><div id="save-bar-container"></div>';
-  return html;
-}
-
+/* ── Field change handlers ── */
 function toggleField(el, mod, key) {
   el.classList.toggle('active');
   pendingChanges[key] = el.classList.contains('active');
@@ -1359,7 +1412,7 @@ function showSaveBar(mod) {
     '<div class="save-bar">' +
     '<span style="color:var(--text-muted);font-size:12px;margin-right:auto;">Unsaved changes</span>' +
     '<button class="btn btn-secondary btn-sm" onclick="renderSettings(\'' + mod + '\')">Discard</button>' +
-    '<button class="btn btn-success btn-sm" onclick="saveSettings(\'' + mod + '\')">Save</button>' +
+    '<button class="btn btn-success btn-sm" onclick="saveSettings(\'' + mod + '\')">Save Changes</button>' +
     '</div>';
 }
 
@@ -1372,7 +1425,7 @@ function saveSettings(mod) {
     body: JSON.stringify(pendingChanges)
   }).then(function(result) {
     if (result && result.success) {
-      toast('Settings saved');
+      toast('Settings saved successfully');
       pendingChanges = {};
       window._dispatchState = {};
       api('/guild/' + currentGuild.id).then(function(refreshed) {
@@ -1380,7 +1433,7 @@ function saveSettings(mod) {
         renderSettings(mod);
       });
     } else {
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
     }
   });
 }
