@@ -718,7 +718,11 @@ function parseTranscript(text) {
   const lower = normalized.toLowerCase();
 
   let detectedCode = null;
-  for (const code of Object.keys(TEN_CODES)) {
+  // Emergency/high-priority codes are checked FIRST so they are never shadowed
+  // by phrase-alias conversions (e.g. "on scene" → 10-97 must not hide a 10-99).
+  const PRIORITY_CODES = ['10-99', '10-80', '10-78'];
+  const _checkOrder = [...PRIORITY_CODES, ...Object.keys(TEN_CODES).filter(c => !PRIORITY_CODES.includes(c))];
+  for (const code of _checkOrder) {
     // Require an explicit separator (dash or space) so e.g. "1080" never
     // triggers 10-80 - only "10-80" or "10 80" should match.
     const escaped = code.replace('-', '[-\\s]');
@@ -1968,13 +1972,25 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           // Only process if the utterance contains a ten-code; otherwise it is general chatter
           // that dispatch should not respond to.
           commandText = raw;
-          // Allow through ONLY known TEN_CODES or "code four" — unknown codes like 10-74, 10-60
-          // must not pass through and generate false status updates or TTS responses.
+          // Allow through ONLY explicit numeric ten-codes or spoken "ten XX" forms.
+          // Phrase aliases (e.g. "on scene" → 10-97, "in pursuit" → 10-80) are NOT checked
+          // here — those require the officer to address dispatch directly with a trigger word.
+          // Unknown codes like 10-74, 10-60 are also excluded (not in TEN_CODES).
           const _knownCodeRe = new RegExp(
             '\\b(?:' + Object.keys(TEN_CODES).map(c => c.replace('-', '[-\\s]')).join('|') + ')\\b',
             'i'
           );
-          const hasTenCode = _knownCodeRe.test(normalizeSpokenCodes(commandText)) || detectCodeFour(commandText);
+          // Apply only spoken-number conversion (e.g. "ten eight" → "10-8"), NOT phrase aliases
+          const _numOnlyNorm = commandText.replace(
+            /\bten[-\s]?(four|six|seven|eight|eleven|fifteen|seventeen|nineteen|twenty(?:[-\s]three)?|thirty[-\s]one|fifty(?:[-\s]two)?|seventy[-\s]six|seventy[-\s]eight|eighty|ninety[-\s](?:seven|nine))\b/gi,
+            (_, w) => {
+              const _wmap = { four:4, six:6, seven:7, eight:8, eleven:11, fifteen:15, seventeen:17, nineteen:19, twenty:20, 'twenty-three':23, 'twenty three':23, 'thirty-one':31, 'thirty one':31, fifty:50, 'fifty-two':52, 'fifty two':52, 'seventy-six':76, 'seventy six':76, 'seventy-eight':78, 'seventy eight':78, eighty:80, 'ninety-seven':97, 'ninety seven':97, 'ninety-nine':99, 'ninety nine':99 };
+              const _key = w.toLowerCase().replace(/\s+/g, '-');
+              const _n = _wmap[_key] ?? _wmap[w.toLowerCase()];
+              return _n ? `10-${_n}` : _;
+            }
+          );
+          const hasTenCode = _knownCodeRe.test(_numOnlyNorm) || detectCodeFour(commandText);
           if (!hasTenCode) {
             console.log(`[Dispatch] No trigger or ten-code - ignoring general chatter: "${commandText}"`);
             return;
