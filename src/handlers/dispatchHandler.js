@@ -798,7 +798,7 @@ async function transcribeAudio(wavBuffer) {
           file: createReadStream(tempPath),
           model,
           language: 'en',
-          prompt: WHISPER_PROMPT,
+          prompt: WHISPER_PROMPT.slice(0, 896),
         });
         return result.text || '';
       } catch (err) {
