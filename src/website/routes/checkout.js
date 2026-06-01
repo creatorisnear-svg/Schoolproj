@@ -312,11 +312,20 @@ export function createCheckoutRouter() {
         if (sub?.id) {
           const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
           if (keyDoc) {
-            keyDoc.subscriptionStatus = sub.status;
+            // Stripe's status stays 'active' even when cancel_at_period_end is true.
+            // Map to our internal 'cancelling' state so the dashboard shows correctly.
+            if (sub.cancel_at_period_end) {
+              keyDoc.subscriptionStatus = 'cancelling';
+            } else if (sub.status === 'active') {
+              keyDoc.subscriptionStatus = 'active';
+            } else {
+              keyDoc.subscriptionStatus = sub.status; // past_due, incomplete, etc.
+            }
             if (sub.current_period_end) {
               keyDoc.subscriptionCurrentPeriodEnd = new Date(sub.current_period_end * 1000);
             }
             await keyDoc.save();
+            console.log(`[Stripe Webhook] Subscription ${sub.id} updated — status: ${keyDoc.subscriptionStatus}`);
           }
         }
       }
