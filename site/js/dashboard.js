@@ -169,19 +169,29 @@ var FEATURES = [
   { key: 'economyEnabled', feature: 'economy', name: 'Economy', icon: '$', desc: 'Currency, work, crime, gambling', mod: 'economy' },
 ];
 
-var SIDEBAR_MODULES = [
-  { id: 'general', label: 'General' },
-  { id: 'roleplay', label: 'Roleplay Commands' },
-  { id: 'verification', label: 'Verification' },
-  { id: 'strikes', label: 'Strike System' },
-  { id: 'tickets', label: 'Tickets' },
-  { id: 'dispatch', label: 'Voice Dispatch' },
-  { id: 'priority', label: 'Priority Tracker' },
-  { id: 'antipromo', label: 'Anti-Promoting' },
-  { id: 'welcome', label: 'Welcome System' },
-  { id: 'calendar', label: 'RP Calendar' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'rolerequest', label: 'Role Request' },
+var SIDEBAR_GROUPS = [
+  { title: 'Roleplay', items: [
+    { id: 'roleplay',    label: 'Roleplay Commands' },
+    { id: 'priority',    label: 'Priority Tracker' },
+    { id: 'calendar',    label: 'RP Calendar' },
+  ]},
+  { title: 'Moderation', items: [
+    { id: 'verification', label: 'Verification' },
+    { id: 'strikes',      label: 'Strike System' },
+    { id: 'antipromo',    label: 'Anti-Promoting' },
+  ]},
+  { title: 'Community', items: [
+    { id: 'tickets',     label: 'Ticket Support' },
+    { id: 'welcome',     label: 'Welcome System' },
+    { id: 'rolerequest', label: 'Role Request' },
+  ]},
+  { title: 'Economy', items: [
+    { id: 'economy',     label: 'Economy' },
+  ]},
+  { title: 'Advanced', items: [
+    { id: 'dispatch',    label: 'AI Voice Dispatch' },
+    { id: 'general',     label: 'General Settings' },
+  ]},
 ];
 
 function renderSidebar(active) {
@@ -190,16 +200,19 @@ function renderSidebar(active) {
       '<div class="sidebar-item ' + (active === 'billing' ? 'active' : '') + '" onclick="renderBilling()">Billing</div>' +
       '</div>'
     : '';
+  var groupedSections = SIDEBAR_GROUPS.map(function(g) {
+    return '<div class="sidebar-section"><div class="sidebar-section-title">' + g.title + '</div>' +
+      g.items.map(function(m) {
+        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
+      }).join('') +
+      '</div>';
+  }).join('');
   return '<div class="sidebar">' +
     '<div class="sidebar-section"><div class="sidebar-section-title">Server</div>' +
     '<div class="sidebar-item ' + (active === 'overview' ? 'active' : '') + '" onclick="renderDashboard()">Overview</div>' +
     '<div class="sidebar-item" onclick="renderServerSelect()">Switch Server</div>' +
     '</div>' +
-    '<div class="sidebar-section"><div class="sidebar-section-title">Modules</div>' +
-    SIDEBAR_MODULES.map(function(m) {
-      return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
-    }).join('') +
-    '</div>' +
+    groupedSections +
     premiumSection +
     '</div>';
 }
@@ -433,50 +446,91 @@ function renderDashboard() {
   var g = currentGuild;
   var config = g.config || {};
 
+  var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
+  var totalCount = FEATURES.length;
+
   var html = '<div class="dashboard-layout">' + renderSidebar('overview') +
     '<div class="dashboard-content">' +
-    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>Server overview and feature management</p></div>';
+    '<div class="mobile-back" onclick="renderServerSelect()">&#8249; Switch Server</div>' +
+    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>Overview and module management</p></div>';
 
-  html += '<div class="dash-grid">' +
-    '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0) + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Log Channel</div><div class="dash-value" style="font-size:14px;">' + (config.logChannelName ? '#' + esc(config.logChannelName) : 'Not Set') + '</div></div>' +
+  html += '<div class="dash-grid" style="margin-bottom:16px;">' +
+    '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0).toLocaleString() + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="font-size:15px;color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">Active Modules</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
     '</div>';
 
-  html += '<div style="margin-top:20px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-    '<h2 style="font-size:16px;font-weight:700;">Features</h2>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Toggle features on or off</span></div>';
+  /* ── Section 1: Enable / Disable ── */
+  var FEATURE_CATEGORIES = [
+    { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
+    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
+    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome'] },
+    { title: 'Economy',               keys: ['economy'] },
+    { title: 'Advanced',              keys: ['dispatch'] },
+  ];
 
-  html += '<div class="module-grid">';
-  FEATURES.forEach(function(f) {
-    var enabled = !!config[f.key];
-    var isPremium = featureFlags[f.feature] === true || (featureFlags[f.feature] === undefined && f.premium);
-    html += '<div class="module-card">' +
-      '<div class="module-info">' +
-      '<div class="module-icon">' + f.icon + '</div>' +
-      '<div><div class="module-name">' + f.name +
-      (isPremium ? ' <span class="premium-tag">Premium</span>' : '') +
-      '</div><div class="module-desc">' + f.desc + '</div></div>' +
+  html += '<div class="overview-section">' +
+    '<div class="overview-section-header">' +
+    '<h2 class="overview-section-title">Enable / Disable Features</h2>' +
+    '<p class="overview-section-sub">Toggle which modules are active on your server</p>' +
+    '</div><div class="feature-groups">';
+
+  FEATURE_CATEGORIES.forEach(function(cat) {
+    var catFeatures = FEATURES.filter(function(f) { return cat.keys.indexOf(f.feature) !== -1; });
+    if (!catFeatures.length) return;
+    html += '<div class="feature-category">' +
+      '<div class="feature-category-title">' + cat.title + '</div>';
+    catFeatures.forEach(function(f) {
+      var enabled = !!config[f.key];
+      var isPremium = featureFlags[f.feature] === true || (featureFlags[f.feature] === undefined && f.premium);
+      html += '<div class="feature-row">' +
+        '<div class="feature-row-info">' +
+        '<div class="feature-row-name">' + f.name + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
+        '<div class="feature-row-desc">' + f.desc + '</div>' +
+        '</div>' +
+        '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +
+        '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  /* ── Section 2: Configure ── */
+  var CONFIGURE_CARDS = [
+    { id: 'general',      label: 'General Settings',  desc: 'Log channel, general config',   featureKey: null },
+    { id: 'roleplay',     label: 'Roleplay Commands',  desc: '911, CAD, Twitter, anon',       featureKey: 'roleplayEnabled' },
+    { id: 'verification', label: 'Verification',       desc: 'Gate, roles, questions, panel', featureKey: 'verifyEnabled' },
+    { id: 'strikes',      label: 'Strike System',      desc: 'Levels, punishments',           featureKey: 'strikeEnabled' },
+    { id: 'tickets',      label: 'Ticket Support',     desc: 'Types, channels, panel',        featureKey: 'ticketEnabled' },
+    { id: 'welcome',      label: 'Welcome System',     desc: 'Join messages, DMs',            featureKey: 'welcomeEnabled' },
+    { id: 'antipromo',    label: 'Anti-Promoting',     desc: 'Invite link filtering',         featureKey: 'antiPromotingEnabled' },
+    { id: 'rolerequest',  label: 'Role Request',        desc: 'Self-serve role requests',      featureKey: 'roleRequestEnabled' },
+    { id: 'priority',     label: 'Priority Tracker',   desc: 'Priority event tracking',       featureKey: 'priorityEnabled' },
+    { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',        featureKey: 'calendarEnabled' },
+    { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',         featureKey: 'economyEnabled' },
+    { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',          featureKey: 'dispatchEnabled' },
+  ];
+
+  html += '<div class="overview-section" style="margin-top:16px;">' +
+    '<div class="overview-section-header">' +
+    '<h2 class="overview-section-title">Configure Modules</h2>' +
+    '<p class="overview-section-sub">Set up channels, roles, and options — click any card to open settings</p>' +
+    '</div><div class="configure-module-grid">';
+
+  CONFIGURE_CARDS.forEach(function(m) {
+    var enabled = m.featureKey ? !!config[m.featureKey] : true;
+    html += '<div class="configure-module-card" onclick="renderSettings(\'' + m.id + '\')">' +
+      '<div class="configure-module-header">' +
+      (m.featureKey ? '<span class="configure-status-dot ' + (enabled ? 'on' : 'off') + '"></span>' : '') +
+      '<div class="configure-module-name">' + m.label + '</div>' +
       '</div>' +
-      '<div class="module-actions">' +
-      (f.mod ? '<button class="configure-btn" onclick="renderSettings(\'' + f.mod + '\')">Configure</button>' : '') +
-      '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)"></div>' +
-      '</div></div>';
+      '<div class="configure-module-desc">' + m.desc + '</div>' +
+      '<div class="configure-module-cta">Configure ›</div>' +
+      '</div>';
   });
   html += '</div></div>';
 
   html += renderPremiumSection(g);
-
-  html += '<div class="mobile-modules" style="margin-top:20px;">' +
-    '<div class="config-section"><div class="config-section-header"><h3>Configure Modules</h3></div>' +
-    SIDEBAR_MODULES.map(function(m) {
-      return '<div class="config-row" style="cursor:pointer;" onclick="renderSettings(\'' + m.id + '\')">' +
-        '<span class="config-label">' + m.label + '</span>' +
-        '<span style="color:var(--text-dim);font-size:18px;">&#8250;</span></div>';
-    }).join('') +
-    '</div></div>';
-
   html += '</div></div>';
   app.innerHTML = html;
 }
@@ -611,8 +665,33 @@ function renderSettings(mod) {
       html += renderWhitelistedLinksSection(data);
     }
 
+    if (mod === 'verification') {
+      html += renderVerifyPanelSection(data);
+    }
+
     html += '</div></div>';
     app.innerHTML = html;
+  });
+}
+
+/* ── Verify Panel Section ── */
+function renderVerifyPanelSection(data) {
+  return '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Verification Panel</h3>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendVerifyPanel(event)">Send Panel to Discord</button>' +
+    '</div>' +
+    '<div class="config-row"><span class="config-sublabel">Posts a Verify button embed to the configured Verify Channel. Members click it to open the verification form. Run this whenever you want to (re)post the panel in Discord.</span></div>' +
+    '</div>';
+}
+
+function sendVerifyPanel(e) {
+  if (!currentGuild) return;
+  var btn = e && e.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/verification/panel/send', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
+    if (r && r.success) toast('Verification panel sent to Discord');
+    else if (r && r.error) toast(r.error, 'error');
   });
 }
 

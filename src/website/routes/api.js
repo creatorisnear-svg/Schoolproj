@@ -1523,6 +1523,40 @@ export function createApiRouter(client) {
     }
   });
 
+  /* ── Verification Panel Send (from web dashboard) ── */
+  router.post('/guild/:id/settings/verification/panel/send', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { default: Verification } = await import('../../models/Verification.js');
+      const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+      const v = await Verification.findOne({ guildId: req.params.id });
+      if (!v || !v.enabled) return res.status(400).json({ error: 'Verification system is not enabled. Enable it first using the toggle above.' });
+      if (!v.verifyChannelId) return res.status(400).json({ error: 'No verify channel set. Set the Verify Channel field above and save first.' });
+      const channel = guild.channels.cache.get(v.verifyChannelId);
+      if (!channel) return res.status(400).json({ error: 'Verify channel not found in this server. Make sure the channel still exists.' });
+      const embed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Server Verification')
+        .setDescription('Click the button below to begin the verification process. Fill in the form and your application will be reviewed.')
+        .setFooter({ text: 'RPM' });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('verify_button').setLabel('Click Here to Verify').setStyle(ButtonStyle.Primary)
+      );
+      await channel.send({ embeds: [embed], components: [row] });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API] Verify panel send error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   /* ── Internal panic endpoint - called by the portal when an officer hits the panic button ── */
   router.post('/internal/panic', async (req, res) => {
     const secret = req.headers['x-internal-secret'];
