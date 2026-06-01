@@ -326,7 +326,10 @@ export function createCheckoutRouter() {
           if (keyDoc) {
             keyDoc.subscriptionStatus = 'cancelled';
             await keyDoc.save();
-            console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled`);
+            // Clear cache immediately so the guild loses access right away
+            const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+            if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
+            console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled — premium revoked for guild ${keyDoc.guildId}`);
           }
         }
       }
@@ -349,7 +352,29 @@ export function createCheckoutRouter() {
               keyDoc.subscriptionCurrentPeriodEnd = new Date(sub.current_period_end * 1000);
             }
             await keyDoc.save();
+            // Clear cache so the updated status is reflected immediately
+            const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+            if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
             console.log(`[Stripe Webhook] Subscription ${sub.id} updated — status: ${keyDoc.subscriptionStatus}`);
+          }
+        }
+      }
+
+      // invoice.payment_failed — fires each time Stripe attempts and fails a payment.
+      // Updates status to past_due immediately and clears the premium cache.
+      // Stripe will retry automatically; after all retries are exhausted it fires
+      // customer.subscription.deleted which fully revokes access above.
+      if (event.type === 'invoice.payment_failed') {
+        const invoice = event.data.object;
+        const subId = invoice?.subscription;
+        if (subId) {
+          const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: subId });
+          if (keyDoc) {
+            keyDoc.subscriptionStatus = 'past_due';
+            await keyDoc.save();
+            const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+            if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
+            console.log(`[Stripe Webhook] Payment failed for subscription ${subId} — guild ${keyDoc.guildId} marked past_due`);
           }
         }
       }
