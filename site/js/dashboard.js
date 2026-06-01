@@ -599,45 +599,16 @@ function renderSettings(mod) {
       html += '</div>';
     }
 
-    if (data.ticketTypes && data.ticketTypes.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Ticket Types</h3></div>';
-      data.ticketTypes.forEach(function(t) {
-        html += '<div class="config-row"><span class="config-label">' + esc(t.label) + '</span>' +
-          '<span class="config-value">' + (t.allowedRoleIds.length || 0) + ' staff roles</span></div>';
-      });
-      html += '</div>';
+    if (data.ticketTypes !== undefined) {
+      html += renderTicketTypesSection(data);
     }
 
-    if (data.events && data.events.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Scheduled Events</h3></div>';
-      data.events.forEach(function(e) {
-        html += '<div class="config-row"><div class="config-left"><span class="config-label">' + esc(e.day) + ' at ' + esc(e.time || 'TBD') + '</span>' +
-          '<div class="config-sublabel">' + esc(e.description || 'No description') +
-          (e.person ? ' (Host: ' + esc(e.person) + ')' : '') + '</div></div></div>';
-      });
-      html += '</div>';
+    if (data.events !== undefined) {
+      html += renderCalendarEventsSection(data);
     }
 
-    if (data.whitelistedLinks && data.whitelistedLinks.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Whitelisted Links</h3></div>';
-      data.whitelistedLinks.forEach(function(l) {
-        html += '<div class="config-row"><span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span></div>';
-      });
-      html += '</div>';
-    }
-
-    if (data.roleIncomeList && data.roleIncomeList.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Role Income</h3></div>';
-      html += '<div class="config-row"><span class="config-sublabel" style="font-size:12px;">Use <code>/economysetup roleincome</code> in Discord to add or remove role income entries.</span></div>';
-      data.roleIncomeList.forEach(function(r) {
-        html += '<div class="config-row"><div class="config-left"><span class="config-label">@' + esc(r.roleName) + '</span>' +
-          '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div></div></div>';
-      });
-      html += '</div>';
-    } else if (mod === 'economy') {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Role Income</h3></div>' +
-        '<div class="config-row"><span class="config-sublabel" style="font-size:12px;">No role income configured. Use <code>/economysetup roleincome</code> in Discord to set up periodic income for roles.</span></div>' +
-        '</div>';
+    if (data.whitelistedLinks !== undefined) {
+      html += renderWhitelistedLinksSection(data);
     }
 
     html += '</div></div>';
@@ -648,26 +619,294 @@ function renderSettings(mod) {
 /* ── Role Request Settings ── */
 function renderRoleRequestSettings(data) {
   var roles = data.requestableRoles || [];
+  var allRoles = data.roles || [];
+  var roleOpts = allRoles.map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
   var html = '<div class="config-section"><div class="config-section-header">' +
     '<h3>Requestable Roles</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + roles.length + ' configured</span>' +
     '</div>';
+
   if (roles.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No requestable roles set up yet. Use <code>/rolerequestadd</code> in Discord to add roles members can request.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No requestable roles yet. Add one below - members can then request it and staff approve via DM.</span></div>';
   } else {
     roles.forEach(function(r) {
-      var approvers = [];
-      if (r.approverRoleCount > 0) approvers.push(r.approverRoleCount + ' approver role' + (r.approverRoleCount === 1 ? '' : 's'));
-      if (r.approverMemberCount > 0) approvers.push(r.approverMemberCount + ' approver member' + (r.approverMemberCount === 1 ? '' : 's'));
-      html += '<div class="config-row"><div class="config-left">' +
+      var approverNames = (r.approverRoleNames || []).join(', ');
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
-        '<div class="config-sublabel">' + (approvers.length ? approvers.join(' · ') : 'No approvers set') + '</div>' +
-        '</div></div>';
+        '<div class="config-sublabel">Approvers: ' + (approverNames ? esc(approverNames) : 'None set - any staff can approve') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleRequest(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '</div>';
     });
-    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/rolerequestadd</code> in Discord to add roles or update approvers.</span></div>';
   }
-  html += '</div><div id="save-bar-container"></div>';
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="rr-role" class="config-select" style="flex:1;min-width:160px;"><option value="">Select role to make requestable...</option>' + roleOpts + '</select>' +
+    '<select id="rr-approver" class="config-select" style="flex:1;min-width:160px;"><option value="">Approver role (optional)</option>' + roleOpts + '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addRoleRequest()">Add</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Members can request the selected role. The approver role gets DM notifications to approve or deny.</span>' +
+    '</div>';
+
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
   return html;
+}
+
+function addRoleRequest() {
+  var roleId = document.getElementById('rr-role') && document.getElementById('rr-role').value;
+  var approverId = document.getElementById('rr-approver') && document.getElementById('rr-approver').value || null;
+  if (!roleId) { toast('Select a role to make requestable', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/rolerequest/roles', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ roleId: roleId, approverRoleIds: approverId ? [approverId] : [] })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Role added'); renderSettings('rolerequest'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteRoleRequest(roleId) {
+  if (!confirm('Remove this role from the request list?')) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, {
+    method: 'DELETE', headers: headers
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Role removed'); renderSettings('rolerequest'); }
+  });
+}
+
+/* ── Ticket Types Section ── */
+function renderTicketTypesSection(data) {
+  var limit = currentGuild.premium ? '\u221e' : '3';
+  var count = (data.ticketTypes || []).length;
+  var atLimit = !currentGuild.premium && count >= 3;
+  var roleOpts = (data.roles || []).map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Ticket Types</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span></div>';
+
+  if (count === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
+  } else {
+    (data.ticketTypes || []).forEach(function(t) {
+      var roleNames = (t.allowedRoleIds || []).map(function(id) {
+        var r = (data.roles || []).find(function(r) { return r.value === id; });
+        return r ? r.label : id;
+      }).join(', ');
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(t.label) + '</span>' +
+        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'No staff roles - all can see') + ' \u00b7 ' + esc(t.buttonColor || 'Primary') + ' button</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  if (atLimit) {
+    html += '<div class="config-row" style="background:var(--amber-bg);">' +
+      '<span style="font-size:12px;color:var(--amber);">Free limit reached (3 types). Upgrade to Premium for unlimited ticket types.</span></div>';
+  } else {
+    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+      '<input id="tt-label" type="text" class="config-input" placeholder="Type label (e.g. General Support)" style="flex:2;min-width:160px;">' +
+      '<select id="tt-color" class="config-select" style="width:130px;">' +
+      '<option value="Primary">Primary (Blue)</option>' +
+      '<option value="Secondary">Secondary (Grey)</option>' +
+      '<option value="Success">Success (Green)</option>' +
+      '<option value="Danger">Danger (Red)</option>' +
+      '</select></div>' +
+      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
+      '<span style="font-size:11px;color:var(--text-dim);">After adding types, run <code>/ticketsupportsetup</code> in Discord to post the ticket panel.</span>' +
+      '</div></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function addTicketType() {
+  var label = document.getElementById('tt-label') && document.getElementById('tt-label').value.trim();
+  var color = document.getElementById('tt-color') && document.getElementById('tt-color').value || 'Primary';
+  var roleId = document.getElementById('tt-role') && document.getElementById('tt-role').value || null;
+  if (!label) { toast('Enter a ticket type label', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/tickets/types', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ label: label, buttonColor: color, allowedRoleIds: roleId ? [roleId] : [] })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Ticket type added'); renderSettings('tickets'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteTicketType(typeId) {
+  if (!confirm('Remove this ticket type?')) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, {
+    method: 'DELETE', headers: headers
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
+  });
+}
+
+/* ── Calendar Events Section ── */
+function renderCalendarEventsSection(data) {
+  var events = data.events || [];
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var dayOpts = days.map(function(d) { return '<option value="' + d + '">' + d + '</option>'; }).join('');
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Scheduled Events</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + events.length + ' event' + (events.length === 1 ? '' : 's') + '</span></div>';
+
+  if (events.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No events scheduled yet. Add recurring weekly events below.</span></div>';
+  } else {
+    events.forEach(function(e) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(e.day) + (e.time ? ' at ' + esc(e.time) : '') + (e.timezone ? ' ' + esc(e.timezone) : '') + '</span>' +
+        '<div class="config-sublabel">' + esc(e.description || 'No description') + (e.person ? ' - Host: ' + esc(e.person) : '') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCalendarEvent(\'' + esc(e.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="cal-day" class="config-select" style="width:130px;">' + dayOpts + '</select>' +
+    '<input id="cal-time" type="text" class="config-input" placeholder="Time (e.g. 8:00 PM)" style="width:140px;">' +
+    '<input id="cal-tz" type="text" class="config-input" placeholder="Timezone (e.g. ET)" style="width:90px;" value="ET">' +
+    '</div>' +
+    '<input id="cal-desc" type="text" class="config-input" placeholder="Event description" style="width:100%;">' +
+    '<div style="display:flex;gap:8px;">' +
+    '<input id="cal-person" type="text" class="config-input" placeholder="Host name (optional)" style="width:180px;">' +
+    '<button class="btn btn-success btn-sm" onclick="addCalendarEvent()">Add Event</button>' +
+    '</div></div>';
+
+  html += '</div>';
+  return html;
+}
+
+function addCalendarEvent() {
+  var day = document.getElementById('cal-day') && document.getElementById('cal-day').value;
+  var time = document.getElementById('cal-time') && document.getElementById('cal-time').value.trim() || '';
+  var tz = document.getElementById('cal-tz') && document.getElementById('cal-tz').value.trim() || 'ET';
+  var desc = document.getElementById('cal-desc') && document.getElementById('cal-desc').value.trim();
+  var person = document.getElementById('cal-person') && document.getElementById('cal-person').value.trim() || '';
+  if (!desc) { toast('Enter an event description', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/calendar/events', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ day: day, time: time, timezone: tz, description: desc, person: person })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Event added'); renderSettings('calendar'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteCalendarEvent(eventId) {
+  if (!confirm('Remove this event?')) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, {
+    method: 'DELETE', headers: headers
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Event removed'); renderSettings('calendar'); }
+  });
+}
+
+/* ── Whitelisted Links Section ── */
+function renderWhitelistedLinksSection(data) {
+  var links = data.whitelistedLinks || [];
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Whitelisted Invite Links</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + links.length + ' link' + (links.length === 1 ? '' : 's') + '</span></div>';
+
+  if (links.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No whitelisted links. Add invite links below that members are allowed to post.</span></div>';
+  } else {
+    links.forEach(function(l) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteWhitelistedLink(\'' + esc(l) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="display:flex;gap:8px;">' +
+    '<input id="wl-link" type="text" class="config-input" placeholder="discord.gg/yourserver or full invite URL" style="flex:1;">' +
+    '<button class="btn btn-success btn-sm" onclick="addWhitelistedLink()">Add</button>' +
+    '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function addWhitelistedLink() {
+  var link = document.getElementById('wl-link') && document.getElementById('wl-link').value.trim();
+  if (!link) { toast('Enter an invite link', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ link: link })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Link whitelisted'); renderSettings('antipromo'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteWhitelistedLink(link) {
+  if (!confirm('Remove "' + link + '" from whitelist?')) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'DELETE', headers: headers,
+    body: JSON.stringify({ link: link })
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Link removed'); renderSettings('antipromo'); }
+  });
 }
 
 /* ── Economy Settings (grouped) ── */
@@ -693,23 +932,163 @@ function renderEconomySettings(data) {
     html += '</div>';
   });
   html += '<div id="save-bar-container"></div>';
-  if (data.roleIncomeList && data.roleIncomeList.length > 0) {
-    html += '<div class="config-section" style="margin-top:4px;"><div class="config-section-header"><h3>Role Income</h3></div>';
-    data.roleIncomeList.forEach(function(r) {
-      html += '<div class="config-row"><div class="config-left"><span class="config-label">@' + esc(r.roleName) + '</span>' +
-        '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div></div></div>';
-    });
-    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/economysetup roleincome</code> in Discord to manage entries.</span></div></div>';
+
+  /* ── Role Income ── */
+  var riList = data.roleIncomeList || [];
+  var riLimit = currentGuild.premium ? Infinity : 2;
+  var riLimitLabel = currentGuild.premium ? '\u221e' : '2';
+  var riRoles = data.roles || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Role Income</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + riList.length + ' / ' + riLimitLabel + ' entries</span></div>';
+  if (riList.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No role income entries yet. Add one below.</span></div>';
   } else {
-    html += '<div class="config-section" style="margin-top:4px;"><div class="config-section-header"><h3>Role Income</h3></div>' +
-      '<div class="config-row"><span class="config-sublabel">No role income set up. Use <code>/economysetup roleincome</code> in Discord.</span></div></div>';
+    riList.forEach(function(r) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleIncome(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '</div>';
+    });
   }
+  if (!currentGuild.premium && riList.length >= 2) {
+    html += '<div class="config-row" style="background:var(--amber-bg);">' +
+      '<span style="font-size:12px;color:var(--amber);">Free limit reached (2 entries). Upgrade to Premium for unlimited.</span></div>';
+  } else {
+    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+      '<select id="ri-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Select role...</option>' +
+      riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+      '</select>' +
+      '<input id="ri-amount" type="number" class="config-input" placeholder="Amount" min="1" style="width:100px;">' +
+      '<input id="ri-cooldown" type="number" class="config-input" placeholder="Hours" min="1" max="720" style="width:80px;">' +
+      '<button class="btn btn-success btn-sm" onclick="addRoleIncome()">Add</button>' +
+      '</div>' +
+      '<span class="config-sublabel">Role \u2192 amount earned \u2192 cooldown in hours</span>' +
+      '</div>';
+  }
+  html += '</div>';
+
+  /* ── Store Items ── */
+  var storeItems = data.storeItems || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Store Items</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + storeItems.length + ' custom item(s)</span></div>';
+  if (storeItems.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No custom store items yet. Add custom items below.</span></div>';
+  } else {
+    storeItems.forEach(function(item) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(item.name) + ' - ' + esc(String(item.price)) + '</span>' +
+        '<div class="config-sublabel">' +
+        (item.description ? esc(item.description) : 'No description') +
+        (item.roleName ? ' | Grants: @' + esc(item.roleName) : '') +
+        (item.usable ? ' | Usable' : '') +
+        '</div></div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(\'' + esc(item.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<input id="store-name" type="text" class="config-input" placeholder="Item name" style="flex:2;min-width:120px;">' +
+    '<input id="store-price" type="number" class="config-input" placeholder="Price" min="0" style="width:100px;">' +
+    '</div>' +
+    '<input id="store-desc" type="text" class="config-input" placeholder="Description (optional)" style="width:100%;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+    '<select id="store-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Grant role on buy (optional)</option>' +
+    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
+    '<input id="store-usable" type="checkbox"> Usable item</label>' +
+    '<button class="btn btn-success btn-sm" onclick="addStoreItem()">Add Item</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
   return html;
+}
+
+function addRoleIncome() {
+  var roleId = document.getElementById('ri-role') && document.getElementById('ri-role').value;
+  var amount = document.getElementById('ri-amount') && document.getElementById('ri-amount').value;
+  var cooldown = document.getElementById('ri-cooldown') && document.getElementById('ri-cooldown').value || '24';
+  if (!roleId) { toast('Select a role', 'error'); return; }
+  if (!amount || Number(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/roleincome', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ roleId: roleId, amount: Number(amount), cooldown: Number(cooldown) })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Role income added'); renderSettings('economy'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteRoleIncome(roleId) {
+  if (!currentGuild) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, {
+    method: 'DELETE', headers: headers
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); }
+  });
+}
+
+function addStoreItem() {
+  var name = document.getElementById('store-name') && document.getElementById('store-name').value.trim();
+  var price = document.getElementById('store-price') && document.getElementById('store-price').value;
+  var desc = document.getElementById('store-desc') && document.getElementById('store-desc').value.trim() || '';
+  var roleId = document.getElementById('store-role') && document.getElementById('store-role').value || null;
+  var usable = document.getElementById('store-usable') && document.getElementById('store-usable').checked || false;
+  if (!name) { toast('Item name is required', 'error'); return; }
+  if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price', 'error'); return; }
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/store', {
+    method: 'POST', headers: headers,
+    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null })
+  }).then(function(res) {
+    if (res.status === 401) { clearToken(); showLogin(); return; }
+    return res.json();
+  }).then(function(r) {
+    if (r && r.success) { toast('Item added'); renderSettings('economy'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteStoreItem(itemId) {
+  if (!currentGuild) return;
+  var token = getToken();
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/economy/store/' + itemId, {
+    method: 'DELETE', headers: headers
+  }).then(function(res) { return res.json(); }).then(function(r) {
+    if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+  });
 }
 
 /* ── Dispatch extras (voice channel management) ── */
 window._dispatchState = {};
 function renderDispatchExtras(data) {
+  window._dispatchState = {
+    patrolChannelIds: (data.currentPatrolChannels || []).slice(),
+    trafficStopChannelIds: (data.currentTrafficChannels || []).slice(),
+    leoRoleIds: (data.leoRoles || []).slice()
+  };
   var html = '';
   var voiceOpts = (data.voiceChannels || []).map(function(c) {
     return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';

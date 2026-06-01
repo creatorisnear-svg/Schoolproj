@@ -621,6 +621,7 @@ function renderSettings(mod) {
 
 /* ── Dispatch extras (voice channel management) ── */
 function renderDispatchExtras(data) {
+  initDispatchState(data);
   var html = '';
   var voiceOpts = (data.voiceChannels || []).map(function(c) {
     return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
@@ -732,6 +733,14 @@ function dispatchStep(num, title, desc, dotColor) {
 
 /* Dispatch channel add/remove helpers */
 window._dispatchState = {};
+
+function initDispatchState(data) {
+  window._dispatchState = {
+    patrolChannelIds: (data.currentPatrolChannels || []).slice(),
+    trafficStopChannelIds: (data.currentTrafficChannels || []).slice(),
+    leoRoleIds: (data.leoRoles || []).slice()
+  };
+}
 
 function addDispatchChannel(type) {
   var selectId = type === 'leo' ? 'leo-role-select' : (type === 'patrol' ? 'patrol-channel-select' : 'traffic-channel-select');
