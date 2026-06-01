@@ -15,10 +15,13 @@
     .result-page h1 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
     .result-page p { color: var(--text-muted); font-size: 15px; max-width: 460px; margin: 0 auto 32px; line-height: 1.7; }
     .key-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; max-width: 420px; margin: 0 auto 32px; }
-    .key-box .key-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
-    .key-box .key-value { font-size: 18px; font-weight: 700; font-family: monospace; color: var(--text); letter-spacing: 2px; word-break: break-all; }
-    .key-box .key-hint { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+    .key-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+    .key-value { font-size: 18px; font-weight: 700; font-family: monospace; color: var(--text); letter-spacing: 2px; word-break: break-all; user-select: all; cursor: pointer; }
+    .key-hint { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+    .copy-btn { margin-top: 12px; background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: border-color 0.2s, color 0.2s; }
+    .copy-btn:hover { border-color: var(--border-hover); color: var(--text); }
     .result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .error-box { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--radius); padding: 14px 18px; max-width: 420px; margin: 0 auto 24px; font-size: 13px; color: var(--red); }
   </style>
 </head>
 <body>
@@ -37,27 +40,35 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <h1>Payment successful</h1>
-      <p>Your premium key has been generated. Activate it from the Premium section of your server's dashboard.</p>
+      <p>Your premium key has been generated below. Activate it in the Premium section of your server's dashboard.</p>
 
-      <div class="key-box" id="key-box" style="display:none;">
+      <div class="error-box" style="display:<!--ERROR_DISPLAY-->"><!--ERROR_MSG--></div>
+
+      <div class="key-box" style="display:<!--KEY_DISPLAY-->">
         <div class="key-label">Your Premium Key</div>
-        <div class="key-value" id="key-display"></div>
-        <div class="key-hint">Save this key. You can also find it in your dashboard under Premium.</div>
+        <div class="key-value" id="key-display"><!--KEY_VALUE--></div>
+        <div class="key-hint">Click the key to select it, or use the copy button below. Save it — you will need it to activate premium in the dashboard.</div>
+        <button class="copy-btn" onclick="copyKey()">Copy Key</button>
       </div>
 
       <div class="result-actions">
-        <a href="/dashboard" class="btn btn-primary" style="padding:12px 24px;font-size:14px;font-weight:600;border-radius:8px;background:#fff;color:#0a0b0e;text-decoration:none;">Open Dashboard</a>
-        <a href="/" class="btn btn-secondary" style="padding:12px 24px;font-size:14px;font-weight:600;border-radius:8px;background:transparent;border:1px solid #23272f;color:#7a818e;text-decoration:none;">Back to Home</a>
+        <a href="/dashboard" style="padding:12px 24px;font-size:14px;font-weight:600;border-radius:8px;background:#fff;color:#0a0b0e;text-decoration:none;">Open Dashboard</a>
+        <a href="/" style="padding:12px 24px;font-size:14px;font-weight:600;border-radius:8px;background:transparent;border:1px solid #23272f;color:#7a818e;text-decoration:none;">Back to Home</a>
       </div>
     </div>
   </div>
 
   <script>
-    var params = new URLSearchParams(window.location.search);
-    var key = params.get('key');
-    if (key) {
-      document.getElementById('key-box').style.display = 'block';
-      document.getElementById('key-display').textContent = key;
+    function copyKey() {
+      var key = document.getElementById('key-display').textContent.trim();
+      if (!key) return;
+      navigator.clipboard.writeText(key).then(function() {
+        var btn = document.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy Key'; }, 2000);
+      }).catch(function() {
+        document.getElementById('key-display').select?.();
+      });
     }
   </script>
 </body>

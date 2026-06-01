@@ -219,7 +219,6 @@ app.get('/auth/site/callback', async (req, res) => {
 });
 
 app.use('/api', createApiRouter(client));
-app.use('/api/checkout', createCheckoutRouter());
 app.use('/checkout', createCheckoutRouter());
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', createPortalApiRouter(client));
