@@ -336,6 +336,24 @@ export async function handleSelectMenu(interaction) {
     return handleMemberMovePanelSelect(interaction);
   }
 
+  // Voice Mover setup menus
+  if (customId === 'movemesetup_menu') {
+    const { handleMovemeSetupMenu } = await import('./movemeSetupHandler.js');
+    return handleMovemeSetupMenu(interaction);
+  }
+  if (customId === 'movemesetup_add_vc') {
+    const { handleMovemeAddVC } = await import('./movemeSetupHandler.js');
+    return handleMovemeAddVC(interaction);
+  }
+  if (customId === 'movemesetup_remove_vc') {
+    const { handleMovemeRemoveVC } = await import('./movemeSetupHandler.js');
+    return handleMovemeRemoveVC(interaction);
+  }
+  if (customId === 'movemesetup_panel_channel') {
+    const { handleMovemePanelChannel } = await import('./movemeSetupHandler.js');
+    return handleMovemePanelChannel(interaction);
+  }
+
   // Ticket setup select menus
   if (customId === 'ticketsupport_setup_menu') {
     const { handleTicketSetupMenu } = await import('./ticketHandler.js');

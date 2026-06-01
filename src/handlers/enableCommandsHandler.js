@@ -259,7 +259,7 @@ export async function handleEnableCommandButton(interaction) {
     } else if (customId === 'enable_membermove') {
       featureName = 'Member Movement';
       model = MemberMovementConfig;
-      setupCommand = 'Run `/movemesetup` to send the movement panel to a channel.';
+      setupCommand = 'Run `/movemesetup` to configure and send the Voice Mover panel.';
     }
 
     // Save to database
