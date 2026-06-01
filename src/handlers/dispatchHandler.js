@@ -399,9 +399,12 @@ function isDispatchRelevant(text) {
   const DISPATCH_RE = /\b(?:10[-\s]?\d+|code\s*\d|show(?:ing)?(?:\s+me)?|patrol|unit|officer|en\s*route|on\s*scene|on\s*stop|traffic\s*stop|pursuit|robbery|shooting|shots?\s+fired|fire(?:arm)?|suspect|vehicle|plate|tag|registration|backup|assist|ems|ambulance|medic|respond(?:ing)?|available|unavailable|signal|copy|roger|clear(?:ing)?|stand\s*by|status|location|heading|north|south|east|west|street|ave(?:nue)?|blvd|highway|hwy|road|drive|lane|run\s+(?:a\s+)?(?:plate|name|check)|look(?:ing)?\s+up|bolo|warrant|stolen|wanted|armed|weapon|knife|gun|disturbance|domestic|noise|call|incident|scene|crash|accident|medical|overdose|trespass|burglary|assault|fight|drunk|disorderly)\b/gi;
   const matches = (text.match(DISPATCH_RE) || []).length;
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  // Short transmissions need 1 match; longer ones need 2+ distinct matches to filter out
-  // casual speech that happens to mention a single police-adjacent word.
-  return matches >= (wordCount > 7 ? 2 : 1);
+  // Tiered threshold: short transmissions (≤6 words) need 1 match;
+  // medium (7-12 words) need 2; longer transmissions need 3 distinct matches
+  // to prevent casual speech that happens to contain a police-adjacent word.
+  if (wordCount <= 6) return matches >= 1;
+  if (wordCount <= 12) return matches >= 2;
+  return matches >= 3;
 }
 
 function detectUnitsCheck(text) {
@@ -766,13 +769,20 @@ function parseTranscript(text) {
 }
 
 const WHISPER_PROMPT =
-  'GTA V FiveM police radio. Call signs: "1 Adam 22", "Lincoln 4", or "Dispatch". ' +
-  'LAPD phonetic: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
-  'Also: "Marshal Command", "County Command", "Central Dispatch". ' +
-  'Codes: 10-4, 10-7, 10-8, 10-11, 10-19, 10-20, 10-23, 10-31, 10-50, 10-52, 10-76, 10-78, 10-80, 10-97, 10-99. ' +
-  'Terms: traffic stop, show me in, show me on, available, out of service, in pursuit, on scene, ' +
-  'run the plate, run the name, check warrants, run serial, requesting backup, units available, ' +
-  'code four, all clear, roll a 32, en route, I will respond, send EMS, send fire, officer down, copy that.';
+  'GTA V FiveM police radio transmission. Roleplay server. ' +
+  'Call signs use LAPD phonetic alphabet: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
+  'Example call signs: "1 Adam 22", "2 Lincoln 40", "3 Baker 15", "Adam 22", "Lincoln 4". ' +
+  'Also valid: "Dispatch", "Marshal Command", "County Command", "Central Dispatch". ' +
+  'Ten codes spoken as "ten four", "ten eight", "ten eleven", "ten eighty", "ten ninety nine" or "10-4" "10-8" "10-11" "10-80" "10-99". ' +
+  'Full ten code list: 10-4 copy, 10-6 busy, 10-7 out of service, 10-8 available, 10-10 off duty, 10-11 traffic stop, ' +
+  '10-15 prisoner, 10-19 return to station, 10-20 location, 10-23 on scene, 10-31 disturbance, ' +
+  '10-50 accident, 10-52 ambulance, 10-76 en route, 10-78 need backup, 10-80 in pursuit, 10-97 arrived, 10-99 officer down panic. ' +
+  'Common phrases: traffic stop, show me in, show me on, show me available, show me out of service, ' +
+  'in pursuit, on scene, en route, code four, all clear, requesting backup, units available, ' +
+  'run the plate, run the name, check warrants, run a serial, roll a unit, send EMS, send fire, ' +
+  'I will respond, copy that, ten four, roger, stand by, be advised, ' +
+  'Pillbox Hill, Maze Bank, Legion Square, Rockford Hills, Vinewood, Sandy Shores, Paleto Bay, Mirror Park, Davis, Strawberry, ' +
+  'Boulevard, Freeway, Highway, intersection, mile marker, eastbound, westbound, northbound, southbound.';
 
 async function transcribeAudio(wavBuffer) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
@@ -1621,7 +1631,8 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         tools: dispatchTools,
         tool_choice: 'auto',
         max_tokens: maxTokens,
-        temperature: 0.3,
+        temperature: 0.15,
+        frequency_penalty: 0.5,
       });
       const message = response.choices[0]?.message;
       let rawText = message?.content?.trim() || '';
@@ -1701,7 +1712,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   throw lastErr;
 }
 
-export async function processVoiceCall(wavBuffer, userId, guild, client) {
+// Per-officer AI response cooldown — prevents double-triggers from the same
+// officer's mic key landing as two near-identical transcriptions.
+const _lastAIResponseTime = new Map(); // `${guildId}:${userId}` → timestamp
+
+export async function processVoiceCall(wavBuffer, userId, guild, client, opts = {}) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
     if (!config || !config.enabled || !config.dispatchChannelId) return;
@@ -1776,6 +1791,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
       return;
     }
     _transcriptDedup.set(dedupKey, { ts: now, text: normalized });
+
+    // ── Per-officer AI response cooldown ─────────────────────────────────────
+    // If the same officer triggered a response in the last 3 seconds, ignore
+    // this transmission entirely — it's almost certainly a double-keying artifact.
+    const aiCooldownKey = `${guild.id}:${userId}`;
+    const _nowCooldown = Date.now();
+    const _lastAI = _lastAIResponseTime.get(aiCooldownKey) || 0;
+    if (_nowCooldown - _lastAI < 3000) {
+      console.log(`[Dispatch] Cooldown — ignoring rapid repeat from ${officerName} (${_nowCooldown - _lastAI}ms since last)`);
+      return;
+    }
 
     if (await handlePendingStopMoveVoiceAnswer(guild, config, member, transcript, ttsName)) return;
 
@@ -2857,8 +2883,18 @@ export async function processVoiceCall(wavBuffer, userId, guild, client) {
     // Only generate an AI response when a real dispatch trigger was heard (trigger word,
     // call sign, or emergency phrase). Ten-codes spoken without a trigger word just
     // update the officer's status silently — no AI chat-back.
-    if (hadTrigger && !isSimpleAck && !skipAIForSpeed && config.aiEnabled && hasAIKey()) {
+    //
+    // Simultaneous speaker gate: if dispatch was already playing TTS when this
+    // transmission landed, skip the AI response unless it is an emergency — this
+    // prevents stale queued responses and avoids dispatch "talking over" itself.
+    const _isEmergencyTransmission = EMERGENCY_BYPASS_RE.test(transcript);
+    const _skipForSpeaking = opts.dispatchWasSpeaking && !_isEmergencyTransmission;
+    if (_skipForSpeaking) {
+      console.log(`[Dispatch] Simultaneous speaker gate — dispatch was speaking; skipping AI response for ${officerName}`);
+    }
+    if (hadTrigger && !isSimpleAck && !skipAIForSpeed && config.aiEnabled && hasAIKey() && !_skipForSpeaking) {
       try {
+        _lastAIResponseTime.set(aiCooldownKey, Date.now());
         const aiResult = await generateDispatchResponse(officerName, parsed, guild.id, fullVoiceContext, guild, config, detectedCallSign, officerDbStatus);
         dispatchResponse = aiResult.text;
         aiActions = aiResult.actions || [];
@@ -4482,7 +4518,7 @@ export async function initDispatchForGuild(guild, client) {
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
 
     const options = {
-      onTranscription: (wavBuffer, userId) => processVoiceCall(wavBuffer, userId, guild, client),
+      onTranscription: (wavBuffer, userId, _g, opts) => processVoiceCall(wavBuffer, userId, guild, client, opts),
       userFilter: async () => true,
     };
 

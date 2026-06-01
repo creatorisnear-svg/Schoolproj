@@ -517,7 +517,8 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      const silenceDuration = 900;
+      // 1400ms silence — radio-style speech has natural pauses; 900ms cut too many valid transmissions
+      const silenceDuration = 1400;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });
@@ -547,12 +548,26 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      // Require at least 10 chunks (~200ms) to filter out noise bursts and pops
-      if (pcmChunks.length < 10) return;
+      // Require at least 20 chunks (~400ms) to filter out noise bursts, mic pops and accidental keying
+      if (pcmChunks.length < 20) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
-        try { await onTranscription(wav, userId, guild); }
-        catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
+        // ── Simultaneous speaker gate ──────────────────────────────────────────
+        // If dispatch is currently playing TTS, check if this is an emergency
+        // before sending to the AI pipeline.  Non-emergency transmissions that
+        // arrive while dispatch is talking are queued silently — only actual
+        // emergencies (10-99, shots fired, officer down) bypass the gate.
+        const guildState = dispatchState.get(guildId);
+        const dispatchSpeaking = guildState?.audioPlaying === true;
+        if (dispatchSpeaking) {
+          // Quick text-free emergency check — we haven't transcribed yet so we
+          // pass a flag via a wrapper so dispatchHandler can check after transcription
+          try { await onTranscription(wav, userId, guild, { dispatchWasSpeaking: true }); }
+          catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
+        } else {
+          try { await onTranscription(wav, userId, guild, { dispatchWasSpeaking: false }); }
+          catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
+        }
       }
     });
 
