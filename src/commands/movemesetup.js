@@ -63,6 +63,24 @@ export async function execute(interaction) {
 
   const sub = interaction.options.getSubcommand();
 
+  /* ── enabled gate (applies to ALL subcommands) ── */
+  if (!config.enabled) {
+    return interaction.reply({
+      embeds: [new EmbedBuilder()
+        .setColor('#ed4245')
+        .setTitle('Voice Mover is Disabled')
+        .setDescription(
+          'Voice Mover must be enabled before using any `/movemesetup` commands.\n\n' +
+          '**To enable it:**\n' +
+          '`1.` Run `/enablecommands` → **Enable Features** → **Member Movement**\n' +
+          '`2.` Or toggle it on in the **Dashboard → Voice Mover** settings page\n\n' +
+          '-# Once enabled, return here to configure and send the panel.'
+        )
+        .setFooter({ text: 'RPM' })],
+      flags: 64,
+    });
+  }
+
   /* ── addchannel ── */
   if (sub === 'addchannel') {
     const vc = interaction.options.getChannel('channel');
@@ -157,16 +175,6 @@ export async function execute(interaction) {
   }
 
   /* ── panel ── */
-  if (!config?.enabled) {
-    return interaction.reply({
-      embeds: [errorEmbed(
-        'Member Movement Not Enabled',
-        'Enable Voice Mover in the dashboard or use `/enablecommands` → **Enable Features** → **Member Movement** first.'
-      )],
-      flags: 64,
-    });
-  }
-
   const channel = interaction.options.getChannel('channel');
 
   const panelEmbed = new EmbedBuilder()
