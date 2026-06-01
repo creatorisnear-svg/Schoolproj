@@ -318,12 +318,6 @@
       <p class="modal-sub" id="modal-sub">Monthly plan &mdash; $5.00/month. Cancel any time.</p>
 
       <div class="modal-section">
-        <label>Discord User ID</label>
-        <input type="text" id="input-discord-id" placeholder="Your Discord user ID (e.g. 123456789012345678)" maxlength="20">
-        <p style="font-size:11px;color:var(--text-dim);margin-top:6px;">Enable Developer Mode in Discord settings, then right-click your name and select Copy User ID.</p>
-      </div>
-
-      <div class="modal-section">
         <label>Review &amp; Accept</label>
         <div class="tos-box">
           <strong>Key terms:</strong><br>
@@ -379,15 +373,8 @@
     });
 
     function startCheckout() {
-      var discordId = document.getElementById('input-discord-id').value.trim();
       var errorEl = document.getElementById('modal-error');
       errorEl.classList.remove('show');
-
-      if (!discordId || !/^\d{17,20}$/.test(discordId)) {
-        errorEl.textContent = 'Please enter a valid Discord user ID (17-20 digits).';
-        errorEl.classList.add('show');
-        return;
-      }
 
       if (!document.getElementById('tos-checkbox').checked) {
         errorEl.textContent = 'You must accept the Terms of Service to continue.';
@@ -402,7 +389,7 @@
       fetch(API_BASE + '/checkout/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedPlan, discordId: discordId, tosAccepted: true })
+        body: JSON.stringify({ plan: selectedPlan, tosAccepted: true })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {

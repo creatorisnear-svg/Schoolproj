@@ -154,7 +154,7 @@ export function createCheckoutRouter() {
       if (!plan || !['monthly', 'lifetime'].includes(plan)) {
         return res.status(400).json({ error: 'Invalid plan.' });
       }
-      if (!discordId || !/^\d{17,20}$/.test(String(discordId))) {
+      if (discordId && !/^\d{17,20}$/.test(String(discordId))) {
         return res.status(400).json({ error: 'Invalid Discord user ID.' });
       }
 
