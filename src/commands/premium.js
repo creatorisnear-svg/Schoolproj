@@ -26,7 +26,7 @@ export async function execute(interaction) {
       '**Advanced Gambling**\n' +
       '-# Blackjack and Roulette are premium-only. Free servers have access to Slots, Dice, Cockfight, and Russian Roulette.\n\n' +
       '**Unlimited Limits**\n' +
-      '-# Free: 100 characters · 200 vehicles · 100 firearms · 20 BOLOs · 5 stickies · 3 ticket types · 2 role income entries · top-10 leaderboard\n' +
+      '-# Free: 100 characters · 200 vehicles · 100 firearms · 20 BOLOs · 5 stickies · 5 ticket types · 2 role income entries · top-10 leaderboard\n' +
       '-# Premium: all of the above are **unlimited** + top-25 leaderboard\n\n' +
       '### How to activate\n' +
       'Get a premium key from our support server, then run `/activatepremium` with your key.\n\n' +

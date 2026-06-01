@@ -452,7 +452,7 @@ function renderPremiumSection(g) {
   if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
   premiumItems.push('Blackjack & Roulette gambling games');
   premiumItems.push('Top-25 leaderboard (free: top 10)');
-  premiumItems.push('Unlimited ticket types (free: 3)');
+  premiumItems.push('Unlimited ticket types (free: 5)');
   premiumItems.push('Unlimited role income entries (free: 2)');
   premiumItems.push('Unlimited CAD, vehicles, BOLOs & stickies');
 
@@ -905,31 +905,37 @@ function removeDispatchChannel(type, id) {
 
 /* ── Ticket types section ── */
 function renderTicketTypesSection(data) {
-  var limit = currentGuild.premium ? '\u221e' : '3';
+  var freeLimit = 5;
+  var limit = currentGuild.premium ? '\u221e' : String(freeLimit);
   var count = (data.ticketTypes || []).length;
-  var atLimit = !currentGuild.premium && count >= 3;
+  var atLimit = !currentGuild.premium && count >= freeLimit;
   var roleOpts = (data.roles || []).map(function(r) {
     return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
   }).join('');
 
-  var html = '<div class="config-section" style="margin-top:14px;">' +
+  var html = '<div class="config-section" style="margin-top:14px;" id="ticket-types-section">' +
     '<div class="config-section-header"><h3>Ticket Types</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
-    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendTicketPanel()">Send Panel to Discord</button>' +
+    (count > 0 ? '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="showTicketPanelPicker(' + JSON.stringify(data.ticketTypes) + ')">Send Panel to Discord</button>' : '') +
     '</div>';
 
   if (count === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below — each type becomes a button on the ticket panel.</span></div>';
   } else {
+    var buttonColorLabels = { Primary: 'Blue', Secondary: 'Grey', Success: 'Green', Danger: 'Red' };
     (data.ticketTypes || []).forEach(function(t) {
       var roleNames = (t.allowedRoleIds || []).map(function(id) {
         var r = (data.roles || []).find(function(r) { return r.value === id; });
         return r ? r.label : id;
       }).join(', ');
+      var colorDot = { Primary: '#5865f2', Secondary: '#4f545c', Success: '#57f287', Danger: '#ed4245' }[t.buttonColor] || '#5865f2';
       html += '<div class="config-row" style="justify-content:space-between;">' +
-        '<div class="config-left">' +
+        '<div class="config-left" style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="width:10px;height:10px;border-radius:2px;background:' + colorDot + ';flex-shrink:0;"></div>' +
+        '<div>' +
         '<span class="config-label">' + esc(t.label) + '</span>' +
-        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'No staff roles - all can see') + ' \u00b7 ' + esc(t.buttonColor || 'Primary') + ' button</div>' +
+        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'All staff can see') + ' \u00b7 ' + esc(buttonColorLabels[t.buttonColor] || t.buttonColor || 'Blue') + ' button</div>' +
+        '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
         '</div>';
@@ -938,7 +944,7 @@ function renderTicketTypesSection(data) {
 
   if (atLimit) {
     html += '<div class="config-row" style="background:var(--amber-bg);">' +
-      '<span style="font-size:12px;color:var(--amber);">Free limit reached (3 types). Upgrade to Premium for unlimited ticket types.</span></div>';
+      '<span style="font-size:12px;color:var(--amber);">Free limit reached (' + freeLimit + ' types). Upgrade to Premium for unlimited ticket types.</span></div>';
   } else {
     html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
@@ -951,15 +957,73 @@ function renderTicketTypesSection(data) {
       '</select>' +
       '</div>' +
       '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
-      '<div style="display:flex;gap:8px;align-items:center;">' +
       '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
-      '<span style="font-size:11px;color:var(--text-dim);">After adding types, run <code>/ticketsupportsetup</code> in Discord to post the ticket panel.</span>' +
-      '</div>' +
       '</div>';
   }
 
   html += '</div>';
+
+  /* ── Inline panel picker (hidden until showTicketPanelPicker is called) ── */
+  html += '<div id="ticket-panel-picker" style="display:none;"></div>';
+
   return html;
+}
+
+function showTicketPanelPicker(types) {
+  var picker = document.getElementById('ticket-panel-picker');
+  if (!picker) return;
+  var allIds = types.map(function(t) { return t.id; });
+
+  var checkboxes = types.map(function(t) {
+    var colorDot = { Primary: '#5865f2', Secondary: '#4f545c', Success: '#57f287', Danger: '#ed4245' }[t.buttonColor] || '#5865f2';
+    return '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;border-bottom:1px solid var(--border);">' +
+      '<input type="checkbox" class="ticket-type-check" value="' + esc(t.id) + '" checked style="width:14px;height:14px;cursor:pointer;accent-color:#5865f2;">' +
+      '<div style="width:10px;height:10px;border-radius:2px;background:' + colorDot + ';flex-shrink:0;"></div>' +
+      '<span style="font-size:13px;color:var(--text);">' + esc(t.label) + '</span>' +
+      '</label>';
+  }).join('');
+
+  picker.style.display = 'block';
+  picker.innerHTML =
+    '<div class="config-section" style="margin-top:8px;border-color:rgba(88,101,242,0.35);background:rgba(88,101,242,0.04);">' +
+    '<div class="config-section-header" style="background:rgba(88,101,242,0.06);">' +
+    '<h3 style="color:#7b8cec;">Choose Types to Include</h3>' +
+    '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'ticket-panel-picker\').style.display=\'none\'">Cancel</button>' +
+    '</div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:0;padding:8px 16px;">' +
+    '<p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Select which ticket types appear as buttons on the panel. At least one must be selected.</p>' +
+    checkboxes +
+    '</div>' +
+    '<div class="config-row" style="gap:8px;justify-content:flex-end;">' +
+    '<button class="btn btn-ghost btn-sm" onclick="toggleAllTicketTypes(true)">Select All</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="toggleAllTicketTypes(false)">Deselect All</button>' +
+    '<button class="btn btn-success btn-sm" id="send-panel-confirm-btn" onclick="confirmSendTicketPanel()">Send Panel</button>' +
+    '</div></div>';
+}
+
+function toggleAllTicketTypes(checked) {
+  var boxes = document.querySelectorAll('.ticket-type-check');
+  boxes.forEach(function(b) { b.checked = checked; });
+}
+
+function confirmSendTicketPanel() {
+  var boxes = document.querySelectorAll('.ticket-type-check');
+  var selectedIds = [];
+  boxes.forEach(function(b) { if (b.checked) selectedIds.push(b.value); });
+  if (selectedIds.length === 0) { toast('Select at least one ticket type', 'error'); return; }
+  var btn = document.getElementById('send-panel-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/tickets/panel/send', {
+    method: 'POST',
+    body: JSON.stringify({ typeIds: selectedIds })
+  }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel'; }
+    if (r && r.success) {
+      toast('Panel sent to Discord with ' + selectedIds.length + ' type' + (selectedIds.length === 1 ? '' : 's'));
+      var picker = document.getElementById('ticket-panel-picker');
+      if (picker) picker.style.display = 'none';
+    } else if (r && r.error) toast(r.error, 'error');
+  });
 }
 
 function addTicketType() {
@@ -980,17 +1044,6 @@ function deleteTicketType(typeId) {
   if (!confirm('Remove this ticket type?')) return;
   api('/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
-  });
-}
-
-function sendTicketPanel() {
-  if (!currentGuild) return;
-  var btn = event && event.target;
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
-  api('/guild/' + currentGuild.id + '/settings/tickets/panel/send', { method: 'POST' }).then(function(r) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
-    if (r && r.success) toast('Panel sent to Discord successfully');
-    else if (r && r.error) toast(r.error, 'error');
   });
 }
 

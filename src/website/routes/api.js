@@ -938,9 +938,9 @@ export function createApiRouter(client) {
       const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
       const tc = await TicketConfig.findOne({ guildId: req.params.id }) || new TicketConfig({ guildId: req.params.id });
       const isPrem = await isPremiumGuild(req.params.id);
-      const limit = isPrem ? Infinity : 3;
+      const limit = isPrem ? Infinity : 5;
       if ((tc.ticketTypes || []).length >= limit) {
-        return res.status(403).json({ error: 'Free servers can have up to 3 ticket types. Upgrade to Premium for unlimited.' });
+        return res.status(403).json({ error: 'Free servers can have up to 5 ticket types. Upgrade to Premium for unlimited.' });
       }
       const { v4: uuidv4 } = await import('uuid');
       tc.ticketTypes.push({
@@ -1466,7 +1466,12 @@ export function createApiRouter(client) {
         .setDescription(tc.panelDescription || 'Select a category below to open a support ticket. A private channel will be created for you.')
         .setFooter({ text: 'RPM' })
         .setTimestamp();
-      const buttons = tc.ticketTypes.map(type =>
+      const { typeIds } = req.body || {};
+      const selectedTypes = (typeIds && typeIds.length > 0)
+        ? tc.ticketTypes.filter(t => typeIds.includes(t.id))
+        : tc.ticketTypes;
+      if (selectedTypes.length === 0) return res.status(400).json({ error: 'No matching ticket types found. Please select at least one type.' });
+      const buttons = selectedTypes.map(type =>
         new ButtonBuilder()
           .setCustomId(`ticket_create_${type.id}`)
           .setLabel(type.label)

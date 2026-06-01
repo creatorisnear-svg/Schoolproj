@@ -62,7 +62,7 @@ export const LIMITS = {
     firearms: 100,
     bolos: 20,
     stickyMessages: 5,
-    ticketTypes: 3,
+    ticketTypes: 5,
     roleIncomeRoles: 2,
     leaderboardSize: 10,
   },
