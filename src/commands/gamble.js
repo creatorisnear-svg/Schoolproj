@@ -63,8 +63,8 @@ export async function execute(interaction) {
               `**${gameName}** is a premium-only game.\n\n` +
               `**Available for free:** Slots, Dice, Cockfight, Russian Roulette\n` +
               `**Premium unlocks:** Blackjack + Roulette, along with AI Voice Dispatch, unlimited CAD entries, and more.\n\n` +
-              `Get Premium → **[discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)**\n` +
-              `-# Once you have a key, use \`/activatepremium\` to activate it on this server.`
+              `[**Get Premium →**](https://roleplaymanager.xyz/pricing)\n` +
+              `-# Already have a key? Use \`/activatepremium\` in this server to activate it.`
             )
             .setFooter({ text: 'RPM' }),
         ],

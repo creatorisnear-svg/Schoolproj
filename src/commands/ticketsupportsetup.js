@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import TicketConfig from '../models/TicketConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ticketsupportsetup')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'ticket');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Ticket Support is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Ticket Support')],
       flags: 64,
     });
   }

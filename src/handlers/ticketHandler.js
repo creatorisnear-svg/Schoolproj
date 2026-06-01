@@ -384,7 +384,7 @@ export async function handleTicketSetupModal(interaction) {
         embeds: [errorEmbed(
           'Ticket Type Limit Reached',
           `This server can have up to **${limits.ticketTypes} ticket types** on the free plan.\n` +
-          `Upgrade to **Premium** with \`/activatepremium\` for unlimited ticket types.`
+          `[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited ticket types.`
         )],
         flags: 64,
       });

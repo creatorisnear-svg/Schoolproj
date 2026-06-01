@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChannelType, ActionRowBuilder, ChannelSelectMenuBu
 import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import MemberMovementConfig from '../models/MemberMovementConfig.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('movemesetup')
@@ -26,7 +26,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'membermovement');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Member Movement is a Premium feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Member Movement')],
       flags: 64,
     });
   }

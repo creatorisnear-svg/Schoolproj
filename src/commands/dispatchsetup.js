@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
 import { isAdmin } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('dispatchsetup')
@@ -18,7 +18,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'AI Voice Dispatch is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('AI Voice Dispatch')],
       flags: 64,
     });
   }

@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rolerequestadd')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'rolerequest');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Role Request is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Role Request')],
       flags: 64,
     });
   }

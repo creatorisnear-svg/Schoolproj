@@ -1096,7 +1096,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     const boloCount = await BOLO.countDocuments({ guildId: interaction.guildId, active: true });
     if (boloCount >= limits.bolos) {
       return interaction.reply({
-        embeds: [errorEmbed('BOLO Limit Reached', `This server has reached the maximum of **${limits.bolos} active BOLOs**. Upgrade to **Premium** with \`/activatepremium\` for unlimited BOLOs.`)],
+        embeds: [errorEmbed('BOLO Limit Reached', `This server has reached the maximum of **${limits.bolos} active BOLOs**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited BOLOs.`)],
         flags: 64,
       });
     }

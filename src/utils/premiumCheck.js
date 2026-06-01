@@ -1,5 +1,6 @@
 import PremiumKey from '../models/PremiumKey.js';
 import FeatureFlag from '../models/FeatureFlag.js';
+import { EmbedBuilder } from 'discord.js';
 
 const premiumCache = new Map();
 const featureFlagCache = new Map();
@@ -80,6 +81,18 @@ export const LIMITS = {
 export async function getGuildLimits(guildId) {
   const premium = await isPremiumGuild(guildId);
   return premium ? LIMITS.premium : LIMITS.free;
+}
+
+export function buildPremiumEmbed(featureName) {
+  return new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle('Premium Required')
+    .setDescription(
+      `**${featureName}** requires an active Premium subscription on this server.\n\n` +
+      `[**Get Premium →**](https://roleplaymanager.xyz/pricing)\n` +
+      `-# Already have a key? Use \`/activatepremium\` in this server to activate it.`
+    )
+    .setFooter({ text: 'RPM' });
 }
 
 export async function getPremiumUpsellEmbed(featureName) {

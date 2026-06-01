@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBu
 import Config from '../models/Config.js';
 import { errorEmbed, successEmbed, infoEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('antipromotingsetup')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'antipromote');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Anti-Promoting is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Anti-Promoting')],
       flags: 64,
     });
   }

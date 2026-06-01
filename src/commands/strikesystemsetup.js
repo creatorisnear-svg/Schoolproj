@@ -3,7 +3,7 @@ import { StrikeConfig } from '../models/Strike.js';
 import Config from '../models/Config.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { isAdmin } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('strikesystemsetup')
@@ -20,7 +20,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'strike');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Strike System is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Strike System')],
       flags: 64,
     });
   }

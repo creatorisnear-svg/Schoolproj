@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, Channe
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('prioritytrackersetup')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'priority');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Priority Tracker is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Priority Tracker')],
       flags: 64,
     });
   }

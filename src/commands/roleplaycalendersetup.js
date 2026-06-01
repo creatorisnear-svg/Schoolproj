@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, Channe
 import RoleplayCalendar from '../models/RoleplayCalendar.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycalendersetup')
@@ -23,7 +23,7 @@ export async function execute(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'calendar');
     if (!access.allowed) {
       return interaction.reply({
-        embeds: [errorEmbed('Premium Required', 'RP Calendar is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+        embeds: [buildPremiumEmbed('RP Calendar')],
         flags: 64,
       });
     }

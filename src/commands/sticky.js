@@ -77,7 +77,7 @@ export async function execute(interaction) {
         const stickyCount = await Sticky.countDocuments({ guildId });
         if (stickyCount >= stickyLimit) {
           return interaction.reply({
-            embeds: [errorEmbed('Sticky Limit Reached', `This server has reached the maximum of **${stickyLimit} sticky messages**. Upgrade to **Premium** with \`/activatepremium\` for unlimited stickies.`)],
+            embeds: [errorEmbed('Sticky Limit Reached', `This server has reached the maximum of **${stickyLimit} sticky messages**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited stickies.`)],
             flags: 64,
           });
         }

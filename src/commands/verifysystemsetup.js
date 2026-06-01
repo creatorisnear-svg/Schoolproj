@@ -3,7 +3,7 @@ import Verification from '../models/Verification.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('verifysystemsetup')
@@ -20,7 +20,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'verification');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Verification System is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Verification System')],
       flags: 64,
     });
   }

@@ -1377,7 +1377,7 @@ export async function handleEconomyModal(interaction) {
           embeds: [errorEmbed(
             'Role Income Limit Reached',
             `This server can have up to **${limits.roleIncomeRoles} role income** entries on the free plan.\n` +
-            `Upgrade to **Premium** with \`/activatepremium\` for unlimited role income entries.`
+            `[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited role income entries.`
           )],
           flags: 64,
         });

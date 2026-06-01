@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from '
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('roleplaycommandsetup')
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'roleplay');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [errorEmbed('Premium Required', 'Roleplay Commands is a **Premium** feature.\nUse `/activatepremium` with a valid key to unlock it.')],
+      embeds: [buildPremiumEmbed('Roleplay Commands')],
       flags: 64,
     });
   }
