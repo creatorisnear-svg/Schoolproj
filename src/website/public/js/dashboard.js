@@ -188,10 +188,10 @@ var SIDEBAR_GROUPS = [
     { id: 'welcome',     label: 'Welcome System' },
     { id: 'rolerequest', label: 'Role Request' },
     { id: 'moveme',      label: 'Voice Mover' },
-    { id: 'civjobs',     label: 'Civilian Jobs' },
   ]},
   { title: 'Economy', items: [
     { id: 'economy',     label: 'Economy' },
+    { id: 'civjobs',     label: 'Civilian Jobs' },
   ]},
   { title: 'Advanced', items: [
     { id: 'dispatch',    label: 'AI Voice Dispatch' },
@@ -256,7 +256,7 @@ function renderDashboard() {
   var FEATURE_CATEGORIES = [
     { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
     { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
-    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome'] },
+    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme'] },
     { title: 'Economy',               keys: ['economy'] },
     { title: 'Advanced',              keys: ['dispatch'] },
   ];
@@ -1306,8 +1306,9 @@ function renderEconomySettings(data) {
 
 function deleteRoleIncome(roleId) {
   if (!currentGuild) return;
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); }
+    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
   });
 }
 
@@ -1317,19 +1318,21 @@ function addRoleIncome() {
   var cooldown = document.getElementById('ri-cooldown')?.value || '24';
   if (!roleId) { toast('Select a role'); return; }
   if (!amount || Number(amount) <= 0) { toast('Enter a valid amount'); return; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/roleincome', {
     method: 'POST',
     body: JSON.stringify({ roleId: roleId, amount: Number(amount), cooldown: Number(cooldown) })
   }).then(function(r) {
-    if (r && r.success) { toast('Role income added'); renderSettings('economy'); }
+    if (r && r.success) { toast('Role income added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) { toast(r.error); }
   });
 }
 
 function deleteStoreItem(itemId) {
   if (!currentGuild) return;
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+    if (r && r.success) { toast('Item removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
   });
 }
 
@@ -1341,21 +1344,52 @@ function addStoreItem() {
   var usable = document.getElementById('store-usable')?.checked || false;
   if (!name) { toast('Item name is required'); return; }
   if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price'); return; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store', {
     method: 'POST',
     body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null })
   }).then(function(r) {
-    if (r && r.success) { toast('Item added'); renderSettings('economy'); }
+    if (r && r.success) { toast('Item added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) { toast(r.error); }
   });
 }
 
 /* ── Voice Mover Settings ── */
+window._movemeState = { allowedChannelIds: [] };
+
 function renderMovemeSettings(data) {
   var fields = data.fields || [];
+  window._movemeState.allowedChannelIds = (data.allowedChannelIds || []).slice();
+
   var html = '<div class="config-section"><div class="config-section-header"><h3>Settings</h3></div>';
   fields.forEach(function(field) { html += renderOneField(field, 'moveme'); });
   html += '</div>';
+
+  var voiceOpts = (data.voiceChannels || []).map(function(c) {
+    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
+  }).join('');
+
+  var allowedTags = (data.allowedChannelIds || []).map(function(id) {
+    var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
+    var name = ch ? ch.label : id;
+    return '<span class="channel-tag">' + esc(name) +
+      '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+  }).join('');
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Allowed Voice Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Only these channels appear in the mover panel</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="moveme-channel-tags">' +
+    (allowedTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added — all voice channels will show if left empty.</span>') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select class="config-select" id="moveme-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addMovemeChannel()">Add</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
   html += '<div id="save-bar-container"></div>';
 
   html += '<div class="config-section" style="margin-top:14px;">' +
@@ -1369,6 +1403,46 @@ function renderMovemeSettings(data) {
     '</div>';
 
   return html;
+}
+
+function addMovemeChannel() {
+  var sel = document.getElementById('moveme-channel-select');
+  if (!sel || !sel.value) { toast('Select a voice channel first', 'error'); return; }
+  var id = sel.value;
+  var label = sel.options[sel.selectedIndex].text;
+  if (window._movemeState.allowedChannelIds.indexOf(id) !== -1) { toast('Already added', 'error'); return; }
+  window._movemeState.allowedChannelIds.push(id);
+  pendingChanges['allowedChannelIds'] = window._movemeState.allowedChannelIds.slice();
+  var tagsEl = document.getElementById('moveme-channel-tags');
+  if (tagsEl) {
+    var emptySpan = tagsEl.querySelector('span[style]');
+    if (emptySpan) tagsEl.innerHTML = '';
+    var span = document.createElement('span');
+    span.className = 'channel-tag';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    tagsEl.appendChild(span);
+  }
+  sel.value = '';
+  showSaveBar('moveme');
+}
+
+function removeMovemeChannel(id) {
+  window._movemeState.allowedChannelIds = window._movemeState.allowedChannelIds.filter(function(x) { return x !== id; });
+  pendingChanges['allowedChannelIds'] = window._movemeState.allowedChannelIds.slice();
+  var tagsEl = document.getElementById('moveme-channel-tags');
+  if (tagsEl) {
+    var tags = tagsEl.querySelectorAll('.channel-tag');
+    tags.forEach(function(tag) {
+      var btn = tag.querySelector('.channel-tag-remove');
+      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) {
+        tag.remove();
+      }
+    });
+    if (tagsEl.querySelectorAll('.channel-tag').length === 0) {
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels added — all voice channels will show if left empty.</span>';
+    }
+  }
+  showSaveBar('moveme');
 }
 
 function sendMovemePanel(e) {
@@ -1439,19 +1513,21 @@ function addCivJob() {
   if (!name) { toast('Job name is required', 'error'); return; }
   if (!roleId) { toast('Select a role', 'error'); return; }
   if (!hours || Number(hours) <= 0) { toast('Enter a valid shift duration', 'error'); return; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/civjobs/job', {
     method: 'POST',
     body: JSON.stringify({ name: name, description: desc, roleId: roleId, durationHours: Number(hours) })
   }).then(function(r) {
-    if (r && r.success) { toast('Job added'); renderSettings('civjobs'); }
+    if (r && r.success) { toast('Job added'); renderSettings('civjobs'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) toast(r.error, 'error');
   });
 }
 
 function deleteCivJob(jobId) {
   if (!currentGuild) return;
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/civjobs/job/' + jobId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); }
+    if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); restoreDashScrollPos(scrollPos); }
   });
 }
 
@@ -1535,11 +1611,12 @@ function addStaffRole() {
   var roleId = document.getElementById('sr-role')?.value;
   var position = document.getElementById('sr-pos')?.value || 'staff';
   if (!roleId) { toast('Select a role', 'error'); return; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/staff/add', {
     method: 'POST',
     body: JSON.stringify({ type: 'role', roleId: roleId, position: position })
   }).then(function(r) {
-    if (r && r.success) { toast('Staff role added'); renderSettings('staff'); }
+    if (r && r.success) { toast('Staff role added'); renderSettings('staff'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) toast(r.error, 'error');
   });
 }
@@ -1549,19 +1626,21 @@ function addStaffUser() {
   var userId = document.getElementById('su-id')?.value?.trim();
   var position = document.getElementById('su-pos')?.value || 'staff';
   if (!userId) { toast('Enter a user ID', 'error'); return; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/staff/add', {
     method: 'POST',
     body: JSON.stringify({ type: 'user', userId: userId, position: position })
   }).then(function(r) {
-    if (r && r.success) { toast('Staff user added'); renderSettings('staff'); }
+    if (r && r.success) { toast('Staff user added'); renderSettings('staff'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) toast(r.error, 'error');
   });
 }
 
 function deleteStaffEntry(entryId) {
   if (!currentGuild) return;
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/staff/' + entryId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Staff entry removed'); renderSettings('staff'); }
+    if (r && r.success) { toast('Staff entry removed'); renderSettings('staff'); restoreDashScrollPos(scrollPos); }
   });
 }
 
@@ -1641,10 +1720,24 @@ function showSaveBar(mod) {
     '</div>';
 }
 
+function getDashScrollPos() {
+  var content = document.querySelector('.dashboard-content');
+  return content ? content.scrollTop : window.scrollY;
+}
+
+function restoreDashScrollPos(pos) {
+  setTimeout(function() {
+    var content = document.querySelector('.dashboard-content');
+    if (content) content.scrollTop = pos;
+    else window.scrollTo(0, pos);
+  }, 30);
+}
+
 function saveSettings(mod) {
   if (Object.keys(pendingChanges).length === 0) return;
   var saveBtn = document.querySelector('.save-bar .btn-success');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+  var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/' + mod, {
     method: 'POST',
     body: JSON.stringify(pendingChanges)
@@ -1656,6 +1749,7 @@ function saveSettings(mod) {
       api('/guild/' + currentGuild.id).then(function(refreshed) {
         if (refreshed) currentGuild = refreshed;
         renderSettings(mod);
+        restoreDashScrollPos(scrollPos);
       });
     } else {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }

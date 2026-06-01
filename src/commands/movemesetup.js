@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChannelType, ActionRowBuilder, ChannelSelectMenuBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChannelType, ActionRowBuilder, ChannelSelectMenuBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, EmbedBuilder } from 'discord.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import MemberMovementConfig from '../models/MemberMovementConfig.js';
@@ -55,15 +55,36 @@ export async function execute(interaction) {
     )
     .setFooter({ text: 'RPM' });
 
-  const selectRow = new ActionRowBuilder()
-    .addComponents(
+  const allowedIds = config.allowedChannelIds || [];
+  let selectRow;
+  if (allowedIds.length > 0) {
+    const options = [];
+    for (const chId of allowedIds) {
+      const vc = interaction.guild.channels.cache.get(chId);
+      if (vc) options.push(new StringSelectMenuOptionBuilder().setLabel(vc.name).setValue(vc.id));
+    }
+    if (options.length === 0) {
+      return interaction.reply({
+        embeds: [errorEmbed('None of the configured allowed voice channels exist in this server. Update them in the dashboard first.')],
+        flags: 64,
+      });
+    }
+    selectRow = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('membermove_panel_select')
+        .setPlaceholder('Choose a voice channel...')
+        .addOptions(options.slice(0, 25))
+        .setMinValues(1).setMaxValues(1)
+    );
+  } else {
+    selectRow = new ActionRowBuilder().addComponents(
       new ChannelSelectMenuBuilder()
         .setCustomId('membermove_panel_select')
         .setPlaceholder('Choose a voice channel...')
         .addChannelTypes(ChannelType.GuildVoice)
-        .setMinValues(1)
-        .setMaxValues(1)
+        .setMinValues(1).setMaxValues(1)
     );
+  }
 
   try {
     const panelMsg = await channel.send({

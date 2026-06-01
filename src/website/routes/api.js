@@ -739,6 +739,12 @@ export function createApiRouter(client) {
           ];
           result.panelChannelId = mmc?.panelChannelId || null;
           result.panelMessageId = mmc?.panelMessageId || null;
+          const voiceChannels = guild.channels.cache
+            .filter(c => c.type === 2)
+            .sort((a, b) => a.position - b.position)
+            .map(c => ({ value: c.id, label: c.name }));
+          result.voiceChannels = voiceChannels;
+          result.allowedChannelIds = mmc?.allowedChannelIds || [];
           break;
         }
 
@@ -996,7 +1002,7 @@ export function createApiRouter(client) {
 
         case 'moveme': {
           const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
-          const allowed = ['enabled', 'panelChannelId'];
+          const allowed = ['enabled', 'panelChannelId', 'allowedChannelIds'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -1225,7 +1231,7 @@ export function createApiRouter(client) {
       if (!mmc?.panelChannelId) return res.status(400).json({ error: 'Set a Panel Channel first, then save, before sending the panel.' });
       const channel = guild.channels.cache.get(mmc.panelChannelId);
       if (!channel) return res.status(404).json({ error: 'Panel channel not found in Discord. Check bot permissions.' });
-      const { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType } = await import('discord.js');
+      const { EmbedBuilder, ActionRowBuilder, ChannelSelectMenuBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelType } = await import('discord.js');
       const panelEmbed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('Voice Channel Mover')
@@ -1235,13 +1241,32 @@ export function createApiRouter(client) {
           '-# Be aware: moving you may interrupt your voice chat or cause audio issues.'
         )
         .setFooter({ text: 'RPM' });
-      const selectRow = new ActionRowBuilder().addComponents(
-        new ChannelSelectMenuBuilder()
-          .setCustomId('membermove_panel_select')
-          .setPlaceholder('Choose a voice channel...')
-          .addChannelTypes(ChannelType.GuildVoice)
-          .setMinValues(1).setMaxValues(1)
-      );
+
+      const allowedIds = mmc.allowedChannelIds || [];
+      let selectRow;
+      if (allowedIds.length > 0) {
+        const options = [];
+        for (const chId of allowedIds) {
+          const vc = guild.channels.cache.get(chId);
+          if (vc) options.push(new StringSelectMenuOptionBuilder().setLabel(vc.name).setValue(vc.id));
+        }
+        if (options.length === 0) return res.status(400).json({ error: 'None of the configured allowed channels exist in this server.' });
+        selectRow = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('membermove_panel_select')
+            .setPlaceholder('Choose a voice channel...')
+            .addOptions(options.slice(0, 25))
+            .setMinValues(1).setMaxValues(1)
+        );
+      } else {
+        selectRow = new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId('membermove_panel_select')
+            .setPlaceholder('Choose a voice channel...')
+            .addChannelTypes(ChannelType.GuildVoice)
+            .setMinValues(1).setMaxValues(1)
+        );
+      }
       try {
         if (mmc.panelMessageId) {
           const old = await channel.messages.fetch(mmc.panelMessageId).catch(() => null);

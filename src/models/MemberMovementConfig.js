@@ -5,6 +5,7 @@ const memberMovementConfigSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: false },
   panelChannelId: { type: String, default: null },
   panelMessageId: { type: String, default: null },
+  allowedChannelIds: { type: [String], default: [] },
 });
 
 const MemberMovementConfig = mongoose.models.MemberMovementConfig
