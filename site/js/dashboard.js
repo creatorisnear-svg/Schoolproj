@@ -243,6 +243,10 @@ function renderPremiumSection(g) {
     if (d.plan === 'monthly' && d.hasStripeSubscription && !isCancelling && !isCancelled) {
       cancelBtn = '<button id="cancel-sub-btn" class="btn btn-sm" style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:11px;" onclick="cancelSubscription()">Cancel Subscription</button>';
     }
+    var reactivateBtn = '';
+    if (d.plan === 'monthly' && d.hasStripeSubscription && isCancelling) {
+      reactivateBtn = '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate Subscription</button>';
+    }
 
     return '<div class="config-section" id="premium-section" style="margin-top:20px;">' +
       '<div class="config-section-header"><h3>Premium</h3>' +
@@ -269,6 +273,7 @@ function renderPremiumSection(g) {
       (isCancelled ? '<div style="background:rgba(240,71,71,0.08);border:1px solid rgba(240,71,71,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);">Subscription cancelled. Premium features will stop working. Transfer your key or purchase a new subscription.</div>' : '') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
       '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
+      reactivateBtn +
       cancelBtn +
       '</div>' +
       '</div></div>';
@@ -296,13 +301,26 @@ function cancelSubscription() {
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
     if (result && result.success) {
-      if (currentGuild.premiumDetails) {
-        currentGuild.premiumDetails.subscriptionStatus = 'cancelling';
-      }
+      if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'cancelling';
       toast('Subscription cancelled. Access continues until the billing period ends.');
       renderDashboard();
     } else {
       if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+    }
+  });
+}
+
+function reactivateSubscription() {
+  if (!confirm('Reactivate your subscription? It will continue to renew monthly as normal.')) return;
+  var btn = document.getElementById('reactivate-sub-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reactivating...'; }
+  api('/guild/' + currentGuild.id + '/premium/reactivate', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'active';
+      toast('Subscription reactivated. It will renew as normal.');
+      renderDashboard();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Reactivate Subscription'; }
     }
   });
 }
