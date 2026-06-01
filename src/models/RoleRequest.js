@@ -40,6 +40,6 @@ const roleRequestSchema = new mongoose.Schema({
   dmChannelId: String,
 });
 
-const RoleRequest = mongoose.model('RoleRequest', roleRequestSchema);
+const RoleRequest = mongoose.models.RoleRequest || mongoose.model('RoleRequest', roleRequestSchema);
 
 export default RoleRequest;

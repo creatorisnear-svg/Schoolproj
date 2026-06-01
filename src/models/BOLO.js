@@ -66,6 +66,6 @@ boloSchema.index({ guildId: 1, characterId: 1 });
 boloSchema.index({ guildId: 1, boloId: 1 });
 boloSchema.index({ guildId: 1, active: 1 });
 
-const BOLO = mongoose.model('BOLO', boloSchema);
+const BOLO = mongoose.models.BOLO || mongoose.model('BOLO', boloSchema);
 
 export default BOLO;

@@ -8,4 +8,4 @@ const ChangelogSchema = new mongoose.Schema({
   createdBy: { type: String },
 });
 
-export default mongoose.model('Changelog', ChangelogSchema);
+export default mongoose.models.Changelog || mongoose.model('Changelog', ChangelogSchema);

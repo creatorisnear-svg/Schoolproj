@@ -42,6 +42,6 @@ premiumKeySchema.index({ guildId: 1 });
 premiumKeySchema.index({ stripeCustomerId: 1 });
 premiumKeySchema.index({ stripeSubscriptionId: 1 });
 
-const PremiumKey = mongoose.model('PremiumKey', premiumKeySchema);
+const PremiumKey = mongoose.models.PremiumKey || mongoose.model('PremiumKey', premiumKeySchema);
 
 export default PremiumKey;

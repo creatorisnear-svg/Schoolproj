@@ -51,7 +51,7 @@ const strikeConfigSchema = new mongoose.Schema({
   },
 });
 
-const StrikeUser = mongoose.model('StrikeUser', strikeSchema);
-const StrikeConfig = mongoose.model('StrikeConfig', strikeConfigSchema);
+const StrikeUser = mongoose.models.StrikeUser || mongoose.model('StrikeUser', strikeSchema);
+const StrikeConfig = mongoose.models.StrikeConfig || mongoose.model('StrikeConfig', strikeConfigSchema);
 
 export { StrikeUser, StrikeConfig };

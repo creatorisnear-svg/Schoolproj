@@ -7,4 +7,4 @@ const AutoJoinSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true }
 });
 
-export default mongoose.model('AutoJoin', AutoJoinSchema);
+export default mongoose.models.AutoJoin || mongoose.model('AutoJoin', AutoJoinSchema);

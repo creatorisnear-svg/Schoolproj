@@ -19,6 +19,6 @@ const cadConfigSchema = new mongoose.Schema({
   },
 });
 
-const CADConfig = mongoose.model('CADConfig', cadConfigSchema);
+const CADConfig = mongoose.models.CADConfig || mongoose.model('CADConfig', cadConfigSchema);
 
 export default CADConfig;

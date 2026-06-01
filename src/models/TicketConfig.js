@@ -51,6 +51,6 @@ const ticketConfigSchema = new mongoose.Schema({
   },
 });
 
-const TicketConfig = mongoose.model('TicketConfig', ticketConfigSchema);
+const TicketConfig = mongoose.models.TicketConfig || mongoose.model('TicketConfig', ticketConfigSchema);
 
 export default TicketConfig;

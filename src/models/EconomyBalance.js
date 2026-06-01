@@ -15,4 +15,4 @@ const economyBalanceSchema = new mongoose.Schema({
 
 economyBalanceSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-export default mongoose.model('EconomyBalance', economyBalanceSchema);
+export default mongoose.models.EconomyBalance || mongoose.model('EconomyBalance', economyBalanceSchema);

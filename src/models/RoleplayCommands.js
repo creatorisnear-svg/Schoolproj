@@ -52,6 +52,6 @@ const roleplayCommandsSchema = new mongoose.Schema({
   },
 });
 
-const RoleplayCommands = mongoose.model('RoleplayCommands', roleplayCommandsSchema);
+const RoleplayCommands = mongoose.models.RoleplayCommands || mongoose.model('RoleplayCommands', roleplayCommandsSchema);
 
 export default RoleplayCommands;

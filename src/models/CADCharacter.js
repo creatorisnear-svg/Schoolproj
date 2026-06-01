@@ -134,6 +134,6 @@ const cadCharacterSchema = new mongoose.Schema({
 
 cadCharacterSchema.index({ guildId: 1, userId: 1 });
 
-const CADCharacter = mongoose.model('CADCharacter', cadCharacterSchema);
+const CADCharacter = mongoose.models.CADCharacter || mongoose.model('CADCharacter', cadCharacterSchema);
 
 export default CADCharacter;

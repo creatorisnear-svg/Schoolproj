@@ -12,4 +12,4 @@ const PreviewVideoSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model('PreviewVideo', PreviewVideoSchema);
+export default mongoose.models.PreviewVideo || mongoose.model('PreviewVideo', PreviewVideoSchema);

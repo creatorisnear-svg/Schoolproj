@@ -25,6 +25,6 @@ const reactionRoleSchema = new mongoose.Schema({
   },
 });
 
-const ReactionRole = mongoose.model('ReactionRole', reactionRoleSchema);
+const ReactionRole = mongoose.models.ReactionRole || mongoose.model('ReactionRole', reactionRoleSchema);
 
 export default ReactionRole;

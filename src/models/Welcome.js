@@ -37,4 +37,4 @@ welcomeSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model('Welcome', welcomeSchema);
+export default mongoose.models.Welcome || mongoose.model('Welcome', welcomeSchema);

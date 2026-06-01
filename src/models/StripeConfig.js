@@ -9,5 +9,5 @@ const stripeConfigSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const StripeConfig = mongoose.model('StripeConfig', stripeConfigSchema);
+const StripeConfig = mongoose.models.StripeConfig || mongoose.model('StripeConfig', stripeConfigSchema);
 export default StripeConfig;

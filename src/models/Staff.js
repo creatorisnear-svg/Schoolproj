@@ -44,6 +44,6 @@ const staffSchema = new mongoose.Schema({
 staffSchema.index({ guildId: 1, type: 1, userId: 1 });
 staffSchema.index({ guildId: 1, type: 1, roleId: 1 });
 
-const Staff = mongoose.model('Staff', staffSchema);
+const Staff = mongoose.models.Staff || mongoose.model('Staff', staffSchema);
 
 export default Staff;

@@ -13,4 +13,4 @@ const economyStoreSchema = new mongoose.Schema({
 
 economyStoreSchema.index({ guildId: 1, name: 1 }, { unique: true });
 
-export default mongoose.model('EconomyStore', economyStoreSchema);
+export default mongoose.models.EconomyStore || mongoose.model('EconomyStore', economyStoreSchema);

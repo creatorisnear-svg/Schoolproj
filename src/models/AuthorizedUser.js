@@ -31,6 +31,6 @@ const authorizedUserSchema = new mongoose.Schema({
   }
 });
 
-const AuthorizedUser = mongoose.model('AuthorizedUser', authorizedUserSchema);
+const AuthorizedUser = mongoose.models.AuthorizedUser || mongoose.model('AuthorizedUser', authorizedUserSchema);
 
 export default AuthorizedUser;

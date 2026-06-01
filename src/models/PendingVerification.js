@@ -32,6 +32,6 @@ const pendingVerificationSchema = new mongoose.Schema({
   },
 });
 
-const PendingVerification = mongoose.model('PendingVerification', pendingVerificationSchema);
+const PendingVerification = mongoose.models.PendingVerification || mongoose.model('PendingVerification', pendingVerificationSchema);
 
 export default PendingVerification;

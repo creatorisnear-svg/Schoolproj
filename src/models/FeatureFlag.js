@@ -6,4 +6,4 @@ const featureFlagSchema = new mongoose.Schema({
   label: { type: String, default: '' },
 }, { timestamps: true });
 
-export default mongoose.model('FeatureFlag', featureFlagSchema);
+export default mongoose.models.FeatureFlag || mongoose.model('FeatureFlag', featureFlagSchema);

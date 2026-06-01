@@ -40,6 +40,6 @@ const configSchema = new mongoose.Schema({
   },
 });
 
-const Config = mongoose.model('Config', configSchema);
+const Config = mongoose.models.Config || mongoose.model('Config', configSchema);
 
 export default Config;

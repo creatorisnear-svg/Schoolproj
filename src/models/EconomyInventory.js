@@ -13,4 +13,4 @@ const economyInventorySchema = new mongoose.Schema({
 
 economyInventorySchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-export default mongoose.model('EconomyInventory', economyInventorySchema);
+export default mongoose.models.EconomyInventory || mongoose.model('EconomyInventory', economyInventorySchema);

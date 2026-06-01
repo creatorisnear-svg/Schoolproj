@@ -39,6 +39,6 @@ const roleplayCalendarSchema = new mongoose.Schema({
   events: [roleplayEventSchema],
 });
 
-const RoleplayCalendar = mongoose.model('RoleplayCalendar', roleplayCalendarSchema);
+const RoleplayCalendar = mongoose.models.RoleplayCalendar || mongoose.model('RoleplayCalendar', roleplayCalendarSchema);
 
 export default RoleplayCalendar;

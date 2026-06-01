@@ -6,4 +6,4 @@ const AutoRoleSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true }
 });
 
-export default mongoose.model('AutoRole', AutoRoleSchema);
+export default mongoose.models.AutoRole || mongoose.model('AutoRole', AutoRoleSchema);

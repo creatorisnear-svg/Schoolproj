@@ -56,6 +56,6 @@ const priorityRequestSchema = new mongoose.Schema({
   },
 });
 
-const PriorityRequest = mongoose.model('PriorityRequest', priorityRequestSchema);
+const PriorityRequest = mongoose.models.PriorityRequest || mongoose.model('PriorityRequest', priorityRequestSchema);
 
 export default PriorityRequest;

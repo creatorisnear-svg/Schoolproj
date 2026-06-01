@@ -38,6 +38,6 @@ const roleRequestConfigSchema = new mongoose.Schema({
   },
 });
 
-const RoleRequestConfig = mongoose.model('RoleRequestConfig', roleRequestConfigSchema);
+const RoleRequestConfig = mongoose.models.RoleRequestConfig || mongoose.model('RoleRequestConfig', roleRequestConfigSchema);
 
 export default RoleRequestConfig;

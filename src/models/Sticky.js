@@ -33,6 +33,6 @@ const stickySchema = new mongoose.Schema({
 
 stickySchema.index({ guildId: 1, channelId: 1 });
 
-const Sticky = mongoose.model('Sticky', stickySchema);
+const Sticky = mongoose.models.Sticky || mongoose.model('Sticky', stickySchema);
 
 export default Sticky;

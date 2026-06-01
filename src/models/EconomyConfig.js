@@ -76,4 +76,4 @@ const economyConfigSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('EconomyConfig', economyConfigSchema);
+export default mongoose.models.EconomyConfig || mongoose.model('EconomyConfig', economyConfigSchema);

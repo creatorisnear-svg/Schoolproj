@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 
 const emergencyCallSchema = new Schema({
   guildId: { type: String, required: true, index: true },
@@ -21,4 +21,4 @@ const emergencyCallSchema = new Schema({
   channelId: String,
 });
 
-export default model('EmergencyCall', emergencyCallSchema);
+export default models.EmergencyCall || model('EmergencyCall', emergencyCallSchema);

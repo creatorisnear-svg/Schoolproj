@@ -60,6 +60,6 @@ const prioritySchema = new mongoose.Schema({
   },
 });
 
-const Priority = mongoose.model('Priority', prioritySchema);
+const Priority = mongoose.models.Priority || mongoose.model('Priority', prioritySchema);
 
 export default Priority;

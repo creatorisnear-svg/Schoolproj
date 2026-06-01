@@ -17,4 +17,4 @@ const officerStatusSchema = new mongoose.Schema({
 
 officerStatusSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-export default mongoose.model('OfficerStatus', officerStatusSchema);
+export default mongoose.models.OfficerStatus || mongoose.model('OfficerStatus', officerStatusSchema);

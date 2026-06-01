@@ -56,6 +56,6 @@ const verificationSchema = new mongoose.Schema({
   },
 });
 
-const Verification = mongoose.model('Verification', verificationSchema);
+const Verification = mongoose.models.Verification || mongoose.model('Verification', verificationSchema);
 
 export default Verification;

@@ -51,6 +51,6 @@ const trafficTicketSchema = new mongoose.Schema({
 trafficTicketSchema.index({ guildId: 1, characterId: 1 });
 trafficTicketSchema.index({ guildId: 1, ticketId: 1 });
 
-const TrafficTicket = mongoose.model('TrafficTicket', trafficTicketSchema);
+const TrafficTicket = mongoose.models.TrafficTicket || mongoose.model('TrafficTicket', trafficTicketSchema);
 
 export default TrafficTicket;

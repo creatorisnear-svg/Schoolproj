@@ -13,4 +13,4 @@ const dispatchConfigSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model('DispatchConfig', dispatchConfigSchema);
+export default mongoose.models.DispatchConfig || mongoose.model('DispatchConfig', dispatchConfigSchema);

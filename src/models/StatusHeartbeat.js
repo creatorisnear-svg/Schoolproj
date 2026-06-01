@@ -32,6 +32,6 @@ const statusHeartbeatSchema = new mongoose.Schema({
   },
 });
 
-const StatusHeartbeat = mongoose.model('StatusHeartbeat', statusHeartbeatSchema);
+const StatusHeartbeat = mongoose.models.StatusHeartbeat || mongoose.model('StatusHeartbeat', statusHeartbeatSchema);
 
 export default StatusHeartbeat;
