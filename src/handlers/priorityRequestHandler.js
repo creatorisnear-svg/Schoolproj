@@ -217,7 +217,7 @@ export async function handlePriorityRequestButton(interaction, client) {
 
     return interaction.reply({
       embeds: isApprove
-        ? [successEmbed('Request Approved', 'Priority is now active — auto-expires in 10 minutes.')]
+        ? [successEmbed('Request Approved', 'Priority is now active - auto-expires in 10 minutes.')]
         : [errorEmbed('Priority request denied.')],
       flags: 64,
     });

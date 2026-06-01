@@ -79,7 +79,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
-// Stripe webhooks need the raw body — must be registered BEFORE express.json()
+// Stripe webhooks need the raw body - must be registered BEFORE express.json()
 app.use('/checkout/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
@@ -194,7 +194,7 @@ app.get('/auth/site/callback', async (req, res) => {
   try {
     const domain = process.env.DOMAIN;
     if (!domain) {
-      console.error('[SITE AUTH] DOMAIN env var not set — cannot build redirect URI');
+      console.error('[SITE AUTH] DOMAIN env var not set - cannot build redirect URI');
       return res.redirect(siteRedirect + '#error=no_domain');
     }
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
@@ -231,7 +231,7 @@ app.get('/callback', async (req, res) => {
   try {
     const domain = process.env.DOMAIN;
     if (!domain) {
-      console.error('[OAUTH CALLBACK] DOMAIN env var not set — cannot build redirect URI');
+      console.error('[OAUTH CALLBACK] DOMAIN env var not set - cannot build redirect URI');
       return res.status(500).send('Server misconfigured: DOMAIN environment variable not set.');
     }
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
@@ -343,19 +343,19 @@ client.on('guildCreate', async (guild) => {
       .setDescription(
         `RolePlayManager is now in **${guild.name}**.\n\n` +
         `Here's everything you can set up:\n\n` +
-        `**911 System** — \`/roleplaycommandsetup\`\n` +
-        `**Verification** — \`/verifysystemsetup\`\n` +
-        `**Ticket Support** — \`/ticketsupportsetup\`\n` +
-        `**Priority Tracker** — \`/prioritytrackersetup\`\n` +
-        `**Welcome System** — \`/welcomesystemsetup\`\n` +
-        `**Strike System** — \`/strikesystemsetup\`\n` +
-        `**RP Calendar** — \`/roleplaycalendersetup\`\n` +
-        `**AI Voice Dispatch** — \`/dispatchsetup\` *(Premium)*`
+        `**911 System** - \`/roleplaycommandsetup\`\n` +
+        `**Verification** - \`/verifysystemsetup\`\n` +
+        `**Ticket Support** - \`/ticketsupportsetup\`\n` +
+        `**Priority Tracker** - \`/prioritytrackersetup\`\n` +
+        `**Welcome System** - \`/welcomesystemsetup\`\n` +
+        `**Strike System** - \`/strikesystemsetup\`\n` +
+        `**RP Calendar** - \`/roleplaycalendersetup\`\n` +
+        `**AI Voice Dispatch** - \`/dispatchsetup\` *(Premium)*`
       )
       .addFields(
         {
           name: 'Web Dashboard',
-          value: 'The easiest way to set everything up is through our website dashboard. Enable features, configure channels, manage roles — all without touching Discord commands.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
+          value: 'The easiest way to set everything up is through our website dashboard. Enable features, configure channels, manage roles - all without touching Discord commands.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
         },
         {
           name: 'Need Help?',
@@ -458,7 +458,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   for (const [roleId] of addedRoles) {
     const config = await AutoJoin.findOne({ guildId: newMember.guild.id, roleId, enabled: true });
     if (config) {
-      // Notify the user via DM so they can choose to join — silent forced joins violate Discord ToS
+      // Notify the user via DM so they can choose to join - silent forced joins violate Discord ToS
       try {
         const targetGuild = client.guilds.cache.get(config.targetServerId);
         const targetName = targetGuild?.name || 'a linked server';
@@ -476,7 +476,7 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
   }
 });
 
-// Voice state updates — handles AI Dispatch channel lifecycle
+// Voice state updates - handles AI Dispatch channel lifecycle
 client.on('voiceStateUpdate', async (oldState, newState) => {
   const guild = newState.guild;
   const userId = newState.member?.id;
@@ -510,7 +510,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       }
     }
 
-    // Bot's current patrol channel may now be empty — move to another active patrol channel or disconnect
+    // Bot's current patrol channel may now be empty - move to another active patrol channel or disconnect
     if (leftChannelId && isPatrolChannel(guild.id, leftChannelId) && currentBotChannelId === leftChannelId) {
       const state = getDispatchState(guild.id);
       if (!state) return;
@@ -532,21 +532,21 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
           }
         }
 
-        // No patrol channel has human members — idle disconnect (preserves state for re-join)
+        // No patrol channel has human members - idle disconnect (preserves state for re-join)
         if (!moved) {
           disconnectDispatchChannel(guild.id);
         }
       }
     }
 
-    // Bot is currently in a non-patrol channel (traffic stop / extended stay) —
+    // Bot is currently in a non-patrol channel (traffic stop / extended stay) -
     // auto-return to patrol if that channel just became empty
     if (leftChannelId && currentBotChannelId === leftChannelId && !isPatrolChannel(guild.id, leftChannelId)) {
       const leftChannel = guild.channels.cache.get(leftChannelId);
       const humanMembersLeft = leftChannel?.members.filter(m => !m.user.bot).size ?? 0;
 
       if (humanMembersLeft === 0) {
-        console.log(`[Dispatch] Traffic stop channel "${leftChannel?.name}" is now empty — returning to patrol`);
+        console.log(`[Dispatch] Traffic stop channel "${leftChannel?.name}" is now empty - returning to patrol`);
 
         // Cancel any extended stay
         clearExtendedStay(guild.id);
@@ -584,7 +584,7 @@ client.on('messageCreate', async (message) => {
     const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
     await handleStickyMessages(message);
   } catch (err) {
-    // Silently fail — sticky messages are non-critical
+    // Silently fail - sticky messages are non-critical
   }
 
   // Chat money
@@ -609,7 +609,7 @@ client.on('messageCreate', async (message) => {
     bal.chatMoneyCooldown = new Date();
     await bal.save();
   } catch (err) {
-    // Silently fail — chat money is non-critical
+    // Silently fail - chat money is non-critical
   }
 });
 
@@ -645,7 +645,7 @@ client.once('clientReady', async () => {
       await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
       console.log('[DONE] Global commands cleared');
     } else {
-      console.log('[OK] No global commands found — nothing to clear');
+      console.log('[OK] No global commands found - nothing to clear');
     }
   } catch (e) {
     console.error('[WARN] Could not clear global commands:', e.message);
@@ -781,7 +781,7 @@ client.once('clientReady', async () => {
       console.log(`⏰ Rescheduled ${activeCooldowns.length} active cooldown(s) after restart`);
     }
   } catch (err) {
-    // DB not connected or no cooldowns — safe to ignore
+    // DB not connected or no cooldowns - safe to ignore
   }
 
   // Initialize AI Voice Dispatch for all configured guilds
@@ -798,7 +798,7 @@ client.once('clientReady', async () => {
     }
     if (dispatchCount > 0) {
       const keyCount = [process.env.GROQ_API_KEY, ...Array.from({length: 10}, (_, i) => process.env[`GROQ_API_KEY_${i+1}`])].filter(Boolean).length;
-      console.log(`[DISPATCH] AI Dispatch initialized for ${dispatchCount} guild(s) — ${keyCount} Groq key(s) loaded`);
+      console.log(`[DISPATCH] AI Dispatch initialized for ${dispatchCount} guild(s) - ${keyCount} Groq key(s) loaded`);
     }
   } catch (err) {
     console.error('[Dispatch] Startup initialization error:', err.message);

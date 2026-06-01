@@ -30,7 +30,7 @@ const notif = {
     if (!this.enabled) {
       const granted = await this.requestPermission();
       if (!granted) {
-        toast('Notifications are blocked — enable them in browser settings then try again.', 'error');
+        toast('Notifications are blocked - enable them in browser settings then try again.', 'error');
         return;
       }
       this.enabled = true;
@@ -84,7 +84,7 @@ const notif = {
           this.seenCalls.add(call.callId);
           this._fire(
             'New 911 Call',
-            `${call.issue}${call.location ? ' — ' + call.location : ''}`,
+            `${call.issue}${call.location ? ' - ' + call.location : ''}`,
             { tag: 'call-' + call.callId }
           );
         }
@@ -104,8 +104,8 @@ const notif = {
           this.seenPanics.add(username);
           const officer = d.officers.find(o => o.username === username);
           this._fire(
-            '10-99 — OFFICER DOWN',
-            `${username}${officer?.location ? ' at ' + officer.location : ''} — respond immediately`,
+            '10-99 - OFFICER DOWN',
+            `${username}${officer?.location ? ' at ' + officer.location : ''} - respond immediately`,
             { tag: 'panic-' + username, requireInteraction: true }
           );
         }
@@ -568,7 +568,7 @@ function renderHomePriorityWidget(d) {
       <div class="hpw-row hpw-inactive">
         <span class="hpw-dot hpw-dot-inactive"></span>
         <div class="hpw-text">
-          <div class="hpw-title hpw-title-inactive">No priority — server open</div>
+          <div class="hpw-title hpw-title-inactive">No priority - server open</div>
         </div>
       </div>`;
   }
@@ -1248,7 +1248,7 @@ async function submitRoleRequest() {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEO — INNER TABS
+   LEO - INNER TABS
 ══════════════════════════════════════════════════════ */
 function switchLeoTab(tab) {
   document.querySelectorAll('.leo-innertab').forEach(b => b.classList.toggle('active', b.dataset.leotab === tab));
@@ -1270,7 +1270,7 @@ function switchLeoTab(tab) {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEO — QUICK STATUS
+   LEO - QUICK STATUS
 ══════════════════════════════════════════════════════ */
 let pendingTenCode = null;
 const STATUS_NEEDS_DETAILS = new Set(['10-76','10-97','10-11','10-80','10-15','10-99']);
@@ -1303,7 +1303,7 @@ function confirmStatusUpdate() {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEO — STATUS UPDATE
+   LEO - STATUS UPDATE
 ══════════════════════════════════════════════════════ */
 let boardRefreshTimer = null;
 let boardCountdown = 30;
@@ -1404,7 +1404,7 @@ function applyMyStatusToUI(status) {
 let panicActive = false;
 
 async function triggerPanic() {
-  const locRaw = prompt('Panic — 10-99\n\nEnter your current location (or leave blank):');
+  const locRaw = prompt('Panic - 10-99\n\nEnter your current location (or leave blank):');
   if (locRaw === null) return;
   const location = locRaw.trim();
 
@@ -1417,8 +1417,8 @@ async function triggerPanic() {
     panicActive = true;
     document.getElementById('panic-idle')?.classList.add('hidden');
     document.getElementById('panic-active')?.classList.remove('hidden');
-    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
-    toast('10-99 sent — dispatch alerted', 'error');
+    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC - Officer needs immediate assistance' });
+    toast('10-99 sent - dispatch alerted', 'error');
     boardCountdown = 1;
     await refreshOfficerBoard();
     boardCountdown = 30;
@@ -1434,7 +1434,7 @@ async function clearPanic() {
   try {
     await apiDel('/leo/status');
     applyMyStatusToUI(null);
-    toast('Panic cleared — 10-99 cancelled', 'info');
+    toast('Panic cleared - 10-99 cancelled', 'info');
     await refreshOfficerBoard();
   } catch (err) {
     toast(err.message || 'Failed to clear panic', 'error');
@@ -1635,7 +1635,7 @@ async function removeBolo(boloId) {
 async function respondToCall(callId) {
   try {
     await apiPost(`/leo/calls/${callId}/respond`, {});
-    toast('Responding — status set to 10-76 En Route', 'success');
+    toast('Responding - status set to 10-76 En Route', 'success');
     const [, , myStatus] = await Promise.all([loadLeoIntel(), refreshOfficerBoard(), api('/leo/mystatus')]);
     applyMyStatusToUI(myStatus);
   } catch (err) { toast(err.message || 'Failed to respond to call', 'error'); }
@@ -1644,7 +1644,7 @@ async function respondToCall(callId) {
 async function attachToCall(callId) {
   try {
     await apiPost(`/leo/calls/${callId}/attach`, {});
-    toast('Attached — status set to 10-97 On Scene', 'success');
+    toast('Attached - status set to 10-97 On Scene', 'success');
     const [, , myStatus] = await Promise.all([loadLeoIntel(), refreshOfficerBoard(), api('/leo/mystatus')]);
     applyMyStatusToUI(myStatus);
   } catch (err) { toast(err.message || 'Failed to attach to call', 'error'); }
@@ -1708,7 +1708,7 @@ async function leoSearch() {
 
       const boloWarning = bolos.length > 0
         ? `<div style="margin:6px 0 4px;padding:6px 10px;background:var(--danger-dim);border:1px solid rgba(242,87,87,0.3);border-radius:6px;font-size:11px;font-weight:700;color:var(--danger)">
-            BOLO ACTIVE (${bolos.length}) — ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
+            BOLO ACTIVE (${bolos.length}) - ${bolos.map(b => b.reason || 'No reason given').join(' · ')}
            </div>`
         : '';
       const ticketRows = tickets.length > 0
@@ -1942,7 +1942,7 @@ function schedulePriorityRefresh() {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEO ACTIONS — BOLO & TICKET
+   LEO ACTIONS - BOLO & TICKET
 ══════════════════════════════════════════════════════ */
 async function searchForBolo() {
   const q = document.getElementById('bolo-char-search').value.trim();

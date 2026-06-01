@@ -32,7 +32,7 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub.setName('dice')
-      .setDescription('Roll dice — higher total wins')
+      .setDescription('Roll dice - higher total wins')
       .addIntegerOption(opt => opt.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1))
   )
   .addSubcommand(sub =>
@@ -58,7 +58,7 @@ export async function execute(interaction) {
         embeds: [
           new EmbedBuilder()
             .setColor(0x5865f2)
-            .setTitle(`${gameName} — Premium Required`)
+            .setTitle(`${gameName} - Premium Required`)
             .setDescription(
               `**${gameName}** is a premium-only game.\n\n` +
               `**Available for free:** Slots, Dice, Cockfight, Russian Roulette\n` +

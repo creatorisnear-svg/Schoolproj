@@ -79,7 +79,7 @@ function shopItemLines(items, sym) {
   return items.map(i => {
     const price = i.price != null ? `**${sym}${fmt(i.price)}**` : '*No price set*';
     const lock = i.requiredRoleId ? ` · requires <@&${i.requiredRoleId}>` : '';
-    return `• **${i.name}** — ${price}${lock}`;
+    return `• **${i.name}** - ${price}${lock}`;
   });
 }
 
@@ -121,8 +121,8 @@ export async function runLeaderboard(interaction, size = 10) {
   const fetchLimit = Math.max(size, 25);
   const top = await EconomyBalance.find({ guildId: interaction.guildId }).limit(fetchLimit);
   const sorted = top.sort((a, b) => (b.cash + b.bank) - (a.cash + a.bank));
-  const lines = sorted.slice(0, size).map((e, i) => `**${i + 1}.** <@${e.userId}> — ${sym}${fmt(e.cash + e.bank)}`);
-  const footerText = size > 10 ? `RPM • Premium — Top ${size}` : 'RPM';
+  const lines = sorted.slice(0, size).map((e, i) => `**${i + 1}.** <@${e.userId}> - ${sym}${fmt(e.cash + e.bank)}`);
+  const footerText = size > 10 ? `RPM • Premium - Top ${size}` : 'RPM';
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
       .setTitle('Economy Leaderboard')
@@ -400,10 +400,10 @@ export async function runShop(interaction, query) {
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
       .setTitle('Server Store')
       .setDescription(
-        `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
+        `**${allItems.length}** items in catalog - **${pricedCount}** available for purchase.\n` +
         `Items without a price must be priced by staff first.\n\n` +
         `**GTA V Categories:**\n${catCounts.join(' · ')}\n\n` +
-        `Use \`/buy item:\` to purchase — start typing the item name for suggestions.\n` +
+        `Use \`/buy item:\` to purchase - start typing the item name for suggestions.\n` +
         `Use \`/shop search:\` to filter by name or category.`
       )
       .setFooter({ text: 'Select a category below · RPM' })],
@@ -431,10 +431,10 @@ export async function handleShopMainButton(interaction) {
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
       .setTitle('Server Store')
       .setDescription(
-        `**${allItems.length}** items in catalog — **${pricedCount}** available for purchase.\n` +
+        `**${allItems.length}** items in catalog - **${pricedCount}** available for purchase.\n` +
         `Items without a price must be priced by staff first.\n\n` +
         `**GTA V Categories:**\n${catCounts.join(' · ')}\n\n` +
-        `Use \`/buy item:\` to purchase — start typing the item name for suggestions.\n` +
+        `Use \`/buy item:\` to purchase - start typing the item name for suggestions.\n` +
         `Use \`/shop search:\` to filter by name or category.`
       )
       .setFooter({ text: 'Select a category below · RPM' })],
@@ -481,7 +481,7 @@ export async function handleShopCategoryButton(interaction) {
   return interaction.update({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
       .setTitle(`${cat} Vehicles`)
-      .setDescription(`**${vehicles.length}** vehicles — **${pricedHere}** priced.\n\n${chunks[0]}`)
+      .setDescription(`**${vehicles.length}** vehicles - **${pricedHere}** priced.\n\n${chunks[0]}`)
       .setFooter({ text: 'Use /buy to purchase · RPM' })],
     components: [backRow], content: '',
   });
@@ -541,7 +541,7 @@ export async function runBuy(interaction, itemName, quantity) {
       await interaction.member.roles.add(guildItem.roleId);
       roleNote = `\n**Role Granted:** <@&${guildItem.roleId}>`;
     } catch {
-      roleNote = '\n-# Role could not be assigned — check bot permissions.';
+      roleNote = '\n-# Role could not be assigned - check bot permissions.';
     }
   }
 
@@ -625,7 +625,7 @@ export async function runGiveItem(interaction, targetUser, itemName, quantity) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GAMBLING — individual games
+// GAMBLING - individual games
 // ─────────────────────────────────────────────────────────────────────────────
 const SUITS = ['♠','♥','♦','♣'];
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -677,7 +677,7 @@ export async function runBlackjack(interaction, bet) {
   bal.gamblingCooldown = new Date();
   await bal.save();
   const color = winnings > 0 ? 0x43b581 : winnings < 0 ? 0xf04747 : 0x2d2d2d;
-  const titles = { blackjack: 'Blackjack!', dealer_blackjack: 'Dealer Blackjack', bust: 'Bust!', dealer_bust: 'Dealer Bust — You Win!', win: 'You Win!', lose: 'Dealer Wins', push: 'Push — Tie' };
+  const titles = { blackjack: 'Blackjack!', dealer_blackjack: 'Dealer Blackjack', bust: 'Bust!', dealer_bust: 'Dealer Bust - You Win!', win: 'You Win!', lose: 'Dealer Wins', push: 'Push - Tie' };
   return interaction.reply({ embeds: [new EmbedBuilder().setColor(color).setTitle(titles[result]).addFields({ name: 'Your Hand', value: `${handStr(player)} **(${handTotal(player)})**`, inline: true }, { name: 'Dealer Hand', value: `${handStr(dealer)} **(${handTotal(dealer)})**`, inline: true }).setDescription(winnings >= 0 ? `You won **${sym}${fmt(Math.abs(winnings))}**!\n**Cash:** ${sym}${fmt(bal.cash)}` : `You lost **${sym}${fmt(Math.abs(winnings))}**.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
@@ -698,7 +698,7 @@ export async function runRoulette(interaction, bet, choice) {
   bal.gamblingCooldown = new Date();
   await bal.save();
   const won = winnings > 0;
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Roulette').setDescription(`The ball landed on **${resultColor} (${spin})**.\nYou bet on **${c}**.\n\n${won ? `You won **${sym}${fmt(Math.abs(winnings))}**!` : winnings === 0 ? 'Push — your bet returned.' : `You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Roulette').setDescription(`The ball landed on **${resultColor} (${spin})**.\nYou bet on **${c}**.\n\n${won ? `You won **${sym}${fmt(Math.abs(winnings))}**!` : winnings === 0 ? 'Push - your bet returned.' : `You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runSlots(interaction, bet) {
@@ -714,7 +714,7 @@ export async function runSlots(interaction, bet) {
   bal.gamblingCooldown = new Date();
   await bal.save();
   const won = winnings >= 0;
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Slots').setDescription(`**${reels.join(' | ')}**\n\n${won ? `${mult}x — You won **${sym}${fmt(Math.abs(winnings))}**!` : `No match — You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : 0xf04747).setTitle('Slots').setDescription(`**${reels.join(' | ')}**\n\n${won ? `${mult}x - You won **${sym}${fmt(Math.abs(winnings))}**!` : `No match - You lost **${sym}${fmt(Math.abs(winnings))}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runDiceRoll(interaction, bet) {
@@ -731,7 +731,7 @@ export async function runDiceRoll(interaction, bet) {
   bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
   bal.gamblingCooldown = new Date();
   await bal.save();
-  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : tied ? 0x2d2d2d : 0xf04747).setTitle('Dice Roll').setDescription(`**You rolled:** ${player}\n**Dealer rolled:** ${dealer}\n\n${won ? `You win **${sym}${fmt(bet)}**!` : tied ? 'Tie — no change.' : `You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+  return interaction.reply({ embeds: [new EmbedBuilder().setColor(won ? 0x43b581 : tied ? 0x2d2d2d : 0xf04747).setTitle('Dice Roll').setDescription(`**You rolled:** ${player}\n**Dealer rolled:** ${dealer}\n\n${won ? `You win **${sym}${fmt(bet)}**!` : tied ? 'Tie - no change.' : `You lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function runRussianRoulette(interaction, bet) {
@@ -765,7 +765,7 @@ export async function runCockFight(interaction, bet) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHOP SELECT — handler for economy_shop_browse_select interactions
+// SHOP SELECT - handler for economy_shop_browse_select interactions
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleShopBrowseSelect(interaction) {
   const guildId = interaction.guildId;
@@ -783,10 +783,10 @@ export async function handleShopBrowseSelect(interaction) {
   const usable = guildItem?.usable ? ' *(usable)*' : '';
   const priceField = guildItem
     ? `${sym}${fmt(guildItem.price)}`
-    : '*No price set — ask staff to price this item via `/economysetup`*';
+    : '*No price set - ask staff to price this item via `/economysetup`*';
   const footerNote = guildItem
-    ? 'RPM — Use /buy to purchase this item'
-    : 'RPM — This item is not yet available for purchase';
+    ? 'RPM - Use /buy to purchase this item'
+    : 'RPM - This item is not yet available for purchase';
   const embed = new EmbedBuilder().setColor(guildItem ? 0x2d2d2d : 0xfaa61a).setTitle(name)
     .addFields(
       { name: 'Price', value: priceField, inline: true },

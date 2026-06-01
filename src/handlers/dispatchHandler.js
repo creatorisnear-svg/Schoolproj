@@ -22,7 +22,7 @@ export const PANIC_SOUND_BUFFER = existsSync(_panicSoundPath) ? readFileSync(_pa
 if (PANIC_SOUND_BUFFER) {
   console.log(`[Dispatch] Panic alert sound loaded (${PANIC_SOUND_BUFFER.length} bytes)`);
 } else {
-  console.warn('[Dispatch] Panic alert sound not found — audio alert disabled');
+  console.warn('[Dispatch] Panic alert sound not found - audio alert disabled');
 }
 
 const TEN_CODES = {
@@ -75,7 +75,7 @@ function cleanNameForTTS(name) {
   let n = name;
   // Strip leading [BRACKET] tags: [LSPD], [SASP], [DOC], etc.
   n = n.replace(/^\s*(?:\[[^\]]+\]\s*)+/, '');
-  // Strip pipe-delimited sections — keep the longest segment (usually the real name)
+  // Strip pipe-delimited sections - keep the longest segment (usually the real name)
   if (n.includes('|')) {
     const parts = n.split('|').map(p => p.trim()).filter(Boolean);
     n = parts.reduce((a, b) => (b.length > a.length ? b : a), parts[0]);
@@ -84,7 +84,7 @@ function cleanNameForTTS(name) {
   n = n.replace(/^(?:sgt|cpl|pvt|pfc|civ|ofc|dep|lt|cpt|cmdr|det|lcpl|ssgt|msgt|spec|ens|chief|corp)\.?\s+/i, '');
   // Replace underscores and dots with spaces (common Discord name separators)
   n = n.replace(/[_\.]+/g, ' ');
-  // Strip digits — real names never contain numbers (e.g. "James12" → "James")
+  // Strip digits - real names never contain numbers (e.g. "James12" → "James")
   n = n.replace(/\d+/g, ' ');
   // Strip anything that isn't a letter, space, hyphen, or apostrophe
   n = n.replace(/[^a-zA-Z '\-]/g, ' ');
@@ -424,7 +424,7 @@ function detectEMSRequest(text) {
     return { type, location: withLoc[2].trim() };
   }
 
-  // Without location — still requires "dispatch" prefix
+  // Without location - still requires "dispatch" prefix
   // "fire" alone NOT accepted to avoid "taking fire" / "need fire support" false positives
   const withoutLoc = lower.match(
     /\bdispatch[,.]?\s+(?:i\s+)?(?:need|send|request)\s+(?:an?\s+)?(?:(ems|ambulance|medic(?:al)?(?:\s+unit)?|fire\s*(?:department|dept|units?|truck|station|fighters?)))\b/i
@@ -474,7 +474,7 @@ function detectCallSign(text) {
     if (remainder.length > 2) return { callSign: words.slice(0, 2).join(' '), remainder };
   }
 
-  // Pattern: [number|word-number] [phonetic] [number|word-number] — e.g. "1 Adam 22", "One Adam 84"
+  // Pattern: [number|word-number] [phonetic] [number|word-number] - e.g. "1 Adam 22", "One Adam 84"
   if (
     words.length >= 3 &&
     /^\d+$/.test(normFirst) &&
@@ -485,7 +485,7 @@ function detectCallSign(text) {
     if (remainder.length > 1) return { callSign: `${normFirst}-${words[1]}-${normThird}`, remainder };
   }
 
-  // Pattern: [phonetic] [number] — e.g. "Adam 22" or "Lincoln 4"
+  // Pattern: [phonetic] [number] - e.g. "Adam 22" or "Lincoln 4"
   if (words.length >= 2 && CALL_SIGN_PHONETICS.has(words[0]) && /^\d+$/.test(normThird ?? words[1])) {
     const numPart = SPOKEN_NUM_TO_DIGIT[words[1]] ?? words[1];
     if (/^\d+$/.test(numPart)) {
@@ -529,7 +529,7 @@ function detectVoiceCallCreation(text) {
     return { incident, location, count };
   }
 
-  // "I've got / we have / there's a [incident] at [location]" — officer reporting for dispatch to roll
+  // "I've got / we have / there's a [incident] at [location]" - officer reporting for dispatch to roll
   const gotMatch = lower.match(
     /\b(?:i(?:'ve|ve|'m|m)\s+(?:got|have|spotted|got\s+a)|we\s+have|there(?:'s|\s+is)|we\s+got)\s+(?:a\s+|an\s+)?(robbery|shooting|fight|assault|domestic|fire|accident|disturbance|suspicious\s+person|suspicious\s+vehicle|welfare\s+check|overdose|homicide|burglary|theft|crash)\b(?:\s+(?:at|on|near|by|in)\s+(.{3,60}?))?(?:\s*$)/i
   );
@@ -650,40 +650,40 @@ const NUM_WORDS = Object.keys(WORD_TO_NUM).join('|');
  * Each entry: [regex, '10-code']
  */
 const PHRASE_ALIASES = [
-  // 10-4 — Copy / Acknowledged
+  // 10-4 - Copy / Acknowledged
   [/\b(?:copy\s+that|copy|roger\s+that|roger|acknowledged|affirmative)\b/i, '10-4'],
-  // 10-6 — Busy
+  // 10-6 - Busy
   [/\b(?:i(?:'m|m)\s+)?busy\b/i, '10-6'],
-  // 10-7 — Out of Service
+  // 10-7 - Out of Service
   [/\b(?:going\s+)?(?:out\s+of\s+service|logging\s+off|signing\s+off|going\s+off(?:\s+duty)?)\b/i, '10-7'],
-  // 10-8 — Available / In Service
+  // 10-8 - Available / In Service
   [/\b(?:i(?:'m|m)\s+)?(?:back\s+(?:in\s+service|available|on\s+patrol)|going\s+available|available|back\s+in\s+service|in\s+service|back\s+on\s+patrol)\b/i, '10-8'],
   [/\bi(?:'m|m)\s+back\b/i, '10-8'],
-  // 10-11 — Traffic Stop (no name, just announcing a stop)
+  // 10-11 - Traffic Stop (no name, just announcing a stop)
   [/\b(?:out\s+with\s+a\s+(?:vehicle|car|truck)|traffic\s+stop|got\s+a\s+stop|making\s+a\s+stop|initiating\s+a\s+stop)\b/i, '10-11'],
-  // 10-12 — Stand By
+  // 10-12 - Stand By
   [/\b(?:stand\s+by|standby)\b/i, '10-12'],
-  // 10-17 — En Route / Meet
+  // 10-17 - En Route / Meet
   [/\b(?:en\s+route\s+to|heading\s+to|on\s+my\s+way\s+to|rolling\s+to)\b/i, '10-17'],
-  // 10-20 — Location
+  // 10-20 - Location
   [/\b(?:my\s+location\s+is|i(?:'m|m)\s+(?:at|on|near)|current\s+location)\b/i, '10-20'],
-  // 10-76 — En Route (general)
+  // 10-76 - En Route (general)
   [/\b(?:en\s+route|on\s+my\s+way|responding)\b/i, '10-76'],
-  // 10-80 — Pursuit
+  // 10-80 - Pursuit
   [/\b(?:in\s+pursuit|pursuing|vehicle\s+pursuit|foot\s+pursuit|in\s+a\s+(?:chase|pursuit)|high[\s-]speed\s+chase|chasing)\b/i, '10-80'],
-  // 10-23 — Arrived at Scene (en route → arrived, before 10-97 on-scene)
+  // 10-23 - Arrived at Scene (en route → arrived, before 10-97 on-scene)
   [/\b(?:just\s+arrived?|arrived?\s+(?:at\s+)?(?:the\s+)?(?:location|address|scene)?|pulling\s+up)\b/i, '10-23'],
-  // 10-97 — On Scene / Arrived
+  // 10-97 - On Scene / Arrived
   [/\b(?:on\s+scene|i(?:'m|m)\s+(?:on\s+scene|at\s+the\s+scene|on\s+location))\b/i, '10-97'],
-  // 10-99 — Officer Down / Emergency
+  // 10-99 - Officer Down / Emergency
   [/\b(?:officer\s+down|shots?\s+fired|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|mayday|emergency)\b/i, '10-99'],
-  // 10-19 — Return to Station
+  // 10-19 - Return to Station
   [/\b(?:returning\s+to\s+(?:the\s+)?station|heading\s+back\s+to\s+(?:the\s+)?station|going\s+(?:back\s+to\s+)?(?:the\s+)?station|back\s+to\s+(?:the\s+)?station)\b/i, '10-19'],
-  // 10-50 — Accident
+  // 10-50 - Accident
   [/\b(?:vehicle\s+accident|traffic\s+accident|crash(?:ed)?|accident\s+(?:at|on|near)|we\s+have\s+an?\s+accident|reporting\s+an?\s+accident)\b/i, '10-50'],
-  // 10-52 — EMS Requested (must be explicitly directed at dispatch)
+  // 10-52 - EMS Requested (must be explicitly directed at dispatch)
   [/\bdispatch[,.]?\s+(?:i\s+)?(?:need\s+(?:an?\s+)?(?:ambulance|ems|medic(?:al)?)|requesting\s+(?:an?\s+)?(?:ambulance|ems|medics?)|send\s+(?:an?\s+)?(?:ambulance|ems|medics?))\b/i, '10-52'],
-  // 10-31 — Crime in Progress
+  // 10-31 - Crime in Progress
   [/\b(?:crime\s+in\s+progress|robbery\s+in\s+progress|shots?\s+fired\s+(?:at|on|near)|burglary\s+in\s+progress|suspect\s+is\s+(?:running|fleeing|armed))\b/i, '10-31'],
 ];
 
@@ -720,7 +720,7 @@ function parseTranscript(text) {
   let detectedCode = null;
   for (const code of Object.keys(TEN_CODES)) {
     // Require an explicit separator (dash or space) so e.g. "1080" never
-    // triggers 10-80 — only "10-80" or "10 80" should match.
+    // triggers 10-80 - only "10-80" or "10 80" should match.
     const escaped = code.replace('-', '[-\\s]');
     if (new RegExp(`\\b${escaped}\\b`, 'i').test(lower)) {
       detectedCode = code;
@@ -837,8 +837,8 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
       const { playDispatchVoice } = await import('../utils/voiceListener.js');
       const _reqTtsName = ttsName || cleanNameForTTS(request.officerName);
       const ackText = approve
-        ? `Copy ${_reqTtsName}, ten four — moving you now.`
-        : `Copy ${_reqTtsName}, ten four — keeping you where you are.`;
+        ? `Copy ${_reqTtsName}, ten four - moving you now.`
+        : `Copy ${_reqTtsName}, ten four - keeping you where you are.`;
       const ackBuffer = await generateDispatchTTS(ackText);
       playDispatchVoice(guild.id, ackBuffer);
     } catch (err) {
@@ -1033,7 +1033,7 @@ async function generateDispatchTTS(text) {
 
 // ── Parallel TTS helpers ────────────────────────────────────────────────────
 // Call startTTS() as soon as you know the text, do other async work, then
-// await playTTS() — TTS is already generating in the background.
+// await playTTS() - TTS is already generating in the background.
 function startTTS(text, config) {
   if (!config?.aiEnabled || !hasAIKey()) return null;
   return generateDispatchTTS(text).catch(() => null);
@@ -1083,7 +1083,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
       console.log(`[Dispatch AI] Action: ${name}`, args);
 
       if (name === 'move_to_traffic_stop') {
-        // Never auto-move — create a pending request so officer is asked first
+        // Never auto-move - create a pending request so officer is asked first
         const target = findOfficerByName(args.officer_name, allStatuses)
           ?? allStatuses.find(s => s.userId === speakingUserId);
         if (!target) continue;
@@ -1102,7 +1102,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
         }
         if (!bestId) continue;
 
-        // Queue a pending move request — officer must confirm verbally ("yes" / "affirmative")
+        // Queue a pending move request - officer must confirm verbally ("yes" / "affirmative")
         const moveKey = getPendingStopMoveKey(guild.id, target.userId);
         pendingStopMoveRequests.set(moveKey, {
           officerId: target.userId,
@@ -1115,7 +1115,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
           transcript: args.officer_name || '',
           expiresAt: Date.now() + 90_000,
         });
-        console.log(`[Dispatch AI] Queued move request for ${target.username} — awaiting voice confirmation`);
+        console.log(`[Dispatch AI] Queued move request for ${target.username} - awaiting voice confirmation`);
       }
 
       else if (name === 'move_to_patrol') {
@@ -1200,7 +1200,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
               ? `${call.suspectsDescription} | Vehicle: ${note}`
               : `Vehicle: ${note}`;
           } else {
-            call.issue = call.issue ? `${call.issue} — ${note}` : note;
+            call.issue = call.issue ? `${call.issue} - ${note}` : note;
           }
           await call.save();
           console.log(`[Dispatch AI] Added ${noteType} note to call #${num}`);
@@ -1226,7 +1226,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
 
         // Build vehicle line if provided
         const vParts = [args.vehicle_color, args.vehicle_make, args.vehicle_model].filter(Boolean);
-        const vehicleLine = vParts.length > 0 ? vParts.join(' ') + (args.license_plate ? ` — Plate: ${args.license_plate}` : '') : null;
+        const vehicleLine = vParts.length > 0 ? vParts.join(' ') + (args.license_plate ? ` - Plate: ${args.license_plate}` : '') : null;
 
         // Try to find a matching CAD character for DB linkage
         let boloCharacter = null;
@@ -1254,7 +1254,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
 
             const boloEmbed = new EmbedBuilder()
               .setColor('#faa61a')
-              .setTitle('BOLO Issued — Be On the Lookout')
+              .setTitle('BOLO Issued - Be On the Lookout')
               .setDescription(boloDesc)
               .setFooter({ text: 'RPM • Dispatch' })
               .setTimestamp();
@@ -1289,7 +1289,7 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
           }
         }
 
-        console.log(`[Dispatch AI] BOLO issued for ${suspectName} — ${reason}`);
+        console.log(`[Dispatch AI] BOLO issued for ${suspectName} - ${reason}`);
       }
 
     } catch (err) {
@@ -1304,7 +1304,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     return { text: `10-4 ${cleanNameForTTS(officerName)}, copy ${label}.`, actions: [] };
   }
 
-  // Pull all context in parallel — active calls + full officer roster + active BOLOs
+  // Pull all context in parallel - active calls + full officer roster + active BOLOs
   let activeCalls = [], allStatuses = [], activeBolos = [];
   try {
     [activeCalls, allStatuses, activeBolos] = await Promise.all([
@@ -1314,7 +1314,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     ]);
   } catch {}
 
-  // Roster — include shift time so dispatcher can reference it
+  // Roster - include shift time so dispatcher can reference it
   const now = Date.now();
   const rosterLines = allStatuses.length > 0
     ? allStatuses.map(s => {
@@ -1327,24 +1327,24 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       }).join('\n')
     : '  No units logged on.';
 
-  // Active calls — include attached officers and any notes
+  // Active calls - include attached officers and any notes
   const callLines = activeCalls.map(c => {
     const callNum = c.callId?.split('-').pop() || '???';
     let line = `  Call #${callNum}: ${c.issue || 'unknown'}`;
     if (c.location) line += ` at ${c.location}`;
-    if (c.suspectsDescription) line += ` — Suspect: ${c.suspectsDescription}`;
+    if (c.suspectsDescription) line += ` - Suspect: ${c.suspectsDescription}`;
     const responder = allStatuses.find(s => s.userId === c.respondingLeoId);
     const attached = (c.attachedLeoIds || []).map(id => allStatuses.find(s => s.userId === id)?.username).filter(Boolean);
-    if (responder) line += ` — Primary: ${cleanNameForTTS(responder.username)}`;
-    if (attached.length) line += ` — Backup: ${attached.map(cleanNameForTTS).join(', ')}`;
-    if (!responder) line += ' — UNATTENDED';
+    if (responder) line += ` - Primary: ${cleanNameForTTS(responder.username)}`;
+    if (attached.length) line += ` - Backup: ${attached.map(cleanNameForTTS).join(', ')}`;
+    if (!responder) line += ' - UNATTENDED';
     return line;
   });
   const callContext = callLines.length > 0 ? callLines.join('\n') : '  None.';
 
   // Active BOLOs
   const boloLines = activeBolos.map(b => {
-    let line = `  BOLO: ${b.characterName} — ${b.reason}`;
+    let line = `  BOLO: ${b.characterName} - ${b.reason}`;
     if (b.description) line += ` (${b.description})`;
     if (b.vehicles?.length) {
       const v = b.vehicles[0];
@@ -1358,7 +1358,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   // Active pursuit
   const pursuitInfo = activePursuitAlerts.get(guildId);
   const pursuitLine = pursuitInfo
-    ? `  ACTIVE PURSUIT: Officer ${cleanNameForTTS(pursuitInfo.officerName)} — started ${Math.floor((now - pursuitInfo.timestamp) / 60000)}m ago`
+    ? `  ACTIVE PURSUIT: Officer ${cleanNameForTTS(pursuitInfo.officerName)} - started ${Math.floor((now - pursuitInfo.timestamp) / 60000)}m ago`
     : '  None.';
 
   // Channel names for AI awareness
@@ -1386,13 +1386,13 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     const locationStr = officerDbStatus.location ? ` at ${officerDbStatus.location}` : '';
     officerStatusBlock =
       `SPEAKING OFFICER PRIOR STATUS (before this transmission):\n` +
-      `  ${ttsOfficerName}: ${code} — ${codeLabel}${subjectStr}${locationStr}${timeStr}\n` +
+      `  ${ttsOfficerName}: ${code} - ${codeLabel}${subjectStr}${locationStr}${timeStr}\n` +
       `  Use this to give context-aware responses (e.g. if they go 10-8 from a stop, say "stop is clear").\n` +
-      `  Do NOT ask the officer what their status is — they just told you via this transmission.\n\n`;
+      `  Do NOT ask the officer what their status is - they just told you via this transmission.\n\n`;
   } else {
     officerStatusBlock =
       `SPEAKING OFFICER PRIOR STATUS: No prior status on file for ${ttsOfficerName}.\n` +
-      `  Do NOT ask for their status unprompted — respond to what they said first.\n\n`;
+      `  Do NOT ask for their status unprompted - respond to what they said first.\n\n`;
   }
 
   // Available units (10-8) for dispatch to assign to calls
@@ -1414,7 +1414,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const systemPrompt =
     `You are the radio dispatcher for a GTA 5 FiveM roleplay police server. ` +
     `You are a seasoned, emotionless professional. Flat delivery. No enthusiasm, no warmth, no filler. ` +
-    `Strictly clinical. You acknowledge and inform — nothing more.\n\n` +
+    `Strictly clinical. You acknowledge and inform - nothing more.\n\n` +
     officerStatusBlock +
     `UNITS ON DUTY:\n${rosterLines}\n\n` +
     `AVAILABLE UNITS (10-8): ${availableNames || 'None'}\n\n` +
@@ -1425,7 +1425,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     (stopChannelNames ? `TRAFFIC STOP CHANNELS: ${stopChannelNames}\n` : '') +
     (patrolChannelNames ? `PATROL CHANNELS: ${patrolChannelNames}\n` : '') +
     callSignLine +
-    `\nRADIO STYLE — CRITICAL:\n` +
+    `\nRADIO STYLE - CRITICAL:\n` +
     `- Sound like a REAL dispatcher. Short. Clipped. Dry. Zero personality.\n` +
     `- Maximum 1–2 sentences. Never more. Shorter is always better.\n` +
     `- Address officer by first name or call sign. "Copy, Smith." "Ten-four, Adam-22."\n` +
@@ -1434,20 +1434,20 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `- If transmission is unclear: "Say again?"\n` +
     `- Never explain yourself. Never recap what the officer said.\n` +
     `- Zero filler. Zero pleasantries. Zero enthusiasm. Zero "I'll do that right away". Zero "great" or "perfect".\n` +
-    `- No excitement, no urgency in tone — flat, even on emergencies. The words carry urgency, not your voice.\n` +
+    `- No excitement, no urgency in tone - flat, even on emergencies. The words carry urgency, not your voice.\n` +
     `- Non-police, off-topic speech: respond with nothing (empty string).\n` +
     `- GTA V locations: Los Santos, Blaine County, Pillbox Medical, Mirror Park, Legion Square, Davis, Sandy Shores, Paleto Bay, Vespucci, Del Perro, Vinewood, Rockford Hills, La Mesa.\n\n` +
     (hasPursuit
-      ? `PURSUIT IN PROGRESS — DISPATCH RULES:\n` +
+      ? `PURSUIT IN PROGRESS - DISPATCH RULES:\n` +
         `- There is an active ten-eighty pursuit. Only respond to pursuit-related traffic.\n` +
         `- Ignore routine status updates from other officers unless they are offering to assist.\n` +
-        `- Keep responses extra short — officers need the channel clear.\n\n`
+        `- Keep responses extra short - officers need the channel clear.\n\n`
       : '') +
     `WHEN NOT TO RESPOND:\n` +
-    `- Officer-to-officer banter, casual chat, non-police topics — stay silent.\n` +
-    `- Simple ten-four acknowledgments from the officer — no need to respond.\n` +
-    `- Officer just gave their status — do NOT ask for it again in the same response.\n` +
-    `- If officer's prior status matches what they just said — acknowledge briefly, do not repeat info back.\n\n` +
+    `- Officer-to-officer banter, casual chat, non-police topics - stay silent.\n` +
+    `- Simple ten-four acknowledgments from the officer - no need to respond.\n` +
+    `- Officer just gave their status - do NOT ask for it again in the same response.\n` +
+    `- If officer's prior status matches what they just said - acknowledge briefly, do not repeat info back.\n\n` +
     `CONTEXT-AWARE 10-8 RESPONSES:\n` +
     `- Coming from ten-eleven (traffic stop): "Copy ${ttsOfficerName}, showing you ten eight. Stop is clear."\n` +
     `- Coming from ten-ninety-seven (on scene): "Copy ${ttsOfficerName}, ten eight. You're clear."\n` +
@@ -1551,7 +1551,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       type: 'function',
       function: {
         name: 'add_call_note',
-        description: 'Add or update a detail on an active 911 call — suspects, vehicle, location, or general note',
+        description: 'Add or update a detail on an active 911 call - suspects, vehicle, location, or general note',
         parameters: {
           type: 'object',
           properties: {
@@ -1603,7 +1603,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     },
   ];
 
-  // Rolling session history — cleared on disconnect
+  // Rolling session history - cleared on disconnect
   const radioLog = getRadioLog(guildId);
   const historyMessages = radioLog.flatMap(entry => [
     { role: 'user', content: `${entry.officer}: "${entry.said}"` },
@@ -1620,7 +1620,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    // Use the best available model — dispatch quality matters more than a few hundred ms latency.
+    // Use the best available model - dispatch quality matters more than a few hundred ms latency.
     // llama-3.3-70b-versatile is dramatically better at following nuanced radio style instructions.
     const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
     const maxTokens = 100;
@@ -1639,7 +1639,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
 
       // Collect any tool calls the AI decided to make.
       // Groq's llama model sometimes embeds function calls directly in the text
-      // as <function=name{...}</function> instead of proper tool_calls — parse
+      // as <function=name{...}</function> instead of proper tool_calls - parse
       // those out and strip them from the spoken response.
       const actions = [];
 
@@ -1662,7 +1662,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         .trim();
 
       // Some models (e.g. certain Groq configs) emit bare function calls directly in the
-      // text as:  function_name{"key": "value"}  — with no XML wrapper.
+      // text as:  function_name{"key": "value"}  - with no XML wrapper.
       // Parse and strip those too so they never appear in the spoken dispatch response.
       const KNOWN_FN_NAMES = [
         'move_to_traffic_stop', 'move_to_patrol', 'update_officer_status',
@@ -1712,7 +1712,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   throw lastErr;
 }
 
-// Per-officer AI response cooldown — prevents double-triggers from the same
+// Per-officer AI response cooldown - prevents double-triggers from the same
 // officer's mic key landing as two near-identical transcriptions.
 const _lastAIResponseTime = new Map(); // `${guildId}:${userId}` → timestamp
 
@@ -1787,19 +1787,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     const lastEntry = _transcriptDedup.get(dedupKey);
     const normalized = transcript.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
     if (lastEntry && (now - lastEntry.ts < 12000) && lastEntry.text === normalized) {
-      console.log(`[Dispatch] Dedup — ignoring repeated transcript from ${officerName}`);
+      console.log(`[Dispatch] Dedup - ignoring repeated transcript from ${officerName}`);
       return;
     }
     _transcriptDedup.set(dedupKey, { ts: now, text: normalized });
 
     // ── Per-officer AI response cooldown ─────────────────────────────────────
     // If the same officer triggered a response in the last 3 seconds, ignore
-    // this transmission entirely — it's almost certainly a double-keying artifact.
+    // this transmission entirely - it's almost certainly a double-keying artifact.
     const aiCooldownKey = `${guild.id}:${userId}`;
     const _nowCooldown = Date.now();
     const _lastAI = _lastAIResponseTime.get(aiCooldownKey) || 0;
     if (_nowCooldown - _lastAI < 3000) {
-      console.log(`[Dispatch] Cooldown — ignoring rapid repeat from ${officerName} (${_nowCooldown - _lastAI}ms since last)`);
+      console.log(`[Dispatch] Cooldown - ignoring rapid repeat from ${officerName} (${_nowCooldown - _lastAI}ms since last)`);
       return;
     }
 
@@ -1835,7 +1835,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
                 if (dispatchCh?.isTextBased()) {
                   const embed = new EmbedBuilder()
                     .setColor('#43b581')
-                    .setTitle(`Call #${broadcast.callNum} — Unit Responding`)
+                    .setTitle(`Call #${broadcast.callNum} - Unit Responding`)
                     .setDescription(
                       `**<@${userId}> (${cleanNameForTTS(officerName)})** is responding to **Call #${broadcast.callNum}**.\n` +
                       (broadcast.issue ? `**Incident:** ${broadcast.issue}\n` : '') +
@@ -1891,7 +1891,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
           await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
         let ttsRelease = `Copy ${ttsName}, stop is clear`;
-        if (stopMins > 0) ttsRelease += ` — ${stopMins} minute${stopMins !== 1 ? 's' : ''} on stop`;
+        if (stopMins > 0) ttsRelease += ` - ${stopMins} minute${stopMins !== 1 ? 's' : ''} on stop`;
         ttsRelease += `. Ten eight shown.`;
         addToRadioLog(guild.id, cleanNameForTTS(officerName), transcript, ttsRelease);
         const ttsPRelease = startTTS(ttsRelease, config);
@@ -1926,15 +1926,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     {
       const raw = transcript.trim();
 
-      // ── Emergency bypass — always process regardless of trigger word ──────
+      // ── Emergency bypass - always process regardless of trigger word ──────
       if (EMERGENCY_BYPASS_RE.test(raw)) {
         transcript = raw;
         fullVoiceContext = raw;
         hadTrigger = true;
-        console.log(`[Dispatch] Emergency phrase detected — bypassing trigger requirement`);
+        console.log(`[Dispatch] Emergency phrase detected - bypassing trigger requirement`);
         // Fall through to processing below
       } else {
-        // Check for call sign at the very start — e.g. "1 Adam 22, show me 10-8"
+        // Check for call sign at the very start - e.g. "1 Adam 22, show me 10-8"
         const callSignResult = detectCallSign(raw);
 
         // Split into original words (preserves numbers/punctuation for commandText)
@@ -1952,29 +1952,29 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         let commandText = '';
 
         if (callSignResult && callSignResult.remainder.trim().length > 2) {
-          // Officer opened with their call sign — the remainder is the command for dispatch
+          // Officer opened with their call sign - the remainder is the command for dispatch
           detectedCallSign = callSignResult.callSign;
           commandText = callSignResult.remainder.trim();
           hadTrigger = true;
-          console.log(`[Dispatch] Call sign: "${detectedCallSign}" — command: "${commandText}"`);
+          console.log(`[Dispatch] Call sign: "${detectedCallSign}" - command: "${commandText}"`);
         } else if (dispatchIdx !== -1) {
           // Use ORIGINAL rawWords to preserve ten-codes / numbers in the command
           preContext = rawWords.slice(0, dispatchIdx).join(' ').trim();
           commandText = rawWords.slice(dispatchIdx + 1).join(' ').trim();
           hadTrigger = true;
-          console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} — command: "${commandText}"`);
+          console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} - command: "${commandText}"`);
         } else {
           // No trigger word or call sign detected.
           // Only process if the utterance contains a ten-code; otherwise it is general chatter
           // that dispatch should not respond to.
           commandText = raw;
-          // Allow through: ten-codes OR "code four" (unambiguous scene clear) — both valid without trigger
+          // Allow through: ten-codes OR "code four" (unambiguous scene clear) - both valid without trigger
           const hasTenCode = /\b10[-\s]?\d+\b/i.test(commandText) || detectCodeFour(commandText);
           if (!hasTenCode) {
-            console.log(`[Dispatch] No trigger or ten-code — ignoring general chatter: "${commandText}"`);
+            console.log(`[Dispatch] No trigger or ten-code - ignoring general chatter: "${commandText}"`);
             return;
           }
-          // Status update without trigger — log it and acknowledge if it's a key code
+          // Status update without trigger - log it and acknowledge if it's a key code
           console.log(`[Dispatch] Status update without trigger word: "${commandText}"`);
         }
 
@@ -1999,7 +1999,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // drop it silently. This prevents the bot from responding to off-topic chatter
     // like "dispatch, can you help me move?" or accidental trigger-word hits.
     if (hadTrigger && !isDispatchRelevant(transcript)) {
-      console.log(`[Dispatch] Trigger heard but off-topic — ignoring: "${transcript}"`);
+      console.log(`[Dispatch] Trigger heard but off-topic - ignoring: "${transcript}"`);
       return;
     }
     // --- End relevance gate ---
@@ -2080,7 +2080,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         await rebuildStatusBoard(guild, config);
         await playTTS(ttsPJoin, guild.id);
       } else {
-        // No available stop channel — still log the stop and give TTS feedback
+        // No available stop channel - still log the stop and give TTS feedback
         await updateOfficerStatus(guild.id, userId, officerName, '10-11',
           { code: '10-11', codeInfo: TEN_CODES['10-11'], subject: joinTargetName, location: null, rawText: transcript },
           null, null);
@@ -2126,7 +2126,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
               embed.addFields({ name: 'BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: 'Result', value: 'No records found — plate is not registered in the system', inline: false });
+            embed.addFields({ name: 'Result', value: 'No records found - plate is not registered in the system', inline: false });
           }
           embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
           await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send plate embed:', e.message));
@@ -2149,14 +2149,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             if (result.embed.age) embed.addFields({ name: 'Age', value: `${result.embed.age}`, inline: true });
             if (result.embed.gender) embed.addFields({ name: 'Gender', value: result.embed.gender, inline: true });
             if (result.embed.vehicles?.length > 0) {
-              const vList = result.embed.vehicles.map(v => `${v.color || ''} ${v.year || ''} ${v.make || ''} ${v.model || ''} — ${v.licensePlate || 'No Plate'}`.trim()).join('\n');
+              const vList = result.embed.vehicles.map(v => `${v.color || ''} ${v.year || ''} ${v.make || ''} ${v.model || ''} - ${v.licensePlate || 'No Plate'}`.trim()).join('\n');
               embed.addFields({ name: 'Vehicles', value: vList, inline: false });
             }
             if (result.embed.hasBolo) {
               embed.addFields({ name: 'BOLO', value: result.embed.boloReason, inline: false });
             }
           } else {
-            embed.addFields({ name: 'Result', value: 'No records found — name is not in the system', inline: false });
+            embed.addFields({ name: 'Result', value: 'No records found - name is not in the system', inline: false });
           }
           embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
           await dispatchChannel.send({ embeds: [embed] }).catch((e) => console.error('[CAD Lookup] Failed to send name embed:', e.message));
@@ -2176,7 +2176,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           console.error('[Dispatch TTS] CAD lookup voice error:', err.message);
         }
       } else {
-        console.log(`[CAD Lookup] TTS skipped — aiEnabled=${config.aiEnabled}, hasKey=${hasAIKey()}`);
+        console.log(`[CAD Lookup] TTS skipped - aiEnabled=${config.aiEnabled}, hasKey=${hasAIKey()}`);
       }
       return;
     }
@@ -2250,10 +2250,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         if (dispatchChannel?.isTextBased()) {
           const embed = new EmbedBuilder()
             .setColor('#2d2d2d')
-            .setTitle(`Unit ${role === 'primary responder' ? 'Responding' : 'Attached'} — Call #${callNum}`)
+            .setTitle(`Unit ${role === 'primary responder' ? 'Responding' : 'Attached'} - Call #${callNum}`)
             .setDescription(
               `**Officer:** <@${userId}>\n` +
-              `**Call:** #${callNum} — ${call.issue || 'Unknown'}\n` +
+              `**Call:** #${callNum} - ${call.issue || 'Unknown'}\n` +
               `**Location:** ${call.location || 'Unknown'}\n` +
               `**Role:** ${role === 'primary responder' ? 'Primary Responder' : 'Attached'}`
             )
@@ -2369,7 +2369,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           if (dispatchCh?.isTextBased()) {
             const embed = new EmbedBuilder()
               .setColor('#FF0000')
-              .setTitle('10-80 — Unit Responding')
+              .setTitle('10-80 - Unit Responding')
               .setDescription(
                 `**<@${userId}> (${cleanNameForTTS(responderName)})** is responding to the pursuit.\n` +
                 `Moved to pursuit channel <#${pursuitAlert.pursuitChannelId}>.`
@@ -2402,7 +2402,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     if (attachStopMatch) {
       const sceneName = attachStopMatch[1].toLowerCase().trim(); // officer on scene
 
-      // Find the scene officer's active stop channel — match on cleaned name or first name
+      // Find the scene officer's active stop channel - match on cleaned name or first name
       const allStatuses = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
       const sceneOfficer = allStatuses.find(s => {
         const cleanStored = cleanNameForTTS(s.username).toLowerCase();
@@ -2530,7 +2530,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           const isWanted = result.embed.status === 'WANTED';
           embed.addFields(
             { name: 'Name', value: result.embed.name, inline: true },
-            { name: 'Warrant Status', value: isWanted ? '**WANTED** — Active warrants on file' : 'No active warrants', inline: false },
+            { name: 'Warrant Status', value: isWanted ? '**WANTED** - Active warrants on file' : 'No active warrants', inline: false },
             { name: 'License', value: result.embed.license || 'Unknown', inline: true },
           );
           if (result.embed.age) embed.addFields({ name: 'Age', value: `${result.embed.age}`, inline: true });
@@ -2599,7 +2599,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           tts = `Serial ${serialQuery.split('').join(' ')} comes back registered to ${character.characterName}, ${fa}.`;
           if (character.status === 'wanted') tts += ` Caution, owner is showing WANTED.`;
         } else {
-          embed.addFields({ name: 'Result', value: 'No records found — serial not registered in system', inline: false });
+          embed.addFields({ name: 'Result', value: 'No records found - serial not registered in system', inline: false });
           tts = `Serial ${serialQuery.split('').join(' ')} comes back with no records. Firearm is not registered in the system. Use caution.`;
         }
         embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
@@ -2649,7 +2649,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         const availText = available.length > 0 ? available.map(o => o.username).join(', ') : 'None showing available';
         const embed = new EmbedBuilder()
           .setColor('#f04747')
-          .setTitle('10-78 — Backup Requested')
+          .setTitle('10-78 - Backup Requested')
           .setDescription(
             `**Officer:** <@${userId}>\n` +
             (backupReq.location ? `**Location:** ${backupReq.location}\n` : '') +
@@ -2692,7 +2692,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // --- End 10-99 panic clear ---
 
     // --- Code 4 / scene clear detection ---
-    // Works with or without trigger word — "code four" is an unambiguous status update
+    // Works with or without trigger word - "code four" is an unambiguous status update
     if (detectCodeFour(transcript)) {
       console.log(`[Dispatch] Code 4 / all clear from ${officerName}`);
       await updateOfficerStatus(guild.id, userId, officerName, '10-8',
@@ -2704,7 +2704,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       if (dispatchCh?.isTextBased()) {
         const embed = new EmbedBuilder()
           .setColor('#43b581')
-          .setTitle('Code 4 — Scene Clear')
+          .setTitle('Code 4 - Scene Clear')
           .setDescription(`**Officer:** <@${userId}>\nScene is code four. Showing **10-8 Available**.`)
           .setFooter({ text: 'RPM • Dispatch' })
           .setTimestamp();
@@ -2829,7 +2829,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         if (dispatchCh?.isTextBased()) {
           const embed = new EmbedBuilder()
             .setColor('#e74c3c')
-            .setTitle(`Active Call #${callNum} — ${voiceCallReq.incident}`)
+            .setTitle(`Active Call #${callNum} - ${voiceCallReq.incident}`)
             .setDescription(
               `**Incident:** ${voiceCallReq.incident}\n` +
               (voiceCallReq.location ? `**Location:** ${voiceCallReq.location}\n` : '') +
@@ -2847,7 +2847,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
             const locationPart = voiceCallReq.location ? ` at ${voiceCallReq.location}` : '';
             const unitsNeeded = voiceCallReq.count > 1 ? `${voiceCallReq.count} units` : 'any available unit';
-            const ttsText = `Attention all units, attention all units — ${voiceCallReq.incident}${locationPart}. Call number ${callNum}. ${unitsNeeded} please respond. Say responding to attach.`;
+            const ttsText = `Attention all units, attention all units - ${voiceCallReq.incident}${locationPart}. Call number ${callNum}. ${unitsNeeded} please respond. Say responding to attach.`;
             addToRadioLog(guild.id, 'Dispatch', transcript, ttsText);
             const ttsBuffer = await generateDispatchTTS(ttsText);
             playDispatchVoice(guild.id, ttsBuffer);
@@ -2871,26 +2871,26 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     const isSimpleAck = parsed.code && SIMPLE_ACK_CODES.has(parsed.code) && !parsed.subject && !parsed.location;
 
-    // Fetch the officer's current DB status — passed to AI so it knows their active code/scene
+    // Fetch the officer's current DB status - passed to AI so it knows their active code/scene
     const officerDbStatus = await OfficerStatus.findOne({ guildId: guild.id, userId }).lean().catch(() => null);
 
     let dispatchResponse = null;
     let aiActions = [];
-    // Skip AI for simple status transitions — these have instant pre-built TTS handlers
+    // Skip AI for simple status transitions - these have instant pre-built TTS handlers
     // that are much faster than a GPT round-trip (~2-3s saved per call).
     const preComputedAction = parsed.codeInfo?.action;
     const skipAIForSpeed = preComputedAction === 'available' || preComputedAction === 'out_of_service';
     // Only generate an AI response when a real dispatch trigger was heard (trigger word,
     // call sign, or emergency phrase). Ten-codes spoken without a trigger word just
-    // update the officer's status silently — no AI chat-back.
+    // update the officer's status silently - no AI chat-back.
     //
     // Simultaneous speaker gate: if dispatch was already playing TTS when this
-    // transmission landed, skip the AI response unless it is an emergency — this
+    // transmission landed, skip the AI response unless it is an emergency - this
     // prevents stale queued responses and avoids dispatch "talking over" itself.
     const _isEmergencyTransmission = EMERGENCY_BYPASS_RE.test(transcript);
     const _skipForSpeaking = opts.dispatchWasSpeaking && !_isEmergencyTransmission;
     if (_skipForSpeaking) {
-      console.log(`[Dispatch] Simultaneous speaker gate — dispatch was speaking; skipping AI response for ${officerName}`);
+      console.log(`[Dispatch] Simultaneous speaker gate - dispatch was speaking; skipping AI response for ${officerName}`);
     }
     if (hadTrigger && !isSimpleAck && !skipAIForSpeed && config.aiEnabled && hasAIKey() && !_skipForSpeaking) {
       try {
@@ -2904,7 +2904,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       }
     }
 
-    // Start TTS immediately — runs in background while embed is built and sent
+    // Start TTS immediately - runs in background while embed is built and sent
     const ttsPMain = (dispatchResponse && !isSimpleAck) ? startTTS(dispatchResponse, config) : null;
 
     const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
@@ -2918,7 +2918,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         .setTimestamp()
         .addFields(
           { name: 'Officer', value: `<@${userId}>`, inline: true },
-          { name: 'Code', value: parsed.code ? `**${parsed.code}** — ${TEN_CODES[parsed.code]?.label}` : 'Unknown', inline: true },
+          { name: 'Code', value: parsed.code ? `**${parsed.code}** - ${TEN_CODES[parsed.code]?.label}` : 'Unknown', inline: true },
         );
 
       if (parsed.subject) embed.addFields({ name: 'With', value: parsed.subject, inline: true });
@@ -2937,9 +2937,9 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           if (a.name === 'update_officer_status') return `${a.args.officer_name} → ${a.args.ten_code}`;
           if (a.name === 'close_call')            return `Call #${a.args.call_number} closed (Code 4)`;
           if (a.name === 'send_unit_to_call')     return `${a.args.officer_name} attached to call #${a.args.call_number}`;
-          if (a.name === 'add_call_note')         return `Call #${a.args.call_number} updated — ${a.args.note_type}: ${a.args.note}`;
+          if (a.name === 'add_call_note')         return `Call #${a.args.call_number} updated - ${a.args.note_type}: ${a.args.note}`;
           if (a.name === 'flag_officer_needs_backup') return `${a.args.officer_name} flagged 10-78 (backup needed)`;
-          if (a.name === 'create_bolo')           return `BOLO issued — ${a.args.suspect_name}: ${a.args.reason}${a.args.last_seen ? ` (last seen: ${a.args.last_seen})` : ''}`;
+          if (a.name === 'create_bolo')           return `BOLO issued - ${a.args.suspect_name}: ${a.args.reason}${a.args.last_seen ? ` (last seen: ${a.args.last_seen})` : ''}`;
           return a.name;
         }).join('\n');
         embed.addFields({ name: 'Actions Taken', value: actionSummary.slice(0, 1024), inline: false });
@@ -2948,7 +2948,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
     }
 
-    // TTS was already generating — just play it now (usually already done)
+    // TTS was already generating - just play it now (usually already done)
     await playTTS(ttsPMain, guild.id);
 
     if (isSimpleAck) {
@@ -2978,7 +2978,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         }
 
         if (bestChannelId && member.voice?.channelId) {
-          // Ask via voice before moving — wait for a spoken yes or no
+          // Ask via voice before moving - wait for a spoken yes or no
           const requestKey = getPendingStopMoveKey(guild.id, userId);
           pendingStopMoveRequests.set(requestKey, {
             guildId: guild.id,
@@ -3038,7 +3038,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         console.error('[Dispatch] Voice channel move error:', err.message);
       }
     } else if (voiceAction === 'available') {
-      // Officer called 10-8 verbally — clear their stop status
+      // Officer called 10-8 verbally - clear their stop status
       const wasOnStop = officerDbStatus?.tenCode === '10-11';
       const wasOnScene = officerDbStatus?.tenCode === '10-97';
       await updateOfficerStatus(guild.id, userId, officerName, '10-8', parsed, null);
@@ -3061,7 +3061,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         console.error('[Dispatch] 10-8 auto-return error:', err.message);
       }
 
-      // Acknowledge 10-8 — deduped per officer (30s cooldown) and batched
+      // Acknowledge 10-8 - deduped per officer (30s cooldown) and batched
       // across multiple officers announcing available within the same 2-second window.
       if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
         const ackKey = `${guild.id}:${userId}:10-8`;
@@ -3096,12 +3096,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
 
-      // 10-99 — trigger full panic alert (embed + TTS + status board)
+      // 10-99 - trigger full panic alert (embed + TTS + status board)
       if (parsed.code === '10-99') {
         await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
       }
 
-      // 10-80 — Pursuit: always broadcast to patrol and play alert sound
+      // 10-80 - Pursuit: always broadcast to patrol and play alert sound
       else if (parsed.code === '10-80') {
         const { getCurrentChannelId, clearExtendedStay } = await import('../utils/voiceListener.js');
         const currentBotChannelId = getCurrentChannelId(guild.id);
@@ -3115,7 +3115,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       }
 
       // Brief acknowledgment for common status codes when no AI response was generated
-      // (i.e., officer spoke without a trigger word — dispatcher still acknowledges)
+      // (i.e., officer spoke without a trigger word - dispatcher still acknowledges)
       else if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
         const SILENT_CODES = new Set(['10-4', '10-6']); // already handled by SIMPLE_ACK_CODES
         if (!SILENT_CODES.has(parsed.code)) {
@@ -3306,7 +3306,7 @@ export async function rebuildStatusBoard(guild, config) {
   if (activeCalls.length > 0) {
     headerParts.push(
       unresponded.length > 0
-        ? `**${activeCalls.length} Active Call${activeCalls.length !== 1 ? 's' : ''}** — **${unresponded.length} NEED${unresponded.length === 1 ? 'S' : ''} UNITS**`
+        ? `**${activeCalls.length} Active Call${activeCalls.length !== 1 ? 's' : ''}** - **${unresponded.length} NEED${unresponded.length === 1 ? 'S' : ''} UNITS**`
         : `**${activeCalls.length} Active Call${activeCalls.length !== 1 ? 's' : ''}** on the board`
     );
   }
@@ -3315,12 +3315,12 @@ export async function rebuildStatusBoard(guild, config) {
     const since = priorityData.activatedAt
       ? `<t:${Math.floor(new Date(priorityData.activatedAt).getTime() / 1000)}:R>`
       : '';
-    headerParts.push(`**PRIORITY ACTIVE** — ${priorityData.priorityIssuedBy || 'Unknown'}${since ? ` · activated ${since}` : ''}`);
+    headerParts.push(`**PRIORITY ACTIVE** - ${priorityData.priorityIssuedBy || 'Unknown'}${since ? ` · activated ${since}` : ''}`);
   }
 
   if (priorityData?.cooldownEndsAt && new Date(priorityData.cooldownEndsAt) > new Date()) {
     const remaining = Math.ceil((new Date(priorityData.cooldownEndsAt) - Date.now()) / 60000);
-    headerParts.push(`**Priority Cooldown:** ${remaining} min remaining — issued by ${priorityData.cooldownIssuedBy || 'Unknown'}`);
+    headerParts.push(`**Priority Cooldown:** ${remaining} min remaining - issued by ${priorityData.cooldownIssuedBy || 'Unknown'}`);
   }
 
   if (boloCount > 0) headerParts.push(`**${boloCount} Active BOLO${boloCount !== 1 ? 's' : ''}** on file`);
@@ -3337,7 +3337,7 @@ export async function rebuildStatusBoard(guild, config) {
       ? `${Math.floor(statusMins / 60)}h ${statusMins % 60}m`
       : statusMins > 0 ? `${statusMins}m` : 'just now';
 
-    let line = `**${prefix}** <@${o.userId}> — **${codeLabel}**`;
+    let line = `**${prefix}** <@${o.userId}> - **${codeLabel}**`;
     if (o.subject)              line += `\n   ╟ With: ${o.subject}`;
     if (o.location)             line += `\n   ╟ Location: ${o.location}`;
     if (o.trafficStopChannelId) line += `\n   ╟ Stop Channel: <#${o.trafficStopChannelId}>`;
@@ -3356,7 +3356,7 @@ export async function rebuildStatusBoard(guild, config) {
     if (attachedCall) {
       const role    = attachedCall.respondingLeoId === o.userId ? 'PRIMARY' : 'ATTACHED';
       const num     = attachedCall.callId?.split('-').slice(-1)[0] || '???';
-      const issue   = attachedCall.issue ? ` — ${attachedCall.issue.slice(0, 28)}` : '';
+      const issue   = attachedCall.issue ? ` - ${attachedCall.issue.slice(0, 28)}` : '';
       line += `\n   ╟ Call #${num}${issue} [${role}]`;
     }
 
@@ -3376,7 +3376,7 @@ export async function rebuildStatusBoard(guild, config) {
     sections.push(`**━━ BACKUP REQUESTED (${backupOfficers.length}) ━━**\n` + backupOfficers.map(buildRow).join('\n\n'));
 
   if (enRouteOfficers.length > 0)
-    sections.push(`**━━ EN ROUTE — 10-76 (${enRouteOfficers.length}) ━━**\n` + enRouteOfficers.map(buildRow).join('\n\n'));
+    sections.push(`**━━ EN ROUTE - 10-76 (${enRouteOfficers.length}) ━━**\n` + enRouteOfficers.map(buildRow).join('\n\n'));
 
   if (crimeOfficers.length > 0)
     sections.push(`**━━ CRIME IN PROGRESS (${crimeOfficers.length}) ━━**\n` + crimeOfficers.map(buildRow).join('\n\n'));
@@ -3388,16 +3388,16 @@ export async function rebuildStatusBoard(guild, config) {
     sections.push(`**━━ EMS REQUESTED (${emsReqOfficers.length}) ━━**\n` + emsReqOfficers.map(buildRow).join('\n\n'));
 
   if (trafficStopOfficers.length > 0)
-    sections.push(`**━━ TRAFFIC STOP — 10-11 (${trafficStopOfficers.length}) ━━**\n` + trafficStopOfficers.map(buildRow).join('\n\n'));
+    sections.push(`**━━ TRAFFIC STOP - 10-11 (${trafficStopOfficers.length}) ━━**\n` + trafficStopOfficers.map(buildRow).join('\n\n'));
 
   if (onSceneOfficers.length > 0)
-    sections.push(`**━━ ON SCENE — 10-97 (${onSceneOfficers.length}) ━━**\n` + onSceneOfficers.map(buildRow).join('\n\n'));
+    sections.push(`**━━ ON SCENE - 10-97 (${onSceneOfficers.length}) ━━**\n` + onSceneOfficers.map(buildRow).join('\n\n'));
 
   if (detainedOfficers.length > 0)
     sections.push(`**━━ PRISONER / DETAINED (${detainedOfficers.length}) ━━**\n` + detainedOfficers.map(buildRow).join('\n\n'));
 
   if (availOfficers.length > 0)
-    sections.push(`**━━ AVAILABLE — 10-8 (${availOfficers.length}) ━━**\n` + availOfficers.map(buildRow).join('\n\n'));
+    sections.push(`**━━ AVAILABLE - 10-8 (${availOfficers.length}) ━━**\n` + availOfficers.map(buildRow).join('\n\n'));
 
   if (busyOfficers.length > 0)
     sections.push(`**━━ BUSY / OOS (${busyOfficers.length}) ━━**\n` + busyOfficers.map(buildRow).join('\n\n'));
@@ -3423,7 +3423,7 @@ export async function rebuildStatusBoard(guild, config) {
       const callNum  = c.callId?.split('-').slice(-1)[0] || '???';
       const ageMins  = Math.floor((Date.now() - new Date(c.timestamp).getTime()) / 60000);
       const noUnits  = !c.respondingLeoId && (!c.attachedLeoIds || c.attachedLeoIds.length === 0);
-      const urgency  = ageMins >= 10 ? ' — [CRITICAL]' : ageMins >= 5 ? ' — [URGENT]' : '';
+      const urgency  = ageMins >= 10 ? ' - [CRITICAL]' : ageMins >= 5 ? ' - [URGENT]' : '';
       const ageLabel = ageMins >= 60
         ? `${Math.floor(ageMins / 60)}h ${ageMins % 60}m`
         : ageMins > 0 ? `${ageMins}m` : 'new';
@@ -3479,7 +3479,7 @@ export async function rebuildStatusBoard(guild, config) {
       const boloRows = activeBOLOs.map(b => {
         const num     = b.boloId?.split('-').pop() || '???';
         const issued  = `<t:${Math.floor(new Date(b.createdAt).getTime() / 1000)}:R>`;
-        let line = `**BOLO #${num}** — **${b.characterName}** · ${issued}`;
+        let line = `**BOLO #${num}** - **${b.characterName}** · ${issued}`;
         line += `\n┣ Reason: ${b.reason}`;
         if (b.description) line += `\n┣ Description: ${b.description}`;
         const veh = b.vehicles?.[0];
@@ -3500,24 +3500,24 @@ export async function rebuildStatusBoard(guild, config) {
   // ── Action buttons ────────────────────────────────────────────────────────
   const components = [];
 
-  // Row 1: Quick-status buttons — always present
+  // Row 1: Quick-status buttons - always present
   components.push(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('dispatch_quick_10_8')
-        .setLabel('10-8 — Available')
+        .setLabel('10-8 - Available')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('dispatch_quick_10_6')
-        .setLabel('10-6 — Busy')
+        .setLabel('10-6 - Busy')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('dispatch_quick_10_76')
-        .setLabel('10-76 — En Route')
+        .setLabel('10-76 - En Route')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('dispatch_quick_10_97')
-        .setLabel('10-97 — On Scene')
+        .setLabel('10-97 - On Scene')
         .setStyle(ButtonStyle.Primary),
     )
   );
@@ -3634,7 +3634,7 @@ export async function handleStopClearButton(interaction) {
     const clearEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Traffic Stop Cleared')
-      .setDescription(`<@${targetUserId}> is **10-8 — Available**. The traffic stop has been cleared.`)
+      .setDescription(`<@${targetUserId}> is **10-8 - Available**. The traffic stop has been cleared.`)
       .setFooter({ text: 'RPM' })
       .setTimestamp();
 
@@ -3646,7 +3646,7 @@ export async function handleStopClearButton(interaction) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 10-99 PANIC CLEAR — reverse a panic alert
+// 10-99 PANIC CLEAR - reverse a panic alert
 // ────────────────────────────────────────────────────────────────────────────
 async function clearPanicAlert(guild, config, userId, officerName) {
   try {
@@ -3656,7 +3656,7 @@ async function clearPanicAlert(guild, config, userId, officerName) {
     if (dispatchCh?.isTextBased()) {
       const embed = new EmbedBuilder()
         .setColor('#43b581')
-        .setTitle('10-99 Cleared — Stand Down')
+        .setTitle('10-99 Cleared - Stand Down')
         .setDescription(
           `**Officer:** <@${userId}> (${cleanNameForTTS(officerName)})\n` +
           `The 10-99 emergency has been cleared.\n` +
@@ -3670,7 +3670,7 @@ async function clearPanicAlert(guild, config, userId, officerName) {
     // Deactivate priority board if it was auto-activated by this 10-99
     try {
       const priority = await Priority.findOne({ guildId: guild.id });
-      if (priority?.priorityActive && priority.priorityIssuedBy?.includes('Auto — 10-99')) {
+      if (priority?.priorityActive && priority.priorityIssuedBy?.includes('Auto - 10-99')) {
         priority.priorityActive = false;
         priority.priorityIssuedBy = null;
         priority.activatedAt = null;
@@ -3687,7 +3687,7 @@ async function clearPanicAlert(guild, config, userId, officerName) {
         console.log(`[Dispatch] Priority board deactivated after 10-99 clear in ${guild.name}`);
       }
     } catch (e) {
-      console.error('[Dispatch] Panic clear — priority reset error:', e.message);
+      console.error('[Dispatch] Panic clear - priority reset error:', e.message);
     }
 
     console.log(`[Dispatch] 10-99 cleared by ${officerName} in ${guild.name}`);
@@ -3708,12 +3708,12 @@ export async function triggerPanicAlert(guild, config, userId, officerName, voic
 
     const panicEmbed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('10-99 — OFFICER NEEDS ASSISTANCE')
+      .setTitle('10-99 - OFFICER NEEDS ASSISTANCE')
       .setDescription(
-        `**ALL UNITS — RESPOND IMMEDIATELY**\n\n` +
+        `**ALL UNITS - RESPOND IMMEDIATELY**\n\n` +
         `**Officer:** <@${userId}> (${cleanNameForTTS(officerName)})\n` +
         `**Last Known Location:** ${locationText}\n\n` +
-        `**10-99 — All available officers need to respond to this officer's location immediately.**`
+        `**10-99 - All available officers need to respond to this officer's location immediately.**`
       )
       .setFooter({ text: 'RPM • PANIC ALERT' })
       .setTimestamp();
@@ -3756,7 +3756,7 @@ export async function triggerPanicAlert(guild, config, userId, officerName, voic
       if (priority?.channelId) {
         const wasAlreadyActive = priority.priorityActive;
         priority.priorityActive = true;
-        priority.priorityIssuedBy = `${officerName} (Auto — 10-99)`;
+        priority.priorityIssuedBy = `${officerName} (Auto - 10-99)`;
         priority.activatedAt = new Date();
         await priority.save();
 
@@ -3775,7 +3775,7 @@ export async function triggerPanicAlert(guild, config, userId, officerName, voic
         setTimeout(async () => {
           try {
             const pr = await Priority.findOne({ guildId: guild.id });
-            if (pr && pr.priorityIssuedBy?.includes('Auto — 10-99')) {
+            if (pr && pr.priorityIssuedBy?.includes('Auto - 10-99')) {
               pr.priorityActive = false;
               pr.priorityIssuedBy = null;
               pr.activatedAt = null;
@@ -3828,7 +3828,7 @@ export async function handlePanicAckButton(interaction) {
 
     const updatedEmbed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('10-99 — OFFICER NEEDS ASSISTANCE')
+      .setTitle('10-99 - OFFICER NEEDS ASSISTANCE')
       .setDescription(
         (interaction.message.embeds[0]?.description || '') +
         `\n\n**<@${interaction.user.id}> (${responderName}) is en route.**`
@@ -3838,7 +3838,7 @@ export async function handlePanicAckButton(interaction) {
 
     const disabledBtn = new ButtonBuilder()
       .setCustomId(`dispatch_panic_ack_${targetUserId}`)
-      .setLabel(`${responderName} — En Route`)
+      .setLabel(`${responderName} - En Route`)
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(true);
 
@@ -3895,7 +3895,7 @@ async function flush10_8Queue(guild, config) {
 
 async function triggerPursuitBroadcast(guild, config, officerId, officerName, pursuitChannelId) {
   try {
-    // Dedup — skip if same officer already has an active pursuit within the last 2 minutes
+    // Dedup - skip if same officer already has an active pursuit within the last 2 minutes
     const existingAlert = activePursuitAlerts.get(guild.id);
     if (existingAlert && existingAlert.officerId === officerId && Date.now() - existingAlert.timestamp < 2 * 60 * 1000) {
       console.log(`[Dispatch] 10-80 duplicate suppressed for ${officerName} (already active)`);
@@ -3948,7 +3948,7 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
       if (dispatchCh?.isTextBased()) {
         const embed = new EmbedBuilder()
           .setColor('#FF0000')
-          .setTitle('10-80 — Active Pursuit')
+          .setTitle('10-80 - Active Pursuit')
           .setDescription(
             `**Officer:** <@${officerId}> (${cleanNameForTTS(officerName)})\n` +
             `**Status:** Active pursuit in progress\n` +
@@ -4010,12 +4010,12 @@ export async function handlePursuitRespondButton(interaction) {
     const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
       .setDescription(
         (interaction.message.embeds[0]?.description || '') +
-        `\n\n**<@${interaction.user.id}> (${responderName}) is responding — moved to pursuit channel.**`
+        `\n\n**<@${interaction.user.id}> (${responderName}) is responding - moved to pursuit channel.**`
       );
 
     const disabledBtn = new ButtonBuilder()
       .setCustomId(`dispatch_pursuit_respond_${guildId}`)
-      .setLabel(`${responderName} — Responding`)
+      .setLabel(`${responderName} - Responding`)
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(true);
 
@@ -4046,7 +4046,7 @@ function detectPursuitResponse(text) {
 // TRAFFIC STOP CHECK-IN TIMER (every 1 minute)
 // ────────────────────────────────────────────────────────────────────────────
 const trafficStopCheckIntervals = new Map();
-const trafficStopCheckinSent = new Map(); // key: guildId:userId — tracks last checkin msg time
+const trafficStopCheckinSent = new Map(); // key: guildId:userId - tracks last checkin msg time
 const trafficStopVisitInProgress = new Set(); // guildIds currently mid-visit (bot is in a stop channel)
 
 async function checkTrafficStops(guild) {
@@ -4059,7 +4059,7 @@ async function checkTrafficStops(guild) {
 
     // ── Busy guard: skip entirely if dispatch is already visiting a stop channel ──
     if (trafficStopVisitInProgress.has(guild.id)) {
-      console.log(`[Dispatch] Skipping traffic stop check — visit already in progress for ${guild.name}`);
+      console.log(`[Dispatch] Skipping traffic stop check - visit already in progress for ${guild.name}`);
       return;
     }
 
@@ -4067,7 +4067,7 @@ async function checkTrafficStops(guild) {
     const { getDispatchState, getExtendedStay } = await import('../utils/voiceListener.js');
     const dispState = getDispatchState(guild.id);
     if (dispState?.audioPlaying) {
-      console.log(`[Dispatch] Skipping traffic stop check — dispatch currently talking in ${guild.name}`);
+      console.log(`[Dispatch] Skipping traffic stop check - dispatch currently talking in ${guild.name}`);
       return;
     }
 
@@ -4081,7 +4081,7 @@ async function checkTrafficStops(guild) {
       // Skip check-in if dispatch has an active extended stay for this guild
       const stay = getExtendedStay(guild.id);
       if (stay) {
-        console.log(`[Dispatch] Skipping traffic stop check-in for ${officer.username} — extended stay active`);
+        console.log(`[Dispatch] Skipping traffic stop check-in for ${officer.username} - extended stay active`);
         continue;
       }
 
@@ -4134,7 +4134,7 @@ async function checkTrafficStops(guild) {
             .setColor('#FF8C00')
             .setTitle('Traffic Stop Check-In')
             .setDescription(
-              `<@${officer.userId}> — dispatch checked in on your traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}.` +
+              `<@${officer.userId}> - dispatch checked in on your traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}.` +
               (minutesIn !== null && minutesIn > 0 ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} on scene` : '')
             )
             .setFooter({ text: 'RPM • Dispatch' })
@@ -4147,7 +4147,7 @@ async function checkTrafficStops(guild) {
 
           const clearBtn = new ButtonBuilder()
             .setCustomId(`dispatch_stop_clear_${officer.userId}`)
-            .setLabel('10-8 — Stop Clear')
+            .setLabel('10-8 - Stop Clear')
             .setStyle(ButtonStyle.Success);
 
           await dispatchCh.send({
@@ -4198,7 +4198,7 @@ export async function handleStopStillButton(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor('#FF8C00')
-      .setTitle('Traffic Stop — Still Active')
+      .setTitle('Traffic Stop - Still Active')
       .setDescription(
         isSelf
           ? `<@${targetUserId}> confirmed they are **still on the traffic stop**. Dispatch is aware.`
@@ -4249,7 +4249,7 @@ async function checkStatusReminders(guild) {
 
     if (needsReminder.length === 0 && stillOnScene.length === 0) return;
 
-    console.log(`[Dispatch] Status reminder — no status: ${needsReminder.length}, still on scene: ${stillOnScene.length} in ${guild.name}`);
+    console.log(`[Dispatch] Status reminder - no status: ${needsReminder.length}, still on scene: ${stillOnScene.length} in ${guild.name}`);
 
     if (config.aiEnabled && hasAIKey()) {
       try {
@@ -4454,7 +4454,7 @@ async function checkUnrespondedCalls(guild, client) {
       if (dispatchChannel?.isTextBased()) {
         const embed = new EmbedBuilder()
           .setColor('#2d2d2d')
-          .setTitle('911 Call Reminder — No Units Responding')
+          .setTitle('911 Call Reminder - No Units Responding')
           .setDescription(
             `**Call #${callNum}** has had no response for over 2 minutes.\n\n` +
             (call.issue ? `**Issue:** ${call.issue}\n` : '') +
@@ -4509,7 +4509,7 @@ export async function initDispatchForGuild(guild, client) {
     const { isPremiumGuild } = await import('../utils/premiumCheck.js');
     const premium = await isPremiumGuild(guild.id);
     if (!premium) {
-      console.log(`[Dispatch] Skipping AI dispatch for ${guild.name} — not premium`);
+      console.log(`[Dispatch] Skipping AI dispatch for ${guild.name} - not premium`);
       return;
     }
 

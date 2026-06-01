@@ -15,5 +15,5 @@ const rest = new REST({ version: '10' }).setToken(token);
 console.log('Clearing all global commands...');
 
 rest.put(Routes.applicationCommands(clientId), { body: [] })
-  .then(() => console.log('Done — all global commands deleted. Discord may take up to 1 hour to reflect this but usually takes under a minute.'))
+  .then(() => console.log('Done - all global commands deleted. Discord may take up to 1 hour to reflect this but usually takes under a minute.'))
   .catch(err => console.error('Failed:', err.message));

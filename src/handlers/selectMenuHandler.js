@@ -16,14 +16,14 @@ function menuEmbed(title, description) {
 
 function createSetupMenu() {
   const steps = [
-    { id: 'select_verify_channel', label: 'Verify Channel', description: 'Required — where members submit verification' },
-    { id: 'select_verified_role', label: 'Verified Role', description: 'Required — role granted on approval' },
-    { id: 'select_unverified_role', label: 'Unverified Role', description: 'Required — role before verification' },
-    { id: 'select_verified_channels', label: 'Verified Channels', description: 'Required — channels unlocked after verify' },
-    { id: 'set_custom_question', label: 'Custom Question', description: 'Optional — question shown to applicants' },
-    { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional — clear the custom question' },
-    { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: 'Optional — require staff to approve' },
-    { id: 'set_rp_tag', label: 'RP Tag', description: 'Optional — tag added to verified nicknames' },
+    { id: 'select_verify_channel', label: 'Verify Channel', description: 'Required - where members submit verification' },
+    { id: 'select_verified_role', label: 'Verified Role', description: 'Required - role granted on approval' },
+    { id: 'select_unverified_role', label: 'Unverified Role', description: 'Required - role before verification' },
+    { id: 'select_verified_channels', label: 'Verified Channels', description: 'Required - channels unlocked after verify' },
+    { id: 'set_custom_question', label: 'Custom Question', description: 'Optional - question shown to applicants' },
+    { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional - clear the custom question' },
+    { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: 'Optional - require staff to approve' },
+    { id: 'set_rp_tag', label: 'RP Tag', description: 'Optional - tag added to verified nicknames' },
     { id: 'verify_setup_done', label: 'Finish Setup', description: 'Close the setup menu' },
   ];
 
@@ -330,7 +330,7 @@ export async function handleSelectMenu(interaction) {
     return handleDisableCommandButton(interaction);
   }
 
-  // Member Movement panel — members selecting a voice channel to be moved to
+  // Member Movement panel - members selecting a voice channel to be moved to
   if (customId === 'membermove_panel_select') {
     const { handleMemberMovePanelSelect } = await import('./memberMovementHandler.js');
     return handleMemberMovePanelSelect(interaction);
@@ -687,7 +687,7 @@ async function handlePrioritySetupMenu(interaction) {
         new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
       );
       return interaction.update({
-        embeds: [infoEmbed('Priority Tracker — Channel', 'Select the channel where the priority tracker panel will be posted.')],
+        embeds: [infoEmbed('Priority Tracker - Channel', 'Select the channel where the priority tracker panel will be posted.')],
         content: '',
         components: [row, backButton],
       });
@@ -730,7 +730,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
       );
       return interaction.update({
-        embeds: [infoEmbed('Roleplay Calendar — Channel', 'Select the channel where the calendar will be posted and kept up to date.')],
+        embeds: [infoEmbed('Roleplay Calendar - Channel', 'Select the channel where the calendar will be posted and kept up to date.')],
         content: '',
         components: [row, backButton],
       });
@@ -755,7 +755,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         });
       }
       const options = calendar.events.map((event, index) => ({
-        label: `${event.day} — ${event.person} (${event.time})`,
+        label: `${event.day} - ${event.person} (${event.time})`,
         value: `event_${index}`,
         description: (event.description || '').substring(0, 100),
       }));
@@ -785,7 +785,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         });
       }
       const eventList = calendar.events.map(e =>
-        `**${e.day}** — ${e.person} at ${e.time} (${e.timezone})`
+        `**${e.day}** - ${e.person} at ${e.time} (${e.timezone})`
       ).join('\n');
       return interaction.update({
         embeds: [infoEmbed('Scheduled Events', eventList)],
@@ -3127,7 +3127,7 @@ async function handleDispatchRemovePatrolSelect(interaction) {
           // If none are fetchable right now, idle-disconnect so state is preserved
           if (!moved) disconnectDispatchChannel(interaction.guildId);
         } else {
-          // No patrol channels left — full teardown
+          // No patrol channels left - full teardown
           leaveDispatchChannel(interaction.guildId);
         }
       }

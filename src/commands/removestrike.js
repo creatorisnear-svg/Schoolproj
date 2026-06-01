@@ -103,7 +103,7 @@ export async function execute(interaction) {
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`Strikes Removed — ${targetUser.username}`, `Now at level **${newLevel}/4** (removed ${removeAmount})`)],
+      embeds: [successEmbed(`Strikes Removed - ${targetUser.username}`, `Now at level **${newLevel}/4** (removed ${removeAmount})`)],
       flags: 64,
     });
   } catch (error) {

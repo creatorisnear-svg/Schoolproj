@@ -864,7 +864,7 @@ export async function handleTicketCreationModal(interaction) {
     const welcomeEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle(ticketType.label)
-      .setDescription(`${user} — a staff member will be with you shortly.\n\n**Your message:**\n> ${description}`)
+      .setDescription(`${user} - a staff member will be with you shortly.\n\n**Your message:**\n> ${description}`)
       .addFields(
         { name: 'Ticket', value: ticketId, inline: true },
         { name: 'Category', value: ticketType.label, inline: true }
@@ -882,7 +882,7 @@ export async function handleTicketCreationModal(interaction) {
 
     // Reply to user
     await interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#43b581').setDescription(`Ticket opened — head over to ${channel}`).setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#43b581').setDescription(`Ticket opened - head over to ${channel}`).setFooter({ text: 'RPM' })],
       flags: 64,
     });
   } catch (error) {
@@ -937,7 +937,7 @@ export async function handleTicketCloseButton(interaction) {
     // Update embed to show ticket is closed
     const closedEmbed = new EmbedBuilder()
       .setColor('#f04747')
-      .setTitle(`${ticket.ticketType}  —  Closed`)
+      .setTitle(`${ticket.ticketType}  -  Closed`)
       .setDescription(`> This ticket has been locked. Use the button below to permanently delete it.`)
       .addFields(
         { name: 'Ticket', value: ticketId, inline: true },

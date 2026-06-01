@@ -327,7 +327,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
           description += `**Unpaid Fines**\n`;
           unpaid.slice(0, 10).forEach(t => {
             const charName = chars.find(c => c._id.toString() === t.characterId?.toString())?.characterName || t.characterName || 'Unknown';
-            description += `\`#${t.ticketId}\` **${t.violation}** — ${sym}${(t.fine || 0).toLocaleString()} | ${charName}\n`;
+            description += `\`#${t.ticketId}\` **${t.violation}** - ${sym}${(t.fine || 0).toLocaleString()} | ${charName}\n`;
             if (t.description) description += `-# ${t.description}\n`;
           });
         } else {
@@ -336,7 +336,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         if (paid.length > 0) {
           description += `\n**Paid Fines (${paid.length})**\n`;
           paid.slice(0, 5).forEach(t => {
-            description += `~~\`#${t.ticketId}\` **${t.violation}** — ${sym}${(t.fine || 0).toLocaleString()}~~\n`;
+            description += `~~\`#${t.ticketId}\` **${t.violation}** - ${sym}${(t.fine || 0).toLocaleString()}~~\n`;
           });
         }
       }

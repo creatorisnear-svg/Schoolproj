@@ -44,17 +44,17 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
   - **CAD Integration:** Officers can say "dispatch, run plate [plate]" or "dispatch, run name [name]" over voice to query the CAD database. The bot looks up the character/vehicle via `CADCharacter` and `BOLO` models, posts a detailed embed to the dispatch channel (owner, vehicle, wanted status, license, active BOLOs), and speaks the results back via TTS.
   - **Status Board with Active Calls:** The officer status board (`rebuildStatusBoard`) now includes a second embed showing all active 911 calls with responding/attached officers. Officers on the board show which call they're attached to. The board updates when officers respond/attach/dismiss calls or when new 911 calls are created.
   - **911 Call Repeat Announcements:** A 60-second interval checks for active 911 calls older than 2 minutes with no responding or attached officers. Unresponded calls get a text reminder in the dispatch channel and a TTS announcement over the voice channel. Reminders repeat every 2 minutes until someone responds. Cleanup removes tracking for resolved calls.
-  - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** — without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
+  - **Replit UDP Bypass (critical):** Discord's voice servers never reply to UDP from Replit's network (inbound UDP is blocked). The `@discordjs/voice` library calls `performIPDiscovery()` before transitioning to networking state code:2 and hangs forever waiting for the response. We intercept the `net.stateChange` event at code:2 and emit a synthetic 74-byte fake IP discovery response directly on the dgram socket, unblocking the Promise. This is implemented in the `stateChange` handler in `voiceListener.js`. **Do not remove this bypass** - without it the voice connection hangs at `connecting` and never reaches `ready`. TTS playback (outbound UDP) works fine because only inbound UDP is blocked.
 
 **Feature Flag System:**
 - Developer panel has a "Premium Features" tab where any feature can be marked as Premium or Free.
 - Feature flags stored in MongoDB `FeatureFlag` model (`src/models/FeatureFlag.js`).
-- `src/utils/premiumCheck.js` exports `checkFeatureAccess(guildId, featureKey)` — returns `{ allowed }` based on whether the feature is premium-gated AND whether the guild has an active premium key. Results cached for 5 minutes; cache cleared on dev panel flag update via `clearFeatureFlagCache()`.
+- `src/utils/premiumCheck.js` exports `checkFeatureAccess(guildId, featureKey)` - returns `{ allowed }` based on whether the feature is premium-gated AND whether the guild has an active premium key. Results cached for 5 minutes; cache cleared on dev panel flag update via `clearFeatureFlagCache()`.
 - All 10 setup commands (`dispatchsetup`, `roleplaycommandsetup`, `prioritytrackersetup`, `strikesystemsetup`, `roleplaycalendersetup`, `ticketsupportsetup`, `antipromotingsetup`, `verifysystemsetup`, `welcomesystemsetup`, `rolerequestadd`) call `checkFeatureAccess()` right after the permission check.
 - Dashboard feature toggle (`POST /api/guild/:id/feature/:feature`) blocks enabling a premium-gated feature if the guild has no premium key, returning HTTP 403 with `{ error: 'premium_required' }`.
 - Frontend (`site/js/dashboard.js` `toggleFeature`) intercepts 403 premium_required and shows a toast directing the user to activate a key, then reverts the toggle.
 - Dev API: `GET /dev/features` (list all) and `PATCH /dev/features/:feature` (toggle premium status). Protected by dev password.
-- Public API: `GET /api/public/features` — returns a map of `{ featureKey: isPremium }` without auth.
+- Public API: `GET /api/public/features` - returns a map of `{ featureKey: isPremium }` without auth.
 - Landing page (`site/index.html`) fetches feature flags on load and shows/hides Premium badges on feature cards dynamically via `data-feature` attributes.
 - Dashboard (`site/js/dashboard.js`) fetches feature flags at startup and applies them to module cards.
 - Default: `dispatch` is premium; all others default to free unless set in DB.
@@ -77,17 +77,17 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 
 **Premium System:** Premium keys lock to one guild. Servers without premium have limits: 100 characters, 200 vehicles, 100 firearms, 20 active BOLOs. AI Voice Dispatch requires premium. Use `/activatepremium` with a valid key. Keys stored in `PremiumKey` model; checks cached for 5 minutes via `src/utils/premiumCheck.js`.
 
-**Economy System:** A comprehensive economy system — fully implemented. Staff commands: `/economysetup`. All member economy commands are now standalone slash commands. Models: `EconomyConfig`, `EconomyBalance`, `EconomyStore`, `EconomyInventory`. Handler: `src/handlers/economyActions.js`. Data: `src/data/gtaVehicles.js`.
+**Economy System:** A comprehensive economy system - fully implemented. Staff commands: `/economysetup`. All member economy commands are now standalone slash commands. Models: `EconomyConfig`, `EconomyBalance`, `EconomyStore`, `EconomyInventory`. Handler: `src/handlers/economyActions.js`. Data: `src/data/gtaVehicles.js`.
     - **Staff Commands:** `/economysetup` (dropdown menu with: currency, addmoney, removemoney, resetmoney, setlogchannel, work, crime, rob, gambling, roleincome, removeroleincome, chatmoney, storeadd, storeremove, storeedit, storelist, view, enable/disable).
     - **Member Commands (all standalone):** `/balance`, `/leaderboard`, `/deposit <amount>`, `/withdraw <amount>`, `/give <user> <amount>`, `/work`, `/crime`, `/rob <user>`, `/income`, `/shop [search]`, `/inventory`, `/buy <item> [quantity]`, `/sell <item> [quantity]`, `/use <item>`, `/giveitems <user> <item> [quantity]`, `/gamble <blackjack|roulette|slots|dice|russianroulette|cockfight> <bet> [choice]`.
-    - **GTA V Built-in Shop:** `src/data/gtaVehicles.js` contains ~140 GTA V vehicles (Super, Sports, Muscle, SUV, Sedan, Truck, Motorcycle, Helicopter, Plane, Boat categories) pre-installed in every server's shop. Built-in items are merged with guild-custom items at display time — no DB seeding needed. Buy/sell works for built-in items using name-based lookup.
-    - **Search:** `/shop search:keyword` filters by item name or category. No modal — plain text option.
+    - **GTA V Built-in Shop:** `src/data/gtaVehicles.js` contains ~140 GTA V vehicles (Super, Sports, Muscle, SUV, Sedan, Truck, Motorcycle, Helicopter, Plane, Boat categories) pre-installed in every server's shop. Built-in items are merged with guild-custom items at display time - no DB seeding needed. Buy/sell works for built-in items using name-based lookup.
+    - **Search:** `/shop search:keyword` filters by item name or category. No modal - plain text option.
     - **Key Mechanics:** Balance system (cash, bank), work/crime with success/fail, betting from cash, periodic role income, chat-based money earning, store/inventory (buy, sell 50%, use, give).
 
 ## Portal (Civ/LEO Web App)
 - Separate Express SPA at `portal/server.js`, runs on same port as bot (`PORT` env var, defaults 5000) but mounted at `/portal`.
 - Auth: Discord OAuth2 → HMAC-signed `portal_session` cookie. `portal/routes/auth.js`. Callback at `/portal/auth/callback`.
-- API: `portal/routes/api.js` — all routes under `/api/portal/`, all require `portalAuth` middleware.
+- API: `portal/routes/api.js` - all routes under `/api/portal/`, all require `portalAuth` middleware.
 - Required env vars: `PORTAL_GUILD_ID`, `PORTAL_DOMAIN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_TOKEN`, `MONGODB_URI`.
 - Frontend SPA: `portal/views/portal.html` (single HTML), `portal/public/js/portal-app.js` (1800+ lines), `portal/public/css/portal.css` (2500+ lines).
 - Mode switching: Civilian vs LEO (stored in `localStorage.portalMode`). LEO mode locked to users with `isLeo: true` from Discord roles.
@@ -98,29 +98,29 @@ The RolePlayManager Discord bot is built on Node.js (v20) using the Discord.js v
 
 ## Conversation Context (for future AI sessions)
 - User runs bot on Koyeb instance 1, portal on Koyeb instance 2, shared MongoDB Atlas.
-- Both services share the same codebase — `npm start` runs both via `portal/server.js` importing into `src/index.js`.
+- Both services share the same codebase - `npm start` runs both via `portal/server.js` importing into `src/index.js`.
 - Completed: Replit migration, civ home redesign with priority widget + countdown, voice mover, officers strip, panic poller confirmation.
 - Portal CSS design language: dark theme, `--surface`, `--card`, `--elevated` backgrounds; `--accent` (#5865f2 Discord blue); `--danger` red; `--warning` amber. Cards have `var(--radius)` (10px) corners, `var(--border)` borders.
 - No emojis in UI (user preference). Minimalist Discord embed color `#2d2d2d`, footer `RPM`.
-- Replit UDP bypass in voiceListener.js is CRITICAL — do not remove. Discord voice UDP inbound is blocked on Replit; the bypass emits a fake 74-byte IP discovery response to unblock `performIPDiscovery()`.
+- Replit UDP bypass in voiceListener.js is CRITICAL - do not remove. Discord voice UDP inbound is blocked on Replit; the bypass emits a fake 74-byte IP discovery response to unblock `performIPDiscovery()`.
 - Static site (`site/` folder) is deployed on Cloudflare Pages linked to GitHub repo. Build output directory = `site`, no build command. Custom domain `roleplaymanager.xyz` points to Pages via CNAME. Auto-deploys on every GitHub push.
-- Bot (Koyeb) and site (Cloudflare Pages) share the same GitHub repo — one push deploys both.
+- Bot (Koyeb) and site (Cloudflare Pages) share the same GitHub repo - one push deploys both.
 
 **Stripe Fixes (June 2026):**
 - `customer_creation: 'always'` was incorrectly included in shared checkout params for both monthly and lifetime plans. Stripe only allows it in `payment` mode. Fixed: moved it to the `lifetime` branch only (`mode: 'payment'`). Monthly subscriptions (`mode: 'subscription'`) auto-create customers and must not include this param.
-- Added `invoice.payment_failed` webhook handler — marks subscription as `past_due` and clears premium cache immediately when a payment attempt fails.
+- Added `invoice.payment_failed` webhook handler - marks subscription as `past_due` and clears premium cache immediately when a payment attempt fails.
 - Added `clearPremiumCache()` calls to `customer.subscription.deleted` and `customer.subscription.updated` webhook handlers so status changes are reflected instantly (no waiting for 5-min cache to expire).
 - Webhook file: `src/website/routes/checkout.js`. Premium cache util: `src/utils/premiumCheck.js`.
 - `STRIPE_WEBHOOK_SECRET` must be set on Koyeb for key creation via webhook; lifecycle events (cancel/update/payment_failed) work even without it.
 
 **Economy Dashboard (June 2026):**
-- Economy settings page in the dashboard now includes full **Store Management** and **Role Income** CRUD — no longer redirects to Discord commands.
+- Economy settings page in the dashboard now includes full **Store Management** and **Role Income** CRUD - no longer redirects to Discord commands.
 - New API endpoints in `src/website/routes/api.js`:
-  - `GET /api/guild/:id/economy/store` — list custom store items
-  - `POST /api/guild/:id/economy/store` — add item (name, price, description, usable, roleId)
-  - `DELETE /api/guild/:id/economy/store/:itemId` — remove item
-  - `POST /api/guild/:id/economy/roleincome` — add/update role income entry (roleId, amount, cooldown hours); enforces 2-entry free limit
-  - `DELETE /api/guild/:id/economy/roleincome/:roleId` — remove role income entry
+  - `GET /api/guild/:id/economy/store` - list custom store items
+  - `POST /api/guild/:id/economy/store` - add item (name, price, description, usable, roleId)
+  - `DELETE /api/guild/:id/economy/store/:itemId` - remove item
+  - `POST /api/guild/:id/economy/roleincome` - add/update role income entry (roleId, amount, cooldown hours); enforces 2-entry free limit
+  - `DELETE /api/guild/:id/economy/roleincome/:roleId` - remove role income entry
 - Economy GET settings response now includes `storeItems`, `roleIncomeList` (always, even if empty), and `roles` (for role selectors).
 - Dashboard JS (`src/website/public/js/dashboard.js`): `renderEconomySettings` now renders Role Income section with add/remove UI and Store Items section with add/remove UI. New functions: `addRoleIncome`, `deleteRoleIncome`, `addStoreItem`, `deleteStoreItem`.
 

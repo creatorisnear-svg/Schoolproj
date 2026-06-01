@@ -108,7 +108,7 @@ export async function execute(interaction) {
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
           .setColor('#f04747')
-          .setTitle(`Strike — Level ${strikeLevel}`)
+          .setTitle(`Strike - Level ${strikeLevel}`)
           .setDescription(
             `**User:** ${targetUser.username} (${targetUser})\n` +
             `**Issued by:** ${interaction.user.username}\n` +
@@ -123,7 +123,7 @@ export async function execute(interaction) {
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`Strike — ${targetUser.username}`, `Now at level **${strikeLevel}/4**\nAction: ${actionTaken}`)],
+      embeds: [successEmbed(`Strike - ${targetUser.username}`, `Now at level **${strikeLevel}/4**\nAction: ${actionTaken}`)],
       flags: 64,
     });
   } catch (error) {

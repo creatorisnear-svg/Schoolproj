@@ -6,7 +6,7 @@ export const data = new SlashCommandBuilder()
   .setDescription('Use a usable item from your inventory')
   .addStringOption(opt =>
     opt.setName('item')
-      .setDescription('Name of the item to use — start typing to search your inventory')
+      .setDescription('Name of the item to use - start typing to search your inventory')
       .setRequired(true)
       .setAutocomplete(true)
   );

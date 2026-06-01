@@ -11,7 +11,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   let deferred = false;
   try {
-    // Defer early — three DB queries run before replying and could exceed 3s under load
+    // Defer early - three DB queries run before replying and could exceed 3s under load
     await interaction.deferReply({ flags: 64 });
     deferred = true;
 

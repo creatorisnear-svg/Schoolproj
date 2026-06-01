@@ -13,10 +13,10 @@ export async function execute(interaction) {
 
   const helpEmbed = new EmbedBuilder()
     .setColor(0x2d2d2d)
-    .setTitle('RolePlayManager — Command Reference')
+    .setTitle('RolePlayManager - Command Reference')
     .setDescription(
       'All available commands organized by category. Commands marked **Admin/Staff** require elevated permissions.\n' +
-      (premium ? '-# Premium is active on this server.' : `-# **★ = Premium feature** — use \`/premium\` to learn more.`)
+      (premium ? '-# Premium is active on this server.' : `-# **★ = Premium feature** - use \`/premium\` to learn more.`)
     )
     .addFields(
       {
@@ -80,7 +80,7 @@ export async function execute(interaction) {
         inline: true,
       },
     )
-    .setFooter({ text: 'RPM — type / to browse all commands' })
+    .setFooter({ text: 'RPM - type / to browse all commands' })
     .setTimestamp();
 
   return interaction.editReply({ embeds: [helpEmbed] });

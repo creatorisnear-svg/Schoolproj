@@ -287,7 +287,7 @@ function renderPremiumSection(g) {
   }
   return '<div class="config-section" id="premium-section" style="margin-top:20px;border-color:rgba(88,101,242,0.4);">' +
     '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
-    '<h3 style="color:#7b8cec;">Premium — Unlock More</h3>' +
+    '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
@@ -381,14 +381,14 @@ function renderBilling() {
         '</tr></thead><tbody>';
 
       data.invoices.forEach(function(inv) {
-        var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-        var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '—';
+        var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+        var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '-';
         var invStatus = inv.status === 'paid'
           ? '<span style="color:var(--green);font-size:12px;">Paid</span>'
-          : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '—') + '</span>';
+          : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '-') + '</span>';
         var receipt = inv.receiptUrl
           ? '<a href="' + esc(inv.receiptUrl) + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);">View</a>'
-          : '<span style="font-size:12px;color:var(--text-dim);">—</span>';
+          : '<span style="font-size:12px;color:var(--text-dim);">-</span>';
         invoiceHtml += '<tr>' +
           '<td style="font-size:13px;color:var(--text-muted);padding:10px 0;border-bottom:1px solid var(--border);">' + invDate + '</td>' +
           '<td style="font-size:13px;color:var(--text);font-weight:600;padding:10px 0;border-bottom:1px solid var(--border);">' + amount + '</td>' +
@@ -530,7 +530,7 @@ function toggleFeature(el) {
       el.classList.toggle('active');
       res.json().then(function(err) {
         if (err && err.error === 'premium_required') {
-          toast('Premium required — activate a key in the Premium section below.', 'error');
+          toast('Premium required - activate a key in the Premium section below.', 'error');
         } else {
           toast(err.error || 'Access denied', 'error');
         }
@@ -804,7 +804,7 @@ function renderOneField(field, mod) {
     html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '"></div>';
   } else if (field.type === 'select' || field.type === 'role') {
     html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
-    html += '<option value="">— Not Set —</option>';
+    html += '<option value="">- Not Set -</option>';
     (field.options || []).forEach(function(opt) {
       html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
     });

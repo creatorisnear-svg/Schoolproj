@@ -27,7 +27,7 @@ function api(path, opts) {
     if (!res.ok) {
       return res.json().catch(function() { return {}; }).then(function(err) {
         if (err.error === 'premium_required') {
-          toast('Premium required — activate a key in the Premium section below.', 'error');
+          toast('Premium required - activate a key in the Premium section below.', 'error');
           var premSection = document.getElementById('premium-section');
           if (premSection) {
             premSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -273,12 +273,12 @@ function renderDashboard() {
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;">' +
     '<p style="font-size:13px;color:var(--text-muted);line-height:1.7;">' +
     'Use the <strong style="color:var(--text);">sidebar</strong> or the <strong style="color:var(--text);">Configure</strong> buttons above to set up each module. ' +
-    'After saving a setting, the bot updates immediately — no restart needed.' +
+    'After saving a setting, the bot updates immediately - no restart needed.' +
     '</p>' +
     '<ol style="margin:8px 0 0 18px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-muted);">' +
     '<li>Enable the modules you want using the toggles above</li>' +
     '<li>Click <strong style="color:var(--text);">Configure</strong> on each module to assign channels, roles, and options</li>' +
-    '<li>Hit <strong style="color:var(--text);">Save</strong> — changes take effect right away</li>' +
+    '<li>Hit <strong style="color:var(--text);">Save</strong> - changes take effect right away</li>' +
     '<li>Run <code style="background:var(--bg-secondary);padding:1px 5px;border-radius:3px;">/verifysystemsetup</code>, <code style="background:var(--bg-secondary);padding:1px 5px;border-radius:3px;">/ticketsupportsetup</code>, or other slash commands to post panels in Discord</li>' +
     '</ol></div></div></div>';
 
@@ -333,7 +333,7 @@ function activatePremium() {
 }
 
 function cancelSubscription() {
-  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period — no refunds are issued.')) return;
+  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
@@ -363,7 +363,7 @@ function reactivateSubscription() {
 
 function renderPremiumSection(g) {
   var premiumItems = [];
-  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch — officers talk, bot responds');
+  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
   premiumItems.push('Blackjack & Roulette gambling games');
   premiumItems.push('Top-25 leaderboard (free: top 10)');
   premiumItems.push('Unlimited ticket types (free: 3)');
@@ -384,7 +384,7 @@ function renderPremiumSection(g) {
 
     var sublabel = isCancelling && periodEndStr
       ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
-      : premiumItems.join(', ') + ' — all unlocked.';
+      : premiumItems.join(', ') + ' - all unlocked.';
 
     var planLabel = isMonthly
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
@@ -412,7 +412,7 @@ function renderPremiumSection(g) {
 
   return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(88,101,242,0.4);">' +
     '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
-    '<h3 style="color:#7b8cec;">Premium — Unlock More</h3>' +
+    '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
@@ -487,12 +487,12 @@ function renderBilling() {
         '</tr></thead><tbody>';
 
       data.invoices.forEach(function(inv) {
-        var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-        var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '—';
-        var invStatus = inv.status === 'paid' ? '<span style="color:var(--green);font-size:12px;">Paid</span>' : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '—') + '</span>';
+        var invDate = inv.date ? new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+        var amount = inv.amount != null ? '$' + (inv.amount / 100).toFixed(2) : '-';
+        var invStatus = inv.status === 'paid' ? '<span style="color:var(--green);font-size:12px;">Paid</span>' : '<span style="color:var(--text-muted);font-size:12px;">' + esc(inv.status || '-') + '</span>';
         var receipt = inv.receiptUrl
           ? '<a href="' + esc(inv.receiptUrl) + '" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);">View</a>'
-          : '<span style="font-size:12px;color:var(--text-dim);">—</span>';
+          : '<span style="font-size:12px;color:var(--text-dim);">-</span>';
         invoiceHtml += '<tr>' +
           '<td style="font-size:13px;color:var(--text-muted);padding:10px 0;border-bottom:1px solid var(--border);">' + invDate + '</td>' +
           '<td style="font-size:13px;color:var(--text);padding:10px 0;border-bottom:1px solid var(--border);font-weight:600;">' + amount + '</td>' +
@@ -576,7 +576,7 @@ function renderSettings(mod) {
     if (data.premium) {
       html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-        'Premium feature — requires an active premium key on this server.' +
+        'Premium feature - requires an active premium key on this server.' +
         (!currentGuild.premium ? ' <a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;margin-left:4px;">Activate Premium</a>' : '') +
         '</div>';
     }
@@ -651,7 +651,7 @@ function renderDispatchExtras(data) {
     dispatchStep('4', 'Set a dispatch channel', 'AI responses and logs are posted in this text channel', null) +
     '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:10px;width:100%;">' +
-    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels — the bot transcribes the audio, ' +
+    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels - the bot transcribes the audio, ' +
     'generates an AI dispatcher reply, and reads it back in the channel. On a 10-11, the officer is automatically moved to a traffic stop channel.' +
     '</div>' +
     '</div></div>';
@@ -684,7 +684,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet — add at least one so the bot can listen.</span>') + '</div>' +
+    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet - add at least one so the bot can listen.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="patrol-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button>' +
@@ -702,7 +702,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional — officers move here when they call a 10-11.</span>') + '</div>' +
+    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional - officers move here when they call a 10-11.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="traffic-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button>' +
@@ -724,7 +724,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added — add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
+    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added - add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="leo-role-select"><option value="">Select a role...</option>' + roleOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button>' +
@@ -931,7 +931,7 @@ function renderEconomySettings(data) {
     storeItems.forEach(function(item) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<div class="config-left">' +
-        '<span class="config-label">' + esc(item.name) + ' — ' + esc(String(item.price)) + '</span>' +
+        '<span class="config-label">' + esc(item.name) + ' - ' + esc(String(item.price)) + '</span>' +
         '<div class="config-sublabel">' +
         (item.description ? esc(item.description) : 'No description') +
         (item.roleName ? ' | Grants: @' + esc(item.roleName) : '') +
@@ -1035,7 +1035,7 @@ function renderOneField(field, mod) {
     html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '" title="' + esc(field.label) + '"></div>';
   } else if (field.type === 'select' || field.type === 'role') {
     html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
-    html += '<option value="">— Not Set —</option>';
+    html += '<option value="">- Not Set -</option>';
     (field.options || []).forEach(function(opt) {
       html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
     });

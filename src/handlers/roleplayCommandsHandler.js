@@ -12,8 +12,8 @@ async function showSetupMenu(interaction) {
         .setPlaceholder('Choose a command to configure...')
         .addOptions(
           { label: '911 & CAD - Emergency/Dispatch', value: 'setup_emergency' },
-          { label: 'Twitter — Public Messages', value: 'setup_twitter' },
-          { label: 'Anon — Anonymous Messages', value: 'setup_anon' },
+          { label: 'Twitter - Public Messages', value: 'setup_twitter' },
+          { label: 'Anon - Anonymous Messages', value: 'setup_anon' },
           { label: 'Done - Close Setup', value: 'setup_done' }
         )
     );

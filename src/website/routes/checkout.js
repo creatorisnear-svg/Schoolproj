@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 // ── Rate limiting (in-memory, per IP) ────────────────────────────────────────
-// Max 10 checkout attempts per IP per hour — prevents abuse / carding attacks
+// Max 10 checkout attempts per IP per hour - prevents abuse / carding attacks
 const _rateLimitMap = new Map();
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 10;
@@ -53,7 +53,7 @@ async function getStripeClient() {
 
 // Auto-create Stripe products & prices on first use.
 // Stores price IDs in MongoDB so no manual env vars are needed.
-// MongoDB operations are wrapped in try/catch — if DB is unavailable the
+// MongoDB operations are wrapped in try/catch - if DB is unavailable the
 // checkout still works; prices just won't be cached for the next call.
 async function getOrCreatePrices(stripe) {
   let monthlyPriceId = null;
@@ -75,7 +75,7 @@ async function getOrCreatePrices(stripe) {
   // Create any missing prices via Stripe API
   if (!monthlyPriceId) {
     const product = await stripe.products.create({
-      name: 'RolePlayManager Premium — Monthly',
+      name: 'RolePlayManager Premium - Monthly',
       description: 'Monthly premium subscription. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
@@ -91,7 +91,7 @@ async function getOrCreatePrices(stripe) {
 
   if (!lifetimePriceId) {
     const product = await stripe.products.create({
-      name: 'RolePlayManager Premium — Lifetime',
+      name: 'RolePlayManager Premium - Lifetime',
       description: 'One-time lifetime premium key. All sales final. Valid for the lifetime of the service.',
     });
     const price = await stripe.prices.create({
@@ -104,7 +104,7 @@ async function getOrCreatePrices(stripe) {
     console.log(`[Stripe] Auto-created lifetime price: ${lifetimePriceId}`);
   }
 
-  // Try to cache the IDs for future calls — non-fatal if this fails
+  // Try to cache the IDs for future calls - non-fatal if this fails
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     await StripeConfig.findOneAndUpdate(
@@ -119,7 +119,7 @@ async function getOrCreatePrices(stripe) {
   return { monthlyPriceId, lifetimePriceId };
 }
 
-// Issue a premium key for a completed Stripe session — idempotent.
+// Issue a premium key for a completed Stripe session - idempotent.
 async function issueKeyForSession(sessionId) {
   const stripe = await getStripeClient();
   if (!stripe) return null;
@@ -153,7 +153,7 @@ async function issueKeyForSession(sessionId) {
 export function createCheckoutRouter() {
   const router = Router();
 
-  // POST /checkout/create — start a Stripe checkout session
+  // POST /checkout/create - start a Stripe checkout session
   router.post('/create', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     if (!checkRateLimit(ip)) {
@@ -192,7 +192,7 @@ export function createCheckoutRouter() {
 
       let session;
       if (plan === 'monthly') {
-        // subscription mode: Stripe auto-creates the customer — customer_creation not allowed here
+        // subscription mode: Stripe auto-creates the customer - customer_creation not allowed here
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
@@ -224,7 +224,7 @@ export function createCheckoutRouter() {
     }
   });
 
-  // GET /checkout/success?session_id=... — verify session, issue key, render page
+  // GET /checkout/success?session_id=... - verify session, issue key, render page
   router.get('/success', async (req, res) => {
     const { session_id } = req.query;
     let keyValue = null;
@@ -244,7 +244,7 @@ export function createCheckoutRouter() {
       }
     }
 
-    // Server-side injection via HTML placeholders — no client-side key exposure
+    // Server-side injection via HTML placeholders - no client-side key exposure
     const html = readFileSync(resolve('src/website/views/checkout-success.html'), 'utf8');
     const filled = html
       .replace('<!--KEY_VALUE-->', keyValue ? escapeHtml(keyValue) : '')
@@ -260,7 +260,7 @@ export function createCheckoutRouter() {
     res.send(readFileSync(resolve('src/website/views/checkout-cancel.html'), 'utf8'));
   });
 
-  // POST /checkout/webhook — Stripe event handler (raw body required)
+  // POST /checkout/webhook - Stripe event handler (raw body required)
   router.post('/webhook', async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -279,13 +279,13 @@ export function createCheckoutRouter() {
         return res.status(400).json({ error: 'Webhook signature verification failed.' });
       }
     } else {
-      // No webhook secret set — parse body but ONLY process subscription lifecycle
+      // No webhook secret set - parse body but ONLY process subscription lifecycle
       // events (status updates), never key creation. Key delivery works via the
       // success page which verifies the session directly with Stripe.
       try {
         const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
         event = JSON.parse(raw);
-        console.warn('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not set — skipping key creation events for security. Set STRIPE_WEBHOOK_SECRET on Koyeb to enable full webhook support.');
+        console.warn('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not set - skipping key creation events for security. Set STRIPE_WEBHOOK_SECRET on Koyeb to enable full webhook support.');
       } catch {
         return res.status(400).json({ error: 'Invalid webhook payload.' });
       }
@@ -317,7 +317,7 @@ export function createCheckoutRouter() {
         }
       }
 
-      // Subscription lifecycle events — safe to process even without signature
+      // Subscription lifecycle events - safe to process even without signature
       // since they only update status, never create keys.
       if (event.type === 'customer.subscription.deleted') {
         const sub = event.data.object;
@@ -329,7 +329,7 @@ export function createCheckoutRouter() {
             // Clear cache immediately so the guild loses access right away
             const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
             if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
-            console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled — premium revoked for guild ${keyDoc.guildId}`);
+            console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled - premium revoked for guild ${keyDoc.guildId}`);
           }
         }
       }
@@ -355,12 +355,12 @@ export function createCheckoutRouter() {
             // Clear cache so the updated status is reflected immediately
             const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
             if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
-            console.log(`[Stripe Webhook] Subscription ${sub.id} updated — status: ${keyDoc.subscriptionStatus}`);
+            console.log(`[Stripe Webhook] Subscription ${sub.id} updated - status: ${keyDoc.subscriptionStatus}`);
           }
         }
       }
 
-      // invoice.payment_failed — fires each time Stripe attempts and fails a payment.
+      // invoice.payment_failed - fires each time Stripe attempts and fails a payment.
       // Updates status to past_due immediately and clears the premium cache.
       // Stripe will retry automatically; after all retries are exhausted it fires
       // customer.subscription.deleted which fully revokes access above.
@@ -374,7 +374,7 @@ export function createCheckoutRouter() {
             await keyDoc.save();
             const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
             if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
-            console.log(`[Stripe Webhook] Payment failed for subscription ${subId} — guild ${keyDoc.guildId} marked past_due`);
+            console.log(`[Stripe Webhook] Payment failed for subscription ${subId} - guild ${keyDoc.guildId} marked past_due`);
           }
         }
       }

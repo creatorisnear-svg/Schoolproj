@@ -12,13 +12,13 @@ export async function isPremiumGuild(guildId) {
   const key = await PremiumKey.findOne({ guildId });
   // Lifetime keys are always valid.
   // Monthly keys must have an active/trialing/past_due subscription status.
-  // 'cancelled' means the subscription was terminated — access should be revoked.
+  // 'cancelled' means the subscription was terminated - access should be revoked.
   let result = false;
   if (key) {
     if (key.plan === 'lifetime' || key.plan === 'manual') {
       result = true;
     } else {
-      // Monthly — check subscription is still active
+      // Monthly - check subscription is still active
       const activeStatuses = ['active', 'trialing', 'past_due'];
       result = activeStatuses.includes(key.subscriptionStatus);
     }

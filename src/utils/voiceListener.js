@@ -17,13 +17,13 @@ import prism from 'prism-media';
 import { clearRadioLog } from './radioSession.js';
 import OfficerStatus from '../models/OfficerStatus.js';
 
-// Pre-load radio wave sound — played before every dispatch TTS response
+// Pre-load radio wave sound - played before every dispatch TTS response
 const _radioWavePath = join(dirname(fileURLToPath(import.meta.url)), '../assets/radio_wave.mp3');
 const RADIO_WAVE_BUFFER = existsSync(_radioWavePath) ? readFileSync(_radioWavePath) : null;
 if (RADIO_WAVE_BUFFER) {
   console.log(`[Dispatch] Radio wave sound loaded (${RADIO_WAVE_BUFFER.length} bytes)`);
 } else {
-  console.warn('[Dispatch] Radio wave sound not found — playing TTS without prefix');
+  console.warn('[Dispatch] Radio wave sound not found - playing TTS without prefix');
 }
 
 /**
@@ -41,10 +41,10 @@ if (RADIO_WAVE_BUFFER) {
  */
 const dispatchState = new Map();
 
-/** "guildId:userId" pairs currently being recorded — prevents parallel subscriptions */
+/** "guildId:userId" pairs currently being recorded - prevents parallel subscriptions */
 const recordingUsers = new Set();
 
-/** Guild IDs currently in the process of joining a channel — prevents concurrent joins */
+/** Guild IDs currently in the process of joining a channel - prevents concurrent joins */
 const joiningGuilds = new Set();
 
 /** Per-guild reconnect tracking for exponential backoff */
@@ -53,17 +53,17 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const BASE_BACKOFF_MS = 5000;
 const MAX_BACKOFF_MS = 300000;
 
-/** Per-guild log throttling — suppress repetitive voice state logs */
+/** Per-guild log throttling - suppress repetitive voice state logs */
 const lastLoggedState = new Map();
 const logThrottleCounts = new Map();
 
-/** Per-guild panic poller intervals — detect 10-99 from DB without needing BOT_INTERNAL_URL */
+/** Per-guild panic poller intervals - detect 10-99 from DB without needing BOT_INTERNAL_URL */
 const panicPollers = new Map();
 
 /**
  * Poll MongoDB every 5s for unannounced 10-99 panics in this guild.
  * Fires TTS through the active voice connection, then marks them announced.
- * This runs independently of BOT_INTERNAL_URL — the bot detects panics itself.
+ * This runs independently of BOT_INTERNAL_URL - the bot detects panics itself.
  */
 async function _runPanicPoll(guildId) {
   try {
@@ -199,7 +199,7 @@ export async function moveToChannel(channel) {
     try { state.connection.destroy(); } catch {}
     state.connection = null;
     state.currentChannelId = null;
-    // Let Discord process the leave before we request to rejoin — this forces a fresh
+    // Let Discord process the leave before we request to rejoin - this forces a fresh
     // VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE on the next join, avoiding stale tokens.
     await new Promise(r => setTimeout(r, 1500));
   }
@@ -260,7 +260,7 @@ export async function moveToChannel(channel) {
         if (code === 4006) {
           connectionFailCount++;
           if (connectionFailCount >= CONNECTION_FAIL_LIMIT && !watchdogTriggered && state.connection === connection) {
-            console.log(`[Voice] ${CONNECTION_FAIL_LIMIT} consecutive 4006 closes — destroying connection early (watchdog will reconnect)`);
+            console.log(`[Voice] ${CONNECTION_FAIL_LIMIT} consecutive 4006 closes - destroying connection early (watchdog will reconnect)`);
             watchdogTriggered = true;
             clearTimeout(watchdog);
             try { connection.destroy(); } catch {}
@@ -299,7 +299,7 @@ export async function moveToChannel(channel) {
               return;
             }
             if (udpBypassAttempts <= 2) {
-              console.log('[UDP Bypass] Connection still not Ready after 3s — faking discovery response');
+              console.log('[UDP Bypass] Connection still not Ready after 3s - faking discovery response');
             }
 
             let externalIp = '127.0.0.1';
@@ -352,7 +352,7 @@ export async function moveToChannel(channel) {
     setTimeout(async () => {
       if (state.connection !== connection) return;
       if (state.joinAudioPlayed) {
-        console.log('[Dispatch] Skipping join audio — already played this session');
+        console.log('[Dispatch] Skipping join audio - already played this session');
         return;
       }
       if (state.joinAudioBuffer) {
@@ -360,7 +360,7 @@ export async function moveToChannel(channel) {
         playDispatchVoice(guildId, state.joinAudioBuffer);
         state.joinAudioPlayed = true;
       } else {
-        console.log('[Dispatch] No join audio cached — generating now...');
+        console.log('[Dispatch] No join audio cached - generating now...');
         try {
           const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
           const buf = await generateDispatchTTSPublic('Dispatch online, ready to serve.');
@@ -408,7 +408,7 @@ export async function moveToChannel(channel) {
 
     if (attempts > MAX_RECONNECT_ATTEMPTS) {
       const cooldown = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, attempts - MAX_RECONNECT_ATTEMPTS));
-      console.log(`[Dispatch] Watchdog: ${attempts} failed attempts — cooling down for ${Math.round(cooldown / 1000)}s before next try`);
+      console.log(`[Dispatch] Watchdog: ${attempts} failed attempts - cooling down for ${Math.round(cooldown / 1000)}s before next try`);
       try { connection.destroy(); } catch {}
 
       setTimeout(async () => {
@@ -424,7 +424,7 @@ export async function moveToChannel(channel) {
     }
 
     const backoff = Math.min(30000, BASE_BACKOFF_MS * attempts);
-    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" — attempt ${attempts}/${MAX_RECONNECT_ATTEMPTS}, reconnecting in ${Math.round(backoff / 1000)}s`);
+    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" - attempt ${attempts}/${MAX_RECONNECT_ATTEMPTS}, reconnecting in ${Math.round(backoff / 1000)}s`);
     try { connection.destroy(); } catch {}
 
     await new Promise(r => setTimeout(r, backoff));
@@ -508,7 +508,7 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     const safetyTimeout = setTimeout(() => {
       if (recordingUsers.has(key)) {
-        console.warn(`[Dispatch] Safety timeout — clearing stuck recording for user ${userId}`);
+        console.warn(`[Dispatch] Safety timeout - clearing stuck recording for user ${userId}`);
         recordingUsers.delete(key);
         try { stream?.destroy(); } catch {}
         try { decoder?.destroy(); } catch {}
@@ -517,7 +517,7 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      // 1400ms silence — radio-style speech has natural pauses; 900ms cut too many valid transmissions
+      // 1400ms silence - radio-style speech has natural pauses; 900ms cut too many valid transmissions
       const silenceDuration = 1400;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
@@ -555,12 +555,12 @@ function _setupReceiver(connection, guild, state, guildId) {
         // ── Simultaneous speaker gate ──────────────────────────────────────────
         // If dispatch is currently playing TTS, check if this is an emergency
         // before sending to the AI pipeline.  Non-emergency transmissions that
-        // arrive while dispatch is talking are queued silently — only actual
+        // arrive while dispatch is talking are queued silently - only actual
         // emergencies (10-99, shots fired, officer down) bypass the gate.
         const guildState = dispatchState.get(guildId);
         const dispatchSpeaking = guildState?.audioPlaying === true;
         if (dispatchSpeaking) {
-          // Quick text-free emergency check — we haven't transcribed yet so we
+          // Quick text-free emergency check - we haven't transcribed yet so we
           // pass a flag via a wrapper so dispatchHandler can check after transcription
           try { await onTranscription(wav, userId, guild, { dispatchWasSpeaking: true }); }
           catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
@@ -598,7 +598,7 @@ export function disconnectDispatchChannel(guildId) {
     state.connection = null;
     state.currentChannelId = null;
   }
-  // Clear session memory — AI starts fresh next time the bot joins
+  // Clear session memory - AI starts fresh next time the bot joins
   clearRadioLog(guildId);
 }
 
@@ -630,7 +630,7 @@ export function leaveDispatchChannel(guildId) {
  * Only plays if the connection is in the Ready state.
  *
  * Options:
- *   urgent — clears any stale queued audio and stops the current clip so this
+ *   urgent - clears any stale queued audio and stops the current clip so this
  *            plays immediately (use for 10-99 panic and 10-80 pursuit alerts).
  */
 export async function playDispatchVoice(guildId, audioBuffer, { urgent = false, skipRadioWave = false } = {}) {
@@ -708,18 +708,18 @@ async function _drainAudioQueue(guildId) {
 
     const conn = state.connection;
     if (!conn) {
-      console.error('[Dispatch TTS] No active connection — clearing queue');
+      console.error('[Dispatch TTS] No active connection - clearing queue');
       state.audioQueue = [];
       break;
     }
 
     const connStatus = conn.state?.status;
     if (connStatus !== VoiceConnectionStatus.Ready) {
-      console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) — waiting`);
+      console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) - waiting`);
       try {
         await entersState(conn, VoiceConnectionStatus.Ready, 15_000);
       } catch {
-        console.error('[Dispatch TTS] Connection never reached Ready — dropping clip');
+        console.error('[Dispatch TTS] Connection never reached Ready - dropping clip');
         continue;
       }
       if (state.connection !== conn) break;
@@ -780,7 +780,7 @@ export function setExtendedStay(guildId, channelId, durationMs, returnChannelId)
 
   const timeoutId = setTimeout(async () => {
     extendedStayState.delete(guildId);
-    console.log(`[Dispatch] Extended stay expired for guild ${guildId} — returning to patrol`);
+    console.log(`[Dispatch] Extended stay expired for guild ${guildId} - returning to patrol`);
     const state = dispatchState.get(guildId);
     if (!state) return;
     const retCh = state.guild?.channels.cache.get(returnChannelId);
@@ -809,7 +809,7 @@ export function getExtendedStay(guildId) {
  * then listen for a window before returning to the original patrol channel.
  *
  * Uses the full moveToChannel pipeline so the officer's voice is transcribed
- * during the listen window — they can respond, run plates, etc.
+ * during the listen window - they can respond, run plates, etc.
  */
 export async function playTTSInChannelAndReturn(targetChannel, audioBuffer, listenWindowMs = 45000) {
   const guildId = targetChannel.guild.id;
@@ -842,19 +842,19 @@ export async function playTTSInChannelAndReturn(targetChannel, audioBuffer, list
     console.error('[Dispatch TTS] Check-in TTS error:', err.message);
   }
 
-  // Listen window — give the officer time to respond on the radio
+  // Listen window - give the officer time to respond on the radio
   // (their voice will be transcribed by the normal pipeline during this window)
   console.log(`[Dispatch] Listening in traffic stop channel "${targetChannel.name}" for ${Math.round(listenWindowMs / 1000)}s`);
   await new Promise(r => setTimeout(r, listenWindowMs));
 
-  // Check if an extended stay was set during the listen window — if so, don't return yet
+  // Check if an extended stay was set during the listen window - if so, don't return yet
   const stay = extendedStayState.get(guildId);
   if (stay && stay.channelId === targetChannel.id) {
-    console.log(`[Dispatch] Extended stay active — not returning to patrol yet`);
+    console.log(`[Dispatch] Extended stay active - not returning to patrol yet`);
     return;
   }
 
-  // Also check if the channel is now empty — if so, return immediately
+  // Also check if the channel is now empty - if so, return immediately
   const currentMembers = targetChannel.members?.filter(m => !m.user.bot).size ?? 0;
 
   // Remove temp patrol registration and return
@@ -867,10 +867,10 @@ export async function playTTSInChannelAndReturn(targetChannel, audioBuffer, list
       await moveToChannel(returnChannel).catch(() => {});
     }
   } else if (currentMembers === 0) {
-    // Channel empty — find any active patrol channel
+    // Channel empty - find any active patrol channel
     const activePatrol = _findActivePatrolChannel(guildId);
     if (activePatrol) {
-      console.log(`[Dispatch] Traffic stop channel empty — returning to patrol`);
+      console.log(`[Dispatch] Traffic stop channel empty - returning to patrol`);
       await moveToChannel(activePatrol).catch(() => {});
     } else {
       disconnectDispatchChannel(guildId);
@@ -895,7 +895,7 @@ export function getCurrentChannelId(guildId) {
 
 /**
  * Downsample 48kHz stereo 16-bit PCM → 16kHz mono 16-bit PCM.
- * Whisper is trained on 16kHz mono — this is the single biggest accuracy gain.
+ * Whisper is trained on 16kHz mono - this is the single biggest accuracy gain.
  * Ratio 3:1 (48000 / 16000). Average L+R → mono, then take every 3rd sample.
  */
 function downsampleTo16kMono(pcmData) {

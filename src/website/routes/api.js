@@ -36,7 +36,7 @@ export function createApiRouter(client) {
       return res.status(500).json({ error: 'ADMIN_SECRET environment variable is not set on the server.' });
     }
     if (!secret || secret !== adminSecret) {
-      return res.status(403).json({ error: 'Forbidden — wrong or missing secret.' });
+      return res.status(403).json({ error: 'Forbidden - wrong or missing secret.' });
     }
     if (!token) {
       return res.status(500).json({ error: 'DISCORD_TOKEN environment variable is not set on the server.' });
@@ -627,7 +627,7 @@ export function createApiRouter(client) {
 
         case 'rolerequest': {
           result.name = 'Role Request';
-          result.description = 'Allow members to request roles — staff approve or deny via DM';
+          result.description = 'Allow members to request roles - staff approve or deny via DM';
           const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
           const rrc = await RoleRequestConfig.findOne({ guildId: guild.id });
           result.fields = [];
@@ -645,7 +645,7 @@ export function createApiRouter(client) {
 
         case 'economy': {
           result.name = 'Economy';
-          result.description = 'Configure the server economy — currency, work, crime, gambling, and more';
+          result.description = 'Configure the server economy - currency, work, crime, gambling, and more';
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id });
@@ -907,7 +907,7 @@ export function createApiRouter(client) {
         }
 
         case 'rolerequest': {
-          // Role request roles are managed via /rolerequestadd in Discord — nothing to save here
+          // Role request roles are managed via /rolerequestadd in Discord - nothing to save here
           break;
         }
 
@@ -1259,7 +1259,7 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  /* ── Internal panic endpoint — called by the portal when an officer hits the panic button ── */
+  /* ── Internal panic endpoint - called by the portal when an officer hits the panic button ── */
   router.post('/internal/panic', async (req, res) => {
     const secret = req.headers['x-internal-secret'];
     const expected = process.env.PORTAL_INTERNAL_SECRET;

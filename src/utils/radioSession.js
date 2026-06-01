@@ -4,7 +4,7 @@
  * Stores the rolling conversation history so the AI dispatcher knows what
  * officers said earlier in the same voice session. Cleared automatically
  * whenever the bot disconnects from voice, so the AI only ever knows things
- * from the CURRENT session — nothing from yesterday.
+ * from the CURRENT session - nothing from yesterday.
  */
 
 const _radioLog = new Map(); // guildId → Array<{ officer, said, response }>

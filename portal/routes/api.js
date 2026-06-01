@@ -92,7 +92,7 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
       const fields = officers.map(o => {
         const icon = TEN_ICONS[o.tenCode] || '⚪';
         const label = TEN_LABELS[o.tenCode] || o.tenCode;
-        let value = `${icon} **${o.tenCode}** — ${label}`;
+        let value = `${icon} **${o.tenCode}** - ${label}`;
         if (o.location) value += `\n📍 ${o.location}`;
         if (o.subject) value += `\n📋 ${o.subject}`;
         const mins = Math.floor((Date.now() - new Date(o.updatedAt).getTime()) / 60000);
@@ -339,7 +339,7 @@ export function createApiRouter() {
           await axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
             embeds: [{
               color: 0xff4444,
-              title: `🚨 911 Call — ${callId}`,
+              title: `🚨 911 Call - ${callId}`,
               description: `Submitted via **Member Portal** by **${req.portalUser.displayName || req.portalUser.username}**`,
               fields,
               footer: { text: 'RPM Portal • Respond with /duty' },
@@ -347,7 +347,7 @@ export function createApiRouter() {
             }],
           }, { headers: botHeaders() });
         }
-      } catch { /* dispatch post failed — call still saved */ }
+      } catch { /* dispatch post failed - call still saved */ }
 
       res.json({ success: true, callId });
     } catch (err) {
@@ -845,7 +845,7 @@ export function createApiRouter() {
         await axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
           embeds: [{
             color: 0x4f7ef7,
-            title: `Officer Responding — ${call.callId}`,
+            title: `Officer Responding - ${call.callId}`,
             description: `**${displayName}** is responding via the Member Portal.\n**Status:** 10-76 En Route${call.location ? `\n**Location:** ${call.location}` : ''}`,
             footer: { text: 'RPM Portal • Status auto-set to 10-76' },
             timestamp: new Date().toISOString(),
@@ -999,7 +999,7 @@ export function createApiRouter() {
           username: displayName,
           tenCode: '10-99',
           location: location?.trim() || null,
-          subject: 'PANIC — Officer needs immediate assistance',
+          subject: 'PANIC - Officer needs immediate assistance',
           rawCall: null,
           updatedAt: new Date(),
           panicAnnounced: false,
@@ -1012,12 +1012,12 @@ export function createApiRouter() {
         if (dispatchCfg?.enabled) {
           const panicEmbed = {
             color: 0xff0000,
-            title: '10-99 — OFFICER NEEDS IMMEDIATE ASSISTANCE',
+            title: '10-99 - OFFICER NEEDS IMMEDIATE ASSISTANCE',
             description: `**${displayName}** has activated their panic button via the Member Portal.\n-# All units respond immediately.`,
             fields: [
               { name: 'Officer', value: displayName, inline: true },
               ...(location?.trim() ? [{ name: 'Last Known Location', value: location.trim(), inline: true }] : []),
-              { name: 'Code', value: '10-99 — Emergency', inline: true },
+              { name: 'Code', value: '10-99 - Emergency', inline: true },
             ],
             footer: { text: 'RPM Portal • ALL UNITS RESPOND' },
             timestamp: new Date().toISOString(),
@@ -1027,7 +1027,7 @@ export function createApiRouter() {
           }
           await rebuildStatusBoard(guildId, dispatchCfg);
         }
-      } catch { /* embed post failed — status still saved */ }
+      } catch { /* embed post failed - status still saved */ }
 
       const botUrl = process.env.BOT_INTERNAL_URL;
       const secret = process.env.PORTAL_INTERNAL_SECRET;

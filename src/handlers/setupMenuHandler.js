@@ -76,7 +76,7 @@ export async function handleBackToMenu(interaction) {
         );
 
       await interaction.update({
-        embeds: [menuEmbed('Ticket Support Setup', 'Configure your ticket system — create categories, set a channel, and send the panel.')],
+        embeds: [menuEmbed('Ticket Support Setup', 'Configure your ticket system - create categories, set a channel, and send the panel.')],
         content: '',
         components: [menu],
       });
@@ -128,13 +128,13 @@ export async function handleBackToMenu(interaction) {
             .setCustomId('verify_setup_menu')
             .setPlaceholder('Select an option...')
             .addOptions(
-              { label: 'Verify Channel', value: 'select_verify_channel', description: 'Required — where members submit verification' },
-              { label: 'Verified Role', value: 'select_verified_role', description: 'Required — role given on approval' },
-              { label: 'Unverified Role', value: 'select_unverified_role', description: 'Required — role before verification' },
-              { label: 'Custom Question', value: 'set_custom_question', description: 'Optional — question shown to applicants' },
-              { label: 'Remove Custom Question', value: 'delete_custom_question', description: 'Optional — clear the custom question' },
-              { label: 'Toggle Approval Required', value: 'toggle_approval_required', description: 'Optional — require staff to approve' },
-              { label: 'Set RP Tag', value: 'set_rp_tag', description: 'Optional — tag added to verified names' },
+              { label: 'Verify Channel', value: 'select_verify_channel', description: 'Required - where members submit verification' },
+              { label: 'Verified Role', value: 'select_verified_role', description: 'Required - role given on approval' },
+              { label: 'Unverified Role', value: 'select_unverified_role', description: 'Required - role before verification' },
+              { label: 'Custom Question', value: 'set_custom_question', description: 'Optional - question shown to applicants' },
+              { label: 'Remove Custom Question', value: 'delete_custom_question', description: 'Optional - clear the custom question' },
+              { label: 'Toggle Approval Required', value: 'toggle_approval_required', description: 'Optional - require staff to approve' },
+              { label: 'Set RP Tag', value: 'set_rp_tag', description: 'Optional - tag added to verified names' },
               { label: 'Finish Setup', value: 'verify_setup_done', description: 'Close the setup menu' }
             )
         );

@@ -6,7 +6,7 @@ export const data = new SlashCommandBuilder()
   .setDescription('Sell an item from your inventory for 50% of its value')
   .addStringOption(opt =>
     opt.setName('item')
-      .setDescription('Name of the item to sell — start typing to search your inventory')
+      .setDescription('Name of the item to sell - start typing to search your inventory')
       .setRequired(true)
       .setAutocomplete(true)
   )

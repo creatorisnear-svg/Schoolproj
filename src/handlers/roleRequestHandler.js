@@ -522,7 +522,7 @@ export async function handleApproveRoleRequest(interaction) {
       return interaction.reply({ embeds: [errorEmbed(`This request has already been ${request.status}.`)], flags: 64 });
     }
     if (request.approverId !== interaction.user.id) {
-      return interaction.reply({ embeds: [errorEmbed(`You cannot approve this request — it wasn't sent to you.`)], flags: 64 });
+      return interaction.reply({ embeds: [errorEmbed(`You cannot approve this request - it wasn't sent to you.`)], flags: 64 });
     }
 
     const config = await RoleRequestConfig.findOne({ guildId: request.guildId });
@@ -615,7 +615,7 @@ export async function handleDenyRoleRequest(interaction) {
       return interaction.reply({ embeds: [errorEmbed(`This request has already been ${request.status}.`)], flags: 64 });
     }
     if (request.approverId !== interaction.user.id) {
-      return interaction.reply({ embeds: [errorEmbed(`You cannot deny this request — it wasn't sent to you.`)], flags: 64 });
+      return interaction.reply({ embeds: [errorEmbed(`You cannot deny this request - it wasn't sent to you.`)], flags: 64 });
     }
 
     const config = await RoleRequestConfig.findOne({ guildId: request.guildId });
@@ -724,7 +724,7 @@ export async function handleManageRoleSelect(interaction) {
           .addOptions(memberOptions)
       );
 
-    let description = `**${roleConfig.roleName}** — ${membersWithRole.length} member(s) currently hold this role\n\n`;
+    let description = `**${roleConfig.roleName}** - ${membersWithRole.length} member(s) currently hold this role\n\n`;
     membersWithRole.forEach(m => { description += `- ${m.user.username}\n`; });
 
     const embed = new EmbedBuilder()
@@ -922,7 +922,7 @@ export async function handleGlobalRoleLinksSetupMenu(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle('Add Global Role Link — Step 1')
+      .setTitle('Add Global Role Link - Step 1')
       .setDescription('Select the role request type in **this server** that you want to mirror to another server.')
       .setFooter({ text: 'RPM' });
 
@@ -1072,7 +1072,7 @@ export async function handleGlobalRoleLinkAddModal(interaction) {
       return interaction.editReply({ embeds: [errorEmbed(`You need **Administrator** permission in **${targetGuild.name}** to create a global role link to it.`)] });
     }
 
-    // Verify the target role exists — fetch all roles to ensure cache is populated
+    // Verify the target role exists - fetch all roles to ensure cache is populated
     let targetRole;
     try {
       await targetGuild.roles.fetch();

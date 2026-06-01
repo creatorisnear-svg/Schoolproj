@@ -238,7 +238,7 @@ function applyPriorityBanner(p) {
       const m = Math.floor(totalSec / 60);
       const s = totalSec % 60;
       const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
-      sub.textContent = (p.cooldownIssuedBy ? `Issued by ${p.cooldownIssuedBy} — ` : '') + `Ends in ${timeStr}`;
+      sub.textContent = (p.cooldownIssuedBy ? `Issued by ${p.cooldownIssuedBy} - ` : '') + `Ends in ${timeStr}`;
     }
 
     updateCooldownSub();
@@ -247,7 +247,7 @@ function applyPriorityBanner(p) {
     banner.className = 'priority-banner priority-banner-idle';
     dot.className    = 'priority-banner-dot priority-dot-idle';
     title.textContent = 'No Priority / Cooldown';
-    sub.textContent   = 'Server is open — no active priority or cooldown';
+    sub.textContent   = 'Server is open - no active priority or cooldown';
   }
 }
 
@@ -425,7 +425,7 @@ function renderCharCard(c, charTickets = []) {
           ${charTickets.map(t => `
             <div class="vehicle-item">
               <div class="vehicle-item-left">
-                <div class="vehicle-item-name">${esc(t.violation)}${t.fine ? ` — $${Number(t.fine).toLocaleString()}` : ''}</div>
+                <div class="vehicle-item-name">${esc(t.violation)}${t.fine ? ` - $${Number(t.fine).toLocaleString()}` : ''}</div>
                 <div class="vehicle-item-plate">${t.paid ? 'Paid' : 'Unpaid'} · ${new Date(t.createdAt).toLocaleDateString()}</div>
               </div>
               ${!t.paid && t.fine ? `<button class="btn btn-xs btn-primary" style="flex-shrink:0;margin-left:8px" onclick="payFine('${esc(t.ticketId)}', ${t.fine}, '$')">Pay</button>` : ''}
@@ -556,7 +556,7 @@ async function loadTrafficFines() {
         <div class="fines-owed">
           <div class="fines-owed-label">Total Outstanding</div>
           <div class="fines-owed-amount">${fmt(totalOwed, cur)}</div>
-          <div class="fines-owed-sub">${unpaid.length} unpaid violation${unpaid.length > 1 ? 's' : ''} — paid from bank balance</div>
+          <div class="fines-owed-sub">${unpaid.length} unpaid violation${unpaid.length > 1 ? 's' : ''} - paid from bank balance</div>
         </div>`;
       summary.classList.remove('hidden');
     }
@@ -849,7 +849,7 @@ async function submitRoleRequest() {
 }
 
 /* ══════════════════════════════════════════════════════
-   LEO — STATUS UPDATE
+   LEO - STATUS UPDATE
 ══════════════════════════════════════════════════════ */
 let pendingTenCode = null;
 const STATUS_NEEDS_DETAILS = new Set(['10-97', '10-76', '10-11', '10-80', '10-15', '10-50']);
@@ -978,7 +978,7 @@ function applyMyStatusToUI(status) {
 let panicActive = false;
 
 async function triggerPanic() {
-  const locRaw = prompt('Panic — 10-99\n\nEnter your current location (or leave blank):');
+  const locRaw = prompt('Panic - 10-99\n\nEnter your current location (or leave blank):');
   if (locRaw === null) return;
   const location = locRaw.trim();
   const btn = document.getElementById('btn-panic');
@@ -989,10 +989,10 @@ async function triggerPanic() {
     panicActive = true;
     document.getElementById('panic-idle').classList.add('hidden');
     document.getElementById('panic-active').classList.remove('hidden');
-    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC — Officer needs immediate assistance' });
+    applyMyStatusToUI({ tenCode: '10-99', location: location || null, subject: 'PANIC - Officer needs immediate assistance' });
     pendingTenCode = '10-99';
     document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.code === '10-99'));
-    toast('10-99 sent — dispatch alerted', 'error');
+    toast('10-99 sent - dispatch alerted', 'error');
     boardCountdown = 1;
     await refreshOfficerBoard();
     boardCountdown = 10;
@@ -1019,7 +1019,7 @@ async function clearPanic() {
     document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('status-detail-row')?.classList.add('hidden');
     applyMyStatusToUI(null);
-    toast('Panic cleared — 10-99 cancelled', 'info');
+    toast('Panic cleared - 10-99 cancelled', 'info');
     await refreshOfficerBoard();
   } catch (err) {
     toast(err.message || 'Failed to clear panic', 'error');
@@ -1147,10 +1147,10 @@ async function loadStaff() {
   try {
     const stats = await api('/staff/stats');
     if (stats) {
-      document.getElementById('stat-verifs').textContent = stats.pendingVerifs ?? '—';
-      document.getElementById('stat-tickets').textContent = stats.openTickets ?? '—';
-      document.getElementById('stat-bolos').textContent = stats.activeBolos ?? '—';
-      document.getElementById('stat-strikes').textContent = stats.strikeCount ?? '—';
+      document.getElementById('stat-verifs').textContent = stats.pendingVerifs ?? '-';
+      document.getElementById('stat-tickets').textContent = stats.openTickets ?? '-';
+      document.getElementById('stat-bolos').textContent = stats.activeBolos ?? '-';
+      document.getElementById('stat-strikes').textContent = stats.strikeCount ?? '-';
     }
   } catch { /* silent */ }
   loadStaffVerifications();
@@ -1290,7 +1290,7 @@ async function staffApproveVerif(userId) {
     if (el && !el.querySelector('.staff-list-item')) el.innerHTML = '<div class="empty-state" style="padding:10px 0">No pending verifications.</div>';
     const statEl = document.getElementById('stat-verifs');
     if (statEl) statEl.textContent = Math.max(0, parseInt(statEl.textContent || '0') - 1);
-    toast('Verification approved — member role assigned.', 'success');
+    toast('Verification approved - member role assigned.', 'success');
   } catch (err) { toast(err.message, 'error'); }
 }
 

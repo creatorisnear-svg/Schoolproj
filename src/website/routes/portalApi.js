@@ -90,7 +90,7 @@ async function rebuildStatusBoard(client, guildId, dispatchCfg) {
     const officers = await OfficerStatus.find({ guildId });
     const lines = officers.map(o => {
       const info = TEN_INFO[o.tenCode] || { label: o.tenCode || 'Unknown' };
-      let line = `**${o.username}** — ${info.label}`;
+      let line = `**${o.username}** - ${info.label}`;
       if (o.location) line += ` | ${o.location}`;
       if (o.subject) line += ` | ${o.subject}`;
       return line;
@@ -555,7 +555,7 @@ export function createPortalApiRouter(client) {
             msg.edit({
               embeds: [new EmbedBuilder()
                 .setColor('#2d2d2d')
-                .setTitle('911 Call — Cancelled')
+                .setTitle('911 Call - Cancelled')
                 .setDescription(`**Call ID:** \`${call.callId}\`\nThis call was cancelled by the reporter.`)
                 .setTimestamp()
                 .setFooter({ text: 'RPM • 911 Dispatch' })],
@@ -687,7 +687,7 @@ export function createPortalApiRouter(client) {
         newRequest.dmChannelId = dmMsg.channelId;
         await newRequest.save();
       } catch {
-        // DM failed — request still created
+        // DM failed - request still created
       }
 
       res.json({ success: true, requestId });
@@ -911,7 +911,7 @@ export function createPortalApiRouter(client) {
       if (dispatchCfg?.dispatchChannelId && client) {
         const embed = new EmbedBuilder()
           .setColor(0x4f7ef7)
-          .setTitle(`Officer Responding — ${call.callId}`)
+          .setTitle(`Officer Responding - ${call.callId}`)
           .setDescription(`**${displayName}** is responding via the Member Portal.\n**Status:** 10-76 En Route${call.location ? `\n**Location:** ${call.location}` : ''}`)
           .setTimestamp()
           .setFooter({ text: 'RPM Portal • Status auto-set to 10-76' });
@@ -1065,7 +1065,7 @@ export function createPortalApiRouter(client) {
           username,
           tenCode: '10-99',
           location: location?.trim() || null,
-          subject: 'PANIC — Officer needs immediate assistance',
+          subject: 'PANIC - Officer needs immediate assistance',
           updatedAt: new Date(),
         },
         { upsert: true, new: true }

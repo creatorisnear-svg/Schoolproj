@@ -207,7 +207,7 @@ export async function execute(interaction) {
         const type = s.type === 'role' ? 'Role' : 'User';
         const name = s.type === 'role' ? s.roleName : s.username;
         const addedDate = new Date(s.addedAt).toLocaleDateString();
-        return `\`${i + 1}.\` **${name}** — ${type} · ${s.position ?? 'staff'} · Added ${addedDate}`;
+        return `\`${i + 1}.\` **${name}** - ${type} · ${s.position ?? 'staff'} · Added ${addedDate}`;
       }).join('\n');
 
       const embed = infoEmbed('Staff List', staffList);

@@ -323,7 +323,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div>
         <strong style="color:#7b8cec;">Changes take effect immediately.</strong>
-        Toggling a feature here updates the website, dashboard, and bot in real time — "Premium" badges appear or disappear for visitors automatically.
+        Toggling a feature here updates the website, dashboard, and bot in real time - "Premium" badges appear or disappear for visitors automatically.
       </div>
     </div>
     <div class="section-label">Feature Premium Status</div>
@@ -435,7 +435,7 @@
   <div id="panel-broadcast" class="panel">
     <div class="add-form">
       <h3>Broadcast to Server Owners</h3>
-      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to every server owner the bot is currently in. Write it like a normal message — not a bot response.</p>
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to every server owner the bot is currently in. Write it like a normal message - not a bot response.</p>
       <div class="form-group">
         <label>Message</label>
         <textarea id="bc-message" rows="6" placeholder="Hey, just wanted to give you a heads up..."></textarea>
@@ -723,7 +723,7 @@
           failHtml = '<div style="margin-top:10px;"><div class="section-label" style="margin-bottom:8px;">Failed (' + res.errors.length + ')</div>' +
             res.errors.map(function(e) {
               return '<div style="font-size:12px;color:#888;padding:4px 0;border-bottom:1px solid #1a1a1a;">' +
-                '<strong style="color:#ccc;">' + esc(e.guild) + '</strong> — ' + esc(e.reason) + '</div>';
+                '<strong style="color:#ccc;">' + esc(e.guild) + '</strong> - ' + esc(e.reason) + '</div>';
             }).join('') + '</div>';
         }
         resultBox.style.display = 'block';
@@ -770,8 +770,8 @@
       badge.style.border = '1px solid rgba(240,71,71,0.3)';
       badge.style.display = '';
       text.textContent = status.since
-        ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' — all non-admin commands blocked.'
-        : 'Active — all non-admin commands are blocked.';
+        ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' - all non-admin commands blocked.'
+        : 'Active - all non-admin commands are blocked.';
       text.style.color = '#f04747';
     } else {
       btn.textContent = 'Enable Maintenance';
@@ -779,7 +779,7 @@
       btn.style.borderColor = '';
       btn.style.color = '';
       badge.style.display = 'none';
-      text.textContent = 'Inactive — all commands working normally.';
+      text.textContent = 'Inactive - all commands working normally.';
       text.style.color = '#888';
     }
   }

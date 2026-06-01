@@ -59,7 +59,7 @@ async function logTx(interaction, config, message) {
     if (!ch?.isTextBased()) return;
     await ch.send({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-        .setTitle('Economy — Admin Action')
+        .setTitle('Economy - Admin Action')
         .setDescription(`**By:** ${interaction.user.username}\n${message}`)
         .setTimestamp().setFooter({ text: 'RPM' })],
     });
@@ -154,14 +154,14 @@ export function getEconomySetupMenu() {
             { label: 'Rob Settings',             value: 'rob',                 description: 'Configure the rob command' },
             { label: 'Gambling Settings',        value: 'gambling',            description: 'Configure gambling limits' },
             { label: 'Chat Money',               value: 'chatmoney',           description: 'Earn money by chatting' },
-            { label: 'Role Income — Add',        value: 'roleincome',          description: 'Grant income to a role' },
-            { label: 'Role Income — Remove',     value: 'removeroleincome',    description: 'Remove income from a role' },
-            { label: 'Role Deduction — Add',     value: 'rolededuction',       description: 'Deduct money from a role on income collect' },
-            { label: 'Role Deduction — Remove',  value: 'removerolededuction', description: 'Remove a deduction from a role' },
-            { label: 'Store — Add Item',         value: 'storeadd',            description: 'Add an item to the store' },
-            { label: 'Store — Remove Item',      value: 'storeremove',         description: 'Remove an item from the store' },
-            { label: 'Store — Edit Item',        value: 'storeedit',           description: 'Edit an existing store item' },
-            { label: 'Store — View All',         value: 'storelist',           description: 'See all store items' },
+            { label: 'Role Income - Add',        value: 'roleincome',          description: 'Grant income to a role' },
+            { label: 'Role Income - Remove',     value: 'removeroleincome',    description: 'Remove income from a role' },
+            { label: 'Role Deduction - Add',     value: 'rolededuction',       description: 'Deduct money from a role on income collect' },
+            { label: 'Role Deduction - Remove',  value: 'removerolededuction', description: 'Remove a deduction from a role' },
+            { label: 'Store - Add Item',         value: 'storeadd',            description: 'Add an item to the store' },
+            { label: 'Store - Remove Item',      value: 'storeremove',         description: 'Remove an item from the store' },
+            { label: 'Store - Edit Item',        value: 'storeedit',           description: 'Edit an existing store item' },
+            { label: 'Store - View All',         value: 'storelist',           description: 'See all store items' },
             { label: 'Add Money',                value: 'addmoney',            description: 'Add money to a user' },
             { label: 'Remove Money',             value: 'removemoney',         description: 'Remove money from a user' },
             { label: 'Reset Balance',            value: 'resetmoney',          description: "Reset a user's balance" },
@@ -187,7 +187,7 @@ function gamblingMenu() {
             { label: 'Blackjack',        value: 'blackjack',       description: 'Play a hand of blackjack' },
             { label: 'Roulette',         value: 'roulette',        description: 'Spin the wheel (red/black/green)' },
             { label: 'Slots',            value: 'slots',           description: 'Pull the slot machine' },
-            { label: 'Dice Roll',        value: 'roll',            description: 'Roll dice — higher wins' },
+            { label: 'Dice Roll',        value: 'roll',            description: 'Roll dice - higher wins' },
             { label: 'Russian Roulette', value: 'russianroulette', description: '1/6 chance of losing all cash' },
             { label: 'Cock Fight',       value: 'cockfight',       description: '50/50 for 1.8x payout' },
             { label: 'Back',             value: 'back',            description: 'Return to economy menu' },
@@ -210,7 +210,7 @@ function backBtn(type = 'economy') {
 function civJobsSetupMenu(config) {
   const jobs = config?.jobs || [];
   const jobList = jobs.length
-    ? jobs.map((j, i) => `**${i + 1}.** ${j.name} — <@&${j.roleId}> · ${j.durationHours}h`).join('\n')
+    ? jobs.map((j, i) => `**${i + 1}.** ${j.name} - <@&${j.roleId}> · ${j.durationHours}h`).join('\n')
     : 'No jobs added yet.';
   return {
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
@@ -244,7 +244,7 @@ function buildStoreMenu(items, sym, mode, query = null) {
     ? items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
     : items;
   displayed.slice(0, 23).forEach(item => {
-    const label = `${item.name} — ${sym}${fmt(item.price)}`;
+    const label = `${item.name} - ${sym}${fmt(item.price)}`;
     opts.push({
       label: label.slice(0, 100),
       value: String(item._id),
@@ -288,7 +288,7 @@ export async function handleEconomyMenu(interaction) {
     if (value === 'leaderboard') {
       const top = await EconomyBalance.find({ guildId }).limit(20);
       const sorted = top.sort((a, b) => (b.cash + b.bank) - (a.cash + a.bank));
-      const lines = sorted.slice(0, 10).map((e, i) => `**${i + 1}.** <@${e.userId}> — ${sym}${fmt(e.cash + e.bank)}`);
+      const lines = sorted.slice(0, 10).map((e, i) => `**${i + 1}.** <@${e.userId}> - ${sym}${fmt(e.cash + e.bank)}`);
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Economy Leaderboard').setDescription(lines.join('\n') || 'No data yet.').setFooter({ text: 'RPM' })],
         components: [backBtn()], content: '',
@@ -472,7 +472,7 @@ export async function handleEconomyMenu(interaction) {
     if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn()], content: '' });
     const modal = new ModalBuilder().setCustomId(`economy_buy_qty_${item._id}_modal`).setTitle(`Buy ${item.name}`);
     modal.addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity — ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity - ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
     );
     return interaction.showModal(modal);
   }
@@ -541,7 +541,7 @@ export async function handleEconomyMenu(interaction) {
     if (value === 'storelist') {
       const items = await EconomyStore.find({ guildId });
       if (!items.length) return interaction.update({ embeds: [errorEmbed('No items in the store.')], components: [backBtn('setup')], content: '' });
-      const desc = items.map((item, i) => `**${i + 1}. ${item.name}** — ${sym}${fmt(item.price)}\n-# ${item.description}${item.usable ? ' *(usable)*' : ''}`).join('\n\n');
+      const desc = items.map((item, i) => `**${i + 1}. ${item.name}** - ${sym}${fmt(item.price)}\n-# ${item.description}${item.usable ? ' *(usable)*' : ''}`).join('\n\n');
       return interaction.update({ embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Store Items').setDescription(desc).setFooter({ text: 'RPM' })], components: [backBtn('setup')], content: '' });
     }
 
@@ -568,7 +568,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'roleincome') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income — Select Role').setDescription('Pick the role that will receive income.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income - Select Role').setDescription('Pick the role that will receive income.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_roleincome_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
@@ -576,7 +576,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'removeroleincome') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income — Remove').setDescription('Pick the role to remove income from.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Income - Remove').setDescription('Pick the role to remove income from.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_removeroleincome_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
@@ -584,7 +584,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'rolededuction') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction — Add').setDescription('Select the role that will have money deducted when members collect income.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction - Add').setDescription('Select the role that will have money deducted when members collect income.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_rolededuction_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
@@ -592,7 +592,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'removerolededuction') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction — Remove').setDescription('Pick the role to remove the deduction from.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Role Deduction - Remove').setDescription('Pick the role to remove the deduction from.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_removerolededuction_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
@@ -621,7 +621,7 @@ export async function handleEconomyMenu(interaction) {
       const opts = items.slice(0, 25).map(item => ({
         label: item.name.slice(0, 100),
         value: String(item._id),
-        description: `${sym}${fmt(item.price)} — ${(item.description || 'No description').slice(0, 80)}`,
+        description: `${sym}${fmt(item.price)} - ${(item.description || 'No description').slice(0, 80)}`,
       }));
       return interaction.update({
         embeds: [new EmbedBuilder().setColor(0x2d2d2d)
@@ -726,7 +726,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'set_channel') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Civilian Jobs — Set Channel').setDescription('Select the channel where the civilian jobs panel will be posted.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Civilian Jobs - Set Channel').setDescription('Select the channel where the civilian jobs panel will be posted.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new ChannelSelectMenuBuilder().setCustomId('economy_civjobs_channel_select').setPlaceholder('Select a text channel...').setChannelTypes(ChannelType.GuildText))],
         content: '',
       });
@@ -734,7 +734,7 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'add_job') {
       return interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Add Civilian Job — Select Role').setDescription('Pick the role members will receive when they take this job.').setFooter({ text: 'RPM' })],
+        embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Add Civilian Job - Select Role').setDescription('Pick the role members will receive when they take this job.').setFooter({ text: 'RPM' })],
         components: [new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('economy_civjobs_addjob_role_select').setPlaceholder('Select a role...'))],
         content: '',
       });
@@ -1008,7 +1008,7 @@ export async function handleEconomyButton(interaction) {
     if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [backBtn()], content: '' });
     const modal = new ModalBuilder().setCustomId(`economy_buy_qty_${item._id}_modal`).setTitle(`Buy ${item.name}`);
     modal.addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity — ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('quantity').setLabel(`Quantity - ${sym}${fmt(item.price)} each`).setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 1'))
     );
     return interaction.showModal(modal);
   }
@@ -1237,7 +1237,7 @@ export async function handleEconomyModal(interaction) {
       else if (result === 'win')  { winAmt = bet; bal.cash = Math.min(bal.cash + bet, config.maxBalance); }
       else if (result === 'lose') { bal.cash = Math.max(0, bal.cash - bet); }
       bal.gamblingCooldown = new Date(); await bal.save();
-      const txt = { blackjack: `Blackjack! +**${sym}${fmt(winAmt)}**`, win: `You win **${sym}${fmt(winAmt)}**!`, lose: `You lose **${sym}${fmt(bet)}**.`, push: 'Push — bet returned.' }[result];
+      const txt = { blackjack: `Blackjack! +**${sym}${fmt(winAmt)}**`, win: `You win **${sym}${fmt(winAmt)}**!`, lose: `You lose **${sym}${fmt(bet)}**.`, push: 'Push - bet returned.' }[result];
       return interaction.reply({ embeds: [new EmbedBuilder().setColor(result === 'lose' ? 0xf04747 : result === 'push' ? 0xfaa61a : 0x43b581).setTitle('Blackjack').setDescription(`**Your hand:** ${handStr(player)} (${pt})\n**Dealer:** ${handStr(dealer)} (${dt})\n\n${txt}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
     }
 
@@ -1245,7 +1245,7 @@ export async function handleEconomyModal(interaction) {
       const reels = [spinSlot(), spinSlot(), spinSlot()], mult = slotMult(reels);
       if (mult > 0) bal.cash = Math.min(bal.cash + Math.floor(bet * mult), config.maxBalance); else bal.cash = Math.max(0, bal.cash - bet);
       bal.gamblingCooldown = new Date(); await bal.save();
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(mult > 0 ? 0x43b581 : 0xf04747).setTitle('Slot Machine').setDescription(`[ ${reels.join(' | ')} ]\n\n${mult > 0 ? `**${mult}x** — You win **${sym}${fmt(Math.floor(bet * mult))}**!` : `No match — you lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(mult > 0 ? 0x43b581 : 0xf04747).setTitle('Slot Machine').setDescription(`[ ${reels.join(' | ')} ]\n\n${mult > 0 ? `**${mult}x** - You win **${sym}${fmt(Math.floor(bet * mult))}**!` : `No match - you lose **${sym}${fmt(bet)}**.`}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
     }
 
     if (game === 'roll') {
@@ -1254,13 +1254,13 @@ export async function handleEconomyModal(interaction) {
       if (pr > br) { result = 'win'; bal.cash = Math.min(bal.cash + bet, config.maxBalance); }
       else if (pr < br) { result = 'lose'; bal.cash = Math.max(0, bal.cash - bet); }
       bal.gamblingCooldown = new Date(); await bal.save();
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(result === 'win' ? 0x43b581 : result === 'lose' ? 0xf04747 : 0xfaa61a).setTitle('Dice Roll').setDescription(`**You:** ${pr}  **Bot:** ${br}\n\n${result === 'win' ? `You win **${sym}${fmt(bet)}**!` : result === 'lose' ? `You lose **${sym}${fmt(bet)}**.` : 'Tie — bet returned.'}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+      return interaction.reply({ embeds: [new EmbedBuilder().setColor(result === 'win' ? 0x43b581 : result === 'lose' ? 0xf04747 : 0xfaa61a).setTitle('Dice Roll').setDescription(`**You:** ${pr}  **Bot:** ${br}\n\n${result === 'win' ? `You win **${sym}${fmt(bet)}**!` : result === 'lose' ? `You lose **${sym}${fmt(bet)}**.` : 'Tie - bet returned.'}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
     }
 
     if (game === 'russianroulette') {
       if (Math.floor(Math.random() * 6) === 0) {
         const lost = bal.cash; bal.cash = 0; bal.gamblingCooldown = new Date(); await bal.save();
-        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xf04747).setTitle('Russian Roulette').setDescription(`*click* **BANG** — You lost everything (**${sym}${fmt(lost)}**).\n**Cash:** ${sym}0`).setFooter({ text: 'RPM' })], flags: 64 });
+        return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xf04747).setTitle('Russian Roulette').setDescription(`*click* **BANG** - You lost everything (**${sym}${fmt(lost)}**).\n**Cash:** ${sym}0`).setFooter({ text: 'RPM' })], flags: 64 });
       } else {
         const win = Math.floor(bet * 0.5); bal.cash = Math.min(bal.cash + win, config.maxBalance); bal.gamblingCooldown = new Date(); await bal.save();
         return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('Russian Roulette').setDescription(`*click* You survived! Won **${sym}${fmt(win)}**.\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
@@ -1503,7 +1503,7 @@ export async function handleEconomyAutocomplete(interaction) {
         ? priced.filter(i => i.name.toLowerCase().includes(query) || (i.category || '').toLowerCase().includes(query))
         : priced;
       return interaction.respond(
-        filtered.slice(0, 25).map(i => ({ name: `${i.name} — ${sym}${fmt(i.price)}`, value: i.name }))
+        filtered.slice(0, 25).map(i => ({ name: `${i.name} - ${sym}${fmt(i.price)}`, value: i.name }))
       );
     }
 
