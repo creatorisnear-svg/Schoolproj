@@ -92,6 +92,45 @@ function loadFeatureFlags(callback) {
 function logout() { clearToken(); window.location.href = '/'; }
 function switchAccount() { clearToken(); showLogin(); }
 
+/* ── Session persistence (survives refresh) ── */
+function saveSession(guildId, section) {
+  try {
+    if (guildId) sessionStorage.setItem('rpm_guild_id', guildId);
+    if (section) sessionStorage.setItem('rpm_section', section);
+    else sessionStorage.removeItem('rpm_section');
+  } catch(e) {}
+}
+function clearSession() {
+  try { sessionStorage.removeItem('rpm_guild_id'); sessionStorage.removeItem('rpm_section'); } catch(e) {}
+}
+function getSavedGuildId() { try { return sessionStorage.getItem('rpm_guild_id'); } catch(e) { return null; } }
+function getSavedSection()  { try { return sessionStorage.getItem('rpm_section');  } catch(e) { return null; } }
+
+/* ── Loading helpers ── */
+function fullPageLoader(msg) {
+  return '<div class="rpm-loader"><div class="rpm-loader-inner">' +
+    '<img src="/img/logo.png" class="rpm-loader-logo" alt="RPM">' +
+    '<div class="rpm-spinner"></div>' +
+    '<span class="rpm-loader-text">' + (msg || 'Loading') + '<span class="rpm-loader-dots"><span></span><span></span><span></span></span></span>' +
+    '</div></div>';
+}
+function settingsSkeletonLoader() {
+  function skRow(w1, w2) {
+    return '<div class="skeleton-row">' +
+      '<div class="config-left"><div class="sk-line skeleton" style="width:' + w1 + ';"></div>' +
+      '<div class="sk-line skeleton" style="width:' + Math.round(parseInt(w1)*0.6) + 'px;margin-top:6px;opacity:0.5;"></div></div>' +
+      '<div class="sk-box skeleton" style="width:' + w2 + ';"></div>' +
+      '</div>';
+  }
+  function skSection(rows) {
+    var html = '<div class="skeleton-section"><div class="skeleton-header"><div class="sk-line skeleton" style="width:90px;"></div></div>';
+    rows.forEach(function(r) { html += skRow(r[0], r[1]); });
+    return html + '</div>';
+  }
+  return skSection([['55%','38px'],['40%','120px'],['65%','38px']]) +
+    skSection([['45%','120px'],['60%','38px'],['50%','120px']]);
+}
+
 /* ── Sidebar toggle (mobile) ── */
 function toggleSidebar() {
   sidebarOpen = !sidebarOpen;
@@ -118,7 +157,7 @@ function init() {
   var token = getToken();
   if (!token) { showLogin(); return; }
 
-  app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading...</div></div>';
+  app.innerHTML = fullPageLoader('Loading');
 
   loadFeatureFlags(function() {
     api('/me').then(function(data) {
@@ -142,7 +181,13 @@ function init() {
           '<a href="#" onclick="logout();return false;" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
           '</div></div>';
       }
-      renderServerSelect();
+      var savedGuildId = getSavedGuildId();
+      var savedSection = getSavedSection();
+      if (savedGuildId && guilds.some(function(g) { return g.id === savedGuildId; })) {
+        selectServer(savedGuildId, savedSection);
+      } else {
+        renderServerSelect();
+      }
     });
   });
 }
@@ -159,6 +204,7 @@ document.addEventListener('click', function() {
 
 /* ── Server Select ── */
 function renderServerSelect() {
+  clearSession();
   currentGuild = null;
   pendingChanges = {};
   app.innerHTML =
@@ -189,18 +235,19 @@ function isFlagPremium(featureKey) {
   return featureKey === 'dispatch';
 }
 
-function selectServer(guildId) {
-  app.innerHTML = '<div class="login-page"><div style="color:var(--text-muted);font-size:14px;">Loading server...</div></div>';
+function selectServer(guildId, section) {
+  saveSession(guildId, section || null);
+  app.innerHTML = fullPageLoader('Loading server');
   Promise.all([
     api('/guild/' + guildId),
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
   ]).then(function(results) {
     var data = results[0];
     featureFlags = results[1] || {};
-    if (!data) { renderServerSelect(); return; }
+    if (!data) { clearSession(); renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
-    renderDashboard();
+    if (section) { renderSettings(section); } else { renderDashboard(); }
   });
 }
 
@@ -217,6 +264,7 @@ var FEATURES = [
   { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
   { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
+  { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -234,9 +282,11 @@ var SIDEBAR_GROUPS = [
     { id: 'tickets',     label: 'Ticket Support' },
     { id: 'welcome',     label: 'Welcome System' },
     { id: 'rolerequest', label: 'Role Request' },
+    { id: 'moveme',      label: 'Voice Mover' },
   ]},
   { title: 'Economy', items: [
     { id: 'economy',     label: 'Economy' },
+    { id: 'civjobs',     label: 'Civilian Jobs' },
   ]},
   { title: 'Advanced', items: [
     { id: 'dispatch',    label: 'AI Voice Dispatch' },
@@ -279,6 +329,7 @@ function sidebarToggleBtn(label) {
 
 /* ── Overview / Dashboard ── */
 function renderDashboard() {
+  if (currentGuild) saveSession(currentGuild.id, null);
   var g = currentGuild;
   var config = g.config || {};
 
@@ -301,7 +352,7 @@ function renderDashboard() {
   var FEATURE_CATEGORIES = [
     { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
     { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
-    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome'] },
+    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme'] },
     { title: 'Economy',               keys: ['economy'] },
     { title: 'Advanced',              keys: ['dispatch'] },
   ];
@@ -345,6 +396,8 @@ function renderDashboard() {
     { id: 'priority',     label: 'Priority Tracker',   desc: 'Priority event tracking',        featureKey: 'priorityEnabled' },
     { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',         featureKey: 'calendarEnabled' },
     { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
+    { id: 'civjobs',      label: 'Civilian Jobs',       desc: 'Job board, roles, shift hours',  featureKey: null },
+    { id: 'moveme',       label: 'Voice Mover',         desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
     { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
   ];
 
@@ -646,8 +699,9 @@ function toggleFeature(el) {
 
 /* ── Settings Page ── */
 function renderSettings(mod) {
+  if (currentGuild) saveSession(currentGuild.id, mod);
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
-    '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading...</div></div></div>';
+    '<div class="dashboard-content" style="padding-top:20px;">' + settingsSkeletonLoader() + '</div></div>';
 
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
     if (!data) return;
@@ -671,6 +725,10 @@ function renderSettings(mod) {
       html += renderEconomySettings(data);
     } else if (mod === 'rolerequest') {
       html += renderRoleRequestSettings(data);
+    } else if (mod === 'moveme') {
+      html += renderMovemeSettings(data);
+    } else if (mod === 'civjobs') {
+      html += renderCivJobsSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -1106,6 +1164,175 @@ function deleteRoleRequest(roleId) {
   if (!confirm('Remove this role from the request list?')) return;
   api('/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Role removed'); renderSettings('rolerequest'); }
+  });
+}
+
+/* ── Voice Mover Settings ── */
+window._movemeState = {};
+
+function renderMovemeSettings(data) {
+  window._movemeState = {
+    allowedChannelIds: (data.allowedChannelIds || []).slice()
+  };
+
+  var voiceOpts = (data.voiceChannels || []).map(function(c) {
+    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
+  }).join('');
+
+  var tags = (data.allowedChannelIds || []).map(function(id) {
+    var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
+    var name = ch ? ch.label : id;
+    return '<span class="channel-tag">' + esc(name) +
+      '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+  }).join('');
+
+  var html = renderSettingsFields(data, 'moveme');
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Allowed Voice Channels</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Members can only move to these channels</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div class="channel-tags" id="moveme-channel-tags">' +
+    (tags || '<span style="font-size:12px;color:var(--text-dim);">No channels set - all voice channels are allowed when empty.</span>') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select class="config-select" id="moveme-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
+    '<button class="btn btn-secondary btn-sm" onclick="addMovemeChannel()">Add</button>' +
+    '</div></div></div>';
+
+  html += '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Member Panel</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Post the self-move button embed to Discord</span></div>' +
+    '<div class="config-row">' +
+    '<span class="config-sublabel">Members click the panel button to see available voice channels and move themselves. Post this in a public channel.</span>' +
+    '<button class="btn btn-success btn-sm" style="flex-shrink:0;" onclick="sendMovemePanel(event)">Send Panel to Discord</button>' +
+    '</div></div>';
+
+  return html;
+}
+
+function addMovemeChannel() {
+  var sel = document.getElementById('moveme-channel-select');
+  if (!sel || !sel.value) { toast('Select a channel first', 'error'); return; }
+  var id = sel.value;
+  var label = sel.options[sel.selectedIndex].text;
+  if (!window._movemeState.allowedChannelIds) window._movemeState.allowedChannelIds = [];
+  if (window._movemeState.allowedChannelIds.indexOf(id) !== -1) { toast('Already added', 'error'); return; }
+  window._movemeState.allowedChannelIds.push(id);
+  pendingChanges.allowedChannelIds = window._movemeState.allowedChannelIds.slice();
+  var tagsEl = document.getElementById('moveme-channel-tags');
+  if (tagsEl) {
+    var span = document.createElement('span');
+    span.className = 'channel-tag';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
+    tagsEl.appendChild(span);
+  }
+  sel.value = '';
+  showSaveBar('moveme');
+}
+
+function removeMovemeChannel(id) {
+  if (!window._movemeState.allowedChannelIds) window._movemeState.allowedChannelIds = [];
+  window._movemeState.allowedChannelIds = window._movemeState.allowedChannelIds.filter(function(x) { return x !== id; });
+  pendingChanges.allowedChannelIds = window._movemeState.allowedChannelIds.slice();
+  var tagsEl = document.getElementById('moveme-channel-tags');
+  if (tagsEl) {
+    var tags = tagsEl.querySelectorAll('.channel-tag');
+    tags.forEach(function(tag) {
+      var btn = tag.querySelector('.channel-tag-remove');
+      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) tag.remove();
+    });
+    if (!tagsEl.querySelectorAll('.channel-tag').length) {
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels set - all voice channels are allowed when empty.</span>';
+    }
+  }
+  showSaveBar('moveme');
+}
+
+function sendMovemePanel(e) {
+  if (!currentGuild) return;
+  var btn = e && e.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/moveme/panel/send', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
+    if (r && r.success) toast('Voice Mover panel sent to Discord');
+    else if (r && r.error) toast(r.error, 'error');
+    else toast('Panel sent');
+  });
+}
+
+/* ── Civilian Jobs Settings ── */
+function renderCivJobsSettings(data) {
+  var jobs = data.jobs || [];
+  var allRoles = data.roles || [];
+  var roleOpts = allRoles.map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
+  var html = renderSettingsFields(data, 'civjobs');
+
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Civilian Jobs</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + jobs.length + ' job' + (jobs.length === 1 ? '' : 's') + ' configured</span>' +
+    '</div>';
+
+  if (jobs.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No jobs yet. Add a job below — each job appears in the civ portal job board. Role and shift duration are required.</span></div>';
+  } else {
+    jobs.forEach(function(j) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(j.name) + '</span>' +
+        '<div class="config-sublabel">' +
+        (j.description ? esc(j.description) : 'No description') +
+        (j.roleName ? ' | Role: @' + esc(j.roleName) : '') +
+        (j.durationHours ? ' | Shift: ' + esc(String(j.durationHours)) + 'h' : '') +
+        '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCivJob(\'' + esc(j.jobId) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<input id="cj-name" type="text" class="config-input" placeholder="Job name (e.g. Mechanic)" style="flex:2;min-width:140px;">' +
+    '<input id="cj-duration" type="number" class="config-input" placeholder="Shift hrs" min="1" max="72" style="width:100px;">' +
+    '</div>' +
+    '<input id="cj-desc" type="text" class="config-input" placeholder="Description (optional)" style="width:100%;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<select id="cj-role" class="config-select" style="flex:1;min-width:160px;"><option value="">Select job role (required)...</option>' + roleOpts + '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addCivJob()">Add Job</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Role and shift duration are required. Members check in/out via the portal.</span>' +
+    '</div>' +
+    '</div>';
+
+  return html;
+}
+
+function addCivJob() {
+  var name = document.getElementById('cj-name') && document.getElementById('cj-name').value.trim();
+  var desc = document.getElementById('cj-desc') && document.getElementById('cj-desc').value.trim() || '';
+  var duration = document.getElementById('cj-duration') && document.getElementById('cj-duration').value;
+  var roleId = document.getElementById('cj-role') && document.getElementById('cj-role').value || null;
+  if (!name) { toast('Enter a job name', 'error'); return; }
+  if (!roleId) { toast('Select a role for this job', 'error'); return; }
+  if (!duration || Number(duration) <= 0) { toast('Enter a shift duration in hours', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/civjobs/job', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, description: desc, roleId: roleId, durationHours: Number(duration) })
+  }).then(function(r) {
+    if (r && r.success) { toast('Job added'); renderSettings('civjobs'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteCivJob(jobId) {
+  if (!confirm('Remove this job?')) return;
+  api('/guild/' + currentGuild.id + '/civjobs/job/' + jobId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); }
   });
 }
 
