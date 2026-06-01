@@ -265,6 +265,7 @@ var FEATURES = [
   { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
   { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
+  { key: 'civjobsEnabled',      feature: 'civjobs',       name: 'Civilian Jobs',     icon: 'CJ',  desc: 'Job board with shift roles',        mod: 'civjobs' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -353,7 +354,7 @@ function renderDashboard() {
     { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
     { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
     { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme'] },
-    { title: 'Economy',               keys: ['economy'] },
+    { title: 'Economy',               keys: ['economy', 'civjobs'] },
     { title: 'Advanced',              keys: ['dispatch'] },
   ];
 

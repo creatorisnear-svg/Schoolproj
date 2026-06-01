@@ -291,7 +291,7 @@ export function createApiRouter(client) {
       try {
         const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
         const cjc = await CivilianJobConfig.findOne({ guildId: guild.id });
-        if (cjc) config.civJobsEnabled = !!(cjc.channelId || (cjc.jobs && cjc.jobs.length > 0));
+        if (cjc) config.civjobsEnabled = !!cjc.enabled;
       } catch {}
 
       let premium = false;
@@ -417,6 +417,11 @@ export function createApiRouter(client) {
         case 'moveme': {
           const { default: MemberMovementConfig } = await import('../../models/MemberMovementConfig.js');
           await MemberMovementConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'civjobs': {
+          const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
+          await CivilianJobConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
         default:

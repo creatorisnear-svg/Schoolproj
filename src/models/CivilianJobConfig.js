@@ -10,6 +10,7 @@ const jobSchema = new mongoose.Schema({
 
 const civilianJobConfigSchema = new mongoose.Schema({
   guildId:   { type: String, required: true, unique: true },
+  enabled:   { type: Boolean, default: false },
   channelId: { type: String, default: null },
   messageId: { type: String, default: null },
   jobs:      { type: [jobSchema], default: [] },
