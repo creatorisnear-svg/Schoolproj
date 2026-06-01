@@ -7,7 +7,8 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
-import { clearFeatureFlagCache } from '../../utils/premiumCheck.js';
+import PremiumKey from '../../models/PremiumKey.js';
+import { clearFeatureFlagCache, clearPremiumCache } from '../../utils/premiumCheck.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 
 const upload = multer({
@@ -235,6 +236,91 @@ export function createDevRouter(client) {
       res.json(result);
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch feature flags' });
+    }
+  });
+
+  // ── Stripe Testing ────────────────────────────────────────────────────────
+  router.get('/stripe/status', devAuth, async (req, res) => {
+    const key = process.env.STRIPE_SECRET_KEY || '';
+    if (!key) return res.json({ configured: false });
+    const mode = key.startsWith('sk_live_') ? 'live' : key.startsWith('sk_test_') ? 'test' : 'unknown';
+    try {
+      const { default: Stripe } = await import('stripe');
+      const stripe = new Stripe(key, { apiVersion: '2024-04-10' });
+      await stripe.balance.retrieve();
+      res.json({ configured: true, mode, connected: true });
+    } catch (err) {
+      res.json({ configured: true, mode, connected: false, error: err.message });
+    }
+  });
+
+  router.post('/stripe/generate-key', devAuth, async (req, res) => {
+    try {
+      const { plan = 'lifetime' } = req.body;
+      const seg = () => randomBytes(2).toString('hex').toUpperCase();
+      const key = `TEST-${seg()}-${seg()}-${seg()}`;
+      await PremiumKey.create({ key, plan, subscriptionStatus: plan === 'monthly' ? 'active' : null });
+      res.json({ ok: true, key });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/stripe/keys/:key', devAuth, async (req, res) => {
+    try {
+      const result = await PremiumKey.findOneAndDelete({ key: req.params.key, guildId: null });
+      if (!result) return res.status(404).json({ error: 'Key not found or already activated' });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/stripe/test-checkout', devAuth, async (req, res) => {
+    const key = process.env.STRIPE_SECRET_KEY || '';
+    if (!key) return res.status(400).json({ error: 'STRIPE_SECRET_KEY is not configured' });
+    if (!key.startsWith('sk_test_')) return res.status(400).json({ error: 'Test checkout only works with a test key (sk_test_...). Your current key is live mode.' });
+    try {
+      const { plan = 'monthly' } = req.body;
+      const { default: Stripe } = await import('stripe');
+      const stripe = new Stripe(key, { apiVersion: '2024-04-10' });
+
+      const domain = process.env.DOMAIN ? `https://${process.env.DOMAIN.replace(/^https?:\/\//, '')}` : `http://localhost:${process.env.PORT || 5000}`;
+
+      let session;
+      if (plan === 'monthly') {
+        const price = await stripe.prices.create({
+          currency: 'usd',
+          unit_amount: 999,
+          recurring: { interval: 'month' },
+          product_data: { name: '[TEST] RPM Monthly Premium' },
+        });
+        session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          line_items: [{ price: price.id, quantity: 1 }],
+          success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${domain}/checkout/cancel`,
+          metadata: { discordId: 'DEV_TEST', plan: 'monthly', tosAccepted: 'true' },
+          subscription_data: { metadata: { discordId: 'DEV_TEST' } },
+        });
+      } else {
+        const price = await stripe.prices.create({
+          currency: 'usd',
+          unit_amount: 4999,
+          product_data: { name: '[TEST] RPM Lifetime Premium' },
+        });
+        session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          customer_creation: 'always',
+          line_items: [{ price: price.id, quantity: 1 }],
+          success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${domain}/checkout/cancel`,
+          metadata: { discordId: 'DEV_TEST', plan: 'lifetime', tosAccepted: 'true' },
+        });
+      }
+      res.json({ ok: true, url: session.url });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 

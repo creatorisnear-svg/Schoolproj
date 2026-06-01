@@ -315,6 +315,7 @@
       <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
       <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
       <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
+      <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
     </div>
   </div>
 
@@ -432,6 +433,75 @@
     </div>
   </div>
 
+  <div id="panel-stripe" class="panel">
+    <div class="section-label">Stripe Configuration</div>
+    <div id="stripe-status-card" class="card" style="margin-bottom:20px;padding:20px;">
+      <div style="font-size:13px;color:#888;">Loading...</div>
+    </div>
+
+    <div class="section-label">Generate Test Key</div>
+    <div class="add-form" style="margin-bottom:20px;">
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Creates a real premium key in the database with no Stripe payment required. Use this to test the <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">/activatepremium</code> Discord command and all premium features end-to-end.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Plan</label>
+          <select id="testkey-plan">
+            <option value="lifetime">Lifetime</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" onclick="generateTestKey()" id="testkey-btn">Generate Key</button>
+        </div>
+      </div>
+      <div id="testkey-result" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <div class="section-label">Test Checkout Flow</div>
+    <div class="add-form" style="margin-bottom:20px;">
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Launches a real Stripe checkout session using throwaway test prices. Only works when <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">STRIPE_SECRET_KEY</code> is a test key (<code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">sk_test_...</code>). The session opens in a new tab - use the test card below to complete it.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Plan</label>
+          <select id="testcheckout-plan">
+            <option value="monthly">Monthly ($9.99/mo)</option>
+            <option value="lifetime">Lifetime ($49.99)</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" onclick="launchTestCheckout()" id="testcheckout-btn">Open Test Checkout</button>
+        </div>
+      </div>
+      <div id="testcheckout-result" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <div class="section-label">Test Card Reference</div>
+    <div class="card" style="padding:20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Always succeeds</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#7b8cec;letter-spacing:.1em;">4242 4242 4242 4242</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Any future date - any 3-digit CVC</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Requires 3D Secure auth</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#7b8cec;letter-spacing:.1em;">4000 0025 0000 3155</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Authenticate in the popup that appears</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Payment declined</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#f04747;letter-spacing:.1em;">4000 0000 0000 0002</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Tests the failed payment webhook path</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Insufficient funds</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#f04747;letter-spacing:.1em;">4000 0000 0000 9995</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Tests invoice.payment_failed handler</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="panel-broadcast" class="panel">
     <div class="add-form">
       <h3>Broadcast to Server Owners</h3>
@@ -451,7 +521,7 @@
 </div>
 
 <script>
-  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance'];
+  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe'];
 
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -801,6 +871,105 @@
     btn.disabled = false;
   }
 
+  // ── Stripe Testing ─────────────────────────────────────────────────────────
+  async function loadStripeStatus() {
+    var card = document.getElementById('stripe-status-card');
+    try {
+      var s = await api('GET', '/stripe/status');
+      if (!s.configured) {
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="width:10px;height:10px;border-radius:50%;background:#f04747;flex-shrink:0;"></span>' +
+          '<div><div style="font-size:14px;font-weight:600;color:#f04747;">Not Configured</div>' +
+          '<div style="font-size:12px;color:#666;margin-top:2px;">STRIPE_SECRET_KEY is not set on the server. Set it on Koyeb to enable payments.</div></div></div>';
+        return;
+      }
+      var modeColor = s.mode === 'live' ? '#faa61a' : '#43b581';
+      var modeLabel = s.mode === 'live' ? 'Live Mode' : s.mode === 'test' ? 'Test Mode' : 'Unknown Mode';
+      var connLabel = s.connected ? 'Connected' : 'Connection failed';
+      var connColor = s.connected ? '#43b581' : '#f04747';
+      card.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + modeColor + ';flex-shrink:0;"></span>' +
+        '<div><div style="font-size:14px;font-weight:600;color:' + modeColor + ';">' + modeLabel + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:2px;">STRIPE_SECRET_KEY prefix</div></div></div>' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + connColor + ';flex-shrink:0;"></span>' +
+        '<div><div style="font-size:14px;font-weight:600;color:' + connColor + ';">' + connLabel + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:2px;">' + (s.error ? s.error : 'Stripe API reachable') + '</div></div></div>' +
+        (s.mode === 'live' ? '<div style="background:#2a1f0a;border:1px solid #faa61a33;border-radius:8px;padding:10px 14px;font-size:12px;color:#faa61a;">Live key detected. Test Checkout is disabled in live mode. Use Generate Test Key to test without Stripe.</div>' : '') +
+        '</div>';
+    } catch (e) {
+      card.innerHTML = '<div style="font-size:13px;color:#f04747;">Failed to fetch Stripe status.</div>';
+    }
+  }
+
+  async function generateTestKey() {
+    var btn = document.getElementById('testkey-btn');
+    var result = document.getElementById('testkey-result');
+    var plan = document.getElementById('testkey-plan').value;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    result.style.display = 'none';
+    try {
+      var data = await api('POST', '/stripe/generate-key', { plan: plan });
+      result.style.display = 'block';
+      result.innerHTML = '<div style="background:#0d1f12;border:1px solid #43b58133;border-radius:8px;padding:14px 16px;">' +
+        '<div style="font-size:11px;font-weight:700;color:#43b581;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Key Generated (' + plan + ')</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+        '<code style="background:#111;border:1px solid #222;border-radius:6px;padding:8px 14px;font-size:15px;color:#fff;letter-spacing:.12em;flex:1;">' + data.key + '</code>' +
+        '<button class="btn btn-primary" onclick="copyKey(this, \'' + data.key + '\')" style="flex-shrink:0;">Copy</button>' +
+        '<button class="btn btn-danger" onclick="revokeKey(this, \'' + data.key + '\')" style="flex-shrink:0;">Revoke</button>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:8px;">Run <code style="background:#1a1a1a;padding:1px 5px;border-radius:3px;">/activatepremium</code> in Discord and paste this key to activate premium on a server.</div>' +
+        '</div>';
+    } catch (e) {
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#f04747;">Error: ' + (e.message || 'Failed to generate key') + '</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Generate Key';
+  }
+
+  function copyKey(btn, key) {
+    navigator.clipboard.writeText(key).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function() { btn.textContent = orig; }, 1500);
+    });
+  }
+
+  async function revokeKey(btn, key) {
+    if (!confirm('Revoke key ' + key + '? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+      await api('DELETE', '/stripe/keys/' + encodeURIComponent(key));
+      btn.closest('.add-form > div:last-child').innerHTML = '<div style="font-size:13px;color:#888;">Key revoked.</div>';
+    } catch (e) {
+      alert('Failed to revoke: ' + (e.message || 'Unknown error'));
+      btn.disabled = false;
+    }
+  }
+
+  async function launchTestCheckout() {
+    var btn = document.getElementById('testcheckout-btn');
+    var result = document.getElementById('testcheckout-result');
+    var plan = document.getElementById('testcheckout-plan').value;
+    btn.disabled = true;
+    btn.textContent = 'Creating session...';
+    result.style.display = 'none';
+    try {
+      var data = await api('POST', '/stripe/test-checkout', { plan: plan });
+      window.open(data.url, '_blank');
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#43b581;">Checkout session opened in a new tab. Use card 4242 4242 4242 4242 with any future date and CVC.</div>';
+    } catch (e) {
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#f04747;">' + (e.message || 'Failed to create test session') + '</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Open Test Checkout';
+  }
+
   async function init() {
     var check = await fetch('/dev/check').then(function(r) { return r.json(); });
     if (!check.authorized) { window.location.href = '/dev/login'; return; }
@@ -809,6 +978,7 @@
     loadChangelogs();
     loadVideos();
     loadMaintenance();
+    loadStripeStatus();
   }
 
   init();
