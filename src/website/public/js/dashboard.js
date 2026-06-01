@@ -803,7 +803,9 @@ function renderTicketTypesSection(data) {
 
   var html = '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>Ticket Types</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span></div>';
+    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="sendTicketPanel()">Send Panel to Discord</button>' +
+    '</div>';
 
   if (count === 0) {
     html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
@@ -868,6 +870,17 @@ function deleteTicketType(typeId) {
   if (!confirm('Remove this ticket type?')) return;
   api('/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
+  });
+}
+
+function sendTicketPanel() {
+  if (!currentGuild) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  api('/guild/' + currentGuild.id + '/settings/tickets/panel/send', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Panel to Discord'; }
+    if (r && r.success) toast('Panel sent to Discord successfully');
+    else if (r && r.error) toast(r.error, 'error');
   });
 }
 
@@ -941,7 +954,9 @@ function renderCalendarEventsSection(data) {
 
   var html = '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>Scheduled Events</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + events.length + ' event' + (events.length === 1 ? '' : 's') + '</span></div>';
+    '<span style="font-size:11px;color:var(--text-dim);">' + events.length + ' event' + (events.length === 1 ? '' : 's') + '</span>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="postCalendar()">Post Calendar to Discord</button>' +
+    '</div>';
 
   if (events.length === 0) {
     html += '<div class="config-row"><span class="config-sublabel">No events scheduled yet. Add recurring weekly events below.</span></div>';
@@ -993,6 +1008,17 @@ function deleteCalendarEvent(eventId) {
   if (!confirm('Remove this event?')) return;
   api('/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Event removed'); renderSettings('calendar'); }
+  });
+}
+
+function postCalendar() {
+  if (!currentGuild) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
+  api('/guild/' + currentGuild.id + '/settings/calendar/post', { method: 'POST' }).then(function(r) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Post Calendar to Discord'; }
+    if (r && r.success) toast('Calendar posted to Discord successfully');
+    else if (r && r.error) toast(r.error, 'error');
   });
 }
 

@@ -46,14 +46,24 @@ export function buildCalendarEmbed(calendar) {
       description += `No events\n\n`;
     } else {
       dayEvents.forEach(event => {
-        description += `• **${event.person}** - <t:${event.timestamp}:t>\n`;
+        const title = event.description || event.person || 'Event';
+        let timeStr = '';
+        if (event.timestamp) {
+          timeStr = `<t:${event.timestamp}:t>`;
+        } else if (event.time) {
+          timeStr = `${event.time}${event.timezone ? ' ' + event.timezone : ''}`;
+        }
+        description += `• **${title}**${timeStr ? ' - ' + timeStr : ''}\n`;
+        if (event.person && event.description) {
+          description += `  Host: ${event.person}\n`;
+        }
         const gamertags = [];
         if (event.psn) gamertags.push(`PSN: ${event.psn}`);
         if (event.xbox) gamertags.push(`XBOX: ${event.xbox}`);
         if (gamertags.length > 0) {
           description += `  ${gamertags.join(' | ')}\n`;
         }
-        description += `  ${event.description}\n\n`;
+        description += '\n';
       });
     }
   });

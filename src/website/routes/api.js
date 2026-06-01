@@ -1440,6 +1440,89 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  /* ── Ticket Panel Send (from web dashboard) ── */
+  router.post('/guild/:id/settings/tickets/panel/send', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { default: TicketConfig } = await import('../../models/TicketConfig.js');
+      const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+      const tc = await TicketConfig.findOne({ guildId: req.params.id });
+      if (!tc || !tc.enabled) return res.status(400).json({ error: 'Ticket system is not enabled. Enable it in Discord first with /enablecommands.' });
+      if (!tc.panelChannelId) return res.status(400).json({ error: 'No panel channel set. Configure the Panel Channel above and save first.' });
+      if (!tc.ticketTypes || tc.ticketTypes.length === 0) return res.status(400).json({ error: 'No ticket types configured. Add at least one type above first.' });
+      const channel = guild.channels.cache.get(tc.panelChannelId);
+      if (!channel) return res.status(400).json({ error: 'Panel channel not found in this server. Make sure it exists.' });
+      const buttonStyles = { Primary: ButtonStyle.Primary, Secondary: ButtonStyle.Secondary, Success: ButtonStyle.Success, Danger: ButtonStyle.Danger };
+      const embed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle(tc.panelTitle || 'Support Tickets')
+        .setDescription(tc.panelDescription || 'Select a category below to open a support ticket. A private channel will be created for you.')
+        .setFooter({ text: 'RPM' })
+        .setTimestamp();
+      const buttons = tc.ticketTypes.map(type =>
+        new ButtonBuilder()
+          .setCustomId(`ticket_create_${type.id}`)
+          .setLabel(type.label)
+          .setStyle(buttonStyles[type.buttonColor] || ButtonStyle.Primary)
+      );
+      const rows = [];
+      for (let i = 0; i < buttons.length; i += 5) {
+        rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+      }
+      await channel.send({ embeds: [embed], components: rows });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API] Ticket panel send error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /* ── Calendar Post (from web dashboard) ── */
+  router.post('/guild/:id/settings/calendar/post', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+      const { buildCalendarEmbed } = await import('../../utils/calendarBuilder.js');
+      const rc = await RoleplayCalendar.findOne({ guildId: req.params.id });
+      if (!rc || !rc.enabled) return res.status(400).json({ error: 'Calendar not enabled. Enable it in Discord first with /enablecommands.' });
+      if (!rc.channelId) return res.status(400).json({ error: 'No calendar channel set. Configure the Calendar Channel above and save first.' });
+      const channel = guild.channels.cache.get(rc.channelId);
+      if (!channel) return res.status(400).json({ error: 'Calendar channel not found in this server.' });
+      const embed = buildCalendarEmbed(rc);
+      let posted = false;
+      if (rc.messageId) {
+        try {
+          const msg = await channel.messages.fetch(rc.messageId);
+          await msg.edit({ embeds: [embed] });
+          posted = true;
+        } catch {}
+      }
+      if (!posted) {
+        const msg = await channel.send({ embeds: [embed] });
+        rc.messageId = msg.id;
+        await rc.save();
+      }
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[API] Calendar post error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   /* ── Internal panic endpoint - called by the portal when an officer hits the panic button ── */
   router.post('/internal/panic', async (req, res) => {
     const secret = req.headers['x-internal-secret'];
