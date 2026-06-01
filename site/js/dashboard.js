@@ -473,7 +473,9 @@ function activatePremium() {
 }
 
 function cancelSubscription() {
-  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
+  var plan = (currentGuild && currentGuild.premiumDetails && currentGuild.premiumDetails.plan) || 'monthly';
+  var planLabel = plan === 'quarterly' ? '3-month' : 'monthly';
+  if (!confirm('Cancel your ' + planLabel + ' subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {

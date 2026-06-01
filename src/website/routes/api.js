@@ -1432,7 +1432,8 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
-      if (premiumKey.plan !== 'monthly') return res.status(400).json({ error: 'Only monthly subscriptions can be cancelled. Lifetime keys do not expire.' });
+      if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire and cannot be cancelled.' });
+      if (!['monthly', 'quarterly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No cancellable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No subscription found. This key was not purchased through Stripe.' });
       if (premiumKey.subscriptionStatus === 'canceled' || premiumKey.subscriptionStatus === 'cancelled') {
         return res.status(400).json({ error: 'This subscription is already cancelled.' });
@@ -1475,7 +1476,8 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
-      if (premiumKey.plan !== 'monthly') return res.status(400).json({ error: 'Only monthly subscriptions can be reactivated.' });
+      if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire.' });
+      if (!['monthly', 'quarterly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No reactivatable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No Stripe subscription found for this key.' });
       if (premiumKey.subscriptionStatus !== 'cancelling') {
         return res.status(400).json({ error: 'Subscription is not pending cancellation.' });
