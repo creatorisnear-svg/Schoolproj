@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — RolePlayManager</title>
+  <meta name="description" content="Get RolePlayManager Premium. Unlock AI Voice Dispatch and more for your GTA 5 RP community.">
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .pricing-page { padding: 100px 0 80px; }
+    .pricing-header { text-align: center; margin-bottom: 56px; }
+    .pricing-header h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+    .pricing-header p { color: var(--text-muted); font-size: 15px; max-width: 480px; margin: 0 auto; }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto 56px;
+    }
+    @media (max-width: 768px) {
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+    }
+
+    .plan-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .plan-card.featured {
+      border-color: rgba(255,255,255,0.25);
+      background: #1a1c24;
+    }
+    .plan-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text);
+      color: var(--bg);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .plan-name { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+    .plan-price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+    .plan-price-amount { font-size: 40px; font-weight: 800; color: var(--text); line-height: 1; }
+    .plan-price-period { font-size: 14px; color: var(--text-muted); }
+    .plan-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; min-height: 36px; }
+    .plan-features { list-style: none; margin: 0 0 28px; padding: 0; flex: 1; }
+    .plan-features li {
+      font-size: 13px;
+      color: #b0b7c3;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .plan-features li:last-child { border-bottom: none; }
+    .plan-features li .check { color: var(--green); flex-shrink: 0; }
+    .plan-features li .cross { color: var(--text-dim); flex-shrink: 0; }
+    .plan-features li.muted { color: var(--text-dim); }
+
+    .plan-cta {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s, background 0.2s;
+      text-decoration: none;
+    }
+    .plan-cta.primary { background: var(--text); color: var(--bg); }
+    .plan-cta.primary:hover { opacity: 0.88; color: var(--bg); }
+    .plan-cta.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .plan-cta.secondary:hover { border-color: var(--border-hover); color: var(--text); }
+
+    .pricing-faq { max-width: 680px; margin: 0 auto; }
+    .pricing-faq h2 { font-size: 22px; font-weight: 700; margin-bottom: 28px; text-align: center; }
+    .faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .faq-a { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+    .faq-a a { color: var(--blue); }
+
+    .legal-links { text-align: center; margin-top: 48px; font-size: 12px; color: var(--text-dim); }
+    .legal-links a { color: var(--text-dim); text-decoration: underline; margin: 0 8px; }
+    .legal-links a:hover { color: var(--text-muted); }
+
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #16181e;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 480px;
+      width: 100%;
+    }
+    .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .modal .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+    .modal-section { margin-bottom: 20px; }
+    .modal-section label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .modal-section input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .modal-section input:focus { border-color: var(--border-hover); }
+    .modal-section input::placeholder { color: var(--text-dim); }
+
+    .tos-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .tos-box a { color: var(--blue); }
+
+    .tos-accept { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+    .tos-accept input[type="checkbox"] { margin-top: 2px; cursor: pointer; flex-shrink: 0; accent-color: var(--text); width: 15px; height: 15px; }
+    .tos-accept span { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .tos-accept a { color: var(--blue); }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .modal-actions button {
+      flex: 1;
+      padding: 11px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .modal-actions .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .modal-actions .btn-cancel:hover { border-color: var(--border-hover); color: var(--text); }
+    .modal-actions .btn-pay { background: var(--text); color: var(--bg); }
+    .modal-actions .btn-pay:hover { opacity: 0.88; }
+    .modal-actions .btn-pay:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .modal-error { font-size: 13px; color: var(--red); margin-top: 12px; display: none; }
+    .modal-error.show { display: block; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="/" class="logo">
+        <img src="/img/logo.png" alt="RPM">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
+        <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="pricing-page">
+    <div class="container">
+      <div class="pricing-header">
+        <h1>Simple pricing</h1>
+        <p>One server, one subscription. Premium unlocks AI Voice Dispatch and removes feature limits.</p>
+      </div>
+
+      <div class="pricing-grid">
+
+        <!-- Free -->
+        <div class="plan-card">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">
+            <span class="plan-price-amount">$0</span>
+            <span class="plan-price-period">forever</span>
+          </div>
+          <div class="plan-desc">Everything you need to run a roleplay community.</div>
+          <ul class="plan-features">
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> CAD Database</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Emergency System (911)</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Verification System</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Strike System</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Economy System</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Ticket Support</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker</li>
+            <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> AI Voice Dispatch</li>
+            <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> 100 character limit</li>
+          </ul>
+          <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="plan-cta secondary">Add to Server</a>
+        </div>
+
+        <!-- Monthly -->
+        <div class="plan-card featured">
+          <div class="plan-badge">Most Popular</div>
+          <div class="plan-name">Premium Monthly</div>
+          <div class="plan-price">
+            <span class="plan-price-amount">$5</span>
+            <span class="plan-price-period">/ month</span>
+          </div>
+          <div class="plan-desc">Billed monthly. Cancel any time. No refunds on partial months.</div>
+          <ul class="plan-features">
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
+          </ul>
+          <button class="plan-cta primary" onclick="openCheckout('monthly')">Get Premium</button>
+        </div>
+
+        <!-- Lifetime -->
+        <div class="plan-card">
+          <div class="plan-name">Premium Lifetime</div>
+          <div class="plan-price">
+            <span class="plan-price-amount">$15</span>
+            <span class="plan-price-period">one-time</span>
+          </div>
+          <div class="plan-desc">Pay once. No recurring charges. Valid for the life of the Service.</div>
+          <ul class="plan-features">
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No future renewal fees</li>
+          </ul>
+          <button class="plan-cta primary" onclick="openCheckout('lifetime')">Buy Lifetime</button>
+        </div>
+
+      </div>
+
+      <!-- FAQ -->
+      <div class="pricing-faq">
+        <h2>Frequently asked questions</h2>
+
+        <div class="faq-item">
+          <div class="faq-q">What is the refund policy?</div>
+          <div class="faq-a">All sales are final. No refunds are issued under any circumstances, including if you change your mind, forget to cancel, or the Service is discontinued. See our <a href="/tos">Terms of Service</a> for full details.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What does "lifetime" mean?</div>
+          <div class="faq-a">Lifetime means for as long as the RolePlayManager Service is operational. It does not guarantee any particular features, as features are always subject to change. If the Service is discontinued, no refund is provided.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Can I move my premium key to a different server?</div>
+          <div class="faq-a">Yes. One premium key covers one server at a time. You can transfer it from the dashboard at any time.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I cancel my monthly subscription?</div>
+          <div class="faq-a">Cancel through the Premium section of your dashboard at any time. Your premium access continues until the end of the current billing period. No partial refunds are issued.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Are premium features guaranteed forever?</div>
+          <div class="faq-a">No. Premium features are subject to change, modification, or removal at any time. You are purchasing access to current Premium features, not a guarantee of any specific feature in perpetuity.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What payment methods are accepted?</div>
+          <div class="faq-a">All major credit and debit cards via Stripe. Payment processing is handled securely by Stripe — we never see or store your card details.</div>
+        </div>
+      </div>
+
+      <div class="legal-links">
+        <a href="/tos">Terms of Service</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout Modal -->
+  <div class="modal-overlay" id="checkout-modal">
+    <div class="modal">
+      <h2 id="modal-title">Get Premium</h2>
+      <p class="modal-sub" id="modal-sub">Monthly plan &mdash; $5.00/month. Cancel any time.</p>
+
+      <div class="modal-section">
+        <label>Discord User ID</label>
+        <input type="text" id="input-discord-id" placeholder="Your Discord user ID (e.g. 123456789012345678)" maxlength="20">
+        <p style="font-size:11px;color:var(--text-dim);margin-top:6px;">Enable Developer Mode in Discord settings, then right-click your name and select Copy User ID.</p>
+      </div>
+
+      <div class="modal-section">
+        <label>Review &amp; Accept</label>
+        <div class="tos-box">
+          <strong>Key terms:</strong><br>
+          All sales are final. No refunds will be issued under any circumstances, including if you change your mind, the Service is discontinued, or features are changed or removed. Premium features are always subject to change and removal. Monthly subscriptions auto-renew each period — cancel any time, no partial refunds. Lifetime keys are valid for the lifetime of the Service, not a guarantee of any specific feature. By proceeding you agree to the full <a href="/tos" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.
+        </div>
+        <label class="tos-accept">
+          <input type="checkbox" id="tos-checkbox">
+          <span>I have read and agree to the <a href="/tos" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>. I understand all sales are final and no refunds will be issued.</span>
+        </label>
+      </div>
+
+      <div class="modal-error" id="modal-error"></div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeCheckout()">Cancel</button>
+        <button class="btn-pay" id="btn-pay" disabled onclick="startCheckout()">Continue to Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    var selectedPlan = null;
+
+    function openCheckout(plan) {
+      selectedPlan = plan;
+      var modal = document.getElementById('checkout-modal');
+      var title = document.getElementById('modal-title');
+      var sub = document.getElementById('modal-sub');
+      if (plan === 'monthly') {
+        title.textContent = 'Get Premium Monthly';
+        sub.textContent = 'Monthly plan \u2014 $5.00/month. Recurring charge. Cancel any time.';
+      } else {
+        title.textContent = 'Buy Premium Lifetime';
+        sub.textContent = 'One-time payment \u2014 $15.00. No recurring charges.';
+      }
+      document.getElementById('tos-checkbox').checked = false;
+      document.getElementById('btn-pay').disabled = true;
+      document.getElementById('modal-error').classList.remove('show');
+      modal.classList.add('open');
+    }
+
+    function closeCheckout() {
+      document.getElementById('checkout-modal').classList.remove('open');
+    }
+
+    document.getElementById('tos-checkbox').addEventListener('change', function() {
+      document.getElementById('btn-pay').disabled = !this.checked;
+    });
+
+    document.getElementById('checkout-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeCheckout();
+    });
+
+    function startCheckout() {
+      var discordId = document.getElementById('input-discord-id').value.trim();
+      var errorEl = document.getElementById('modal-error');
+      errorEl.classList.remove('show');
+
+      if (!discordId || !/^\d{17,20}$/.test(discordId)) {
+        errorEl.textContent = 'Please enter a valid Discord user ID (17-20 digits).';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      if (!document.getElementById('tos-checkbox').checked) {
+        errorEl.textContent = 'You must accept the Terms of Service to continue.';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      var btn = document.getElementById('btn-pay');
+      btn.disabled = true;
+      btn.textContent = 'Redirecting...';
+
+      fetch(API_BASE + '/checkout/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: selectedPlan, discordId: discordId, tosAccepted: true })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          errorEl.textContent = data.error || 'Something went wrong. Please try again.';
+          errorEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = 'Continue to Payment';
+        }
+      })
+      .catch(function() {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Continue to Payment';
+      });
+    }
+  </script>
+</body>
+</html>
