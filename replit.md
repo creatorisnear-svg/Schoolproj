@@ -206,8 +206,8 @@ site/
 4. `dashboard.js` extracts token from hash, stores in `localStorage` as `dash_token`
 5. All API calls use `Authorization: Bearer <dash_token>` header
 
-### Session Persistence (refresh fix)
-`dashboard.js` uses `sessionStorage` to save `rpm_guild_id` and `rpm_section`. On page load, `init()` checks for a saved guild ID and jumps straight back to the last-viewed settings page instead of showing the server selector. Functions: `saveSession(guildId, section)`, `clearSession()`, `getSavedGuildId()`, `getSavedSection()`.
+### Session Persistence (survives refresh + re-auth)
+`dashboard.js` uses `localStorage` (NOT sessionStorage) to save `rpm_guild_id` and `rpm_section`. On page load, `init()` checks for a saved guild ID and jumps straight back to the last-viewed settings page instead of showing the server selector. Using localStorage means the guild selection survives full page reloads, tab closes, and OAuth re-auth redirects. Functions: `saveSession(guildId, section)`, `clearSession()`, `getSavedGuildId()`, `getSavedSection()`.
 
 ### Loading Screens
 - `fullPageLoader(msg)` — animated spinner with pulsing logo, used on init and server select

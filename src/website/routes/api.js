@@ -9,13 +9,29 @@ import { checkFeatureAccess, isFeaturePremiumGated } from '../../utils/premiumCh
 
 const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
 
+const _adminAccessCache = new Map();
+const _meCache = new Map();
+const _CACHE_TTL = 5 * 60 * 1000;
+
+function _pruneCaches() {
+  const now = Date.now();
+  for (const [k, v] of _adminAccessCache) { if (v.exp < now) _adminAccessCache.delete(k); }
+  for (const [k, v] of _meCache) { if (v.exp < now) _meCache.delete(k); }
+}
+setInterval(_pruneCaches, 10 * 60 * 1000);
+
 async function verifyAdminAccess(token, guildId) {
+  const key = `${token}:${guildId}`;
+  const cached = _adminAccessCache.get(key);
+  if (cached && cached.exp > Date.now()) return cached.result;
+
   const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
     headers: { Authorization: `Bearer ${token}` },
   });
   const userGuild = guildsRes.data.find(g => g.id === guildId);
-  if (!userGuild) return false;
-  return (BigInt(userGuild.permissions) & BigInt(0x8)) === BigInt(0x8);
+  const result = !!userGuild && (BigInt(userGuild.permissions) & BigInt(0x8)) === BigInt(0x8);
+  _adminAccessCache.set(key, { result, exp: Date.now() + _CACHE_TTL });
+  return result;
 }
 
 function getToken(req) {
@@ -121,6 +137,21 @@ export function createApiRouter(client) {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
+    const meCached = _meCache.get(token);
+    if (meCached && meCached.exp > Date.now()) {
+      const cached = meCached.data;
+      const manageable = cached.userGuilds.filter(g => {
+        const perms = BigInt(g.permissions);
+        const isAdmin = (perms & BigInt(0x8)) === BigInt(0x8);
+        const botInGuild = client.guilds.cache.has(g.id);
+        return isAdmin && botInGuild;
+      }).map(g => {
+        const botGuild = client.guilds.cache.get(g.id);
+        return { id: g.id, name: g.name, icon: g.icon, memberCount: botGuild?.memberCount || 0 };
+      });
+      return res.json({ user: cached.user, guilds: manageable });
+    }
+
     try {
       const userRes = await axios.get('https://discord.com/api/users/@me', {
         headers: { Authorization: `Bearer ${token}` },
@@ -129,8 +160,10 @@ export function createApiRouter(client) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const user = userRes.data;
+      const user = { id: userRes.data.id, username: userRes.data.username, avatar: userRes.data.avatar };
       const userGuilds = guildsRes.data;
+
+      _meCache.set(token, { data: { user, userGuilds }, exp: Date.now() + _CACHE_TTL });
 
       const manageable = userGuilds.filter(g => {
         const perms = BigInt(g.permissions);
@@ -147,7 +180,7 @@ export function createApiRouter(client) {
         };
       });
 
-      res.json({ user: { id: user.id, username: user.username, avatar: user.avatar }, guilds: manageable });
+      res.json({ user, guilds: manageable });
     } catch (err) {
       res.status(401).json({ error: 'Invalid token' });
     }

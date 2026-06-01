@@ -92,19 +92,19 @@ function loadFeatureFlags(callback) {
 function logout() { clearToken(); window.location.href = '/'; }
 function switchAccount() { clearToken(); showLogin(); }
 
-/* ── Session persistence (survives refresh) ── */
+/* ── Session persistence (survives refresh + re-auth) ── */
 function saveSession(guildId, section) {
   try {
-    if (guildId) sessionStorage.setItem('rpm_guild_id', guildId);
-    if (section) sessionStorage.setItem('rpm_section', section);
-    else sessionStorage.removeItem('rpm_section');
+    if (guildId) localStorage.setItem('rpm_guild_id', guildId);
+    if (section) localStorage.setItem('rpm_section', section);
+    else localStorage.removeItem('rpm_section');
   } catch(e) {}
 }
 function clearSession() {
-  try { sessionStorage.removeItem('rpm_guild_id'); sessionStorage.removeItem('rpm_section'); } catch(e) {}
+  try { localStorage.removeItem('rpm_guild_id'); localStorage.removeItem('rpm_section'); } catch(e) {}
 }
-function getSavedGuildId() { try { return sessionStorage.getItem('rpm_guild_id'); } catch(e) { return null; } }
-function getSavedSection()  { try { return sessionStorage.getItem('rpm_section');  } catch(e) { return null; } }
+function getSavedGuildId() { try { return localStorage.getItem('rpm_guild_id'); } catch(e) { return null; } }
+function getSavedSection()  { try { return localStorage.getItem('rpm_section');  } catch(e) { return null; } }
 
 /* ── Loading helpers ── */
 function fullPageLoader(msg) {
