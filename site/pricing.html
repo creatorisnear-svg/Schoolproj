@@ -249,22 +249,22 @@
           <button class="plan-cta primary" onclick="openCheckout('monthly')">Get Premium</button>
         </div>
 
-        <!-- Lifetime -->
+        <!-- 3-Month -->
         <div class="plan-card">
-          <div class="plan-name">Premium Lifetime</div>
+          <div class="plan-name">Premium 3-Month</div>
           <div class="plan-price">
-            <span class="plan-price-amount">$15</span>
-            <span class="plan-price-period">one-time</span>
+            <span class="plan-price-amount">$12.99</span>
+            <span class="plan-price-period">/ 3 mo</span>
           </div>
-          <div class="plan-desc">Pay once. No recurring charges. Valid for the life of the Service.</div>
+          <div class="plan-desc">Billed every 3 months. Cancel any time. No refunds on partial periods.</div>
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No future renewal fees</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Save vs. monthly billing</li>
           </ul>
-          <button class="plan-cta primary" onclick="openCheckout('lifetime')">Buy Lifetime</button>
+          <button class="plan-cta primary" onclick="openCheckout('quarterly')">Get 3-Month</button>
         </div>
 
       </div>
@@ -279,8 +279,8 @@
         </div>
 
         <div class="faq-item">
-          <div class="faq-q">What does "lifetime" mean?</div>
-          <div class="faq-a">Lifetime means for as long as the RolePlayManager Service is operational. It does not guarantee any particular features, as features are always subject to change. If the Service is discontinued, no refund is provided.</div>
+          <div class="faq-q">What is the difference between Monthly and 3-Month?</div>
+          <div class="faq-a">Both plans include the same premium features. The 3-Month plan bills $12.99 every 3 months — slightly less than paying $5/month ($15 total over 3 months). Both can be cancelled at any time from your dashboard.</div>
         </div>
 
         <div class="faq-item">
@@ -289,7 +289,7 @@
         </div>
 
         <div class="faq-item">
-          <div class="faq-q">How do I cancel my monthly subscription?</div>
+          <div class="faq-q">How do I cancel my subscription?</div>
           <div class="faq-a">Cancel through the Premium section of your dashboard at any time. Your premium access continues until the end of the current billing period. No partial refunds are issued.</div>
         </div>
 
@@ -346,8 +346,8 @@
         title.textContent = 'Get Premium Monthly';
         sub.textContent = 'Monthly plan \u2014 $5.00/month. Recurring charge. Cancel any time.';
       } else {
-        title.textContent = 'Buy Premium Lifetime';
-        sub.textContent = 'One-time payment \u2014 $15.00. No recurring charges.';
+        title.textContent = 'Get Premium 3-Month';
+        sub.textContent = '3-month plan \u2014 $12.99 every 3 months. Recurring charge. Cancel any time.';
       }
       document.getElementById('tos-checkbox').checked = false;
       document.getElementById('btn-pay').disabled = true;

@@ -4,8 +4,10 @@ const stripeConfigSchema = new mongoose.Schema({
   key: { type: String, default: 'global', unique: true },
   monthlyPriceId: { type: String, default: null },
   lifetimePriceId: { type: String, default: null },
+  quarterlyPriceId: { type: String, default: null },
   monthlyProductId: { type: String, default: null },
   lifetimeProductId: { type: String, default: null },
+  quarterlyProductId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

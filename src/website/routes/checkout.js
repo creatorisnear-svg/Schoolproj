@@ -55,19 +55,20 @@ async function getStripeClient() {
 // Stores price IDs in MongoDB so no manual env vars are needed.
 // MongoDB operations are wrapped in try/catch - if DB is unavailable the
 // checkout still works; prices just won't be cached for the next call.
+// NOTE: lifetime plan removed from UI — existing lifetime keys still honoured.
 async function getOrCreatePrices(stripe) {
   let monthlyPriceId = null;
-  let lifetimePriceId = null;
+  let quarterlyPriceId = null;
 
   // Try to load cached price IDs from DB first
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
-    if (cfg?.monthlyPriceId && cfg?.lifetimePriceId) {
-      return { monthlyPriceId: cfg.monthlyPriceId, lifetimePriceId: cfg.lifetimePriceId };
+    if (cfg?.monthlyPriceId && cfg?.quarterlyPriceId) {
+      return { monthlyPriceId: cfg.monthlyPriceId, quarterlyPriceId: cfg.quarterlyPriceId };
     }
     monthlyPriceId = cfg?.monthlyPriceId || null;
-    lifetimePriceId = cfg?.lifetimePriceId || null;
+    quarterlyPriceId = cfg?.quarterlyPriceId || null;
   } catch (dbErr) {
     console.warn('[Stripe] DB lookup failed, proceeding without cache:', dbErr.message);
   }
@@ -89,19 +90,20 @@ async function getOrCreatePrices(stripe) {
     console.log(`[Stripe] Auto-created monthly price: ${monthlyPriceId}`);
   }
 
-  if (!lifetimePriceId) {
+  if (!quarterlyPriceId) {
     const product = await stripe.products.create({
-      name: 'RolePlayManager Premium - Lifetime',
-      description: 'One-time lifetime premium key. All sales final. Valid for the lifetime of the service.',
+      name: 'RolePlayManager Premium - 3 Month',
+      description: '3-month premium subscription billed every 3 months. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 1500,
+      unit_amount: 1299,
       currency: 'usd',
-      nickname: 'RPM Premium Lifetime',
+      recurring: { interval: 'month', interval_count: 3 },
+      nickname: 'RPM Premium 3-Month',
     });
-    lifetimePriceId = price.id;
-    console.log(`[Stripe] Auto-created lifetime price: ${lifetimePriceId}`);
+    quarterlyPriceId = price.id;
+    console.log(`[Stripe] Auto-created quarterly price: ${quarterlyPriceId}`);
   }
 
   // Try to cache the IDs for future calls - non-fatal if this fails
@@ -109,14 +111,14 @@ async function getOrCreatePrices(stripe) {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     await StripeConfig.findOneAndUpdate(
       { key: 'global' },
-      { monthlyPriceId, lifetimePriceId },
+      { monthlyPriceId, quarterlyPriceId },
       { upsert: true, new: true }
     );
   } catch (dbErr) {
     console.warn('[Stripe] DB save failed (prices still usable this request):', dbErr.message);
   }
 
-  return { monthlyPriceId, lifetimePriceId };
+  return { monthlyPriceId, quarterlyPriceId };
 }
 
 // Issue a premium key for a completed Stripe session - idempotent.
@@ -133,6 +135,8 @@ async function issueKeyForSession(sessionId) {
 
   const keyValue = generateKey();
   const plan = session.metadata?.plan || 'monthly';
+  // lifetime is a one-time payment so no subscription; monthly/quarterly are subscriptions
+  const isSubscription = plan === 'monthly' || plan === 'quarterly';
   await PremiumKey.create({
     key: keyValue,
     plan,
@@ -142,7 +146,7 @@ async function issueKeyForSession(sessionId) {
     stripeCustomerId: session.customer || null,
     stripeSubscriptionId: session.subscription || null,
     stripePaymentIntentId: session.payment_intent || null,
-    subscriptionStatus: plan === 'monthly' ? 'active' : null,
+    subscriptionStatus: isSubscription ? 'active' : null,
   });
 
   console.log(`[Stripe] Premium key issued for session ${sessionId} (plan: ${plan})`);
@@ -166,7 +170,8 @@ export function createCheckoutRouter() {
       if (!tosAccepted) {
         return res.status(400).json({ error: 'You must accept the Terms of Service.' });
       }
-      if (!plan || !['monthly', 'lifetime'].includes(plan)) {
+      // lifetime kept for any legacy direct API calls; not shown in UI anymore
+      if (!plan || !['monthly', 'quarterly', 'lifetime'].includes(plan)) {
         return res.status(400).json({ error: 'Invalid plan.' });
       }
       if (discordId && !/^\d{17,20}$/.test(String(discordId))) {
@@ -180,9 +185,7 @@ export function createCheckoutRouter() {
         });
       }
 
-      const { monthlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
       const domain = getDomain(req);
-
       const commonParams = {
         success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${domain}/checkout/cancel`,
@@ -191,16 +194,23 @@ export function createCheckoutRouter() {
       };
 
       let session;
-      if (plan === 'monthly') {
-        // subscription mode: Stripe auto-creates the customer - customer_creation not allowed here
+      if (plan === 'monthly' || plan === 'quarterly') {
+        const { monthlyPriceId, quarterlyPriceId } = await getOrCreatePrices(stripe);
+        const priceId = plan === 'monthly' ? monthlyPriceId : quarterlyPriceId;
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
-          line_items: [{ price: monthlyPriceId, quantity: 1 }],
+          line_items: [{ price: priceId, quantity: 1 }],
           subscription_data: { metadata: { discordId: String(discordId) } },
         });
       } else {
-        // payment mode: explicitly create a customer record for lifetime purchases
+        // lifetime: legacy path, one-time payment
+        const { default: StripeConfig } = await import('../../models/StripeConfig.js');
+        const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
+        const lifetimePriceId = cfg?.lifetimePriceId;
+        if (!lifetimePriceId) {
+          return res.status(400).json({ error: 'Lifetime plan is no longer available.' });
+        }
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'payment',
@@ -214,7 +224,6 @@ export function createCheckoutRouter() {
     } catch (err) {
       const detail = err?.raw?.message || err?.message || String(err);
       console.error('[Checkout] Create error:', detail);
-      // Surface Stripe-specific errors to the user for clarity
       const stripeMsg = err?.raw?.message;
       res.status(500).json({
         error: stripeMsg
@@ -244,7 +253,6 @@ export function createCheckoutRouter() {
       }
     }
 
-    // Server-side injection via HTML placeholders - no client-side key exposure
     const html = readFileSync(resolve('src/website/views/checkout-success.html'), 'utf8');
     const filled = html
       .replace('<!--KEY_VALUE-->', keyValue ? escapeHtml(keyValue) : '')
@@ -279,9 +287,6 @@ export function createCheckoutRouter() {
         return res.status(400).json({ error: 'Webhook signature verification failed.' });
       }
     } else {
-      // No webhook secret set - parse body but ONLY process subscription lifecycle
-      // events (status updates), never key creation. Key delivery works via the
-      // success page which verifies the session directly with Stripe.
       try {
         const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
         event = JSON.parse(raw);
@@ -294,14 +299,13 @@ export function createCheckoutRouter() {
     try {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
 
-      // Only create keys from webhook if Stripe signature was verified.
-      // Without signature verification, anyone could POST a fake checkout event.
       if (event.type === 'checkout.session.completed' && signatureVerified) {
         const session = event.data.object;
         const existing = await PremiumKey.findOne({ stripeSessionId: session.id });
         if (!existing) {
           const keyValue = generateKey();
           const plan = session.metadata?.plan || 'monthly';
+          const isSubscription = plan === 'monthly' || plan === 'quarterly';
           await PremiumKey.create({
             key: keyValue,
             plan,
@@ -311,14 +315,12 @@ export function createCheckoutRouter() {
             stripeCustomerId: session.customer || null,
             stripeSubscriptionId: session.subscription || null,
             stripePaymentIntentId: session.payment_intent || null,
-            subscriptionStatus: plan === 'monthly' ? 'active' : null,
+            subscriptionStatus: isSubscription ? 'active' : null,
           });
           console.log(`[Stripe Webhook] Key created for session ${session.id} (plan: ${plan})`);
         }
       }
 
-      // Subscription lifecycle events - safe to process even without signature
-      // since they only update status, never create keys.
       if (event.type === 'customer.subscription.deleted') {
         const sub = event.data.object;
         if (sub?.id) {
@@ -326,7 +328,6 @@ export function createCheckoutRouter() {
           if (keyDoc) {
             keyDoc.subscriptionStatus = 'cancelled';
             await keyDoc.save();
-            // Clear cache immediately so the guild loses access right away
             const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
             if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
             console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled - premium revoked for guild ${keyDoc.guildId}`);
@@ -339,20 +340,17 @@ export function createCheckoutRouter() {
         if (sub?.id) {
           const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
           if (keyDoc) {
-            // Stripe's status stays 'active' even when cancel_at_period_end is true.
-            // Map to our internal 'cancelling' state so the dashboard shows correctly.
             if (sub.cancel_at_period_end) {
               keyDoc.subscriptionStatus = 'cancelling';
             } else if (sub.status === 'active') {
               keyDoc.subscriptionStatus = 'active';
             } else {
-              keyDoc.subscriptionStatus = sub.status; // past_due, incomplete, etc.
+              keyDoc.subscriptionStatus = sub.status;
             }
             if (sub.current_period_end) {
               keyDoc.subscriptionCurrentPeriodEnd = new Date(sub.current_period_end * 1000);
             }
             await keyDoc.save();
-            // Clear cache so the updated status is reflected immediately
             const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
             if (keyDoc.guildId) clearPremiumCache(keyDoc.guildId);
             console.log(`[Stripe Webhook] Subscription ${sub.id} updated - status: ${keyDoc.subscriptionStatus}`);
@@ -360,10 +358,6 @@ export function createCheckoutRouter() {
         }
       }
 
-      // invoice.payment_failed - fires each time Stripe attempts and fails a payment.
-      // Updates status to past_due immediately and clears the premium cache.
-      // Stripe will retry automatically; after all retries are exhausted it fires
-      // customer.subscription.deleted which fully revokes access above.
       if (event.type === 'invoice.payment_failed') {
         const invoice = event.data.object;
         const subId = invoice?.subscription;
