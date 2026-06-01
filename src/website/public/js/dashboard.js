@@ -325,6 +325,35 @@ function activatePremium() {
   });
 }
 
+function cancelSubscription() {
+  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period — no refunds are issued.')) return;
+  var btn = document.getElementById('cancel-sub-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
+  api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'cancelling';
+      toast('Subscription cancelled. Premium stays active until the billing period ends.');
+      renderDashboard();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+    }
+  });
+}
+
+function reactivateSubscription() {
+  var btn = document.getElementById('reactivate-sub-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reactivating...'; }
+  api('/guild/' + currentGuild.id + '/premium/reactivate', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      if (currentGuild.premiumDetails) currentGuild.premiumDetails.subscriptionStatus = 'active';
+      toast('Subscription reactivated! Billing will continue as normal.');
+      renderDashboard();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Reactivate'; }
+    }
+  });
+}
+
 function renderPremiumSection(g) {
   var premiumItems = [];
   if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch — officers talk, bot responds');
@@ -335,16 +364,45 @@ function renderPremiumSection(g) {
   premiumItems.push('Unlimited CAD, vehicles, BOLOs & stickies');
 
   if (g.premium) {
-    return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(52,211,153,0.3);">' +
-      '<div class="config-section-header"><h3>Premium</h3>' +
-      '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>' +
-      '</div>' +
+    var pd = g.premiumDetails || {};
+    var subStatus = pd.subscriptionStatus || null;
+    var isCancelling = subStatus === 'cancelling';
+    var isMonthly = pd.hasStripeSubscription;
+    var periodEnd = pd.subscriptionCurrentPeriodEnd ? new Date(pd.subscriptionCurrentPeriodEnd) : null;
+    var periodEndStr = periodEnd ? periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
+    var statusBadge = isCancelling
+      ? '<span class="status-badge" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);"><span class="status-dot" style="background:#fbbf24;"></span>Cancelling</span>'
+      : '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>';
+
+    var sublabel = isCancelling && periodEndStr
+      ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
+      : premiumItems.join(', ') + ' — all unlocked.';
+
+    var planLabel = isMonthly
+      ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
+      : (pd.subscriptionStatus === null && !isMonthly ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
+
+    var actionBtns = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+    actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
+    if (isMonthly) {
+      if (isCancelling) {
+        actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';
+      } else {
+        actionBtns += '<button id="cancel-sub-btn" class="btn btn-secondary btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="cancelSubscription()">Cancel Subscription</button>';
+      }
+    }
+    actionBtns += '</div>';
+
+    return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:' + (isCancelling ? 'rgba(251,191,36,0.3)' : 'rgba(52,211,153,0.3)') + ';">' +
+      '<div class="config-section-header"><h3>Premium' + planLabel + '</h3>' + statusBadge + '</div>' +
       '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
-      '<div><span class="config-label">Premium is active on this server.</span>' +
-      '<div class="config-sublabel">' + premiumItems.join(', ') + ' — all unlocked.</div></div>' +
-      '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>' +
+      '<div><span class="config-label">' + (isCancelling ? 'Subscription is set to cancel.' : 'Premium is active on this server.') + '</span>' +
+      '<div class="config-sublabel">' + sublabel + '</div></div>' +
+      actionBtns +
       '</div></div>';
   }
+
   return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(88,101,242,0.4);">' +
     '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
     '<h3 style="color:#7b8cec;">Premium — Unlock More</h3>' +
