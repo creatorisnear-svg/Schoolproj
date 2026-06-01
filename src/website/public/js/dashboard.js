@@ -602,23 +602,12 @@ function renderSettings(mod) {
       html += renderTicketTypesSection(data);
     }
 
-    if (data.events && data.events.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Scheduled Events</h3></div>';
-      data.events.forEach(function(e) {
-        html += '<div class="config-row"><div class="config-left">' +
-          '<span class="config-label">' + esc(e.day) + ' at ' + esc(e.time || 'TBD') + '</span>' +
-          '<div class="config-sublabel">' + esc(e.description || 'No description') +
-          (e.person ? ' · Host: ' + esc(e.person) : '') + '</div></div></div>';
-      });
-      html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/roleplaycalendersetup</code> in Discord to add, edit, or remove events.</span></div></div>';
+    if (data.events !== undefined) {
+      html += renderCalendarEventsSection(data);
     }
 
-    if (data.whitelistedLinks && data.whitelistedLinks.length > 0) {
-      html += '<div class="config-section" style="margin-top:14px;"><div class="config-section-header"><h3>Whitelisted Invite Links</h3></div>';
-      data.whitelistedLinks.forEach(function(l) {
-        html += '<div class="config-row"><span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span></div>';
-      });
-      html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/antipromotingsetup</code> in Discord to manage whitelisted links.</span></div></div>';
+    if (data.whitelistedLinks !== undefined) {
+      html += renderWhitelistedLinksSection(data);
     }
 
     if (mod === 'dispatch') {
@@ -797,56 +786,255 @@ function removeDispatchChannel(type, id) {
 /* ── Ticket types section ── */
 function renderTicketTypesSection(data) {
   var limit = currentGuild.premium ? '∞' : '3';
-  var count = data.ticketTypes ? data.ticketTypes.length : 0;
+  var count = (data.ticketTypes || []).length;
+  var atLimit = !currentGuild.premium && count >= 3;
+  var roleOpts = (data.roles || []).map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
   var html = '<div class="config-section" style="margin-top:14px;">' +
     '<div class="config-section-header"><h3>Ticket Types</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
-    '</div>';
+    '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span></div>';
 
-  if (!data.ticketTypes || data.ticketTypes.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No ticket types configured yet. Use <code>/ticketsupportsetup</code> in Discord to add ticket types.</span></div>';
+  if (count === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
   } else {
-    data.ticketTypes.forEach(function(t) {
-      html += '<div class="config-row">' +
-        '<div class="config-left"><span class="config-label">' + esc(t.label) + '</span>' +
-        '<div class="config-sublabel">' + (t.allowedRoleIds.length || 0) + ' staff role' + (t.allowedRoleIds.length === 1 ? '' : 's') + ' assigned</div></div></div>';
+    (data.ticketTypes || []).forEach(function(t) {
+      var roleNames = (t.allowedRoleIds || []).map(function(id) {
+        var r = (data.roles || []).find(function(r) { return r.value === id; });
+        return r ? r.label : id;
+      }).join(', ');
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(t.label) + '</span>' +
+        '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'No staff roles - all can see') + ' &middot; ' + esc(t.buttonColor || 'Primary') + ' button</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
+        '</div>';
     });
-    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">To add, edit, or remove ticket types, use <code>/ticketsupportsetup</code> in Discord.</span></div>';
   }
 
-  if (!currentGuild.premium && count >= 3) {
+  if (atLimit) {
     html += '<div class="config-row" style="background:var(--amber-bg);">' +
       '<span style="font-size:12px;color:var(--amber);">Free limit reached (3 types). Upgrade to Premium for unlimited ticket types.</span></div>';
+  } else {
+    html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+      '<input id="tt-label" type="text" class="config-input" placeholder="Type label (e.g. General Support)" style="flex:2;min-width:160px;">' +
+      '<select id="tt-color" class="config-select" style="width:130px;">' +
+      '<option value="Primary">Primary (Blue)</option>' +
+      '<option value="Secondary">Secondary (Grey)</option>' +
+      '<option value="Success">Success (Green)</option>' +
+      '<option value="Danger">Danger (Red)</option>' +
+      '</select>' +
+      '</div>' +
+      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
+      '<span style="font-size:11px;color:var(--text-dim);">After adding types, run <code>/ticketsupportsetup</code> in Discord to post the ticket panel.</span>' +
+      '</div>' +
+      '</div>';
   }
 
   html += '</div>';
   return html;
 }
 
+function addTicketType() {
+  var label = document.getElementById('tt-label')?.value?.trim();
+  var color = document.getElementById('tt-color')?.value || 'Primary';
+  var roleId = document.getElementById('tt-role')?.value || null;
+  if (!label) { toast('Enter a ticket type label', 'error'); return; }
+  var btn = document.querySelector('#tt-label').closest('.config-row').querySelector('button');
+  api('/guild/' + currentGuild.id + '/settings/tickets/types', {
+    method: 'POST',
+    body: JSON.stringify({ label: label, buttonColor: color, allowedRoleIds: roleId ? [roleId] : [] })
+  }).then(function(r) {
+    if (r && r.success) { toast('Ticket type added'); renderSettings('tickets'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteTicketType(typeId) {
+  if (!confirm('Remove this ticket type?')) return;
+  api('/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
+  });
+}
+
 /* ── Role Request Settings ── */
 function renderRoleRequestSettings(data) {
   var roles = data.requestableRoles || [];
+  var allRoles = data.roles || [];
+  var roleOpts = allRoles.map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+
   var html = '<div class="config-section"><div class="config-section-header">' +
     '<h3>Requestable Roles</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + roles.length + ' configured</span>' +
     '</div>';
+
   if (roles.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No requestable roles set up yet. Use <code>/rolerequestadd</code> in Discord to add roles members can request.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No requestable roles yet. Add one below - members can then request it and staff approve via DM.</span></div>';
   } else {
     roles.forEach(function(r) {
-      var approvers = [];
-      if (r.approverRoleCount > 0) approvers.push(r.approverRoleCount + ' approver role' + (r.approverRoleCount === 1 ? '' : 's'));
-      if (r.approverMemberCount > 0) approvers.push(r.approverMemberCount + ' approver member' + (r.approverMemberCount === 1 ? '' : 's'));
-      html += '<div class="config-row"><div class="config-left">' +
+      var approverNames = (r.approverRoleNames || []).join(', ');
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
-        '<div class="config-sublabel">' + (approvers.length ? approvers.join(' · ') : 'No approvers set') + '</div>' +
-        '</div></div>';
+        '<div class="config-sublabel">Approvers: ' + (approverNames ? esc(approverNames) : 'None set - any staff can approve') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleRequest(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '</div>';
     });
-    html += '<div class="config-row"><span class="config-sublabel" style="font-size:11px;">Use <code>/rolerequestadd</code> in Discord to add roles or update approvers.</span></div>';
   }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="rr-role" class="config-select" style="flex:1;min-width:160px;"><option value="">Select role to make requestable...</option>' + roleOpts + '</select>' +
+    '<select id="rr-approver" class="config-select" style="flex:1;min-width:160px;"><option value="">Approver role (optional)</option>' + roleOpts + '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addRoleRequest()">Add</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Members can request the selected role. The approver role gets DM notifications to approve or deny.</span>' +
+    '</div>';
+
   html += '</div>';
   html += '<div id="save-bar-container"></div>';
   return html;
+}
+
+function addRoleRequest() {
+  var roleId = document.getElementById('rr-role')?.value;
+  var approverId = document.getElementById('rr-approver')?.value || null;
+  if (!roleId) { toast('Select a role to make requestable', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/rolerequest/roles', {
+    method: 'POST',
+    body: JSON.stringify({ roleId: roleId, approverRoleIds: approverId ? [approverId] : [] })
+  }).then(function(r) {
+    if (r && r.success) { toast('Role added'); renderSettings('rolerequest'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteRoleRequest(roleId) {
+  if (!confirm('Remove this role from the request list?')) return;
+  api('/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Role removed'); renderSettings('rolerequest'); }
+  });
+}
+
+/* ── Calendar Events Section ── */
+function renderCalendarEventsSection(data) {
+  var events = data.events || [];
+  var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var dayOpts = days.map(function(d) { return '<option value="' + d + '">' + d + '</option>'; }).join('');
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Scheduled Events</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + events.length + ' event' + (events.length === 1 ? '' : 's') + '</span></div>';
+
+  if (events.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No events scheduled yet. Add recurring weekly events below.</span></div>';
+  } else {
+    events.forEach(function(e) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(e.day) + (e.time ? ' at ' + esc(e.time) : '') + (e.timezone ? ' ' + esc(e.timezone) : '') + '</span>' +
+        '<div class="config-sublabel">' + esc(e.description || 'No description') + (e.person ? ' - Host: ' + esc(e.person) : '') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCalendarEvent(\'' + esc(e.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="cal-day" class="config-select" style="width:130px;">' + dayOpts + '</select>' +
+    '<input id="cal-time" type="text" class="config-input" placeholder="Time (e.g. 8:00 PM)" style="width:140px;">' +
+    '<input id="cal-tz" type="text" class="config-input" placeholder="Timezone (e.g. ET)" style="width:90px;" value="ET">' +
+    '</div>' +
+    '<input id="cal-desc" type="text" class="config-input" placeholder="Event description" style="width:100%;">' +
+    '<div style="display:flex;gap:8px;">' +
+    '<input id="cal-person" type="text" class="config-input" placeholder="Host name (optional)" style="width:180px;">' +
+    '<button class="btn btn-success btn-sm" onclick="addCalendarEvent()">Add Event</button>' +
+    '</div></div>';
+
+  html += '</div>';
+  return html;
+}
+
+function addCalendarEvent() {
+  var day = document.getElementById('cal-day')?.value;
+  var time = document.getElementById('cal-time')?.value?.trim() || '';
+  var tz = document.getElementById('cal-tz')?.value?.trim() || 'ET';
+  var desc = document.getElementById('cal-desc')?.value?.trim();
+  var person = document.getElementById('cal-person')?.value?.trim() || '';
+  if (!desc) { toast('Enter an event description', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/settings/calendar/events', {
+    method: 'POST',
+    body: JSON.stringify({ day: day, time: time, timezone: tz, description: desc, person: person })
+  }).then(function(r) {
+    if (r && r.success) { toast('Event added'); renderSettings('calendar'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteCalendarEvent(eventId) {
+  if (!confirm('Remove this event?')) return;
+  api('/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Event removed'); renderSettings('calendar'); }
+  });
+}
+
+/* ── Whitelisted Links Section ── */
+function renderWhitelistedLinksSection(data) {
+  var links = data.whitelistedLinks || [];
+
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Whitelisted Invite Links</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + links.length + ' link' + (links.length === 1 ? '' : 's') + '</span></div>';
+
+  if (links.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No whitelisted links. Add invite links below that members are allowed to post.</span></div>';
+  } else {
+    links.forEach(function(l) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteWhitelistedLink(\'' + esc(l) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+
+  html += '<div class="config-row" style="display:flex;gap:8px;">' +
+    '<input id="wl-link" type="text" class="config-input" placeholder="discord.gg/yourserver or full invite URL" style="flex:1;">' +
+    '<button class="btn btn-success btn-sm" onclick="addWhitelistedLink()">Add</button>' +
+    '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function addWhitelistedLink() {
+  var link = document.getElementById('wl-link')?.value?.trim();
+  if (!link) { toast('Enter an invite link', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'POST',
+    body: JSON.stringify({ link: link })
+  }).then(function(r) {
+    if (r && r.success) { toast('Link whitelisted'); renderSettings('antipromo'); }
+    else if (r && r.error) toast(r.error, 'error');
+  });
+}
+
+function deleteWhitelistedLink(link) {
+  if (!confirm('Remove "' + link + '" from whitelist?')) return;
+  api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
+    method: 'DELETE',
+    body: JSON.stringify({ link: link })
+  }).then(function(r) {
+    if (r && r.success) { toast('Link removed'); renderSettings('antipromo'); }
+  });
 }
 
 /* ── Economy Settings (grouped) ── */

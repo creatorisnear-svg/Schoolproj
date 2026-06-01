@@ -441,7 +441,6 @@ export function createApiRouter(client) {
           const config = await Config.findOne({ guildId: guild.id });
           result.fields = [
             { key: 'logChannelId', label: 'Log Channel', description: 'Channel where bot actions are logged', type: 'select', value: config?.logChannelId || '', options: channels },
-            { key: 'staffCanBypassLinks', label: 'Staff Bypass Links', description: 'Allow staff members to post invite links without being flagged', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
           ];
           break;
         }
@@ -506,13 +505,13 @@ export function createApiRouter(client) {
             { key: 'panelTitle', label: 'Panel Title', description: 'Title shown on the ticket panel embed', type: 'text', value: tc?.panelTitle || '', placeholder: 'Support Tickets' },
             { key: 'panelDescription', label: 'Panel Description', description: 'Description shown on the ticket panel embed', type: 'textarea', value: tc?.panelDescription || '', placeholder: 'Click a button below to open a ticket' },
           ];
-          if (tc?.ticketTypes?.length > 0) {
-            result.ticketTypes = tc.ticketTypes.map(t => ({
-              id: t.id || t._id?.toString(),
-              label: t.label,
-              allowedRoleIds: t.allowedRoleIds || [],
-            }));
-          }
+          result.ticketTypes = (tc?.ticketTypes || []).map(t => ({
+            id: t.id || t._id?.toString(),
+            label: t.label,
+            allowedRoleIds: t.allowedRoleIds || [],
+            buttonColor: t.buttonColor || 'Primary',
+          }));
+          result.roles = roles;
           try {
             const { default: Ticket } = await import('../../models/Ticket.js');
             const open = await Ticket.countDocuments({ guildId: guild.id, status: 'open' });
@@ -568,9 +567,7 @@ export function createApiRouter(client) {
             { key: 'antiPromotingLogChannelId', label: 'Log Channel', description: 'Channel where deleted invite link logs are sent', type: 'select', value: config?.antiPromotingLogChannelId || '', options: channels },
             { key: 'staffCanBypassLinks', label: 'Staff Bypass', description: 'Allow staff members to post invite links', type: 'toggle', value: config?.staffCanBypassLinks ?? true },
           ];
-          if (config?.whitelistedInviteLinks?.length > 0) {
-            result.whitelistedLinks = config.whitelistedInviteLinks;
-          }
+          result.whitelistedLinks = config?.whitelistedInviteLinks || [];
           break;
         }
 
@@ -613,15 +610,14 @@ export function createApiRouter(client) {
           result.fields = [
             { key: 'channelId', label: 'Calendar Channel', description: 'Channel where the calendar embed is posted', type: 'select', value: rc?.channelId || '', options: channels },
           ];
-          if (rc?.events?.length > 0) {
-            result.events = rc.events.map(e => ({
-              day: e.day,
-              time: e.time,
-              description: e.description,
-              person: e.person,
-              timezone: e.timezone,
-            }));
-          }
+          result.events = (rc?.events || []).map(e => ({
+            id: e._id?.toString(),
+            day: e.day,
+            time: e.time,
+            description: e.description,
+            person: e.person,
+            timezone: e.timezone,
+          }));
           break;
         }
 
@@ -634,9 +630,12 @@ export function createApiRouter(client) {
           result.requestableRoles = (rrc?.roles || []).map(r => ({
             roleId: r.roleId,
             roleName: guild.roles.cache.get(r.roleId)?.name || r.roleName || 'Unknown Role',
+            approverRoleIds: r.approverRoleIds || [],
+            approverRoleNames: (r.approverRoleIds || []).map(id => guild.roles.cache.get(id)?.name || id),
             approverRoleCount: r.approverRoleIds?.length || 0,
             approverMemberCount: r.approverMemberIds?.length || 0,
           }));
+          result.roles = roles;
           result.stats = [
             { label: 'Requestable Roles', value: (rrc?.roles || []).length },
           ];
@@ -920,6 +919,188 @@ export function createApiRouter(client) {
       console.error(`[DASHBOARD] Settings save error (${mod}):`, err.message);
       res.status(500).json({ error: 'Failed to save settings' });
     }
+  });
+
+  /* ── Ticket Types CRUD ── */
+  router.post('/guild/:id/settings/tickets/types', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { label, allowedRoleIds, buttonColor } = req.body;
+    if (!label || !label.trim()) return res.status(400).json({ error: 'Ticket type label is required' });
+    try {
+      const { default: TicketConfig } = await import('../../models/TicketConfig.js');
+      const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
+      const tc = await TicketConfig.findOne({ guildId: req.params.id }) || new TicketConfig({ guildId: req.params.id });
+      const isPrem = await isPremiumGuild(req.params.id);
+      const limit = isPrem ? Infinity : 3;
+      if ((tc.ticketTypes || []).length >= limit) {
+        return res.status(403).json({ error: 'Free servers can have up to 3 ticket types. Upgrade to Premium for unlimited.' });
+      }
+      const { v4: uuidv4 } = await import('uuid');
+      tc.ticketTypes.push({
+        id: uuidv4(),
+        label: label.trim(),
+        allowedRoleIds: Array.isArray(allowedRoleIds) ? allowedRoleIds : [],
+        buttonColor: buttonColor || 'Primary',
+        createdAt: new Date(),
+      });
+      await tc.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/settings/tickets/types/:typeId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: TicketConfig } = await import('../../models/TicketConfig.js');
+      const tc = await TicketConfig.findOne({ guildId: req.params.id });
+      if (tc) {
+        tc.ticketTypes = tc.ticketTypes.filter(t => (t.id || t._id?.toString()) !== req.params.typeId);
+        await tc.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Role Request Roles CRUD ── */
+  router.post('/guild/:id/rolerequest/roles', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { roleId, approverRoleIds } = req.body;
+    if (!roleId) return res.status(400).json({ error: 'Role is required' });
+    const role = guild.roles.cache.get(roleId);
+    if (!role) return res.status(404).json({ error: 'Role not found in this server' });
+    try {
+      const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
+      const { v4: uuidv4 } = await import('uuid');
+      const rrc = await RoleRequestConfig.findOne({ guildId: req.params.id }) || new RoleRequestConfig({ guildId: req.params.id });
+      const existing = (rrc.roles || []).findIndex(r => r.roleId === roleId);
+      if (existing >= 0) {
+        rrc.roles[existing].approverRoleIds = Array.isArray(approverRoleIds) ? approverRoleIds : [];
+        rrc.roles[existing].roleName = role.name;
+      } else {
+        rrc.roles.push({ id: uuidv4(), roleId, roleName: role.name, approverRoleIds: Array.isArray(approverRoleIds) ? approverRoleIds : [], approverMemberIds: [], createdAt: new Date() });
+      }
+      rrc.markModified('roles');
+      await rrc.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/rolerequest/roles/:roleId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: RoleRequestConfig } = await import('../../models/RoleRequestConfig.js');
+      const rrc = await RoleRequestConfig.findOne({ guildId: req.params.id });
+      if (rrc) {
+        rrc.roles = rrc.roles.filter(r => r.roleId !== req.params.roleId);
+        rrc.markModified('roles');
+        await rrc.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Anti-Promoting Whitelist CRUD ── */
+  router.post('/guild/:id/settings/antipromo/links', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { link } = req.body;
+    if (!link || !link.trim()) return res.status(400).json({ error: 'Link is required' });
+    try {
+      const { default: Config } = await import('../../models/Config.js');
+      const config = await Config.findOne({ guildId: req.params.id }) || new Config({ guildId: req.params.id });
+      const clean = link.trim().toLowerCase();
+      if (!(config.whitelistedInviteLinks || []).includes(clean)) {
+        config.whitelistedInviteLinks = [...(config.whitelistedInviteLinks || []), clean];
+        await config.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/settings/antipromo/links', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { link } = req.body;
+    if (!link) return res.status(400).json({ error: 'Link is required' });
+    try {
+      const { default: Config } = await import('../../models/Config.js');
+      const config = await Config.findOne({ guildId: req.params.id });
+      if (config) {
+        config.whitelistedInviteLinks = (config.whitelistedInviteLinks || []).filter(l => l !== link.trim().toLowerCase());
+        await config.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Calendar Events CRUD ── */
+  router.post('/guild/:id/settings/calendar/events', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { day, time, description, person, timezone } = req.body;
+    if (!day) return res.status(400).json({ error: 'Day is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    try {
+      const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+      const rc = await RoleplayCalendar.findOne({ guildId: req.params.id }) || new RoleplayCalendar({ guildId: req.params.id });
+      rc.events.push({ day, time: time || '', description: description.trim(), person: person?.trim() || '', timezone: timezone || 'ET' });
+      await rc.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/settings/calendar/events/:eventId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
+      const rc = await RoleplayCalendar.findOne({ guildId: req.params.id });
+      if (rc) {
+        rc.events = rc.events.filter(e => e._id?.toString() !== req.params.eventId);
+        await rc.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
   router.post('/guild/:id/premium/cancel', async (req, res) => {
