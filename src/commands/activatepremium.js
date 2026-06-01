@@ -41,6 +41,13 @@ export async function execute(interaction) {
     });
   }
 
+  // Reject cancelled subscriptions — don't let expired monthly keys activate new servers
+  if (keyRecord.plan === 'monthly' && keyRecord.subscriptionStatus === 'cancelled') {
+    return interaction.editReply({
+      embeds: [errorEmbed('This subscription has been cancelled and is no longer valid.')],
+    });
+  }
+
   keyRecord.guildId = guildId;
   keyRecord.guildName = interaction.guild.name;
   keyRecord.activatedBy = interaction.user.id;

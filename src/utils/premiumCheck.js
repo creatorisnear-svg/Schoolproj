@@ -10,7 +10,19 @@ export async function isPremiumGuild(guildId) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
   const key = await PremiumKey.findOne({ guildId });
-  const result = !!key;
+  // Lifetime keys are always valid.
+  // Monthly keys must have an active/trialing/past_due subscription status.
+  // 'cancelled' means the subscription was terminated — access should be revoked.
+  let result = false;
+  if (key) {
+    if (key.plan === 'lifetime' || key.plan === 'manual') {
+      result = true;
+    } else {
+      // Monthly — check subscription is still active
+      const activeStatuses = ['active', 'trialing', 'past_due'];
+      result = activeStatuses.includes(key.subscriptionStatus);
+    }
+  }
   premiumCache.set(guildId, { value: result, ts: Date.now() });
   return result;
 }
@@ -86,6 +98,6 @@ export async function getPremiumUpsellEmbed(featureName) {
       `> Extended leaderboard (top 25)\n\n` +
       `To get Premium, join our support server and use \`/activatepremium\` once you have a key.`
     )
-    .addFields({ name: 'Get Premium', value: '[discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)', inline: true })
+    .addFields({ name: 'Get Premium', value: '[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)', inline: true })
     .setFooter({ text: 'RPM' });
 }

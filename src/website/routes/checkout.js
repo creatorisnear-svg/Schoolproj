@@ -9,6 +9,14 @@ const _rateLimitMap = new Map();
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 10;
 
+// Purge expired entries every 30 minutes to prevent memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of _rateLimitMap) {
+    if (now > entry.resetAt) _rateLimitMap.delete(ip);
+  }
+}, 30 * 60 * 1000).unref();
+
 function checkRateLimit(ip) {
   const now = Date.now();
   const entry = _rateLimitMap.get(ip);
@@ -234,21 +242,26 @@ export function createCheckoutRouter() {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event;
+    let signatureVerified = false;
+
     if (webhookSecret && sig) {
       try {
         const { default: Stripe } = await import('stripe');
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' });
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        signatureVerified = true;
       } catch (err) {
         console.error('[Stripe Webhook] Signature verification failed:', err.message);
         return res.status(400).json({ error: 'Webhook signature verification failed.' });
       }
     } else {
-      // STRIPE_WEBHOOK_SECRET not set — parse body directly
-      // Key delivery still works via the success page session verification
+      // No webhook secret set — parse body but ONLY process subscription lifecycle
+      // events (status updates), never key creation. Key delivery works via the
+      // success page which verifies the session directly with Stripe.
       try {
         const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
         event = JSON.parse(raw);
+        console.warn('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not set — skipping key creation events for security. Set STRIPE_WEBHOOK_SECRET on Koyeb to enable full webhook support.');
       } catch {
         return res.status(400).json({ error: 'Invalid webhook payload.' });
       }
@@ -257,7 +270,9 @@ export function createCheckoutRouter() {
     try {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
 
-      if (event.type === 'checkout.session.completed') {
+      // Only create keys from webhook if Stripe signature was verified.
+      // Without signature verification, anyone could POST a fake checkout event.
+      if (event.type === 'checkout.session.completed' && signatureVerified) {
         const session = event.data.object;
         const existing = await PremiumKey.findOne({ stripeSessionId: session.id });
         if (!existing) {
@@ -278,23 +293,31 @@ export function createCheckoutRouter() {
         }
       }
 
+      // Subscription lifecycle events — safe to process even without signature
+      // since they only update status, never create keys.
       if (event.type === 'customer.subscription.deleted') {
         const sub = event.data.object;
-        const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
-        if (keyDoc) {
-          keyDoc.subscriptionStatus = 'cancelled';
-          await keyDoc.save();
-          console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled`);
+        if (sub?.id) {
+          const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
+          if (keyDoc) {
+            keyDoc.subscriptionStatus = 'cancelled';
+            await keyDoc.save();
+            console.log(`[Stripe Webhook] Subscription ${sub.id} cancelled`);
+          }
         }
       }
 
       if (event.type === 'customer.subscription.updated') {
         const sub = event.data.object;
-        const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
-        if (keyDoc) {
-          keyDoc.subscriptionStatus = sub.status;
-          keyDoc.subscriptionCurrentPeriodEnd = new Date(sub.current_period_end * 1000);
-          await keyDoc.save();
+        if (sub?.id) {
+          const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
+          if (keyDoc) {
+            keyDoc.subscriptionStatus = sub.status;
+            if (sub.current_period_end) {
+              keyDoc.subscriptionCurrentPeriodEnd = new Date(sub.current_period_end * 1000);
+            }
+            await keyDoc.save();
+          }
         }
       }
 
