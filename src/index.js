@@ -923,8 +923,9 @@ connectDatabase().then(() => {
     console.log(`Health check available at /health`);
   });
 
-  // Expire civilian job role assignments
+  // Expire civilian job role assignments (skip if MongoDB not ready)
   setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     try {
       const { expireCivilianJobs } = await import('./handlers/economyHandler.js');
       await expireCivilianJobs(client);
