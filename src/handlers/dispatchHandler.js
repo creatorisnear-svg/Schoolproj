@@ -1968,8 +1968,13 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           // Only process if the utterance contains a ten-code; otherwise it is general chatter
           // that dispatch should not respond to.
           commandText = raw;
-          // Allow through: ten-codes OR "code four" (unambiguous scene clear) - both valid without trigger
-          const hasTenCode = /\b10[-\s]?\d+\b/i.test(commandText) || detectCodeFour(commandText);
+          // Allow through ONLY known TEN_CODES or "code four" — unknown codes like 10-74, 10-60
+          // must not pass through and generate false status updates or TTS responses.
+          const _knownCodeRe = new RegExp(
+            '\\b(?:' + Object.keys(TEN_CODES).map(c => c.replace('-', '[-\\s]')).join('|') + ')\\b',
+            'i'
+          );
+          const hasTenCode = _knownCodeRe.test(normalizeSpokenCodes(commandText)) || detectCodeFour(commandText);
           if (!hasTenCode) {
             console.log(`[Dispatch] No trigger or ten-code - ignoring general chatter: "${commandText}"`);
             return;
@@ -3084,8 +3089,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     } else if (voiceAction === 'out_of_service') {
       await OfficerStatus.deleteOne({ guildId: guild.id, userId }).catch(() => {});
-      // Brief 10-7 acknowledgment
-      if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
+      // Brief 10-7 acknowledgment — only when officer addressed dispatch directly
+      if (hadTrigger && !dispatchResponse && config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
           const ttsBuffer = await generateDispatchTTS(`Ten-four ${ttsName}, showing you ten seven. Out of service.`);
@@ -3114,9 +3119,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         if (isInStopChannel) clearExtendedStay(guild.id);
       }
 
-      // Brief acknowledgment for common status codes when no AI response was generated
-      // (i.e., officer spoke without a trigger word - dispatcher still acknowledges)
-      else if (!dispatchResponse && config.aiEnabled && hasAIKey()) {
+      // Brief acknowledgment for common status codes — only when officer addressed dispatch
+      // (trigger word, call sign, or emergency phrase). Without a trigger, status is updated
+      // silently in DB only — the bot must NOT speak back to unaddressed radio chatter.
+      else if (hadTrigger && !dispatchResponse && config.aiEnabled && hasAIKey()) {
         const SILENT_CODES = new Set(['10-4', '10-6']); // already handled by SIMPLE_ACK_CODES
         if (!SILENT_CODES.has(parsed.code)) {
           const STATUS_ACK_MAP = {
