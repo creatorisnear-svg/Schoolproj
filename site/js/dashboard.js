@@ -286,7 +286,7 @@ function renderPremiumSection(g) {
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
     '<p style="font-size:12px;color:var(--text-muted);margin:0;">Get a premium key from the pricing page, then enter it below to unlock AI Voice Dispatch and all premium features.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="' + API_BASE + '/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
+    '<a href="' + SITE_URL + '/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
     '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support</a>' +
     '</div>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
