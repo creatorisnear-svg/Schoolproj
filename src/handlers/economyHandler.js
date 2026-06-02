@@ -166,6 +166,7 @@ export function getEconomySetupMenu() {
             { label: 'Remove Money',             value: 'removemoney',         description: 'Remove money from a user' },
             { label: 'Reset Balance',            value: 'resetmoney',          description: "Reset a user's balance" },
             { label: 'Set Log Channel',          value: 'setlogchannel',       description: 'Economy transaction log channel' },
+            { label: 'Sell Settings',            value: 'sellsettings',        description: 'Set sell-back % members get when selling items' },
             { label: 'Income Tax',               value: 'incometax',           description: 'Set tax rate deducted from income (%)' },
             { label: 'Income Board',             value: 'incomeboard',         description: 'Post income redemption embed to a channel' },
             { label: 'Civilian Jobs',            value: 'civilian_jobs',       description: 'Manage the civilian jobs assignment panel' },
@@ -606,7 +607,8 @@ export async function handleEconomyMenu(interaction) {
       rob:       { title: 'Rob Settings',        id: 'economysetup_rob_modal',       fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.rob.enabled ? 'yes' : 'no' }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.rob.cooldown) }, { id: 'successrate', label: 'Success Rate % (1-100)', val: String(config.rob.successRate) }, { id: 'maxsteal', label: 'Max Steal % of target cash', val: String(config.rob.maxStealPercent) }] },
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
-      incometax: { title: 'Income Tax',           id: 'economysetup_incometax_modal', fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
+      incometax:    { title: 'Income Tax',       id: 'economysetup_incometax_modal',    fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
+      sellsettings: { title: 'Sell Settings',   id: 'economysetup_sellsettings_modal', fields: [{ id: 'percent', label: 'Sell-Back % (0–100, default 50)', val: String(config.sellPercent ?? 50) }] },
       storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
       storeremove: null,
       storeedit: null,
@@ -1036,6 +1038,27 @@ export async function handleEconomyButton(interaction) {
     });
   }
 
+  if (customId.startsWith('economysetup_store_togglesell_')) {
+    const parts = customId.split('_');
+    const currentState = parts[parts.length - 1];
+    const itemId = parts.slice(0, -1).join('_').replace('economysetup_store_togglesell_', '');
+    const newSellable = currentState === '1' ? false : true;
+    await EconomyStore.findByIdAndUpdate(itemId, { sellable: newSellable }).catch(() => {});
+    const newComponents = interaction.message.components.map(row => {
+      const updated = row.components.map(c => {
+        if (c.customId?.startsWith('economysetup_store_togglesell_')) {
+          return new ButtonBuilder()
+            .setCustomId(`economysetup_store_togglesell_${itemId}_${newSellable ? 1 : 0}`)
+            .setLabel(newSellable ? 'Sellable: ON' : 'Sellable: OFF')
+            .setStyle(newSellable ? ButtonStyle.Success : ButtonStyle.Danger);
+        }
+        return ButtonBuilder.from(c);
+      });
+      return new ActionRowBuilder().addComponents(updated);
+    });
+    return interaction.update({ components: newComponents });
+  }
+
   if (customId.startsWith('economysetup_store_skiproles_')) {
     const itemId = customId.replace('economysetup_store_skiproles_', '');
     const item = await EconomyStore.findById(itemId).catch(() => null);
@@ -1418,6 +1441,14 @@ export async function handleEconomyModal(interaction) {
     return interaction.reply({ embeds: [successEmbed('Income Tax Updated', `Tax rate set to **${rate}%**.\n-# ${rate === 0 ? 'Income tax is now disabled.' : `${rate}% will be deducted from all income collected.`}`)], flags: 64 });
   }
 
+  if (customId === 'economysetup_sellsettings_modal') {
+    const pct = parseFloat(interaction.fields.getTextInputValue('percent'));
+    if (isNaN(pct) || pct < 0 || pct > 100) return interaction.reply({ embeds: [errorEmbed('Enter a valid percentage between 0 and 100.')], flags: 64 });
+    config2.sellPercent = pct;
+    await config2.save();
+    return interaction.reply({ embeds: [successEmbed('Sell Settings Updated', `Members will receive **${pct}%** of an item's price when selling it back.`)], flags: 64 });
+  }
+
   if (customId.startsWith('economysetup_roleincome_modal_')) {
     const roleId    = customId.replace('economysetup_roleincome_modal_', '');
     const amount    = parseInt(interaction.fields.getTextInputValue('amount'));
@@ -1464,12 +1495,12 @@ export async function handleEconomyModal(interaction) {
     const desc  = interaction.fields.getTextInputValue('description');
     if (isNaN(price) || price < 1) return interaction.reply({ embeds: [errorEmbed('Invalid price.')], flags: 64 });
     if (await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } })) return interaction.reply({ embeds: [errorEmbed(`**${name}** already exists.`)], flags: 64 });
-    const item = await EconomyStore.create({ guildId, name, price, description: desc, usable: false });
+    const item = await EconomyStore.create({ guildId, name, price, description: desc, usable: false, sellable: true });
     const itemId = item._id.toString();
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
         .setTitle('Item Added')
-        .setDescription(`**${name}** added for ${sym}${fmt(price)}.\n-# ${desc}\n\nOptionally assign roles below, or click **Done** to finish.`)
+        .setDescription(`**${name}** added for ${sym}${fmt(price)}.\n-# ${desc}\n\nOptionally assign roles and toggle sellable below, then click **Done**.`)
         .setFooter({ text: 'RPM' })],
       components: [
         new ActionRowBuilder().addComponents(
@@ -1486,9 +1517,13 @@ export async function handleEconomyModal(interaction) {
         ),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
+            .setCustomId(`economysetup_store_togglesell_${itemId}_1`)
+            .setLabel('Sellable: ON')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
             .setCustomId(`economysetup_store_skiproles_${itemId}`)
             .setLabel('Done')
-            .setStyle(ButtonStyle.Success)
+            .setStyle(ButtonStyle.Secondary)
         ),
       ],
       flags: 64,

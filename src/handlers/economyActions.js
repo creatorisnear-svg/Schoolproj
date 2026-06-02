@@ -563,8 +563,10 @@ export async function runSell(interaction, itemName, quantity) {
   if (!invItem) return interaction.reply({ embeds: [errorEmbed(`You don't have **"${itemName}"** in your inventory.`)], flags: 64 });
   if (invItem.quantity < qty) return interaction.reply({ embeds: [errorEmbed(`You only have **${invItem.quantity}** of that item.`)], flags: 64 });
   const guildItem = await EconomyStore.findOne({ guildId, name: new RegExp(`^${itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+  if (guildItem && guildItem.sellable === false) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** cannot be sold.`)], flags: 64 });
   const price = guildItem ? guildItem.price : 0;
-  const payout = Math.floor(price * 0.5) * qty;
+  const sellPct = (config.sellPercent ?? 50) / 100;
+  const payout = Math.floor(price * sellPct) * qty;
   invItem.quantity -= qty;
   if (invItem.quantity <= 0) inv.items = inv.items.filter(i => i.itemName.toLowerCase() !== itemName.toLowerCase());
   inv.markModified('items');
@@ -572,7 +574,8 @@ export async function runSell(interaction, itemName, quantity) {
   const bal = await getBalance(guildId, userId, config.startingBalance);
   bal.cash = Math.min(bal.cash + payout, config.maxBalance);
   await bal.save();
-  const payoutNote = price > 0 ? `for **${sym}${fmt(payout)}** (50% value)` : 'for **nothing** (item had no price set)';
+  const pctLabel = `${config.sellPercent ?? 50}% value`;
+  const payoutNote = price > 0 ? `for **${sym}${fmt(payout)}** (${pctLabel})` : 'for **nothing** (item had no price set)';
   return interaction.reply({ embeds: [successEmbed('Item Sold', `Sold **${invItem.itemName}** x${qty} ${payoutNote}.\n**Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
 }
 

@@ -64,6 +64,7 @@ const economyConfigSchema = new mongoose.Schema({
     cooldown: { type: Number, default: 60 },
   },
 
+  sellPercent: { type: Number, default: 50 },
   incomeTax: { type: Number, default: 0 },
   incomeFee: { type: Number, default: 0 },
   incomeChannelId: { type: String, default: null },

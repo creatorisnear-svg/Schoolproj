@@ -732,6 +732,7 @@ export function createApiRouter(client) {
             { key: 'chatMoney_minAmount', label: 'Chat Min Earnings', description: 'Minimum cash earned per eligible message', type: 'number', value: ec?.chatMoney?.minAmount ?? 1, min: 1, max: 10000 },
             { key: 'chatMoney_maxAmount', label: 'Chat Max Earnings', description: 'Maximum cash earned per eligible message', type: 'number', value: ec?.chatMoney?.maxAmount ?? 10, min: 1, max: 10000 },
             { key: 'chatMoney_cooldown', label: 'Chat Money Cooldown (seconds)', description: 'Seconds before a member can earn again from chatting', type: 'number', value: ec?.chatMoney?.cooldown ?? 60, min: 1, max: 3600 },
+            { key: 'sellPercent', label: 'Sell-Back Percentage (%)', description: 'How much of an item\'s price members get when selling it back (default 50%)', type: 'number', value: ec?.sellPercent ?? 50, min: 0, max: 100 },
           ];
           try {
             const totalMembers = await EconomyBalance.countDocuments({ guildId: guild.id });
@@ -759,6 +760,7 @@ export function createApiRouter(client) {
               price: i.price,
               description: i.description || '',
               usable: !!i.usable,
+              sellable: i.sellable !== false,
               roleId: i.roleId || null,
               roleName: i.roleId ? (guild.roles.cache.get(i.roleId)?.name || 'Unknown Role') : null,
             }));
@@ -993,7 +995,7 @@ export function createApiRouter(client) {
         case 'economy': {
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id }) || new EconomyConfig({ guildId: guild.id });
-          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId'];
+          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId', 'sellPercent'];
           const nestedMap = {
             work_enabled: ['work', 'enabled'],
             work_cooldown: ['work', 'cooldown'],
@@ -1018,7 +1020,7 @@ export function createApiRouter(client) {
             chatMoney_maxAmount: ['chatMoney', 'maxAmount'],
             chatMoney_cooldown: ['chatMoney', 'cooldown'],
           };
-          const numericFields = new Set(['startingBalance', 'maxBalance', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
+          const numericFields = new Set(['startingBalance', 'maxBalance', 'sellPercent', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
           for (const [k, v] of Object.entries(changes)) {
             const val = numericFields.has(k) ? Number(v) : v;
             if (topLevel.includes(k)) {
@@ -1709,7 +1711,7 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { name, price, description, usable, roleId, requiredRoleId } = req.body;
+    const { name, price, description, usable, sellable, roleId, requiredRoleId } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Item name is required' });
     if (price === undefined || isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Valid price is required' });
     try {
@@ -1717,6 +1719,7 @@ export function createApiRouter(client) {
       const item = await EconomyStore.create({
         guildId: req.params.id, name: name.trim(), price: Number(price),
         description: description?.trim() || '', usable: !!usable,
+        sellable: sellable !== false,
         roleId: roleId || null, requiredRoleId: requiredRoleId || null,
       });
       res.json({ success: true, id: item._id.toString() });

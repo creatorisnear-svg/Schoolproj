@@ -1356,6 +1356,8 @@ function renderEconomySettings(data) {
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
     '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
     '<input id="store-usable" type="checkbox"> Usable item</label>' +
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
+    '<input id="store-sellable" type="checkbox" checked> Sellable</label>' +
     '<button class="btn btn-success btn-sm" onclick="addStoreItem()">Add Item</button>' +
     '</div>' +
     '</div>' +
@@ -1403,12 +1405,13 @@ function addStoreItem() {
   var roleId = document.getElementById('store-role')?.value || null;
   var requiredRoleId = document.getElementById('store-required-role')?.value || null;
   var usable = document.getElementById('store-usable')?.checked || false;
+  var sellable = document.getElementById('store-sellable') ? document.getElementById('store-sellable').checked : true;
   if (!name) { toast('Item name is required'); return; }
   if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price'); return; }
   var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store', {
     method: 'POST',
-    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null, requiredRoleId: requiredRoleId || null })
+    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, sellable: sellable, roleId: roleId || null, requiredRoleId: requiredRoleId || null })
   }).then(function(r) {
     if (r && r.success) { toast('Item added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) { toast(r.error); }

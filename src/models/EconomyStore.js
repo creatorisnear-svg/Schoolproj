@@ -9,6 +9,7 @@ const economyStoreSchema = new mongoose.Schema({
   useEffect: { type: String, default: '' },
   roleId: { type: String, default: null },
   requiredRoleId: { type: String, default: null },
+  sellable: { type: Boolean, default: true },
 });
 
 economyStoreSchema.index({ guildId: 1, name: 1 }, { unique: true });
