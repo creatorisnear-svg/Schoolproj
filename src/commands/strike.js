@@ -87,17 +87,26 @@ export async function execute(interaction) {
         }
       }
 
+      const warningNote = strikeLevel === 4
+        ? '\n> **This is a final warning.** Further violations may result in a permanent ban.\n'
+        : strikeLevel === 3
+        ? '\n> **This is strike 3.** One more violation may result in a ban.\n'
+        : '';
+
       const strikeDM = new EmbedBuilder()
-        .setColor('#f04747')
-        .setTitle('Strike Received')
+        .setColor(0xF23F43)
+        .setTitle('Strike Notice')
         .setDescription(
-          `**Issued by:** ${interaction.user.username}\n` +
+          `You have received a strike on **${interaction.guild.name}**.\n\n` +
+          `**Strike Level:** ${strikeLevel} / 4\n` +
           `**Reason:** ${reason}\n` +
-          `**Level:** ${strikeLevel}/4\n` +
-          `**Action:** ${actionTaken}`
+          `**Issued by:** ${interaction.user.username}\n` +
+          `**Action taken:** ${actionTaken}\n` +
+          warningNote +
+          '\n-# Contact server staff if you believe this was issued in error.'
         )
         .setTimestamp()
-        .setFooter({ text: 'RPM' });
+        .setFooter({ text: interaction.guild.name });
 
       await targetUser.send({ embeds: [strikeDM] }).catch(() => {});
     }
@@ -107,8 +116,8 @@ export async function execute(interaction) {
       const logChannel = await interaction.guild.channels.fetch(config.logChannelId).catch(() => null);
       if (logChannel && logChannel.isTextBased()) {
         const logEmbed = new EmbedBuilder()
-          .setColor('#f04747')
-          .setTitle(`Strike - Level ${strikeLevel}`)
+          .setColor(0xF23F43)
+          .setTitle(`Strike Issued — Level ${strikeLevel} / 4`)
           .setDescription(
             `**User:** ${targetUser.username} (${targetUser})\n` +
             `**Issued by:** ${interaction.user.username}\n` +
@@ -123,7 +132,10 @@ export async function execute(interaction) {
     }
 
     return interaction.reply({
-      embeds: [successEmbed(`Strike - ${targetUser.username}`, `Now at level **${strikeLevel}/4**\nAction: ${actionTaken}`)],
+      embeds: [successEmbed(
+        `Strike Issued — ${targetUser.username}`,
+        `**Level:** ${strikeLevel} / 4\n**Action:** ${actionTaken}\n**Reason:** ${reason}`
+      )],
       flags: 64,
     });
   } catch (error) {

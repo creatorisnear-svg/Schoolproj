@@ -91,25 +91,26 @@ export async function handleLEODatabaseMenu(interaction) {
       }
 
       const embeds = activeCalls.map((call, index) => {
-        const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'None';
-        const attached = call.attachedLeoIds.length > 0 
+        const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'Unassigned';
+        const attached = call.attachedLeoIds.length > 0
           ? call.attachedLeoIds.map(id => `<@${id}>`).join(', ')
           : 'None';
 
-        let description = `**Issue:** ${call.issue}\n`;
-        description += `**Location:** ${call.location}\n`;
-        description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n\n`;
-        description += `**Status:**\n`;
-        description += `• Primary Response: ${responding}\n`;
-        description += `• Attached Units: ${attached}\n`;
-        if (call.suspectsDescription) description += `\n**Suspects & Vehicles:** ${call.suspectsDescription}\n`;
-        if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
+        let description = `**Location:** ${call.location}\n`;
+        description += `**Reporter:** ${call.reporterUsername || 'Unknown'}  ·  <t:${Math.floor(call.timestamp.getTime() / 1000)}:R>\n\n`;
+        description += `**Response**\n`;
+        description += `> Primary: ${responding}\n`;
+        if (call.attachedLeoIds.length > 0) description += `> Attached: ${attached}\n`;
+        if (call.suspectsDescription) {
+          description += `\n**Suspects & Vehicles**\n> ${call.suspectsDescription}\n`;
+        }
+        if (call.lastSeen) description += `\n**Last Seen:** ${call.lastSeen}\n`;
 
         return new EmbedBuilder()
-          .setColor('#2d2d2d')
-          .setTitle(`Call #${index + 1}: ${call.issue}`)
+          .setColor(call.respondingLeoId ? 0x5865F2 : 0xF23F43)
+          .setTitle(`Call ${index + 1}  —  ${call.issue}`)
           .setDescription(description)
-          .setFooter({ text: `RPM | ID: ${call.callId}` })
+          .setFooter({ text: `RPM  •  ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
       });
 
@@ -426,40 +427,44 @@ export async function handleLEOSearchPlateModal(interaction) {
     const vehicle = character.vehicles.find(v => v.licensePlate === plate) || 
                    (character.licensePlate === plate ? { licensePlate: character.licensePlate } : null);
 
-    let description = `**Owner:** ${character.characterName}\n`;
-    
-    if (vehicle) {
-      description += `\n**VEHICLE INFORMATION**\n`;
-      description += `Make/Model: ${vehicle.make} ${vehicle.model}\n`;
-      description += `Color: ${vehicle.color}\n`;
-      if (vehicle.condition) description += `Condition: ${vehicle.condition}\n`;
-    }
-
-    // Check for vehicle BOLOs
-    const BOLO = await import('../models/BOLO.js').then(m => m.default);
-    const vehicleBolos = await BOLO.find({
+    // Check for vehicle BOLOs first so we can set status color correctly
+    const BOLOModel = await import('../models/BOLO.js').then(m => m.default);
+    const vehicleBolos = await BOLOModel.find({
       guildId: interaction.guildId,
       'vehicles.licensePlate': plate,
       active: true
     });
 
-    description += `\n**STATUS**\n`;
+    const isAlert = vehicleBolos.length > 0 || character.status === 'wanted';
+    const embedColor = isAlert ? 0xF23F43 : 0x23A55A;
+
+    let description = `### Plate: \`${plate}\`\n\n`;
+    description += `**Registered Owner:** ${character.characterName}\n`;
+
+    if (vehicle && (vehicle.make || vehicle.model || vehicle.color)) {
+      description += '\n**Vehicle**\n';
+      const parts = [vehicle.color, vehicle.make, vehicle.model].filter(Boolean);
+      description += `> ${parts.join(' ')}\n`;
+      if (vehicle.condition) description += `> Condition: ${vehicle.condition}\n`;
+    }
+
+    description += '\n**Status**\n';
     if (vehicleBolos.length > 0) {
-      description += `**VEHICLE BOLO ALERT**\n`;
+      description += `> BOLO ACTIVE\n`;
       vehicleBolos.forEach(bolo => {
-        description += `• ${bolo.boloId} - ${bolo.reason}\n`;
+        description += `> \`${bolo.boloId}\` — ${bolo.reason}\n`;
       });
     } else if (character.status === 'wanted') {
-      description += `**WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+      description += `> WANTED${character.wantedReason ? ` — ${character.wantedReason}` : ''}\n`;
     } else {
-      description += `**CLEAN**`;
+      description += `> CLEAR — No flags on record\n`;
     }
 
     const buttons = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`view_char_profile_${character._id.toString()}`)
-          .setLabel('View Character Profile')
+          .setLabel('View Full Record')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
@@ -467,10 +472,9 @@ export async function handleLEOSearchPlateModal(interaction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-    const embedColor = vehicleBolos.length > 0 || character.status === 'wanted' ? '#ff0000' : '#00ff00';
     const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle(`License Plate Search: ${plate}`)
+      .setColor(embedColor)
+      .setTitle('License Plate Search')
       .setDescription(description)
       .setFooter({ text: 'RPM' })
       .setTimestamp();
@@ -543,27 +547,29 @@ export async function handleLEORespondCall(interaction) {
       });
     }
 
-    // Build full call details embed
-    const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'None';
-    const attached = call.attachedLeoIds.length > 0 
+    // Build full call detail embed
+    const responding = call.respondingLeoId ? `<@${call.respondingLeoId}>` : 'Unassigned';
+    const attached = call.attachedLeoIds.length > 0
       ? call.attachedLeoIds.map(id => `<@${id}>`).join(', ')
       : 'None';
 
-    let description = `**Issue:** ${call.issue}\n`;
-    description += `**Location:** ${call.location}\n`;
-    description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n\n`;
-    description += `**Status:**\n`;
-    description += `• Primary Response: ${responding}\n`;
-    description += `• Attached Units: ${attached}\n`;
-    if (call.suspectsDescription) description += `\n**Suspects & Vehicles:** ${call.suspectsDescription}\n`;
-    if (call.lastSeen) description += `**Last Seen:** ${call.lastSeen}\n`;
-    if (call.contact) description += `**Contact:** ${call.contact}\n`;
+    let description = `**Location:** ${call.location}\n`;
+    description += `**Reporter:** ${call.reporterUsername || 'Unknown'}\n`;
+    description += `**Received:** <t:${Math.floor(call.timestamp.getTime() / 1000)}:R>\n\n`;
+    description += `**Response**\n`;
+    description += `> Primary: ${responding}\n`;
+    description += `> Attached: ${attached}\n`;
+    if (call.suspectsDescription) {
+      description += `\n**Suspects & Vehicles**\n> ${call.suspectsDescription}\n`;
+    }
+    if (call.lastSeen) description += `\n**Last Seen:** ${call.lastSeen}\n`;
+    if (call.contact)  description += `**Caller Contact:** ${call.contact}\n`;
 
     const callEmbed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle(`Call #${call.callId}: ${call.issue}`)
+      .setColor(call.respondingLeoId ? 0x5865F2 : 0xF23F43)
+      .setTitle(`${call.issue}`)
       .setDescription(description)
-      .setFooter({ text: `RPM | ID: ${call.callId}` })
+      .setFooter({ text: `RPM  •  ID: ${call.callId}` })
       .setTimestamp(call.timestamp);
 
     // Show options to respond or attach
@@ -776,80 +782,99 @@ export async function handleLEOSearchCharacterModal(interaction) {
       });
     }
 
-    let description = `**PERSONAL INFORMATION**\n`;
-    if (character.age) description += `Age: ${character.age} | `;
-    if (character.gender) description += `Gender: ${character.gender}`;
-    if (character.age || character.gender) description += `\n`;
-
-    description += `\n**PHYSICAL DESCRIPTION**\n`;
-    if (character.height) description += `Height: ${character.height} | `;
-    if (character.distinguishingFeatures) description += `Race: ${character.distinguishingFeatures}`;
-    if (character.height || character.distinguishingFeatures) description += `\n`;
-    if (character.hairColor) description += `Hair: ${character.hairColor} | `;
-    if (character.eyeColor) description += `Eyes: ${character.eyeColor}`;
-    if (character.hairColor || character.eyeColor) description += `\n`;
-    if (character.build) description += `Build: ${character.build}\n`;
-
-    description += `\n**IDENTIFICATION**\n`;
-    description += `SSN: ${character.socialSecurityNumber}\n`;
-    description += `License Status: ${character.driverLicenseStatus === 'valid' ? 'Valid' : 'Invalid'}\n`;
-    if (character.veteranStatus && character.veteranStatus !== 'none') {
-      description += `Status: ${character.veteranStatus === 'veteran' ? 'Veteran' : 'Organ Donor'}\n`;
-    }
-
-    description += `\n**VEHICLES**\n`;
-    if (character.vehicles.length > 0) {
-      character.vehicles.forEach(v => {
-        description += `• ${v.make} ${v.model} (${v.color}) - Plate: **${v.licensePlate}**${v.condition ? ` [${v.condition}]` : ''}\n`;
-      });
-    } else {
-      description += `None registered\n`;
-    }
-
-    description += `\n**WEAPONS**\n`;
-    if (character.guns.length > 0) {
-      character.guns.forEach(g => {
-        description += `• ${g.name}${g.serialNumber ? ` (SN: ${g.serialNumber})` : ''}\n`;
-      });
-    } else {
-      description += `None registered\n`;
-    }
-
-    // Fetch BOLOs for this character
     const BOLO = await import('../models/BOLO.js').then(m => m.default);
-    const bolos = await BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true });
-    
-    if (bolos.length > 0) {
-      description += `\n**BOLO ALERTS**\n`;
-      bolos.forEach(bolo => {
-        description += `• **${bolo.boloId}** - ${bolo.reason}\n`;
-        description += `  Issued: ${bolo.createdAt.toLocaleDateString()} by <@${bolo.issuedBy}>\n`;
-        if (bolo.description) description += `  Details: ${bolo.description}\n`;
-      });
-    }
-
-    // Fetch traffic tickets for this character
     const TrafficTicket = await import('../models/TrafficTicket.js').then(m => m.default);
-    const tickets = await TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 });
-    
-    description += `\n**TRAFFIC TICKETS**\n`;
-    if (tickets.length > 0) {
-      const ticketSummary = tickets.slice(0, 5).map(t => {
-        return `• **${t.ticketId}** - ${t.violation}${t.fine ? ` ($${t.fine})` : ''}`;
-      }).join('\n');
-      description += ticketSummary;
-      if (tickets.length > 5) description += `\n... and ${tickets.length - 5} more`;
+    const [bolos, tickets] = await Promise.all([
+      BOLO.find({ guildId: interaction.guildId, characterId: character._id.toString(), active: true }),
+      TrafficTicket.find({ characterId: character._id.toString() }).sort({ issuedAt: -1 }),
+    ]);
+
+    const isAlert = bolos.length > 0 || character.status === 'wanted';
+
+    // Status line at top
+    let statusLine = '';
+    if (bolos.length > 0) {
+      statusLine = `> **BOLO ACTIVE** — ${bolos.map(b => b.reason).join(', ')}\n\n`;
+    } else if (character.status === 'wanted') {
+      statusLine = `> **WANTED**${character.wantedReason ? ` — ${character.wantedReason}` : ''}\n\n`;
     } else {
-      description += `None on record\n`;
+      statusLine = `> CLEAR — No active alerts\n\n`;
     }
 
-    description += `\n**STATUS**\n`;
-    if (bolos.length > 0) {
-      description += `**BOLO ALERT**`;
-    } else if (character.status === 'wanted') {
-      description += `**WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}`;
+    let description = `### ${character.characterName}\n${statusLine}`;
+
+    // Personal info
+    const personalParts = [];
+    if (character.age) personalParts.push(`Age: ${character.age}`);
+    if (character.gender) personalParts.push(`Gender: ${character.gender}`);
+    if (character.height) personalParts.push(`Height: ${character.height}`);
+    if (character.build) personalParts.push(`Build: ${character.build}`);
+    if (personalParts.length) description += `**Profile**\n${personalParts.join('  ·  ')}\n`;
+
+    const physicalParts = [];
+    if (character.hairColor) physicalParts.push(`Hair: ${character.hairColor}`);
+    if (character.eyeColor)  physicalParts.push(`Eyes: ${character.eyeColor}`);
+    if (character.distinguishingFeatures) physicalParts.push(character.distinguishingFeatures);
+    if (physicalParts.length) description += physicalParts.join('  ·  ') + '\n';
+
+    description += '\n';
+
+    // Identification
+    const idParts = [];
+    if (character.socialSecurityNumber) idParts.push(`SSN: \`${character.socialSecurityNumber}\``);
+    if (character.driverLicenseStatus) {
+      idParts.push(`License: ${character.driverLicenseStatus === 'valid' ? 'Valid' : 'Invalid'}`);
+    }
+    if (idParts.length) description += `**Identification**\n${idParts.join('  ·  ')}\n\n`;
+
+    // Vehicles
+    description += `**Vehicles** (${character.vehicles.length})\n`;
+    if (character.vehicles.length > 0) {
+      character.vehicles.slice(0, 5).forEach(v => {
+        const plate = v.licensePlate ? `  \`${v.licensePlate}\`` : '';
+        const condition = v.condition ? `  [${v.condition}]` : '';
+        description += `> ${[v.color, v.make, v.model].filter(Boolean).join(' ')}${plate}${condition}\n`;
+      });
+      if (character.vehicles.length > 5) description += `-# ...and ${character.vehicles.length - 5} more\n`;
     } else {
-      description += `**CLEAN**`;
+      description += `> None registered\n`;
+    }
+    description += '\n';
+
+    // Weapons
+    description += `**Registered Weapons** (${character.guns.length})\n`;
+    if (character.guns.length > 0) {
+      character.guns.slice(0, 5).forEach(g => {
+        const sn = g.serialNumber ? `  SN: \`${g.serialNumber}\`` : '';
+        description += `> ${g.name}${sn}\n`;
+      });
+    } else {
+      description += `> None registered\n`;
+    }
+    description += '\n';
+
+    // BOLOs
+    if (bolos.length > 0) {
+      description += `**Active BOLOs**\n`;
+      bolos.forEach(bolo => {
+        description += `> \`${bolo.boloId}\` — ${bolo.reason}`;
+        if (bolo.description) description += `  ·  ${bolo.description}`;
+        description += `\n> Issued by <@${bolo.issuedBy}> <t:${Math.floor(bolo.createdAt.getTime() / 1000)}:R>\n`;
+      });
+      description += '\n';
+    }
+
+    // Traffic tickets
+    description += `**Traffic Tickets** (${tickets.length})\n`;
+    if (tickets.length > 0) {
+      tickets.slice(0, 5).forEach(t => {
+        const paid = t.paid ? '~~' : '';
+        const fine = t.fine ? `  $${t.fine}` : '';
+        description += `> ${paid}\`${t.ticketId}\` ${t.violation}${fine}${paid}\n`;
+      });
+      if (tickets.length > 5) description += `-# ...and ${tickets.length - 5} more on record\n`;
+    } else {
+      description += `> None on record\n`;
     }
 
     const backButton = new ActionRowBuilder()
@@ -861,8 +886,8 @@ export async function handleLEOSearchCharacterModal(interaction) {
       );
 
     const embed = new EmbedBuilder()
-      .setColor((character.status === 'wanted' || bolos.length > 0) ? '#ff0000' : '#00ff00')
-      .setTitle(`Character Profile: ${character.characterName}`)
+      .setColor(isAlert ? 0xF23F43 : 0x23A55A)
+      .setTitle('Character Record')
       .setDescription(description)
       .setFooter({ text: 'RPM' })
       .setTimestamp();

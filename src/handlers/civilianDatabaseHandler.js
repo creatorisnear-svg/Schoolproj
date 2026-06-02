@@ -216,7 +216,8 @@ export async function handleCivilianDatabaseMenu(interaction) {
         );
 
       return interaction.update({
-        content: 'Select a character to add a vehicle to:',
+        content: '',
+        embeds: [new EmbedBuilder().setColor(0x2B2D31).setTitle('Add Vehicle').setDescription('Select the character you want to register a vehicle to.')],
         components: [charMenu, backButton],
       });
     }
@@ -226,7 +227,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
 
       if (characters.length === 0) {
         return interaction.reply({
-          embeds: [errorEmbed('You need to create a character first.')],
+          embeds: [errorEmbed('No Characters Found', 'You need to create a character before registering a firearm. Use **Create Character** from the main menu.')],
           flags: 64,
         });
       }
@@ -251,7 +252,8 @@ export async function handleCivilianDatabaseMenu(interaction) {
         );
 
       return interaction.update({
-        content: 'Select a character to add a firearm to:',
+        content: '',
+        embeds: [new EmbedBuilder().setColor(0x2B2D31).setTitle('Add Firearm').setDescription('Select the character you want to register a weapon to.')],
         components: [charMenu, backButton],
       });
     }
@@ -261,7 +263,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
 
       if (characters.length === 0) {
         return interaction.reply({
-          embeds: [errorEmbed('No Characters', 'You haven\'t created any characters yet.')],
+          embeds: [errorEmbed('No Characters Found', 'You have not created any characters yet. Use **Create Character** from the main menu to get started.')],
           flags: 64,
         });
       }
@@ -270,11 +272,11 @@ export async function handleCivilianDatabaseMenu(interaction) {
         .addComponents(
           new StringSelectMenuBuilder()
             .setCustomId('civilian_manage_character_select')
-            .setPlaceholder('Select a character to manage...')
+            .setPlaceholder('Select a character...')
             .addOptions(characters.map(c => ({
               label: c.characterName,
               value: c._id.toString(),
-              description: `Age: ${c.age || 'N/A'} | Vehicles: ${c.vehicles?.length || 0}`
+              description: `Age: ${c.age || 'N/A'} | Vehicles: ${c.vehicles?.length || 0} | Weapons: ${c.guns?.length || 0}`
             })))
         );
 
@@ -287,7 +289,8 @@ export async function handleCivilianDatabaseMenu(interaction) {
         );
 
       return interaction.update({
-        content: '**MANAGE CHARACTER**\n\nSelect a character to view, edit, or delete:',
+        content: '',
+        embeds: [new EmbedBuilder().setColor(0x2B2D31).setTitle('Manage Characters').setDescription('Select a character to view their full record, edit details, or remove them.')],
         components: [charMenu, backButton],
       });
     }
@@ -406,23 +409,44 @@ export async function handleCivilianManageCharacterSelect(interaction) {
       });
     }
 
-    // Show character details with action buttons
-    let description = `**Name:** ${character.characterName}\n`;
-    if (character.age) description += `**Age:** ${character.age}\n`;
-    if (character.gender) description += `**Gender:** ${character.gender}\n`;
-    if (character.hairColor) description += `**Hair:** ${character.hairColor}\n`;
-    if (character.eyeColor) description += `**Eyes:** ${character.eyeColor}\n`;
-    if (character.socialSecurityNumber) description += `**SSN:** ${character.socialSecurityNumber}\n`;
-    if (character.driversLicense) description += `**License:** ${character.driversLicense}\n`;
-    
-    description += `\n**Vehicles:** ${character.vehicles?.length || 0}\n`;
-    description += `**Weapons:** ${character.guns?.length || 0}`;
+    // Build structured character profile
+    const infoLines = [];
+    if (character.age)    infoLines.push(`**Age:** ${character.age}`);
+    if (character.gender) infoLines.push(`**Gender:** ${character.gender}`);
+    if (character.hairColor) infoLines.push(`**Hair:** ${character.hairColor}`);
+    if (character.eyeColor)  infoLines.push(`**Eyes:** ${character.eyeColor}`);
+
+    const docLines = [];
+    if (character.socialSecurityNumber) docLines.push(`**SSN:** \`${character.socialSecurityNumber}\``);
+    if (character.driversLicense)       docLines.push(`**Driver License:** \`${character.driversLicense}\``);
+
+    let description = `### ${character.characterName}\n`;
+    if (infoLines.length) description += infoLines.join('  ·  ') + '\n';
+    description += '\n';
+
+    if (docLines.length) {
+      description += docLines.join('\n') + '\n\n';
+    }
+
+    const vehicleCount = character.vehicles?.length || 0;
+    const weaponCount  = character.guns?.length || 0;
+
+    description += `**Registered Vehicles:** ${vehicleCount === 0 ? 'None' : vehicleCount}\n`;
+    description += `**Registered Weapons:** ${weaponCount === 0 ? 'None' : weaponCount}\n\n`;
+
+    if (vehicleCount > 0) {
+      description += '**Vehicles**\n';
+      character.vehicles.slice(0, 5).forEach(v => {
+        const plate = v.licensePlate ? ` — \`${v.licensePlate}\`` : '';
+        description += `> ${v.color || ''} ${v.make || ''} ${v.model || ''}${plate}\n`.replace(/\s+/g, ' ');
+      });
+      if (vehicleCount > 5) description += `-# ...and ${vehicleCount - 5} more\n`;
+    }
 
     const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle(`${character.characterName}`)
+      .setColor(0x2B2D31)
       .setDescription(description)
-      .setFooter({ text: 'RPM' });
+      .setFooter({ text: 'RPM  •  Use the buttons below to edit or remove this character' });
 
     const backButton = new ActionRowBuilder()
       .addComponents(
