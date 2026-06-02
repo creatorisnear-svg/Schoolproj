@@ -1,5 +1,6 @@
 var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
 var SITE_URL = 'https://roleplaymanager.xyz';
+var BILLING_PORTAL_URL = 'https://billing.stripe.com/p/login/3cIdR9aKdaXpgnA9vs33W00';
 
 var app = document.getElementById('app');
 var toastEl = document.getElementById('toast');
@@ -679,10 +680,15 @@ function openBillingPortal() {
   var btn = document.querySelector('[onclick="openBillingPortal()"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Opening...'; }
   api('/guild/' + currentGuild.id + '/premium/billing-portal', { method: 'POST' }).then(function(result) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
     if (result && result.url) {
       window.open(result.url, '_blank', 'noopener');
+    } else {
+      window.open(BILLING_PORTAL_URL, '_blank', 'noopener');
     }
+  }).catch(function() {
     if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
+    window.open(BILLING_PORTAL_URL, '_blank', 'noopener');
   });
 }
 
