@@ -1709,7 +1709,7 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { name, price, description, usable, roleId } = req.body;
+    const { name, price, description, usable, roleId, requiredRoleId } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Item name is required' });
     if (price === undefined || isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Valid price is required' });
     try {
@@ -1717,7 +1717,7 @@ export function createApiRouter(client) {
       const item = await EconomyStore.create({
         guildId: req.params.id, name: name.trim(), price: Number(price),
         description: description?.trim() || '', usable: !!usable,
-        roleId: roleId || null,
+        roleId: roleId || null, requiredRoleId: requiredRoleId || null,
       });
       res.json({ success: true, id: item._id.toString() });
     } catch (err) {
