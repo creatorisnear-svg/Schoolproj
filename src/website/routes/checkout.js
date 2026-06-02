@@ -52,23 +52,27 @@ async function getStripeClient() {
 }
 
 // Auto-create Stripe products & prices on first use.
-// Stores price IDs in MongoDB so no manual env vars are needed.
-// MongoDB operations are wrapped in try/catch - if DB is unavailable the
-// checkout still works; prices just won't be cached for the next call.
-// NOTE: lifetime plan removed from UI — existing lifetime keys still honoured.
+// Uses v2 field names in MongoDB so old cached price IDs are never reused
+// when amounts change. Prices: $6/mo, $15/3mo, $49.99 lifetime.
 async function getOrCreatePrices(stripe) {
   let monthlyPriceId = null;
   let quarterlyPriceId = null;
+  let lifetimePriceId = null;
 
-  // Try to load cached price IDs from DB first
+  // Try to load v2 cached price IDs from DB first
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
-    if (cfg?.monthlyPriceId && cfg?.quarterlyPriceId) {
-      return { monthlyPriceId: cfg.monthlyPriceId, quarterlyPriceId: cfg.quarterlyPriceId };
+    if (cfg?.monthlyPriceIdV2 && cfg?.quarterlyPriceIdV2 && cfg?.lifetimePriceIdV2) {
+      return {
+        monthlyPriceId: cfg.monthlyPriceIdV2,
+        quarterlyPriceId: cfg.quarterlyPriceIdV2,
+        lifetimePriceId: cfg.lifetimePriceIdV2,
+      };
     }
-    monthlyPriceId = cfg?.monthlyPriceId || null;
-    quarterlyPriceId = cfg?.quarterlyPriceId || null;
+    monthlyPriceId = cfg?.monthlyPriceIdV2 || null;
+    quarterlyPriceId = cfg?.quarterlyPriceIdV2 || null;
+    lifetimePriceId = cfg?.lifetimePriceIdV2 || null;
   } catch (dbErr) {
     console.warn('[Stripe] DB lookup failed, proceeding without cache:', dbErr.message);
   }
@@ -77,48 +81,63 @@ async function getOrCreatePrices(stripe) {
   if (!monthlyPriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium - Monthly',
-      description: 'Monthly premium subscription. Includes AI Voice Dispatch and all premium features. All sales final.',
+      description: 'Monthly premium subscription. $6/month. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 500,
+      unit_amount: 600,
       currency: 'usd',
       recurring: { interval: 'month' },
-      nickname: 'RPM Premium Monthly',
+      nickname: 'RPM Premium Monthly v2',
     });
     monthlyPriceId = price.id;
-    console.log(`[Stripe] Auto-created monthly price: ${monthlyPriceId}`);
+    console.log(`[Stripe] Auto-created monthly price v2: ${monthlyPriceId}`);
   }
 
   if (!quarterlyPriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium - 3 Month',
-      description: '3-month premium subscription billed every 3 months. Includes AI Voice Dispatch and all premium features. All sales final.',
+      description: '3-month premium subscription billed every 3 months. $15 per period. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 1299,
+      unit_amount: 1500,
       currency: 'usd',
       recurring: { interval: 'month', interval_count: 3 },
-      nickname: 'RPM Premium 3-Month',
+      nickname: 'RPM Premium 3-Month v2',
     });
     quarterlyPriceId = price.id;
-    console.log(`[Stripe] Auto-created quarterly price: ${quarterlyPriceId}`);
+    console.log(`[Stripe] Auto-created quarterly price v2: ${quarterlyPriceId}`);
   }
 
-  // Try to cache the IDs for future calls - non-fatal if this fails
+  if (!lifetimePriceId) {
+    const product = await stripe.products.create({
+      name: 'RolePlayManager Premium - Lifetime',
+      description: 'One-time lifetime premium purchase. $49.99. Includes AI Voice Dispatch and all current premium features. All sales final.',
+    });
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: 4999,
+      currency: 'usd',
+      nickname: 'RPM Premium Lifetime v2',
+    });
+    lifetimePriceId = price.id;
+    console.log(`[Stripe] Auto-created lifetime price v2: ${lifetimePriceId}`);
+  }
+
+  // Cache the v2 IDs for future calls - non-fatal if this fails
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     await StripeConfig.findOneAndUpdate(
       { key: 'global' },
-      { monthlyPriceId, quarterlyPriceId },
+      { monthlyPriceIdV2: monthlyPriceId, quarterlyPriceIdV2: quarterlyPriceId, lifetimePriceIdV2: lifetimePriceId },
       { upsert: true, new: true }
     );
   } catch (dbErr) {
     console.warn('[Stripe] DB save failed (prices still usable this request):', dbErr.message);
   }
 
-  return { monthlyPriceId, quarterlyPriceId };
+  return { monthlyPriceId, quarterlyPriceId, lifetimePriceId };
 }
 
 // Issue a premium key for a completed Stripe session - idempotent.
@@ -193,29 +212,25 @@ export function createCheckoutRouter() {
         allow_promotion_codes: true,
       };
 
+      const { monthlyPriceId, quarterlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
+
       let session;
       if (plan === 'monthly' || plan === 'quarterly') {
-        const { monthlyPriceId, quarterlyPriceId } = await getOrCreatePrices(stripe);
         const priceId = plan === 'monthly' ? monthlyPriceId : quarterlyPriceId;
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
           line_items: [{ price: priceId, quantity: 1 }],
-          subscription_data: { metadata: { discordId: String(discordId) } },
+          subscription_data: { metadata: { discordId: String(discordId || '') } },
         });
       } else {
-        // lifetime: legacy path, one-time payment
-        const { default: StripeConfig } = await import('../../models/StripeConfig.js');
-        const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
-        const lifetimePriceId = cfg?.lifetimePriceId;
-        if (!lifetimePriceId) {
-          return res.status(400).json({ error: 'Lifetime plan is no longer available.' });
-        }
+        // lifetime: one-time payment, auto-created via getOrCreatePrices
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'payment',
           customer_creation: 'always',
           line_items: [{ price: lifetimePriceId, quantity: 1 }],
+          payment_intent_data: { metadata: { discordId: String(discordId || ''), plan: 'lifetime', tosAccepted: 'true' } },
         });
       }
 

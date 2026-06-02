@@ -589,7 +589,7 @@ function renderBilling() {
   api('/guild/' + currentGuild.id + '/premium/billing').then(function(data) {
     if (!data) return;
 
-    var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($12.99/3mo)' : data.plan === 'lifetime' ? 'Lifetime' : 'Manual / Gifted';
+    var planLabel = data.plan === 'monthly' ? 'Monthly ($6/mo)' : data.plan === 'quarterly' ? '3-Month ($15/3mo)' : data.plan === 'lifetime' ? 'Lifetime ($49.99 one-time)' : 'Manual / Gifted';
     var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
     var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status === 'past_due' ? 'Past Due' : data.status || 'Active';
 
