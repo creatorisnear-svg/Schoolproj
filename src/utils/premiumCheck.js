@@ -19,8 +19,11 @@ export async function isPremiumGuild(guildId) {
     if (key.plan === 'lifetime' || key.plan === 'manual') {
       result = true;
     } else {
-      // Monthly - check subscription is still active
-      const activeStatuses = ['active', 'trialing', 'past_due'];
+      // Subscription (monthly/quarterly) - check it is still active.
+      // 'cancelling' = cancel_at_period_end true, still paid until period ends.
+      // 'past_due'   = payment failed, Stripe is retrying - keep access during retry window.
+      // 'cancelled'/'canceled'/'unpaid' = fully terminated - revoke access.
+      const activeStatuses = ['active', 'trialing', 'past_due', 'cancelling'];
       result = activeStatuses.includes(key.subscriptionStatus);
     }
   }
