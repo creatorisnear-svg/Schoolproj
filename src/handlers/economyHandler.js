@@ -607,7 +607,7 @@ export async function handleEconomyMenu(interaction) {
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
       incometax: { title: 'Income Tax',           id: 'economysetup_incometax_modal', fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
-      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }, { id: 'roleid', label: 'Reward Role Name (optional)', val: '', required: false }, { id: 'requiredroleid', label: 'Required Role to Buy (optional)', val: '', required: false }] },
+      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
       storeremove: null,
       storeedit: null,
       addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
@@ -798,6 +798,41 @@ export async function handleEconomyMenu(interaction) {
     await jobConfig.save();
     if (jobConfig.channelId) await postCivilianJobsPanel(interaction.guild, jobConfig);
     return interaction.update({ embeds: [successEmbed('Job Removed', `**${job?.name || jobId}** has been removed from the civilian jobs panel.`)], components: [backBtn('setup')], content: '' });
+  }
+
+  // ── economysetup_store_rewardrole / reqrole ───────────────────────────────
+  if (interaction.customId.startsWith('economysetup_store_rewardrole_')) {
+    const itemId = interaction.customId.replace('economysetup_store_rewardrole_', '');
+    const item = await EconomyStore.findOne({ _id: itemId, guildId });
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [], content: '' });
+    const selectedRoleId = interaction.values[0] || null;
+    item.roleId = selectedRoleId;
+    await item.save();
+    const roleText = selectedRoleId ? `**Reward Role** set to <@&${selectedRoleId}>` : '**Reward Role** cleared';
+    return interaction.update({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+        .setTitle('Item Updated')
+        .setDescription(`**${item.name}** — ${roleText}.\n\nYou can set the required role below or click **Done**.`)
+        .setFooter({ text: 'RPM' })],
+      components: interaction.message.components,
+    });
+  }
+
+  if (interaction.customId.startsWith('economysetup_store_reqrole_')) {
+    const itemId = interaction.customId.replace('economysetup_store_reqrole_', '');
+    const item = await EconomyStore.findOne({ _id: itemId, guildId });
+    if (!item) return interaction.update({ embeds: [errorEmbed('Item not found.')], components: [], content: '' });
+    const selectedRoleId = interaction.values[0] || null;
+    item.requiredRoleId = selectedRoleId;
+    await item.save();
+    const roleText = selectedRoleId ? `**Required Role** set to <@&${selectedRoleId}>` : '**Required Role** cleared';
+    return interaction.update({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+        .setTitle('Item Updated')
+        .setDescription(`**${item.name}** — ${roleText}.\n\nYou can set the reward role above or click **Done**.`)
+        .setFooter({ text: 'RPM' })],
+      components: interaction.message.components,
+    });
   }
 
   // ── economysetup_storeremove_select ───────────────────────────────────────
@@ -998,6 +1033,18 @@ export async function handleEconomyButton(interaction) {
       embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Server Store').setDescription(`**${items.length}** item${items.length !== 1 ? 's' : ''} available.\nSelect an item to view its details.`).setFooter({ text: 'RPM' })],
       components: [buildStoreMenu(items, sym, 'browse')],
       content: '',
+    });
+  }
+
+  if (customId.startsWith('economysetup_store_skiproles_')) {
+    const itemId = customId.replace('economysetup_store_skiproles_', '');
+    const item = await EconomyStore.findById(itemId).catch(() => null);
+    const name = item?.name || 'Item';
+    const roleNote = item?.roleId ? `\n**Reward Role:** <@&${item.roleId}>` : '';
+    const reqNote  = item?.requiredRoleId ? `\n**Required to Buy:** <@&${item.requiredRoleId}>` : '';
+    return interaction.update({
+      embeds: [successEmbed('Done', `**${name}** is ready in the store.${roleNote}${reqNote}`)],
+      components: [],
     });
   }
 
@@ -1417,20 +1464,35 @@ export async function handleEconomyModal(interaction) {
     const desc  = interaction.fields.getTextInputValue('description');
     if (isNaN(price) || price < 1) return interaction.reply({ embeds: [errorEmbed('Invalid price.')], flags: 64 });
     if (await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } })) return interaction.reply({ embeds: [errorEmbed(`**${name}** already exists.`)], flags: 64 });
-    const resolveRole = (input) => {
-      if (!input) return null;
-      const trimmed = input.trim();
-      if (!trimmed) return null;
-      if (/^\d+$/.test(trimmed)) return trimmed;
-      const found = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === trimmed.toLowerCase());
-      return found?.id || null;
-    };
-    const rewardRoleId = resolveRole(interaction.fields.getTextInputValue('roleid'));
-    const requiredRoleId = resolveRole(interaction.fields.getTextInputValue('requiredroleid'));
-    await EconomyStore.create({ guildId, name, price, description: desc, usable: false, roleId: rewardRoleId, requiredRoleId });
-    const roleNote = rewardRoleId ? `\n**Reward Role:** <@&${rewardRoleId}>` : '';
-    const reqNote  = requiredRoleId ? `\n**Required to Buy:** <@&${requiredRoleId}>` : '';
-    return interaction.reply({ embeds: [successEmbed('Item Added', `**${name}** added for ${sym}${fmt(price)}.${roleNote}${reqNote}\n-# ${desc}`)], flags: 64 });
+    const item = await EconomyStore.create({ guildId, name, price, description: desc, usable: false });
+    const itemId = item._id.toString();
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d)
+        .setTitle('Item Added')
+        .setDescription(`**${name}** added for ${sym}${fmt(price)}.\n-# ${desc}\n\nOptionally assign roles below, or click **Done** to finish.`)
+        .setFooter({ text: 'RPM' })],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new RoleSelectMenuBuilder()
+            .setCustomId(`economysetup_store_rewardrole_${itemId}`)
+            .setPlaceholder('Reward Role — granted on purchase (optional)')
+            .setMinValues(0).setMaxValues(1)
+        ),
+        new ActionRowBuilder().addComponents(
+          new RoleSelectMenuBuilder()
+            .setCustomId(`economysetup_store_reqrole_${itemId}`)
+            .setPlaceholder('Required Role — must have to buy (optional)')
+            .setMinValues(0).setMaxValues(1)
+        ),
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`economysetup_store_skiproles_${itemId}`)
+            .setLabel('Done')
+            .setStyle(ButtonStyle.Success)
+        ),
+      ],
+      flags: 64,
+    });
   }
 
   if (customId.startsWith('economysetup_civjobs_addjob_modal_')) {
