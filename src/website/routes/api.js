@@ -1562,6 +1562,47 @@ export function createApiRouter(client) {
     }
   });
 
+  router.post('/guild/:id/premium/billing-portal', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+      const premiumKey = await PremiumKey.findOne({ guildId });
+      if (!premiumKey) return res.status(404).json({ error: 'No premium key found for this server.' });
+      if (!premiumKey.stripeCustomerId) return res.status(400).json({ error: 'No billing account found. This key was not purchased through Stripe.' });
+
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) return res.status(503).json({ error: 'Payment processing not configured.' });
+
+      const { default: Stripe } = await import('stripe');
+      const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' });
+
+      const domain = process.env.DOMAIN
+        ? `https://${process.env.DOMAIN.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0]}`
+        : 'https://roleplaymanager.xyz';
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: premiumKey.stripeCustomerId,
+        return_url: `${domain}/dashboard`,
+      });
+
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error('[BILLING PORTAL] Error:', err.message);
+      res.status(500).json({ error: 'Failed to open billing portal. Please try again.' });
+    }
+  });
+
   router.post('/guild/:id/premium/transfer', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });

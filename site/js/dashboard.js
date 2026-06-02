@@ -588,14 +588,14 @@ function renderBilling() {
   api('/guild/' + currentGuild.id + '/premium/billing').then(function(data) {
     if (!data) return;
 
-    var planLabel = data.plan === 'monthly' ? 'Monthly' : data.plan === 'lifetime' ? 'Lifetime' : 'Manual / Gifted';
-    var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : 'var(--text-muted)';
-    var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status || 'Active';
+    var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($12.99/3mo)' : data.plan === 'lifetime' ? 'Lifetime' : 'Manual / Gifted';
+    var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
+    var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status === 'past_due' ? 'Past Due' : data.status || 'Active';
 
     var periodRow = '';
     if (data.currentPeriodEnd) {
       var pEnd = new Date(data.currentPeriodEnd);
-      var pLabel = data.status === 'cancelling' ? 'Access ends' : (data.plan === 'monthly' ? 'Next renewal' : 'Valid through');
+      var pLabel = data.status === 'cancelling' ? 'Access ends' : 'Next renewal';
       periodRow = billingRow(pLabel, pEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
     }
 
@@ -607,14 +607,19 @@ function renderBilling() {
       ? billingRow('Purchase date', new Date(data.purchasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
       : '';
 
+    var isSubscription = data.hasStripeSubscription && (data.plan === 'monthly' || data.plan === 'quarterly');
     var cancelBtn = '';
-    if (data.hasStripeSubscription && data.plan === 'monthly') {
+    if (isSubscription) {
       if (data.status === 'cancelling') {
         cancelBtn = '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="reactivateSubscription()">Reactivate Subscription</button>';
-      } else if (data.status === 'active') {
+      } else if (data.status === 'active' || data.status === 'past_due') {
         cancelBtn = '<button id="cancel-sub-btn" class="btn btn-secondary btn-sm" style="margin-top:16px;color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="cancelSubscription()">Cancel Subscription</button>';
       }
     }
+
+    var manageBillingBtn = data.hasStripeSubscription
+      ? '<button class="btn btn-secondary btn-sm" style="margin-top:16px;margin-right:8px;" onclick="openBillingPortal()">Manage Billing</button>'
+      : '';
 
     var invoiceHtml = '';
     if (data.invoices && data.invoices.length > 0) {
@@ -661,12 +666,23 @@ function renderBilling() {
       purchasedRow +
       activatedRow +
       periodRow +
-      cancelBtn +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' + manageBillingBtn + cancelBtn + '</div>' +
       '</div>' +
       invoiceHtml +
       '</div></div>';
 
     app.innerHTML = html;
+  });
+}
+
+function openBillingPortal() {
+  var btn = document.querySelector('[onclick="openBillingPortal()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening...'; }
+  api('/guild/' + currentGuild.id + '/premium/billing-portal', { method: 'POST' }).then(function(result) {
+    if (result && result.url) {
+      window.open(result.url, '_blank', 'noopener');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
   });
 }
 
