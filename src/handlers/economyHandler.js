@@ -607,7 +607,7 @@ export async function handleEconomyMenu(interaction) {
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
       incometax: { title: 'Income Tax',           id: 'economysetup_incometax_modal', fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
-      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }, { id: 'roleid', label: 'Reward Role ID (optional)', val: '', required: false }, { id: 'requiredroleid', label: 'Required Role to Buy (optional)', val: '', required: false }] },
+      storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }, { id: 'roleid', label: 'Reward Role Name (optional)', val: '', required: false }, { id: 'requiredroleid', label: 'Required Role to Buy (optional)', val: '', required: false }] },
       storeremove: null,
       storeedit: null,
       addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
@@ -824,12 +824,12 @@ export async function handleEconomyMenu(interaction) {
           .setRequired(false).setValue(item.description || '').setPlaceholder(item.description || 'Enter a description...')
       ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('roleid').setLabel('Reward Role ID (leave blank to keep current)').setStyle(TextInputStyle.Short)
-          .setRequired(false).setValue(item.roleId || '').setPlaceholder('Paste role ID or leave blank')
+        new TextInputBuilder().setCustomId('roleid').setLabel('Reward Role Name (leave blank to keep)').setStyle(TextInputStyle.Short)
+          .setRequired(false).setValue(item.roleId ? (interaction.guild.roles.cache.get(item.roleId)?.name || item.roleId) : '').setPlaceholder('Type a role name or leave blank')
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('requiredroleid').setLabel('Required Role to Buy (leave blank to keep)').setStyle(TextInputStyle.Short)
-          .setRequired(false).setValue(item.requiredRoleId || '').setPlaceholder('Paste role ID or leave blank to clear')
+          .setRequired(false).setValue(item.requiredRoleId ? (interaction.guild.roles.cache.get(item.requiredRoleId)?.name || item.requiredRoleId) : '').setPlaceholder('Type a role name or leave blank')
       ),
     );
     return interaction.showModal(modal);
@@ -1417,10 +1417,16 @@ export async function handleEconomyModal(interaction) {
     const desc  = interaction.fields.getTextInputValue('description');
     if (isNaN(price) || price < 1) return interaction.reply({ embeds: [errorEmbed('Invalid price.')], flags: 64 });
     if (await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } })) return interaction.reply({ embeds: [errorEmbed(`**${name}** already exists.`)], flags: 64 });
-    const roleIdRaw = interaction.fields.getTextInputValue('roleid')?.trim() || null;
-    const rewardRoleId = roleIdRaw && /^\d+$/.test(roleIdRaw) ? roleIdRaw : null;
-    const reqRoleRaw = interaction.fields.getTextInputValue('requiredroleid')?.trim() || null;
-    const requiredRoleId = reqRoleRaw && /^\d+$/.test(reqRoleRaw) ? reqRoleRaw : null;
+    const resolveRole = (input) => {
+      if (!input) return null;
+      const trimmed = input.trim();
+      if (!trimmed) return null;
+      if (/^\d+$/.test(trimmed)) return trimmed;
+      const found = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === trimmed.toLowerCase());
+      return found?.id || null;
+    };
+    const rewardRoleId = resolveRole(interaction.fields.getTextInputValue('roleid'));
+    const requiredRoleId = resolveRole(interaction.fields.getTextInputValue('requiredroleid'));
     await EconomyStore.create({ guildId, name, price, description: desc, usable: false, roleId: rewardRoleId, requiredRoleId });
     const roleNote = rewardRoleId ? `\n**Reward Role:** <@&${rewardRoleId}>` : '';
     const reqNote  = requiredRoleId ? `\n**Required to Buy:** <@&${requiredRoleId}>` : '';
@@ -1453,10 +1459,16 @@ export async function handleEconomyModal(interaction) {
     const ds = interaction.fields.getTextInputValue('description');
     const ri = interaction.fields.getTextInputValue('roleid')?.trim();
     const rri = interaction.fields.getTextInputValue('requiredroleid')?.trim();
+    const resolveRole = (input) => {
+      if (!input) return null;
+      if (/^\d+$/.test(input)) return input;
+      const found = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
+      return found?.id || null;
+    };
     if (!isNaN(pr) && pr > 0) item.price = pr;
     if (ds?.trim()) item.description = ds.trim();
-    if (ri !== undefined) item.roleId = (ri && /^\d+$/.test(ri)) ? ri : null;
-    if (rri !== undefined) item.requiredRoleId = (rri && /^\d+$/.test(rri)) ? rri : null;
+    if (ri !== undefined) item.roleId = resolveRole(ri);
+    if (rri !== undefined) item.requiredRoleId = resolveRole(rri);
     await item.save();
     const roleNote = item.roleId ? `\n**Reward Role:** <@&${item.roleId}>` : '';
     const reqNote  = item.requiredRoleId ? `\n**Required to Buy:** <@&${item.requiredRoleId}>` : '';

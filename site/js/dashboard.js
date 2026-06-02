@@ -1733,9 +1733,10 @@ function saveSettings(mod) {
       toast('Settings saved successfully');
       pendingChanges = {};
       window._dispatchState = {};
+      var container = document.getElementById('save-bar-container');
+      if (container) container.innerHTML = '';
       api('/guild/' + currentGuild.id).then(function(refreshed) {
         if (refreshed) currentGuild = refreshed;
-        renderSettings(mod);
       });
     } else {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
