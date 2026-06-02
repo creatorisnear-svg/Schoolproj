@@ -1349,6 +1349,11 @@ function renderEconomySettings(data) {
     '<select id="store-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Grant role on buy (optional)</option>' +
     riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
     '</select>' +
+    '<select id="store-required-role" class="config-select" style="flex:1;min-width:160px;"><option value="">Required role to buy (optional)</option>' +
+    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
     '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
     '<input id="store-usable" type="checkbox"> Usable item</label>' +
     '<button class="btn btn-success btn-sm" onclick="addStoreItem()">Add Item</button>' +
@@ -1396,13 +1401,14 @@ function addStoreItem() {
   var price = document.getElementById('store-price')?.value;
   var desc = document.getElementById('store-desc')?.value?.trim() || '';
   var roleId = document.getElementById('store-role')?.value || null;
+  var requiredRoleId = document.getElementById('store-required-role')?.value || null;
   var usable = document.getElementById('store-usable')?.checked || false;
   if (!name) { toast('Item name is required'); return; }
   if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price'); return; }
   var scrollPos = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store', {
     method: 'POST',
-    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null })
+    body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, roleId: roleId || null, requiredRoleId: requiredRoleId || null })
   }).then(function(r) {
     if (r && r.success) { toast('Item added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) { toast(r.error); }
