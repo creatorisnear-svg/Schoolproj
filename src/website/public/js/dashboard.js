@@ -782,7 +782,9 @@ function renderDispatchExtras(data) {
     { label: 'LEO roles', count: leoCount, ok: leoCount > 0 },
   ];
   html += '<div class="config-section" style="margin-top:14px;">' +
-    '<div class="config-section-header"><h3>Configuration Status</h3></div>' +
+    '<div class="config-section-header"><h3>Configuration Status</h3>' +
+    '<button class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="reloadDispatchBot()">Reload Bot Config</button>' +
+    '</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:0 16px 12px;">';
   statusItems.forEach(function(s) {
     html += '<div style="background:var(--bg-secondary);border:1px solid ' + (s.ok ? 'rgba(52,211,153,0.25)' : 'var(--border)') + ';border-radius:8px;padding:10px 12px;">' +
@@ -851,6 +853,14 @@ function renderDispatchExtras(data) {
     '</div></div></div>';
 
   return html;
+}
+
+function reloadDispatchBot() {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/dispatch/reload', { method: 'POST' }).then(function(r) {
+    if (r && r.success) toast('Dispatch bot config reloaded');
+    else if (r && r.error) toast(r.error);
+  });
 }
 
 function dispatchStep(num, title, desc, dotColor) {

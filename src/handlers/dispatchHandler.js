@@ -554,7 +554,10 @@ function detectVoiceCallCreation(text) {
  * Detects if an officer is responding to an active broadcast call.
  */
 function detectRespondToBroadcast(text) {
-  return /\b(?:respond(?:ing)?|i(?:'ll|ll|'m|m)?\s+respond|en\s*route|on\s+my\s+way|rolling|i(?:'m|m)\s+(?:en\s*route|responding|rolling)|copy\s+(?:that|dispatch)|i(?:'ll|ll)\s+take\s+(?:it|that|the\s+call)|show\s+me\s+responding|ten[\s-]?four|10\s*[-\s]?4)\b/i.test(text);
+  // Only match explicit "I am responding to this call" language.
+  // Generic acknowledgments ("copy that", "10-4", "en route") are common radio chatter
+  // and must NOT be treated as responding to a broadcast call - they cause false positives.
+  return /\b(?:i(?:'ll|ll)\s+(?:respond|take\s+(?:it|that|the\s+call))|show\s+me\s+responding|i(?:'m|m)\s+responding\s+(?:to\s+(?:that|this|the)\s+call)?|responding\s+to\s+(?:that|this|the)\s+call|i(?:'ll|ll)\s+respond\s+to\s+(?:that|this|the))\b/i.test(text);
 }
 
 // ────────────────────────────────────────────────────────────────────────────

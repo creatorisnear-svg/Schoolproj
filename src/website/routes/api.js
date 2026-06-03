@@ -440,6 +440,17 @@ export function createApiRouter(client) {
         case 'dispatch': {
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
           await DispatchConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          if (enabled) {
+            try {
+              const { initDispatchForGuild } = await import('../../handlers/dispatchHandler.js');
+              await initDispatchForGuild(client.guilds.cache.get(guildId), client);
+            } catch (e) { console.error('[Dashboard] initDispatchForGuild on enable:', e.message); }
+          } else {
+            try {
+              const { leaveDispatchChannel } = await import('../../utils/voiceListener.js');
+              leaveDispatchChannel(guildId);
+            } catch (e) { console.error('[Dashboard] leaveDispatchChannel on disable:', e.message); }
+          }
           break;
         }
         case 'economy': {
@@ -465,6 +476,24 @@ export function createApiRouter(client) {
     } catch (err) {
       console.error(`[DASHBOARD] Feature toggle error (${feature}):`, err.message);
       res.status(500).json({ error: 'Failed to toggle feature' });
+    }
+  });
+
+  router.post('/guild/:id/dispatch/reload', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const { initDispatchForGuild } = await import('../../handlers/dispatchHandler.js');
+      await initDispatchForGuild(guild, client);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -913,6 +942,14 @@ export function createApiRouter(client) {
             if (allowed.includes(k)) update[k] = v;
           }
           await DispatchConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          // Reload bot dispatch state in-process so patrol channels / LEO roles take effect immediately
+          try {
+            const dc = await DispatchConfig.findOne({ guildId: guild.id });
+            if (dc?.enabled) {
+              const { initDispatchForGuild } = await import('../../handlers/dispatchHandler.js');
+              await initDispatchForGuild(guild, client);
+            }
+          } catch (e) { console.error('[Dashboard] dispatch reload on settings save:', e.message); }
           break;
         }
 
