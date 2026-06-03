@@ -1998,6 +1998,14 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             console.log(`[Dispatch] No trigger or ten-code - ignoring general chatter: "${commandText}"`);
             return;
           }
+          // Without a trigger word, 10-11 (traffic stop) requires explicit stop language.
+          // Officers often mention "10-11" in passing radio chatter without actually calling a stop.
+          const _has1011 = /\b10[-\s]?11\b/i.test(_numOnlyNorm);
+          const _hasStopLang = /\b(?:out\s+with|pulling\s+over|traffic\s+stop|got\s+a\s+stop|making\s+a\s+stop|initiating\s+a\s+stop|show\s+me\s+(?:in|on)\s+a\s+stop|show\s+me\s+10[-\s]?11)\b/i.test(commandText);
+          if (_has1011 && !_hasStopLang) {
+            console.log(`[Dispatch] Ignoring 10-11 mention without trigger or stop language: "${commandText}"`);
+            return;
+          }
           // Status update without trigger - log it and acknowledge if it's a key code
           console.log(`[Dispatch] Status update without trigger word: "${commandText}"`);
         }

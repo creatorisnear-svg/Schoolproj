@@ -145,8 +145,7 @@ export function getEconomySetupMenu() {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder().setCustomId('economysetup_main_menu').setPlaceholder('Choose a setting...')
           .addOptions([
-            { label: 'Enable Economy',           value: 'enable',              description: 'Turn on the economy system' },
-            { label: 'Disable Economy',          value: 'disable',             description: 'Turn off the economy system' },
+            { label: 'Toggle Economy On/Off',    value: 'toggle',              description: 'Enable or disable the economy system' },
             { label: 'View Config',              value: 'view',                description: 'See current economy settings' },
             { label: 'Currency Settings',        value: 'currency',            description: 'Symbol, starting balance, max' },
             { label: 'Work Settings',            value: 'work',                description: 'Configure the work command' },
@@ -516,12 +515,14 @@ export async function handleEconomyMenu(interaction) {
 
     if (value === 'done') return interaction.update({ embeds: [successEmbed('Done', 'Economy setup closed.')], components: [], content: '' });
 
-    if (value === 'enable' || value === 'disable') {
+    if (value === 'enable' || value === 'disable' || value === 'toggle') {
       const hasPerm = interaction.member.permissions.has(PermissionFlagsBits.Administrator) || interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
       if (!hasPerm) return interaction.update({ embeds: [errorEmbed('You need Administrator or Manage Server permission.')], components: [backBtn('setup')], content: '' });
-      config.enabled = value === 'enable';
+      if (value === 'toggle') config.enabled = !config.enabled;
+      else config.enabled = value === 'enable';
       await config.save();
-      return interaction.update({ embeds: [successEmbed(`Economy ${value === 'enable' ? 'Enabled' : 'Disabled'}`, `The economy system is now **${value === 'enable' ? 'enabled' : 'disabled'}**.`)], components: [backBtn('setup')], content: '' });
+      const nowState = config.enabled ? 'enabled' : 'disabled';
+      return interaction.update({ embeds: [successEmbed(`Economy ${config.enabled ? 'Enabled' : 'Disabled'}`, `The economy system is now **${nowState}**.`)], components: [backBtn('setup')], content: '' });
     }
 
     if (value === 'view') {
