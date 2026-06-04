@@ -1260,19 +1260,21 @@ function deleteWhitelistedLink(link) {
 function renderEconomySettings(data) {
   var fields = data.fields || [];
   var groups = {
-    general:   { label: 'General', keys: ['currencySymbol','startingBalance','maxBalance','logChannelId'] },
+    general:   { label: 'General', keys: ['enabled','currencySymbol','startingBalance','maxBalance','logChannelId'] },
     work:      { label: 'Work',    keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
     crime:     { label: 'Crime',   keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
     rob:       { label: 'Robbery', keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },
     gambling:  { label: 'Gambling', keys: ['gambling_enabled','gambling_minBet','gambling_maxBet','gambling_cooldown'] },
     chatmoney: { label: 'Chat Money', keys: ['chatMoney_enabled','chatMoney_minAmount','chatMoney_maxAmount','chatMoney_cooldown'] },
+    store:     { label: 'Store Settings', keys: ['sellPercent'] },
+    income:    { label: 'Income', keys: ['incomeTax','incomeChannelId'] },
   };
 
   var fieldMap = {};
   fields.forEach(function(f) { fieldMap[f.key] = f; });
 
   var html = '';
-  var groupOrder = ['general','work','crime','rob','gambling','chatmoney'];
+  var groupOrder = ['general','work','crime','rob','gambling','chatmoney','store','income'];
   groupOrder.forEach(function(gKey) {
     var g = groups[gKey];
     var groupFields = g.keys.map(function(k) { return fieldMap[k]; }).filter(Boolean);
@@ -1326,6 +1328,37 @@ function renderEconomySettings(data) {
       '</div>';
   }
   html += '</div>';
+
+  /* ── Role Deductions ── */
+  var rdList = data.roleDeductions || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Role Deductions</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + rdList.length + ' entries &mdash; deducted from income payouts</span></div>';
+  if (rdList.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No deductions yet. Roles with deductions have a fixed fee taken from their income earnings.</span></div>';
+  } else {
+    rdList.forEach(function(r) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+        '<div class="config-sublabel">Deducts ' + esc(String(r.amount)) + ' &mdash; ' + esc(r.label || 'Deduction') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleDeduction(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
+    '<select id="rd-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Select role...</option>' +
+    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<input id="rd-amount" type="number" class="config-input" placeholder="Amount" min="1" style="width:100px;">' +
+    '<input id="rd-label" type="text" class="config-input" placeholder="Label (e.g. Taxes)" style="width:140px;">' +
+    '<button class="btn btn-success btn-sm" onclick="addRoleDeduction()">Add</button>' +
+    '</div>' +
+    '<span class="config-sublabel">Role &rarr; deduction amount &rarr; label shown to members</span>' +
+    '</div>' +
+    '</div>';
 
   /* ── Store Management ── */
   var storeItems = data.storeItems || [];
@@ -1425,6 +1458,30 @@ function addStoreItem() {
   }).then(function(r) {
     if (r && r.success) { toast('Item added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
     else if (r && r.error) { toast(r.error); }
+  });
+}
+
+function addRoleDeduction() {
+  var roleId = document.getElementById('rd-role')?.value;
+  var amount = document.getElementById('rd-amount')?.value;
+  var label = document.getElementById('rd-label')?.value?.trim() || 'Deduction';
+  if (!roleId) { toast('Select a role'); return; }
+  if (!amount || Number(amount) <= 0) { toast('Enter a valid amount'); return; }
+  var scrollPos = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/economy/rolededuction', {
+    method: 'POST',
+    body: JSON.stringify({ roleId: roleId, amount: Number(amount), label: label })
+  }).then(function(r) {
+    if (r && r.success) { toast('Role deduction added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
+    else if (r && r.error) toast(r.error);
+  });
+}
+
+function deleteRoleDeduction(roleId) {
+  if (!currentGuild) return;
+  var scrollPos = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/economy/rolededuction/' + roleId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Role deduction removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
   });
 }
 

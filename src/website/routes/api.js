@@ -735,6 +735,7 @@ export function createApiRouter(client) {
           const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id });
           result.fields = [
+            { key: 'enabled', label: 'Enable Economy', description: 'Enable or disable the economy system for this server', type: 'toggle', value: ec?.enabled ?? true },
             { key: 'currencySymbol', label: 'Currency Symbol', description: 'Symbol shown next to all balances', type: 'text', value: ec?.currencySymbol || '$', placeholder: '$' },
             { key: 'startingBalance', label: 'Starting Balance', description: 'Cash given to new members on first interaction', type: 'number', value: ec?.startingBalance ?? 1000, min: 0, max: 1000000 },
             { key: 'maxBalance', label: 'Max Balance', description: 'Maximum cash a member can hold at once', type: 'number', value: ec?.maxBalance ?? 1000000, min: 1, max: 999999999 },
@@ -762,7 +763,15 @@ export function createApiRouter(client) {
             { key: 'chatMoney_maxAmount', label: 'Chat Max Earnings', description: 'Maximum cash earned per eligible message', type: 'number', value: ec?.chatMoney?.maxAmount ?? 10, min: 1, max: 10000 },
             { key: 'chatMoney_cooldown', label: 'Chat Money Cooldown (seconds)', description: 'Seconds before a member can earn again from chatting', type: 'number', value: ec?.chatMoney?.cooldown ?? 60, min: 1, max: 3600 },
             { key: 'sellPercent', label: 'Sell-Back Percentage (%)', description: 'How much of an item\'s price members get when selling it back (default 50%)', type: 'number', value: ec?.sellPercent ?? 50, min: 0, max: 100 },
+            { key: 'incomeTax', label: 'Income Tax (%)', description: 'Percentage deducted from income role payouts as a tax (0 = disabled)', type: 'number', value: ec?.incomeTax ?? 0, min: 0, max: 100 },
+            { key: 'incomeChannelId', label: 'Income Board Channel', description: 'Channel where the income redemption board embed is posted', type: 'select', value: ec?.incomeChannelId || '', options: channels },
           ];
+          result.roleDeductions = (ec?.roleDeductions || []).map(r => ({
+            roleId: r.roleId,
+            roleName: guild.roles.cache.get(r.roleId)?.name || 'Unknown Role',
+            amount: r.amount,
+            label: r.label || 'Deduction',
+          }));
           try {
             const totalMembers = await EconomyBalance.countDocuments({ guildId: guild.id });
             const totalAgg = await EconomyBalance.aggregate([{ $match: { guildId: guild.id } }, { $group: { _id: null, total: { $sum: { $add: ['$cash', '$bank'] } } } }]);
@@ -1032,7 +1041,7 @@ export function createApiRouter(client) {
         case 'economy': {
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id }) || new EconomyConfig({ guildId: guild.id });
-          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId', 'sellPercent'];
+          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId', 'sellPercent', 'incomeTax', 'incomeChannelId', 'enabled'];
           const nestedMap = {
             work_enabled: ['work', 'enabled'],
             work_cooldown: ['work', 'cooldown'],
@@ -1057,7 +1066,7 @@ export function createApiRouter(client) {
             chatMoney_maxAmount: ['chatMoney', 'maxAmount'],
             chatMoney_cooldown: ['chatMoney', 'cooldown'],
           };
-          const numericFields = new Set(['startingBalance', 'maxBalance', 'sellPercent', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
+          const numericFields = new Set(['startingBalance', 'maxBalance', 'sellPercent', 'incomeTax', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
           for (const [k, v] of Object.entries(changes)) {
             const val = numericFields.has(k) ? Number(v) : v;
             if (topLevel.includes(k)) {
@@ -1829,6 +1838,52 @@ export function createApiRouter(client) {
       if (ec) {
         ec.roleIncome = (ec.roleIncome || []).filter(r => r.roleId !== req.params.roleId);
         ec.markModified('roleIncome');
+        await ec.save();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Role Deductions CRUD ── */
+  router.post('/guild/:id/economy/rolededuction', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { roleId, amount, label } = req.body;
+    if (!roleId) return res.status(400).json({ error: 'roleId is required' });
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return res.status(400).json({ error: 'Valid amount is required' });
+    try {
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id }) || new EconomyConfig({ guildId: req.params.id });
+      const existing = (ec.roleDeductions || []).findIndex(r => r.roleId === roleId);
+      if (existing >= 0) {
+        ec.roleDeductions[existing].amount = Number(amount);
+        ec.roleDeductions[existing].label = label || 'Deduction';
+      } else {
+        ec.roleDeductions.push({ roleId, amount: Number(amount), label: label || 'Deduction' });
+      }
+      ec.markModified('roleDeductions');
+      await ec.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/economy/rolededuction/:roleId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id });
+      if (ec) {
+        ec.roleDeductions = (ec.roleDeductions || []).filter(r => r.roleId !== req.params.roleId);
+        ec.markModified('roleDeductions');
         await ec.save();
       }
       res.json({ success: true });
