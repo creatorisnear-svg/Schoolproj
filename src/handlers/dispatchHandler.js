@@ -1725,13 +1725,16 @@ const _lastAIResponseTime = new Map(); // `${guildId}:${userId}` → timestamp
 
 export async function processVoiceCall(wavBuffer, userId, guild, client, opts = {}) {
   try {
-    const config = await DispatchConfig.findOne({ guildId: guild.id });
-    if (!config || !config.enabled || !config.dispatchChannelId) return;
+    /* Run the three independent lookups in parallel instead of sequentially */
+    const [config, member, cadConfig] = await Promise.all([
+      DispatchConfig.findOne({ guildId: guild.id }),
+      guild.members.fetch(userId).catch(() => null),
+      CADConfig.findOne({ guildId: guild.id }),
+    ]);
 
-    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!config || !config.enabled || !config.dispatchChannelId) return;
     if (!member) return;
 
-    const cadConfig = await CADConfig.findOne({ guildId: guild.id });
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
     const isLeo = leoRoleIds.length === 0 || member.roles.cache.some(r => leoRoleIds.includes(r.id));
     if (!isLeo) return;
@@ -2199,14 +2202,8 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
       console.log(`[CAD Lookup] Generating TTS response: "${result.ttsResponse}"`);
       if (config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsBuffer = await generateDispatchTTS(result.ttsResponse);
-          console.log(`[CAD Lookup] TTS buffer generated (${ttsBuffer.length} bytes), playing audio`);
-          playDispatchVoice(guild.id, ttsBuffer);
-        } catch (err) {
-          console.error('[Dispatch TTS] CAD lookup voice error:', err.message);
-        }
+        /* Start TTS generation in parallel with the embed send above */
+        await playTTS(startTTS(result.ttsResponse, config), guild.id);
       } else {
         console.log(`[CAD Lookup] TTS skipped - aiEnabled=${config.aiEnabled}, hasKey=${hasAIKey()}`);
       }

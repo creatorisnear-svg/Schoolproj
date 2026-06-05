@@ -325,31 +325,30 @@ export function createApiRouter() {
       });
       await call.save();
 
-      /* Post to dispatch channel if configured */
-      try {
-        const dispatchCfg = await DispatchConfig.findOne({ guildId });
-        if (dispatchCfg?.enabled && dispatchCfg.dispatchChannelId) {
-          const fields = [
-            { name: 'Issue', value: issue.trim(), inline: false },
-            { name: 'Location', value: location.trim(), inline: true },
-          ];
-          if (suspectsDescription?.trim()) fields.push({ name: 'Suspect Description', value: suspectsDescription.trim(), inline: false });
-          if (lastSeen?.trim()) fields.push({ name: 'Last Seen', value: lastSeen.trim(), inline: true });
-          if (contact?.trim()) fields.push({ name: 'Contact', value: contact.trim(), inline: true });
-          await axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
-            embeds: [{
-              color: 0xff4444,
-              title: `🚨 911 Call - ${callId}`,
-              description: `Submitted via **Member Portal** by **${req.portalUser.displayName || req.portalUser.username}**`,
-              fields,
-              footer: { text: 'RPM Portal • Respond with /duty' },
-              timestamp: new Date().toISOString(),
-            }],
-          }, { headers: botHeaders() });
-        }
-      } catch { /* dispatch post failed - call still saved */ }
-
+      /* Respond immediately — Discord notification fires in background */
       res.json({ success: true, callId });
+
+      /* Post to dispatch channel if configured (non-blocking) */
+      DispatchConfig.findOne({ guildId }).then(dispatchCfg => {
+        if (!dispatchCfg?.enabled || !dispatchCfg.dispatchChannelId) return;
+        const fields = [
+          { name: 'Issue', value: issue.trim(), inline: false },
+          { name: 'Location', value: location.trim(), inline: true },
+        ];
+        if (suspectsDescription?.trim()) fields.push({ name: 'Suspect Description', value: suspectsDescription.trim(), inline: false });
+        if (lastSeen?.trim()) fields.push({ name: 'Last Seen', value: lastSeen.trim(), inline: true });
+        if (contact?.trim()) fields.push({ name: 'Contact', value: contact.trim(), inline: true });
+        return axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
+          embeds: [{
+            color: 0xff4444,
+            title: `🚨 911 Call - ${callId}`,
+            description: `Submitted via **Member Portal** by **${req.portalUser.displayName || req.portalUser.username}**`,
+            fields,
+            footer: { text: 'RPM Portal • Respond with /duty' },
+            timestamp: new Date().toISOString(),
+          }],
+        }, { headers: botHeaders() });
+      }).catch(() => { /* dispatch post failed - call already saved and response sent */ });
     } catch (err) {
       console.error('[API /dispatch/submit]', err.message);
       res.status(500).json({ error: 'Failed to submit call' });
