@@ -548,8 +548,10 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      // Require at least 20 chunks (~400ms) to filter out noise bursts, mic pops and accidental keying
-      if (pcmChunks.length < 20) return;
+      // Require at least 40 chunks (~800ms) to filter out noise bursts, mic pops and accidental keying.
+      // 20 chunks (400ms) let short ambient noise through — Whisper hallucinates common phrases
+      // like "10-8" from that brief audio. 800ms requires actual sustained speech.
+      if (pcmChunks.length < 40) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         // ── Simultaneous speaker gate ──────────────────────────────────────────

@@ -780,7 +780,7 @@ const WHISPER_PROMPT =
   'Call signs use LAPD phonetic alphabet: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
   'Example call signs: "1 Adam 22", "2 Lincoln 40", "3 Baker 15", "Adam 22", "Lincoln 4". ' +
   'Also valid: "Dispatch", "Marshal Command", "County Command", "Central Dispatch". ' +
-  'Ten codes spoken as "ten four", "ten eight", "ten eleven", "ten eighty", "ten ninety nine" or "10-4" "10-8" "10-11" "10-80" "10-99". ' +
+  'Ten codes spoken as words within a sentence, e.g. "Dispatch, Adam 15 going ten eleven at Vinewood" or "Unit 22, showing ten seventy-six". ' +
   'Full ten code list: 10-4 copy, 10-6 busy, 10-7 out of service, 10-8 available, 10-10 off duty, 10-11 traffic stop, ' +
   '10-15 prisoner, 10-19 return to station, 10-20 location, 10-23 on scene, 10-31 disturbance, ' +
   '10-50 accident, 10-52 ambulance, 10-76 en route, 10-78 need backup, 10-80 in pursuit, 10-97 arrived, 10-99 officer down panic. ' +
@@ -1785,6 +1785,54 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       if (_nonAscii / _t.length > 0.3) {
         console.log(`[Dispatch] Dropping non-ASCII transcript: "${_t}"`);
         return;
+      }
+
+      // ── Known Whisper exact-phrase hallucinations ────────────────────────────
+      // Whisper reliably generates these strings from silence or ambient noise
+      // when conditioned with a police-radio prompt. Block them when the entire
+      // transcript is nothing but one of these phrases.
+      const _norm = _t.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      const EXACT_HALLUCINATIONS = new Set([
+        'thank you', 'thanks', 'thank you for watching', 'thanks for watching',
+        'thank you for listening', 'thanks for listening', 'please subscribe',
+        'subscribe', 'you', 'i', 'the',
+      ]);
+      if (EXACT_HALLUCINATIONS.has(_norm)) {
+        console.log(`[Dispatch] Dropping known Whisper hallucination: "${_t}"`);
+        return;
+      }
+
+      // ── Cross-user hallucination suppressor ──────────────────────────────────
+      // If the same short transcript (≤ 4 words) is produced by 2 or more
+      // different users within 12 seconds, it is almost certainly Whisper
+      // hallucinating from shared ambient channel noise, not real speech.
+      // Real officers don't key up and say the identical thing seconds apart.
+      if (_words.length <= 4) {
+        const _suppressKey = `${guild.id}:${_norm}`;
+        const _now = Date.now();
+        const _entry = _crossUserHallucinationTracker.get(_suppressKey);
+        if (_entry) {
+          const { firstUserId, firstTs } = _entry;
+          if (_now - firstTs < 12000 && firstUserId !== userId) {
+            // Second different user with same short phrase within 12s → suppress
+            _crossUserHallucinationTracker.delete(_suppressKey);
+            console.log(`[Dispatch] Cross-user hallucination suppressed: "${_t}" (2 users, ${_now - firstTs}ms apart)`);
+            return;
+          }
+          if (_now - firstTs >= 12000) {
+            // Entry expired — reset
+            _crossUserHallucinationTracker.set(_suppressKey, { firstUserId: userId, firstTs: _now });
+          }
+        } else {
+          _crossUserHallucinationTracker.set(_suppressKey, { firstUserId: userId, firstTs: _now });
+          // Prune old entries to avoid unbounded growth
+          if (_crossUserHallucinationTracker.size > 200) {
+            const cutoff = _now - 30000;
+            for (const [k, v] of _crossUserHallucinationTracker) {
+              if (v.firstTs < cutoff) _crossUserHallucinationTracker.delete(k);
+            }
+          }
+        }
       }
     }
     // ── End noise filter ──────────────────────────────────────────────────────
@@ -3230,6 +3278,10 @@ async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, l
 
 // Per-user transcript dedup map { guildId:userId → { ts, text } }
 const _transcriptDedup = new Map();
+
+// Cross-user hallucination tracker { "guildId:normalizedPhrase" → { firstUserId, firstTs } }
+// Used to suppress Whisper hallucinations that appear from multiple users in quick succession.
+const _crossUserHallucinationTracker = new Map();
 
 // Status category helpers for the board
 const SCENE_CODES     = new Set(['10-11', '10-97', '10-50', '10-31', '10-52']);
