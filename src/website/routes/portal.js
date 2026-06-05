@@ -67,12 +67,18 @@ export function portalAuth(client) {
               .filter(r => r.id !== guild.id)
               .map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
           };
-        } catch {
-          res.clearCookie(SESSION_COOKIE);
-          if (req.originalUrl.startsWith('/api/portal')) {
-            return res.status(401).json({ error: 'not_member' });
+        } catch (err) {
+          const status = err?.httpStatus || err?.status || (err?.rawError?.code ? 10007 : null);
+          const isNotMember = status === 404 || status === 10007 || err?.code === 10007;
+          if (isNotMember) {
+            res.clearCookie(SESSION_COOKIE);
+            if (req.originalUrl.startsWith('/api/portal')) {
+              return res.status(401).json({ error: 'not_member' });
+            }
+            return res.redirect('/portal?error=not_member');
           }
-          return res.redirect('/portal?error=not_member');
+          console.warn('[PORTAL AUTH] member fetch failed (non-fatal), using session data:', err?.message);
+          req.portalUser = session;
         }
       } else {
         req.portalUser = session;

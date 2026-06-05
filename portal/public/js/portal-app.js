@@ -568,7 +568,8 @@ function renderHomePriorityWidget(d) {
       <div class="hpw-row hpw-inactive">
         <span class="hpw-dot hpw-dot-inactive"></span>
         <div class="hpw-text">
-          <div class="hpw-title hpw-title-inactive">No priority - server open</div>
+          <div class="hpw-title hpw-title-inactive">Priority: Inactive</div>
+          <div class="hpw-sub">Server open</div>
         </div>
       </div>`;
   }
@@ -1851,6 +1852,9 @@ async function loadPriority() {
   const detail = document.getElementById('priority-detail-card');
   if (!hero) return;
 
+  if (priorityRefreshTimer) { clearInterval(priorityRefreshTimer); priorityRefreshTimer = null; }
+  if (priorityCooldownTimer) { clearInterval(priorityCooldownTimer); priorityCooldownTimer = null; }
+
   try {
     const d = await api('/priority');
 
@@ -1882,18 +1886,21 @@ async function loadPriority() {
 
       const rows = [
         d.cooldownIssuedBy ? `<div class="priority-row"><span class="priority-row-key">Last Host</span><span class="priority-row-val">${d.cooldownIssuedBy}</span></div>` : '',
-        d.cooldownMinutes ? `<div class="priority-row"><span class="priority-row-key">Cooldown</span><span class="priority-row-val">${d.cooldownMinutes} minutes</span></div>` : '',
-        d.cooldownEndsAt ? `<div class="priority-row"><span class="priority-row-key">Ends</span><span class="priority-row-val" id="priority-timer">${formatRelativeTime(d.cooldownEndsAt)}</span></div>` : '',
+        d.cooldownMinutes ? `<div class="priority-row"><span class="priority-row-key">Duration</span><span class="priority-row-val">${d.cooldownMinutes} min cooldown</span></div>` : '',
+        d.cooldownEndsAt ? `<div class="priority-row"><span class="priority-row-key">Time Remaining</span><span class="priority-row-val" id="priority-cooldown-timer">--:--</span></div>` : '',
       ].filter(Boolean).join('');
 
       detail.innerHTML = rows || '<div class="priority-row-empty">Cooldown in progress.</div>';
       detail.classList.remove('hidden');
 
+      if (d.cooldownEndsAt) startCooldownTimer(d.cooldownEndsAt);
+
     } else {
       hero.innerHTML = `
         <div class="priority-hero-state priority-hero-inactive">
           <div class="priority-state-dot priority-dot-inactive"></div>
-          <div class="priority-state-label">NO PRIORITY</div>
+          <div class="priority-state-label">Priority: Inactive</div>
+          <div class="priority-state-sub">Server open</div>
         </div>`;
       detail.innerHTML = '';
       detail.classList.add('hidden');
@@ -1929,6 +1936,28 @@ function startPriorityElapsedTimer(activatedAt) {
     if (!el) { clearInterval(priorityRefreshTimer); return; }
     el.textContent = elapsedSince(activatedAt);
   }, 1000);
+}
+
+let priorityCooldownTimer = null;
+function startCooldownTimer(endsAt) {
+  if (priorityCooldownTimer) clearInterval(priorityCooldownTimer);
+  const endsMs = new Date(endsAt).getTime();
+  const tick = () => {
+    const el = document.getElementById('priority-cooldown-timer');
+    if (!el) { clearInterval(priorityCooldownTimer); priorityCooldownTimer = null; return; }
+    const diff = Math.max(0, Math.floor((endsMs - Date.now()) / 1000));
+    if (diff === 0) {
+      el.textContent = 'Ending...';
+      clearInterval(priorityCooldownTimer);
+      priorityCooldownTimer = null;
+      setTimeout(() => loadPriority(), 3000);
+      return;
+    }
+    const m = Math.floor(diff / 60), s = diff % 60;
+    el.textContent = `${m}m ${s.toString().padStart(2, '0')}s`;
+  };
+  tick();
+  priorityCooldownTimer = setInterval(tick, 1000);
 }
 
 let priorityAutoRefresh = null;

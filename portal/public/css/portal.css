@@ -2139,6 +2139,14 @@ html, body {
 .priority-hero-cooldown .priority-state-label { color: var(--warning); }
 .priority-hero-inactive .priority-state-label { color: var(--success); }
 
+.priority-state-sub {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
 .priority-detail {
   background: var(--card);
   border: 1px solid var(--border);
