@@ -2991,47 +2991,6 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // Start TTS immediately - runs in background while embed is built and sent
     const ttsPMain = (dispatchResponse && !isSimpleAck) ? startTTS(dispatchResponse, config) : null;
 
-    const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
-      await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-
-    if (dispatchChannel?.isTextBased()) {
-      const embed = new EmbedBuilder()
-        .setColor('#2d2d2d')
-        .setTitle('Dispatch Radio')
-        .setFooter({ text: 'RPM' })
-        .setTimestamp()
-        .addFields(
-          { name: 'Officer', value: `<@${userId}>`, inline: true },
-          { name: 'Code', value: parsed.code ? `**${parsed.code}** - ${TEN_CODES[parsed.code]?.label}` : 'Unknown', inline: true },
-        );
-
-      if (parsed.subject) embed.addFields({ name: 'With', value: parsed.subject, inline: true });
-      if (parsed.location) embed.addFields({ name: 'Location', value: parsed.location, inline: true });
-
-      embed.addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false });
-
-      if (dispatchResponse) {
-        embed.addFields({ name: 'Dispatch Response', value: `*"${dispatchResponse}"*`, inline: false });
-      }
-
-      if (aiActions.length) {
-        const actionSummary = aiActions.map(a => {
-          if (a.name === 'move_to_traffic_stop') return `Stop channel requested for ${a.args.officer_name}`;
-          if (a.name === 'move_to_patrol')        return `${a.args.officer_name} moved to patrol`;
-          if (a.name === 'update_officer_status') return `${a.args.officer_name} → ${a.args.ten_code}`;
-          if (a.name === 'close_call')            return `Call #${a.args.call_number} closed (Code 4)`;
-          if (a.name === 'send_unit_to_call')     return `${a.args.officer_name} attached to call #${a.args.call_number}`;
-          if (a.name === 'add_call_note')         return `Call #${a.args.call_number} updated - ${a.args.note_type}: ${a.args.note}`;
-          if (a.name === 'flag_officer_needs_backup') return `${a.args.officer_name} flagged 10-78 (backup needed)`;
-          if (a.name === 'create_bolo')           return `BOLO issued - ${a.args.suspect_name}: ${a.args.reason}${a.args.last_seen ? ` (last seen: ${a.args.last_seen})` : ''}`;
-          return a.name;
-        }).join('\n');
-        embed.addFields({ name: 'Actions Taken', value: actionSummary.slice(0, 1024), inline: false });
-      }
-
-      await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
-    }
-
     // TTS was already generating - just play it now (usually already done)
     await playTTS(ttsPMain, guild.id);
 
