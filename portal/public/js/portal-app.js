@@ -368,6 +368,49 @@ function switchTab(tab) {
     if (tab === 'rolerequest') loadRoleRequest();
     if (tab === 'leo') loadLeo();
   }
+
+  startTabRefresh(tab);
+}
+
+/* ══════════════════════════════════════════════════════
+   TAB AUTO-REFRESH
+   LEO (board/intel) and priority have their own timers.
+   All other tabs poll here while active.
+══════════════════════════════════════════════════════ */
+const TAB_REFRESH_MS = {
+  overview:    30000,
+  dispatch:    20000,
+  fines:       45000,
+  tickets:     30000,
+  economy:     60000,
+  cad:         45000,
+  calendar:   120000,
+  rolerequest: 45000,
+};
+
+const TAB_REFRESH_FN = {
+  overview:    () => loadOverview(),
+  dispatch:    () => loadDispatch(),
+  fines:       () => loadTrafficFines(),
+  tickets:     () => loadTickets(),
+  economy:     () => loadEconomy(),
+  cad:         () => loadCad(),
+  calendar:    () => loadCalendar(),
+  rolerequest: () => loadRoleRequest(),
+};
+
+let activeTabRefreshTimer = null;
+
+function startTabRefresh(tab) {
+  stopTabRefresh();
+  const ms = TAB_REFRESH_MS[tab];
+  const fn = TAB_REFRESH_FN[tab];
+  if (!ms || !fn) return;
+  activeTabRefreshTimer = setInterval(() => fn(), ms);
+}
+
+function stopTabRefresh() {
+  if (activeTabRefreshTimer) { clearInterval(activeTabRefreshTimer); activeTabRefreshTimer = null; }
 }
 
 /* ══════════════════════════════════════════════════════
