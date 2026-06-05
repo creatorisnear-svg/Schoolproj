@@ -215,17 +215,16 @@ function detectCADLookup(text) {
   console.log(`[CAD Detect] Checking transcript for CAD lookup: "${lower}"`);
 
   const platePatterns = [
-    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?(?:license\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9\s]+)/i,
-    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:for\s+(?:me\s+)?)?([a-z0-9\s]+)/i,
-    /plates?\s+(?:number\s+)?(?:is\s+)?([a-z0-9]{2,}(?:\s+[a-z0-9]+)*)\s*(?:run|check|look)/i,
-    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9\s]+)/i,
-    /run\s+([a-z0-9\s]+?)(?:\s+plate|\s+plates)/i,
+    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?(?:license\s+)?(?:tag\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9][a-z0-9\s-]*)/i,
+    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:for\s+(?:me\s+)?)?([a-z0-9][a-z0-9\s-]*)/i,
+    /plates?\s+(?:number\s+)?(?:is\s+)?([a-z0-9][a-z0-9\s-]{1,})\s*(?:run|check|look)/i,
+    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9][a-z0-9\s-]*)/i,
   ];
 
   for (const pattern of platePatterns) {
     const match = lower.match(pattern);
     if (match) {
-      const raw = match[1].trim().replace(/\s+/g, '').toUpperCase();
+      const raw = match[1].trim().replace(/[\s-]+/g, '').toUpperCase();
       if (raw.length >= 2 && raw.length <= 10) {
         console.log(`[CAD Detect] Plate detected: "${raw}" (pattern: ${pattern.source})`);
         return { type: 'plate', query: raw };
