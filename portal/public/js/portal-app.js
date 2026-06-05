@@ -275,7 +275,8 @@ function setPortalMode(mode) {
   document.getElementById('mode-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   applyModeNav(mode);
-  if (!loaded['overview']) loadOverview();
+  delete loaded['overview'];
+  loadOverview();
   startGlobalPriorityPoll();
 }
 
@@ -323,8 +324,9 @@ function applyModeNav(mode) {
 
   notif.onModeChange(mode);
 
-  if (isLeo && !loaded['leo']) switchTab('leo');
-  else if (isCiv) {
+  if (isLeo) {
+    switchTab('leo');
+  } else if (isCiv) {
     const pane = document.getElementById('tab-overview');
     if (pane && !pane.classList.contains('active')) switchTab('overview');
   }
