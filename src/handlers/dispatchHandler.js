@@ -51,6 +51,8 @@ const pendingStopMoveRequests = new Map();
 // Per-guild active call broadcasts waiting for officer voice responses
 // Map<guildId, { callId, callNum, issue, location, timestamp }>
 const activeBroadcastCalls = new Map();
+// Per-guild panic cooldown: prevents duplicate 10-99 alerts within 90 seconds
+const _panicCooldowns = new Map();
 
 function getPendingStopMoveKey(guildId, officerId) {
   return `${guildId}:${officerId}`;
@@ -1743,7 +1745,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     const officerName = member.displayName || member.user.username;
     const ttsName = cleanNameForTTS(officerName);
-    console.log(`[Dispatch] Processing audio from ${officerName} (TTS: "${ttsName}") in ${guild.name}`);
+    // Processing audio (debug-level, suppressed in production)
 
     let transcript = '';
     try {
@@ -1760,7 +1762,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       const _t = transcript.trim();
       const _words = _t.split(/\s+/).filter(Boolean);
       if (_words.length < 2) {
-        console.log(`[Dispatch] Dropping single-word noise: "${_t}"`);
+        // Dropping single-word noise (debug-level, suppressed)
         return;
       }
       const FILLER = new Set(['uh','um','hmm','hm','ah','oh','eh','er','okay','ok',
@@ -2051,7 +2053,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           );
           const hasTenCode = _knownCodeRe.test(_numOnlyNorm) || detectCodeFour(commandText);
           if (!hasTenCode) {
-            console.log(`[Dispatch] No trigger or ten-code - ignoring general chatter: "${commandText}"`);
+            // No trigger or ten-code (debug-level, suppressed)
             return;
           }
           // Without a trigger word, 10-11 (traffic stop) requires explicit stop language.
@@ -2063,7 +2065,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             return;
           }
           // Status update without trigger - log it and acknowledge if it's a key code
-          console.log(`[Dispatch] Status update without trigger word: "${commandText}"`);
+          // Status update without trigger word (debug-level, suppressed)
         }
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
@@ -2078,7 +2080,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         }
         transcript = commandText;
         fullVoiceContext = preContext ? `${preContext}, ${commandText}` : commandText;
-        console.log(`[Dispatch] Transcript ready: "${transcript}"${preContext ? ` (pre: "${preContext}")` : ''}${detectedCallSign ? ` (call sign: ${detectedCallSign})` : ''}`);
+        // Transcript ready (debug-level, suppressed)
       }
     }
 
@@ -2087,7 +2089,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // drop it silently. This prevents the bot from responding to off-topic chatter
     // like "dispatch, can you help me move?" or accidental trigger-word hits.
     if (hadTrigger && !isDispatchRelevant(transcript)) {
-      console.log(`[Dispatch] Trigger heard but off-topic - ignoring: "${transcript}"`);
+      // Trigger heard but off-topic (debug-level, suppressed)
       return;
     }
     // --- End relevance gate ---
@@ -3179,8 +3181,16 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
 
       // 10-99 - trigger full panic alert (embed + TTS + status board)
+      // Guard: skip if a panic alert was already sent for this guild in the last 90 seconds
+      // to prevent duplicate alerts when multiple officers say "officer down" about the same incident.
       if (parsed.code === '10-99') {
-        await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
+        const _lastPanic = _panicCooldowns.get(guild.id) || 0;
+        if (Date.now() - _lastPanic < 90_000) {
+          console.log(`[Dispatch] 10-99 suppressed - panic already active in ${guild.name} (cooldown ${Math.round((Date.now() - _lastPanic) / 1000)}s ago)`);
+        } else {
+          _panicCooldowns.set(guild.id, Date.now());
+          await triggerPanicAlert(guild, config, userId, officerName, member?.voice?.channelId || null);
+        }
       }
 
       // 10-80 - Pursuit: always broadcast to patrol and play alert sound

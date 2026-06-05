@@ -504,7 +504,7 @@ function _setupReceiver(connection, guild, state, guildId) {
     }
 
     recordingUsers.add(key);
-    console.log(`[Dispatch] Recording started for user ${userId} in guild ${guildId}`);
+    // Recording started (debug-level, suppressed in production)
 
     const safetyTimeout = setTimeout(() => {
       if (recordingUsers.has(key)) {
@@ -547,7 +547,7 @@ function _setupReceiver(connection, guild, state, guildId) {
     decoder.on('end', async () => {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
-      console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
+      // Recording ended (debug-level, suppressed in production)
       // Require at least 20 chunks (~400ms) to filter out noise bursts and mic pops.
       // Threshold reduced from 40 to allow short-but-valid transmissions (e.g. "dispatch, 10-8").
       if (pcmChunks.length < 20) return;
