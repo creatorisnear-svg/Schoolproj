@@ -363,7 +363,7 @@ export async function moveToChannel(channel) {
         console.log('[Dispatch] No join audio cached - generating now...');
         try {
           const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
-          const buf = await generateDispatchTTSPublic('Dispatch online, ready to serve.');
+          const buf = await generateDispatchTTSPublic('Dispatch online. To talk to me, say dispatch.');
           state.joinAudioBuffer = buf;
           if (state.connection === connection) {
             playDispatchVoice(guildId, buf);
@@ -517,8 +517,8 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      // 900ms silence - fast enough for sub-2s response while still catching natural radio speech
-      const silenceDuration = 900;
+      // 600ms silence - faster cutoff for quicker response times
+      const silenceDuration = 600;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });

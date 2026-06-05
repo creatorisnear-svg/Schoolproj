@@ -90,9 +90,9 @@ function cleanNameForTTS(name) {
   n = n.replace(/\d+/g, ' ');
   // Strip anything that isn't a letter, space, hyphen, or apostrophe
   n = n.replace(/[^a-zA-Z '\-]/g, ' ');
-  // Collapse multiple spaces, trim, keep first 3 words
+  // Collapse multiple spaces, trim, keep first 2 words (first + last name only)
   n = n.replace(/\s+/g, ' ').trim();
-  const words = n.split(' ').filter(Boolean).slice(0, 3);
+  const words = n.split(' ').filter(Boolean).slice(0, 2);
   return words.join(' ') || 'officer';
 }
 
@@ -2029,43 +2029,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           hadTrigger = true;
           console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} - command: "${commandText}"`);
         } else {
-          // No trigger word or call sign detected.
-          // Only process if the utterance contains a ten-code; otherwise it is general chatter
-          // that dispatch should not respond to.
-          commandText = raw;
-          // Allow through ONLY explicit numeric ten-codes or spoken "ten XX" forms.
-          // Phrase aliases (e.g. "on scene" → 10-97, "in pursuit" → 10-80) are NOT checked
-          // here — those require the officer to address dispatch directly with a trigger word.
-          // Unknown codes like 10-74, 10-60 are also excluded (not in TEN_CODES).
-          const _knownCodeRe = new RegExp(
-            '\\b(?:' + Object.keys(TEN_CODES).map(c => c.replace('-', '[-\\s]')).join('|') + ')\\b',
-            'i'
-          );
-          // Apply only spoken-number conversion (e.g. "ten eight" → "10-8"), NOT phrase aliases
-          const _numOnlyNorm = commandText.replace(
-            /\bten[-\s]?(four|six|seven|eight|eleven|fifteen|seventeen|nineteen|twenty(?:[-\s]three)?|thirty[-\s]one|fifty(?:[-\s]two)?|seventy[-\s]six|seventy[-\s]eight|eighty|ninety[-\s](?:seven|nine))\b/gi,
-            (_, w) => {
-              const _wmap = { four:4, six:6, seven:7, eight:8, eleven:11, fifteen:15, seventeen:17, nineteen:19, twenty:20, 'twenty-three':23, 'twenty three':23, 'thirty-one':31, 'thirty one':31, fifty:50, 'fifty-two':52, 'fifty two':52, 'seventy-six':76, 'seventy six':76, 'seventy-eight':78, 'seventy eight':78, eighty:80, 'ninety-seven':97, 'ninety seven':97, 'ninety-nine':99, 'ninety nine':99 };
-              const _key = w.toLowerCase().replace(/\s+/g, '-');
-              const _n = _wmap[_key] ?? _wmap[w.toLowerCase()];
-              return _n ? `10-${_n}` : _;
-            }
-          );
-          const hasTenCode = _knownCodeRe.test(_numOnlyNorm) || detectCodeFour(commandText);
-          if (!hasTenCode) {
-            // No trigger or ten-code (debug-level, suppressed)
-            return;
-          }
-          // Without a trigger word, 10-11 (traffic stop) requires explicit stop language.
-          // Officers often mention "10-11" in passing radio chatter without actually calling a stop.
-          const _has1011 = /\b10[-\s]?11\b/i.test(_numOnlyNorm);
-          const _hasStopLang = /\b(?:out\s+with|pulling\s+over|traffic\s+stop|got\s+a\s+stop|making\s+a\s+stop|initiating\s+a\s+stop|show\s+me\s+(?:in|on)\s+a\s+stop|show\s+me\s+10[-\s]?11)\b/i.test(commandText);
-          if (_has1011 && !_hasStopLang) {
-            console.log(`[Dispatch] Ignoring 10-11 mention without trigger or stop language: "${commandText}"`);
-            return;
-          }
-          // Status update without trigger - log it and acknowledge if it's a key code
-          // Status update without trigger word (debug-level, suppressed)
+          // No trigger word or call sign detected - always ignore.
+          // Officers must say "dispatch" (or a call sign, or an emergency phrase) to get a response.
+          console.log(`[Dispatch] Ignoring - no trigger word detected in: "${raw.slice(0, 60)}"`);
+          return;
         }
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
