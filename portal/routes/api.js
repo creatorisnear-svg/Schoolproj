@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { portalAuth, fetchGuildMember } from './auth.js';
 import axios from 'axios';
+import statusEvents from '../../src/utils/statusEvents.js';
 
 import CADCharacter from '../../src/models/CADCharacter.js';
 import CADConfig from '../../src/models/CADConfig.js';
@@ -1150,6 +1151,34 @@ export function createApiRouter() {
       console.error('[API POST /voice/move]', err.message);
       res.status(500).json({ error: 'Failed to move to channel' });
     }
+  });
+
+  /* ══════════════════════ /dispatch/events (SSE — push status changes) ══════════════════════ */
+  router.get('/dispatch/events', portalAuth, (req, res) => {
+    const guildId = GUILD_ID();
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const send = (data) => {
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const handler = (payload) => {
+      if (!guildId || payload.guildId === guildId) send(payload);
+    };
+
+    statusEvents.on('statusUpdate', handler);
+
+    const heartbeat = setInterval(() => {
+      if (!res.writableEnded) res.write(': heartbeat\n\n');
+    }, 25000);
+
+    req.on('close', () => {
+      statusEvents.off('statusUpdate', handler);
+      clearInterval(heartbeat);
+    });
   });
 
   /* ══════════════════════ /officers/overview (civ read-only) ══════════════════════ */

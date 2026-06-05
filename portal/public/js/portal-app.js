@@ -1356,6 +1356,7 @@ function confirmStatusUpdate() {
 ══════════════════════════════════════════════════════ */
 let boardRefreshTimer = null;
 let boardCountdown = 8;
+let _dispatchEvtSrc = null;
 
 function startBoardRefresh() {
   stopBoardRefresh();
@@ -1373,6 +1374,20 @@ function startBoardRefresh() {
 
 function stopBoardRefresh() {
   if (boardRefreshTimer) { clearInterval(boardRefreshTimer); boardRefreshTimer = null; }
+  if (_dispatchEvtSrc) { _dispatchEvtSrc.close(); _dispatchEvtSrc = null; }
+}
+
+function startDispatchStream() {
+  if (_dispatchEvtSrc) { _dispatchEvtSrc.close(); _dispatchEvtSrc = null; }
+  try {
+    const es = new EventSource('/api/portal/dispatch/events');
+    es.onmessage = () => {
+      boardCountdown = 1;
+      refreshOfficerBoard().then(() => { boardCountdown = 8; });
+    };
+    es.onerror = () => { es.close(); _dispatchEvtSrc = null; };
+    _dispatchEvtSrc = es;
+  } catch { /* EventSource not supported — polling fallback still active */ }
 }
 
 function updateCountdown() {
@@ -1560,6 +1575,7 @@ async function loadLeo() {
     renderOfficerBoard(officers || []);
     applyMyStatusToUI(myStatus);
     startBoardRefresh();
+    startDispatchStream();
     await loadLeoIntel();
   } catch {
     document.getElementById('leo-officers').innerHTML = '<div class="empty-state">Failed to load.</div>';

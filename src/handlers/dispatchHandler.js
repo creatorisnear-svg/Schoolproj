@@ -15,6 +15,7 @@ import BOLO from '../models/BOLO.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
+import statusEvents from '../utils/statusEvents.js';
 
 // Pre-load panic alert sound (MP3 played urgently over voice on 10-99)
 const _panicSoundPath = join(dirname(fileURLToPath(import.meta.url)), '../assets/panic_alert.mp3');
@@ -1146,8 +1147,9 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
       }
 
       else if (name === 'update_officer_status') {
-        const target = findOfficerByName(args.officer_name, allStatuses)
-          ?? allStatuses.find(s => s.userId === speakingUserId);
+        // Always use the actual speaking officer - never guess by name, which causes wrong-person bugs
+        const target = allStatuses.find(s => s.userId === speakingUserId)
+          ?? findOfficerByName(args.officer_name, allStatuses);
         if (!target) continue;
         // Normalise spoken codes like "10-8", "108", "ten-eight" → "10-8"
         let code = String(args.ten_code || '').trim().toUpperCase()
@@ -3215,6 +3217,8 @@ async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, l
     update,
     { upsert: true, new: true }
   );
+
+  statusEvents.emit('statusUpdate', { guildId, userId, tenCode });
 }
 
 // Per-user transcript dedup map { guildId:userId → { ts, text } }
@@ -4547,7 +4551,7 @@ export async function initDispatchForGuild(guild, client) {
 
     let joinAudioBuffer = null;
     try {
-      joinAudioBuffer = await generateDispatchTTS('Dispatch online, ready to serve.');
+      joinAudioBuffer = await generateDispatchTTS('Dispatch online. To talk to me, say dispatch.');
       console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
     } catch (err) {
       console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
