@@ -259,6 +259,7 @@ function showApp() {
     document.getElementById('app').classList.remove('hidden');
     applyModeNav(validMode);
     loadOverview();
+    startGlobalPriorityPoll();
   } else {
     document.getElementById('mode-screen').classList.remove('hidden');
   }
@@ -275,6 +276,7 @@ function setPortalMode(mode) {
   document.getElementById('app').classList.remove('hidden');
   applyModeNav(mode);
   if (!loaded['overview']) loadOverview();
+  startGlobalPriorityPoll();
 }
 
 function showModeScreen() {
@@ -500,6 +502,7 @@ async function loadOverview() {
 }
 
 function renderHomePriorityWidget(d) {
+  updateGlobalPriorityBar(d);
   const inner = document.getElementById('home-priority-inner');
   if (!inner) return;
   if (homePriorityCountdownTimer) { clearInterval(homePriorityCountdownTimer); homePriorityCountdownTimer = null; }
@@ -1936,6 +1939,63 @@ function startPriorityElapsedTimer(activatedAt) {
     if (!el) { clearInterval(priorityRefreshTimer); return; }
     el.textContent = elapsedSince(activatedAt);
   }, 1000);
+}
+
+/* ── Global Priority Bar ── */
+let globalBarTimer = null;
+
+function updateGlobalPriorityBar(d) {
+  const bar = document.getElementById('global-priority-bar');
+  if (!bar) return;
+  if (globalBarTimer) { clearInterval(globalBarTimer); globalBarTimer = null; }
+
+  const title = document.getElementById('gpb-title');
+  const sub = document.getElementById('gpb-sub');
+  const timer = document.getElementById('gpb-timer');
+
+  if (d?.active) {
+    bar.className = 'gpb-active';
+    title.textContent = 'PRIORITY ACTIVE';
+    sub.textContent = d.issuedBy ? `Hosted by ${esc(d.issuedBy)}` : '';
+    timer.textContent = '';
+    if (d.expiresAt) {
+      const endsMs = new Date(d.expiresAt).getTime();
+      const tick = () => {
+        const diff = Math.max(0, Math.floor((endsMs - Date.now()) / 1000));
+        const m = Math.floor(diff / 60), s = diff % 60;
+        timer.textContent = `${m}:${s.toString().padStart(2, '0')} remaining`;
+      };
+      tick(); globalBarTimer = setInterval(tick, 1000);
+    } else if (d.activatedAt) {
+      const tick = () => { timer.textContent = elapsedSince(d.activatedAt); };
+      tick(); globalBarTimer = setInterval(tick, 1000);
+    }
+  } else if (d?.cooldown) {
+    bar.className = 'gpb-cooldown';
+    title.textContent = 'COOLDOWN';
+    sub.textContent = d.cooldownIssuedBy ? `Last host: ${esc(d.cooldownIssuedBy)}` : '';
+    timer.textContent = '';
+    if (d.cooldownEndsAt) {
+      const endsMs = new Date(d.cooldownEndsAt).getTime();
+      const tick = () => {
+        const diff = Math.max(0, Math.floor((endsMs - Date.now()) / 1000));
+        if (diff === 0) { timer.textContent = 'Ending...'; clearInterval(globalBarTimer); globalBarTimer = null; return; }
+        const m = Math.floor(diff / 60), s = diff % 60;
+        timer.textContent = `${m}m ${s.toString().padStart(2, '0')}s`;
+      };
+      tick(); globalBarTimer = setInterval(tick, 1000);
+    }
+  } else {
+    bar.className = 'gpb-hidden';
+  }
+}
+
+let globalPriorityPollTimer = null;
+function startGlobalPriorityPoll() {
+  if (globalPriorityPollTimer) clearInterval(globalPriorityPollTimer);
+  const poll = () => api('/priority').catch(() => null).then(d => { if (d) updateGlobalPriorityBar(d); });
+  poll();
+  globalPriorityPollTimer = setInterval(poll, 30000);
 }
 
 let priorityCooldownTimer = null;

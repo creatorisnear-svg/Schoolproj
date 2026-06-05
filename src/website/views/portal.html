@@ -135,18 +135,22 @@
 
   <!-- Main Content -->
   <main id="main">
+
+    <!-- Global Priority Bar (visible on every tab) -->
+    <div id="global-priority-bar" class="gpb-hidden">
+      <div class="gpb-dot"></div>
+      <div class="gpb-content">
+        <span class="gpb-title" id="gpb-title"></span>
+        <span class="gpb-sub" id="gpb-sub"></span>
+      </div>
+      <span class="gpb-timer" id="gpb-timer"></span>
+    </div>
+
     <div class="main-inner">
 
       <!-- OVERVIEW -->
       <div id="tab-overview" class="tab-pane active">
         <div class="page-header"><h2>Overview</h2></div>
-        <div id="priority-banner" class="priority-banner priority-banner-idle">
-          <div class="priority-banner-dot" id="priority-banner-dot"></div>
-          <div class="priority-banner-text">
-            <div class="priority-banner-title" id="priority-banner-title">No Priority / Cooldown</div>
-            <div id="priority-banner-sub" class="priority-banner-sub">Server is open - no active priority or cooldown</div>
-          </div>
-        </div>
         <div id="overview-stats" class="stat-grid"></div>
         <div class="section-label">Quick Access</div>
         <div class="quick-actions" id="quick-actions"></div>
