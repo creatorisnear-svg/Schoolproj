@@ -517,8 +517,8 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     try {
-      // 1400ms silence - radio-style speech has natural pauses; 900ms cut too many valid transmissions
-      const silenceDuration = 1400;
+      // 900ms silence - fast enough for sub-2s response while still catching natural radio speech
+      const silenceDuration = 900;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });
@@ -548,10 +548,9 @@ function _setupReceiver(connection, guild, state, guildId) {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
       console.log(`[Dispatch] Recording ended for user ${userId} (${pcmChunks.length} chunks)`);
-      // Require at least 40 chunks (~800ms) to filter out noise bursts, mic pops and accidental keying.
-      // 20 chunks (400ms) let short ambient noise through — Whisper hallucinates common phrases
-      // like "10-8" from that brief audio. 800ms requires actual sustained speech.
-      if (pcmChunks.length < 40) return;
+      // Require at least 20 chunks (~400ms) to filter out noise bursts and mic pops.
+      // Threshold reduced from 40 to allow short-but-valid transmissions (e.g. "dispatch, 10-8").
+      if (pcmChunks.length < 20) return;
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         // ── Simultaneous speaker gate ──────────────────────────────────────────

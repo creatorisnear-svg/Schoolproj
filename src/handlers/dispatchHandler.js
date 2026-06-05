@@ -452,7 +452,8 @@ const SPOKEN_NUM_TO_DIGIT = {
 };
 
 // Emergency phrases that always bypass the trigger requirement
-const EMERGENCY_BYPASS_RE = /\b(?:shots?\s+fired|officer\s+down|mayday|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|10[-\s]?99|we\s+have\s+shots|man\s+down|officer\s+needs\s+help)\b/i;
+// NOTE: "officer needs backup" is intentionally excluded here - backup = 10-78, NOT 10-99 panic
+const EMERGENCY_BYPASS_RE = /\b(?:shots?\s+fired|officer\s+down|mayday|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance)|10[-\s]?99|we\s+have\s+shots|man\s+down|officer\s+needs\s+help)\b/i;
 
 /**
  * Detects a police call sign at the start of a transmission.
@@ -678,8 +679,8 @@ const PHRASE_ALIASES = [
   [/\b(?:just\s+arrived?|arrived?\s+(?:at\s+)?(?:the\s+)?(?:location|address|scene)?|pulling\s+up)\b/i, '10-23'],
   // 10-97 - On Scene / Arrived
   [/\b(?:on\s+scene|i(?:'m|m)\s+(?:on\s+scene|at\s+the\s+scene|on\s+location))\b/i, '10-97'],
-  // 10-99 - Officer Down / Emergency
-  [/\b(?:officer\s+down|shots?\s+fired|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance|backup)|mayday|emergency)\b/i, '10-99'],
+  // 10-99 - Officer Down / Emergency (backup = 10-78, NOT 10-99)
+  [/\b(?:officer\s+down|shots?\s+fired|officer\s+needs?\s+(?:immediate\s+)?(?:help|assistance)|mayday|emergency)\b/i, '10-99'],
   // 10-19 - Return to Station
   [/\b(?:returning\s+to\s+(?:the\s+)?station|heading\s+back\s+to\s+(?:the\s+)?station|going\s+(?:back\s+to\s+)?(?:the\s+)?station|back\s+to\s+(?:the\s+)?station)\b/i, '10-19'],
   // 10-50 - Accident
@@ -776,7 +777,8 @@ function parseTranscript(text) {
 }
 
 const WHISPER_PROMPT =
-  'GTA V FiveM police radio transmission. Roleplay server. ' +
+  'GTA V FiveM police radio. Officers address dispatch by saying "Dispatch" clearly at the start. ' +
+  'Example transmissions: "Dispatch, ten eleven at Vinewood." "Dispatch, I am ten eight." "Dispatch, requesting backup at Legion Square." ' +
   'Call signs use LAPD phonetic alphabet: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
   'Example call signs: "1 Adam 22", "2 Lincoln 40", "3 Baker 15", "Adam 22", "Lincoln 4". ' +
   'Also valid: "Dispatch", "Marshal Command", "County Command", "Central Dispatch". ' +
@@ -2000,9 +2002,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         const rawWords = raw.split(/\s+/);
         const alphaWords = rawWords.map(w => w.toLowerCase().replace(/[^a-z]/g, ''));
 
-        const dispatchIdx = alphaWords.findIndex((w, i) => i <= 4 && (
+        // Search up to word 7 (not just 4) - officers sometimes say their unit number first.
+        // Also include common Whisper mishearings of "dispatch": "this patch", "despatch", "depatch"
+        const dispatchIdx = alphaWords.findIndex((w, i) => i <= 7 && (
           w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
           w.endsWith('dispatch') ||
+          w === 'despatch' || w === 'depatch' || w === 'thispatch' ||
           w === 'command' || w === 'control' || w === 'central'
         ));
 

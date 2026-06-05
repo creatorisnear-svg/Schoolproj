@@ -1355,17 +1355,17 @@ function confirmStatusUpdate() {
    LEO - STATUS UPDATE
 ══════════════════════════════════════════════════════ */
 let boardRefreshTimer = null;
-let boardCountdown = 30;
+let boardCountdown = 8;
 
 function startBoardRefresh() {
   stopBoardRefresh();
-  boardCountdown = 30;
+  boardCountdown = 8;
   updateCountdown();
   boardRefreshTimer = setInterval(() => {
     boardCountdown--;
     updateCountdown();
     if (boardCountdown <= 0) {
-      boardCountdown = 30;
+      boardCountdown = 8;
       refreshOfficerBoard();
     }
   }, 1000);
