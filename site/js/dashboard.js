@@ -789,6 +789,12 @@ function renderSettings(mod) {
 
     html += '</div></div>';
     app.innerHTML = html;
+    if (_pendingScrollRestore !== null) {
+      var pos = _pendingScrollRestore;
+      _pendingScrollRestore = null;
+      var content = document.getElementById('settings-content');
+      if (content) content.scrollTop = pos;
+    }
   });
 }
 
@@ -1124,19 +1130,22 @@ function addTicketType() {
   var color = document.getElementById('tt-color') && document.getElementById('tt-color').value || 'Primary';
   var roleId = document.getElementById('tt-role') && document.getElementById('tt-role').value || null;
   if (!label) { toast('Enter a ticket type label', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/tickets/types', {
     method: 'POST',
     body: JSON.stringify({ label: label, buttonColor: color, allowedRoleIds: roleId ? [roleId] : [] })
   }).then(function(r) {
     if (r && r.success) { toast('Ticket type added'); renderSettings('tickets'); }
-    else if (r && r.error) toast(r.error, 'error');
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteTicketType(typeId) {
   if (!confirm('Remove this ticket type?')) return;
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/tickets/types/' + typeId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Ticket type removed'); renderSettings('tickets'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1186,19 +1195,22 @@ function addRoleRequest() {
   var roleId = document.getElementById('rr-role') && document.getElementById('rr-role').value;
   var approverId = document.getElementById('rr-approver') && document.getElementById('rr-approver').value || null;
   if (!roleId) { toast('Select a role to make requestable', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/rolerequest/roles', {
     method: 'POST',
     body: JSON.stringify({ roleId: roleId, approverRoleIds: approverId ? [approverId] : [] })
   }).then(function(r) {
     if (r && r.success) { toast('Role added'); renderSettings('rolerequest'); }
-    else if (r && r.error) toast(r.error, 'error');
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteRoleRequest(roleId) {
   if (!confirm('Remove this role from the request list?')) return;
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/rolerequest/roles/' + roleId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Role removed'); renderSettings('rolerequest'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1355,19 +1367,22 @@ function addCivJob() {
   if (!name) { toast('Enter a job name', 'error'); return; }
   if (!roleId) { toast('Select a role for this job', 'error'); return; }
   if (!duration || Number(duration) <= 0) { toast('Enter a shift duration in hours', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/civjobs/job', {
     method: 'POST',
     body: JSON.stringify({ name: name, description: desc, roleId: roleId, durationHours: Number(duration) })
   }).then(function(r) {
     if (r && r.success) { toast('Job added'); renderSettings('civjobs'); }
-    else if (r && r.error) toast(r.error, 'error');
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteCivJob(jobId) {
   if (!confirm('Remove this job?')) return;
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/civjobs/job/' + jobId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1420,19 +1435,22 @@ function addCalendarEvent() {
   var desc = document.getElementById('cal-desc') && document.getElementById('cal-desc').value.trim();
   var person = document.getElementById('cal-person') && document.getElementById('cal-person').value.trim() || '';
   if (!desc) { toast('Enter an event description', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/calendar/events', {
     method: 'POST',
     body: JSON.stringify({ day: day, time: time, timezone: tz, description: desc, person: person })
   }).then(function(r) {
     if (r && r.success) { toast('Event added'); renderSettings('calendar'); }
-    else if (r && r.error) toast(r.error, 'error');
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteCalendarEvent(eventId) {
   if (!confirm('Remove this event?')) return;
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/calendar/events/' + eventId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Event removed'); renderSettings('calendar'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1478,22 +1496,25 @@ function renderWhitelistedLinksSection(data) {
 function addWhitelistedLink() {
   var link = document.getElementById('wl-link') && document.getElementById('wl-link').value.trim();
   if (!link) { toast('Enter an invite link', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
     method: 'POST',
     body: JSON.stringify({ link: link })
   }).then(function(r) {
     if (r && r.success) { toast('Link whitelisted'); renderSettings('antipromo'); }
-    else if (r && r.error) toast(r.error, 'error');
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteWhitelistedLink(link) {
   if (!confirm('Remove "' + link + '" from whitelist?')) return;
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/antipromo/links', {
     method: 'DELETE',
     body: JSON.stringify({ link: link })
   }).then(function(r) {
     if (r && r.success) { toast('Link removed'); renderSettings('antipromo'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1670,6 +1691,7 @@ function renderEconomySettings(data) {
 
 var _mmSelectedUser = null;
 var _mmSearchTimeout = null;
+var _pendingScrollRestore = null;
 
 function searchMembersForMoney(query) {
   clearTimeout(_mmSearchTimeout);
@@ -1744,21 +1766,22 @@ function addRoleIncome() {
   var cooldown = document.getElementById('ri-cooldown') && document.getElementById('ri-cooldown').value || '24';
   if (!roleId) { toast('Select a role', 'error'); return; }
   if (!amount || Number(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/roleincome', {
     method: 'POST',
     body: JSON.stringify({ roleId: roleId, amount: Number(amount), cooldown: Number(cooldown) })
   }).then(function(r) {
-    if (r && r.success) { toast('Role income added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
-    else if (r && r.error) toast(r.error, 'error');
+    if (r && r.success) { toast('Role income added'); renderSettings('economy'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteRoleIncome(roleId) {
   if (!currentGuild) return;
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/roleincome/' + roleId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
+    if (r && r.success) { toast('Role income removed'); renderSettings('economy'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1768,21 +1791,22 @@ function addRoleDeduction() {
   var label = (document.getElementById('rd-label') && document.getElementById('rd-label').value.trim()) || 'Deduction';
   if (!roleId) { toast('Select a role', 'error'); return; }
   if (!amount || Number(amount) <= 0) { toast('Enter a valid amount', 'error'); return; }
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/rolededuction', {
     method: 'POST',
     body: JSON.stringify({ roleId: roleId, amount: Number(amount), label: label })
   }).then(function(r) {
-    if (r && r.success) { toast('Role deduction added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
-    else if (r && r.error) toast(r.error, 'error');
+    if (r && r.success) { toast('Role deduction added'); renderSettings('economy'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteRoleDeduction(roleId) {
   if (!currentGuild) return;
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/rolededuction/' + roleId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Role deduction removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
+    if (r && r.success) { toast('Role deduction removed'); renderSettings('economy'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1796,21 +1820,22 @@ function addStoreItem() {
   var sellable = document.getElementById('store-sellable') ? document.getElementById('store-sellable').checked : true;
   if (!name) { toast('Item name is required', 'error'); return; }
   if (price === '' || price === undefined || isNaN(Number(price))) { toast('Enter a valid price', 'error'); return; }
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store', {
     method: 'POST',
     body: JSON.stringify({ name: name, price: Number(price), description: desc, usable: usable, sellable: sellable, roleId: roleId || null, requiredRoleId: requiredRoleId || null })
   }).then(function(r) {
-    if (r && r.success) { toast('Item added'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
-    else if (r && r.error) toast(r.error, 'error');
+    if (r && r.success) { toast('Item added'); renderSettings('economy'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
 
 function deleteStoreItem(itemId) {
   if (!currentGuild) return;
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
-    if (r && r.success) { toast('Item removed'); renderSettings('economy'); restoreDashScrollPos(scrollPos); }
+    if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+    else _pendingScrollRestore = null;
   });
 }
 
@@ -1894,7 +1919,7 @@ function saveSettings(mod) {
   if (Object.keys(pendingChanges).length === 0) return;
   var saveBtn = document.querySelector('.save-bar .btn-success');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
-  var scrollPos = getDashScrollPos();
+  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/' + mod, {
     method: 'POST',
     body: JSON.stringify(pendingChanges)
@@ -1906,9 +1931,9 @@ function saveSettings(mod) {
       api('/guild/' + currentGuild.id).then(function(refreshed) {
         if (refreshed) currentGuild = refreshed;
         renderSettings(mod);
-        restoreDashScrollPos(scrollPos);
       });
     } else {
+      _pendingScrollRestore = null;
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
     }
   });
