@@ -222,8 +222,10 @@ export function createPortalApiRouter(client) {
       const guildId = GUILD_ID();
       if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
 
-      const { characterName, age, gender, hairColor, eyeColor, height, occupation, address, phoneNumber, emergencyContact } = req.body;
-      if (!characterName?.trim()) return res.status(400).json({ error: 'Character name is required' });
+      const { firstName, lastName, age, gender, hairColor, eyeColor, height, occupation, address, phoneNumber, emergencyContact } = req.body;
+      if (!firstName?.trim()) return res.status(400).json({ error: 'First name is required' });
+      if (!lastName?.trim()) return res.status(400).json({ error: 'Last name is required' });
+      const characterName = `${firstName.trim()} ${lastName.trim()}`;
 
       const existing = await CADCharacter.countDocuments({ guildId, userId: req.portalUser.userId });
       if (existing >= 5) return res.status(400).json({ error: 'Maximum of 5 characters reached' });

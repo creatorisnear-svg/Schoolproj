@@ -532,7 +532,10 @@
       <button class="modal-close" onclick="closeModal('modal-create-char')">&times;</button>
     </div>
     <form id="form-create-char" onsubmit="submitCreateChar(event)">
-      <div class="form-group"><label class="form-label">Character Name *</label><input class="form-input" name="characterName" type="text" required placeholder="First Last"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">First Name *</label><input class="form-input" name="firstName" type="text" required placeholder="John"></div>
+        <div class="form-group"><label class="form-label">Last Name *</label><input class="form-input" name="lastName" type="text" required placeholder="Smith"></div>
+      </div>
       <div class="form-grid-2">
         <div class="form-group"><label class="form-label">Age</label><input class="form-input" name="age" type="number" min="1" max="120" placeholder="25"></div>
         <div class="form-group"><label class="form-label">Gender</label><input class="form-input" name="gender" type="text" placeholder="Male / Female"></div>
