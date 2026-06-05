@@ -1646,7 +1646,83 @@ function renderEconomySettings(data) {
     '</div>' +
     '</div>';
 
+  /* ── Member Money Management ── */
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Member Money Management</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Add, remove, or reset a member\'s balance</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;align-items:center;">' +
+    '<div style="position:relative;flex:2;min-width:180px;">' +
+    '<input id="mm-search" type="text" class="config-input" placeholder="Search member by name..." oninput="searchMembersForMoney(this.value)" autocomplete="off" style="width:100%;">' +
+    '<div id="mm-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-2,#1e1e2e);border:1px solid var(--border,#333);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;"></div>' +
+    '</div>' +
+    '<input id="mm-amount" type="number" class="config-input" placeholder="Amount" min="1" style="width:110px;">' +
+    '<button class="btn btn-success btn-sm" onclick="mmAction(\'add\')">Add Money</button>' +
+    '<button class="btn btn-danger btn-sm" onclick="mmAction(\'remove\')">Remove Money</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="mmAction(\'reset\')">Reset Balance</button>' +
+    '</div>' +
+    '<div id="mm-selected-info" style="font-size:12px;color:var(--text-dim);min-height:16px;"></div>' +
+    '</div>' +
+    '</div>';
+
   return html;
+}
+
+var _mmSelectedUser = null;
+var _mmSearchTimeout = null;
+
+function searchMembersForMoney(query) {
+  clearTimeout(_mmSearchTimeout);
+  var resultsEl = document.getElementById('mm-results');
+  if (!query || query.length < 2) { if (resultsEl) resultsEl.style.display = 'none'; return; }
+  _mmSearchTimeout = setTimeout(function() {
+    api('/guild/' + currentGuild.id + '/economy/members?q=' + encodeURIComponent(query)).then(function(r) {
+      if (!r || !r.members) return;
+      var members = r.members;
+      var resultsEl2 = document.getElementById('mm-results');
+      if (!resultsEl2) return;
+      if (members.length === 0) {
+        resultsEl2.innerHTML = '<div style="padding:8px 12px;font-size:13px;color:var(--text-dim);">No members found</div>';
+      } else {
+        resultsEl2.innerHTML = members.map(function(m) {
+          return '<div onclick="selectMemberForMoney(\'' + esc(m.id) + '\',\'' + esc(m.username) + '\')" ' +
+            'style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border,#333);" ' +
+            'onmouseover="this.style.background=\'var(--bg-3,#2a2a3e)\'" onmouseout="this.style.background=\'\'">' +
+            esc(m.displayName || m.username) + ' <span style="color:var(--text-dim);font-size:11px;">@' + esc(m.username) + '</span>' +
+            '</div>';
+        }).join('');
+      }
+      resultsEl2.style.display = 'block';
+    });
+  }, 300);
+}
+
+function selectMemberForMoney(userId, username) {
+  _mmSelectedUser = { id: userId, username: username };
+  var searchEl = document.getElementById('mm-search');
+  var resultsEl = document.getElementById('mm-results');
+  var infoEl = document.getElementById('mm-selected-info');
+  if (searchEl) searchEl.value = username;
+  if (resultsEl) resultsEl.style.display = 'none';
+  if (infoEl) infoEl.textContent = 'Selected: ' + username + ' (ID: ' + userId + ')';
+}
+
+function mmAction(action) {
+  if (!_mmSelectedUser) { toast('Search and select a member first', 'error'); return; }
+  var amount = document.getElementById('mm-amount') && parseInt(document.getElementById('mm-amount').value);
+  if (action !== 'reset' && (!amount || amount < 1)) { toast('Enter a valid amount', 'error'); return; }
+  var body = { userId: _mmSelectedUser.id };
+  if (action !== 'reset') body.amount = amount;
+  api('/guild/' + currentGuild.id + '/economy/' + action + 'money', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    if (r && r.success) {
+      toast(r.message || 'Done');
+      var infoEl = document.getElementById('mm-selected-info');
+      if (infoEl && r.newBalance !== undefined) infoEl.textContent = 'Selected: ' + _mmSelectedUser.username + ' — New balance: ' + r.newBalance;
+    } else if (r && r.error) toast(r.error, 'error');
+  });
 }
 
 function getDashScrollPos() {

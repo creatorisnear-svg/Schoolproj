@@ -71,6 +71,21 @@ function parseUserId(text) {
   return m ? m[1] : null;
 }
 
+async function resolveUser(text, guild) {
+  if (!text) return null;
+  const direct = parseUserId(text);
+  if (direct) return direct;
+  // Try username or display name lookup
+  const query = text.trim().toLowerCase().replace(/^@/, '');
+  try { await guild.members.fetch(); } catch {}
+  const found = guild.members.cache.find(m =>
+    m.user.username.toLowerCase() === query ||
+    (m.nickname || '').toLowerCase() === query ||
+    (m.user.displayName || '').toLowerCase() === query
+  );
+  return found?.user.id || null;
+}
+
 // ── Blackjack engine ──────────────────────────────────────────────────────────
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -405,11 +420,11 @@ export async function handleEconomyMenu(interaction) {
     const modals = {
       deposit:   { id: 'economy_deposit_modal',   title: 'Deposit Cash',   fields: [{ id: 'amount', label: 'Amount (or "all")', placeholder: 'e.g. 500 or all' }] },
       withdraw:  { id: 'economy_withdraw_modal',  title: 'Withdraw Cash',  fields: [{ id: 'amount', label: 'Amount (or "all")', placeholder: 'e.g. 500 or all' }] },
-      give:      { id: 'economy_give_modal',      title: 'Give Money',     fields: [{ id: 'user_id', label: 'User ID or @mention', placeholder: '123456789012345678' }, { id: 'amount', label: 'Amount', placeholder: 'e.g. 500' }] },
-      rob:       { id: 'economy_rob_modal',       title: 'Rob a User',     fields: [{ id: 'user_id', label: 'Target User ID or @mention', placeholder: '123456789012345678' }] },
+      give:      { id: 'economy_give_modal',      title: 'Give Money',     fields: [{ id: 'user_id', label: 'Username, ID or @mention', placeholder: 'e.g. john_doe' }, { id: 'amount', label: 'Amount', placeholder: 'e.g. 500' }] },
+      rob:       { id: 'economy_rob_modal',       title: 'Rob a User',     fields: [{ id: 'user_id', label: 'Target Username, ID or @mention', placeholder: 'e.g. john_doe' }] },
       sell:      { id: 'economy_sell_modal',      title: 'Sell Item',      fields: [{ id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
       use:       { id: 'economy_use_modal',       title: 'Use Item',       fields: [{ id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }] },
-      giveitems: { id: 'economy_giveitems_modal', title: 'Give Item',      fields: [{ id: 'user_id', label: 'User ID or @mention', placeholder: '123456789012345678' }, { id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
+      giveitems: { id: 'economy_giveitems_modal', title: 'Give Item',      fields: [{ id: 'user_id', label: 'Username, ID or @mention', placeholder: 'e.g. john_doe' }, { id: 'item', label: 'Item Name', placeholder: 'e.g. Health Pack' }, { id: 'quantity', label: 'Quantity', placeholder: 'Default: 1', required: false }] },
     };
     const mc = modals[value];
     if (mc) {
@@ -613,9 +628,9 @@ export async function handleEconomyMenu(interaction) {
       storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
       storeremove: null,
       storeedit: null,
-      addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
-      removemoney: { title: 'Remove Money',      id: 'economysetup_removemoney_modal', fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
-      resetmoney: { title: 'Reset Balance',      id: 'economysetup_resetmoney_modal', fields: [{ id: 'user_id', label: 'User ID or @mention', val: '' }] },
+      addmoney:  { title: 'Add Money',           id: 'economysetup_addmoney_modal',  fields: [{ id: 'user_id', label: 'Username, ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
+      removemoney: { title: 'Remove Money',      id: 'economysetup_removemoney_modal', fields: [{ id: 'user_id', label: 'Username, ID or @mention', val: '' }, { id: 'amount', label: 'Amount', val: '' }] },
+      resetmoney: { title: 'Reset Balance',      id: 'economysetup_resetmoney_modal', fields: [{ id: 'user_id', label: 'Username, ID or @mention', val: '' }] },
     };
     if (value === 'storeremove' || value === 'storeedit') {
       const items = await EconomyStore.find({ guildId });
@@ -1157,9 +1172,9 @@ export async function handleEconomyModal(interaction) {
 
   if (customId === 'economy_give_modal') {
     if (!config?.enabled) return interaction.reply({ embeds: [errorEmbed('Economy is not enabled.')], flags: 64 });
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
     const amount   = parseInt(interaction.fields.getTextInputValue('amount'));
-    if (!targetId) return interaction.reply({ embeds: [errorEmbed('Invalid user ID or mention.')], flags: 64 });
+    if (!targetId) return interaction.reply({ embeds: [errorEmbed('User not found. Enter a username, @mention, or ID.')], flags: 64 });
     if (targetId === userId) return interaction.reply({ embeds: [errorEmbed('You cannot give money to yourself.')], flags: 64 });
     if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid amount.')], flags: 64 });
     const bal = await getBalance(guildId, userId, config.startingBalance);
@@ -1173,8 +1188,8 @@ export async function handleEconomyModal(interaction) {
   if (customId === 'economy_rob_modal') {
     if (!config?.enabled) return interaction.reply({ embeds: [errorEmbed('Economy is not enabled.')], flags: 64 });
     if (!config.rob.enabled) return interaction.reply({ embeds: [errorEmbed('Robbing is disabled.')], flags: 64 });
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
-    if (!targetId || targetId === userId) return interaction.reply({ embeds: [errorEmbed('Invalid target.')], flags: 64 });
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
+    if (!targetId || targetId === userId) return interaction.reply({ embeds: [errorEmbed('User not found or invalid target. Enter a username, @mention, or ID.')], flags: 64 });
     const bal = await getBalance(guildId, userId, config.startingBalance);
     const rem = cooldownRemaining(bal.robCooldown, config.rob.cooldown);
     if (rem > 0) return interaction.reply({ embeds: [errorEmbed(`You can rob again in **${formatMs(rem)}**.`)], flags: 64 });
@@ -1245,10 +1260,10 @@ export async function handleEconomyModal(interaction) {
 
   if (customId === 'economy_giveitems_modal') {
     if (!config?.enabled) return interaction.reply({ embeds: [errorEmbed('Economy is not enabled.')], flags: 64 });
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
     const itemName = interaction.fields.getTextInputValue('item');
     const qty = parseInt(interaction.fields.getTextInputValue('quantity') || '1') || 1;
-    if (!targetId || targetId === userId) return interaction.reply({ embeds: [errorEmbed('Invalid target.')], flags: 64 });
+    if (!targetId || targetId === userId) return interaction.reply({ embeds: [errorEmbed('User not found or invalid target. Enter a username, @mention, or ID.')], flags: 64 });
     const inv = await EconomyInventory.findOne({ guildId, userId });
     const owned = inv?.items.find(i => i.itemName.toLowerCase() === itemName.toLowerCase());
     if (!owned || owned.quantity < qty) return interaction.reply({ embeds: [errorEmbed(`You don't have ${qty}x **${itemName}**.`)], flags: 64 });
@@ -1574,9 +1589,9 @@ export async function handleEconomyModal(interaction) {
   }
 
   if (customId === 'economysetup_addmoney_modal') {
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
     const amount   = parseInt(interaction.fields.getTextInputValue('amount'));
-    if (!targetId) return interaction.reply({ embeds: [errorEmbed('Invalid user ID.')], flags: 64 });
+    if (!targetId) return interaction.reply({ embeds: [errorEmbed('User not found. Enter a username, @mention, or ID.')], flags: 64 });
     if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Invalid amount.')], flags: 64 });
     const bal = await getBalance(guildId, targetId, config2.startingBalance);
     bal.cash = Math.min(bal.cash + amount, config2.maxBalance); await bal.save();
@@ -1585,9 +1600,9 @@ export async function handleEconomyModal(interaction) {
   }
 
   if (customId === 'economysetup_removemoney_modal') {
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
     const amount   = parseInt(interaction.fields.getTextInputValue('amount'));
-    if (!targetId) return interaction.reply({ embeds: [errorEmbed('Invalid user ID.')], flags: 64 });
+    if (!targetId) return interaction.reply({ embeds: [errorEmbed('User not found. Enter a username, @mention, or ID.')], flags: 64 });
     if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Invalid amount.')], flags: 64 });
     const bal = await getBalance(guildId, targetId, config2.startingBalance);
     bal.cash = Math.max(0, bal.cash - amount); await bal.save();
@@ -1596,8 +1611,8 @@ export async function handleEconomyModal(interaction) {
   }
 
   if (customId === 'economysetup_resetmoney_modal') {
-    const targetId = parseUserId(interaction.fields.getTextInputValue('user_id'));
-    if (!targetId) return interaction.reply({ embeds: [errorEmbed('Invalid user ID.')], flags: 64 });
+    const targetId = await resolveUser(interaction.fields.getTextInputValue('user_id'), interaction.guild);
+    if (!targetId) return interaction.reply({ embeds: [errorEmbed('User not found. Enter a username, @mention, or ID.')], flags: 64 });
     const bal = await getBalance(guildId, targetId, config2.startingBalance);
     bal.cash = config2.startingBalance; bal.bank = 0; await bal.save();
     await logTx(interaction, config2, `Reset <@${targetId}>'s balance to ${sym}${fmt(config2.startingBalance)}.`);

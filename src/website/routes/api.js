@@ -1890,6 +1890,110 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  /* ── Economy Member Search ── */
+  router.get('/guild/:id/economy/members', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found or bot not in server' });
+    try {
+      const query = (req.query.q || '').toLowerCase().trim();
+      if (!query || query.length < 2) return res.json({ members: [] });
+      await guild.members.fetch();
+      const results = guild.members.cache
+        .filter(m => !m.user.bot && (
+          m.user.username.toLowerCase().includes(query) ||
+          (m.nickname || '').toLowerCase().includes(query) ||
+          m.user.displayName?.toLowerCase().includes(query)
+        ))
+        .map(m => ({
+          id: m.user.id,
+          username: m.user.username,
+          displayName: m.nickname || m.user.displayName || m.user.username,
+        }))
+        .slice(0, 20);
+      res.json({ members: results });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Economy Add/Remove/Reset Money ── */
+  router.post('/guild/:id/economy/addmoney', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { userId, amount } = req.body || {};
+      if (!userId) return res.status(400).json({ error: 'userId is required' });
+      if (!amount || isNaN(amount) || Number(amount) < 1) return res.status(400).json({ error: 'Invalid amount' });
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id });
+      const startingBalance = ec?.startingBalance ?? 0;
+      const maxBalance = ec?.maxBalance ?? 1000000000;
+      let bal = await EconomyBalance.findOne({ guildId: req.params.id, userId });
+      if (!bal) bal = new EconomyBalance({ guildId: req.params.id, userId, cash: startingBalance, bank: 0 });
+      bal.cash = Math.min(bal.cash + Number(amount), maxBalance);
+      await bal.save();
+      const sym = ec?.currencySymbol || '$';
+      res.json({ success: true, message: `Added ${sym}${Number(amount).toLocaleString()} to balance`, newBalance: `${sym}${bal.cash.toLocaleString()} cash` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/guild/:id/economy/removemoney', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { userId, amount } = req.body || {};
+      if (!userId) return res.status(400).json({ error: 'userId is required' });
+      if (!amount || isNaN(amount) || Number(amount) < 1) return res.status(400).json({ error: 'Invalid amount' });
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id });
+      const startingBalance = ec?.startingBalance ?? 0;
+      let bal = await EconomyBalance.findOne({ guildId: req.params.id, userId });
+      if (!bal) bal = new EconomyBalance({ guildId: req.params.id, userId, cash: startingBalance, bank: 0 });
+      bal.cash = Math.max(0, bal.cash - Number(amount));
+      await bal.save();
+      const sym = ec?.currencySymbol || '$';
+      res.json({ success: true, message: `Removed ${sym}${Number(amount).toLocaleString()} from balance`, newBalance: `${sym}${bal.cash.toLocaleString()} cash` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/guild/:id/economy/resetmoney', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { userId } = req.body || {};
+      if (!userId) return res.status(400).json({ error: 'userId is required' });
+      const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
+      const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
+      const ec = await EconomyConfig.findOne({ guildId: req.params.id });
+      const startingBalance = ec?.startingBalance ?? 0;
+      let bal = await EconomyBalance.findOne({ guildId: req.params.id, userId });
+      if (!bal) bal = new EconomyBalance({ guildId: req.params.id, userId, cash: startingBalance, bank: 0 });
+      bal.cash = startingBalance;
+      bal.bank = 0;
+      await bal.save();
+      const sym = ec?.currencySymbol || '$';
+      res.json({ success: true, message: `Balance reset to ${sym}${startingBalance.toLocaleString()}`, newBalance: `${sym}${startingBalance.toLocaleString()} cash, ${sym}0 bank` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   /* ── Ticket Panel Send (from web dashboard) ── */
   router.post('/guild/:id/settings/tickets/panel/send', async (req, res) => {
     const token = getToken(req);
