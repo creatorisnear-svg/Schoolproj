@@ -364,9 +364,12 @@ export function createPortalApiRouter(client) {
       const guildId = GUILD_ID();
       if (!guildId) return res.json([]);
 
-      const balances = await EconomyBalance.find({ guildId })
-        .sort({ bank: -1 })
-        .limit(10);
+      const balances = await EconomyBalance.aggregate([
+        { $match: { guildId } },
+        { $addFields: { total: { $add: ['$cash', '$bank'] } } },
+        { $sort: { total: -1 } },
+        { $limit: 10 },
+      ]);
 
       const guild = client?.guilds.cache.get(guildId);
       const entries = await Promise.all(balances.map(async (b, i) => {
