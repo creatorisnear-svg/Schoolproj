@@ -44,6 +44,20 @@ function getPortalDomain() {
   return d;
 }
 
+const MEMBER_CACHE = new Map();
+const MEMBER_CACHE_TTL = 5 * 60 * 1000;
+
+function getMemberCache(userId) {
+  const entry = MEMBER_CACHE.get(userId);
+  if (!entry) return null;
+  if (Date.now() > entry.exp) { MEMBER_CACHE.delete(userId); return null; }
+  return entry.data;
+}
+
+function setMemberCache(userId, data) {
+  MEMBER_CACHE.set(userId, { data, exp: Date.now() + MEMBER_CACHE_TTL });
+}
+
 export function portalAuth(client) {
   return async (req, res, next) => {
     const session = verifyPortalSession(req.cookies?.[SESSION_COOKIE]);
@@ -58,27 +72,32 @@ export function portalAuth(client) {
     if (guildId && client) {
       const guild = client.guilds.cache.get(guildId);
       if (guild) {
-        try {
-          const member = await guild.members.fetch(session.userId);
-          req.portalUser = {
-            ...session,
-            displayName: member.displayName,
-            roles: Array.from(member.roles.cache.values())
-              .filter(r => r.id !== guild.id)
-              .map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
-          };
-        } catch (err) {
-          const status = err?.httpStatus || err?.status || (err?.rawError?.code ? 10007 : null);
-          const isNotMember = status === 404 || status === 10007 || err?.code === 10007;
-          if (isNotMember) {
-            res.clearCookie(SESSION_COOKIE);
-            if (req.originalUrl.startsWith('/api/portal')) {
-              return res.status(401).json({ error: 'not_member' });
+        const cached = getMemberCache(session.userId);
+        if (cached) {
+          req.portalUser = { ...session, ...cached };
+        } else {
+          try {
+            const member = await guild.members.fetch(session.userId);
+            const memberData = {
+              displayName: member.displayName,
+              roles: Array.from(member.roles.cache.values())
+                .filter(r => r.id !== guild.id)
+                .map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
+            };
+            setMemberCache(session.userId, memberData);
+            req.portalUser = { ...session, ...memberData };
+          } catch (err) {
+            const isNotMember = err?.code === 10007 || err?.status === 404 || err?.httpStatus === 404;
+            if (isNotMember) {
+              res.clearCookie(SESSION_COOKIE);
+              if (req.originalUrl.startsWith('/api/portal')) {
+                return res.status(401).json({ error: 'not_member' });
+              }
+              return res.redirect('/portal?error=not_member');
             }
-            return res.redirect('/portal?error=not_member');
+            console.warn('[PORTAL AUTH] member fetch failed (non-fatal), using session data:', err?.message);
+            req.portalUser = session;
           }
-          console.warn('[PORTAL AUTH] member fetch failed (non-fatal), using session data:', err?.message);
-          req.portalUser = session;
         }
       } else {
         req.portalUser = session;
