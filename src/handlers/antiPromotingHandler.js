@@ -6,7 +6,7 @@ export async function handleAntiPromoting(message) {
   try {
     const config = await Config.findOne({ guildId: message.guildId });
 
-    if (!config || !config.antiPromotingEnabled || !config.logChannelId) {
+    if (!config || !config.antiPromotingEnabled) {
       return;
     }
 
@@ -42,7 +42,9 @@ export async function handleAntiPromoting(message) {
     await message.delete().catch(() => {});
 
     // Get log channel
-    const logChannel = await message.guild.channels.fetch(config.logChannelId).catch(() => null);
+    const logChannel = config.antiPromotingLogChannelId
+      ? await message.guild.channels.fetch(config.antiPromotingLogChannelId).catch(() => null)
+      : null;
 
     // Send DM to user
     const dmEmbed = new EmbedBuilder()

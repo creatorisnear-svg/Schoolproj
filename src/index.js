@@ -579,6 +579,14 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
 
+  // Anti-promoting
+  try {
+    const { handleAntiPromoting } = await import('./handlers/antiPromotingHandler.js');
+    await handleAntiPromoting(message);
+  } catch (err) {
+    // Silently fail - anti-promoting is non-critical
+  }
+
   // Sticky messages
   try {
     const { handleStickyMessages } = await import('./handlers/stickyHandler.js');
