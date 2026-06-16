@@ -23,6 +23,10 @@
     .legal-body a:hover { color: var(--text); }
     .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 13px; margin-bottom: 32px; }
     .back-link:hover { color: var(--text); }
+    .intent-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; }
+    .intent-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .intent-table td { font-size: 13px; color: #b0b7c3; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; line-height: 1.6; }
+    .intent-table td:first-child { font-weight: 600; color: var(--text); white-space: nowrap; width: 200px; }
   </style>
 </head>
 <body>
@@ -49,27 +53,40 @@
 
       <div class="legal-header">
         <h1>Privacy Policy</h1>
-        <p>Last updated: June 1, 2026 &mdash; This policy describes what data we collect and how we use it.</p>
+        <p>Last updated: June 16, 2026 &mdash; This policy describes what data we collect, how we use it, and your rights.</p>
       </div>
 
       <div class="legal-body">
 
         <h2>1. Information We Collect</h2>
 
-        <h3>From Discord</h3>
-        <p>When you add the Bot to a server or log in to the dashboard, we collect:</p>
+        <h3>From Discord (Bot)</h3>
+        <p>When you add the Bot to a server or interact with it, we may collect:</p>
         <ul>
           <li>Discord user ID, username, and avatar (for authentication and display)</li>
           <li>Discord server (guild) ID and name</li>
-          <li>Server member roles (to determine permissions)</li>
-          <li>Voice channel audio (only in servers where AI Voice Dispatch is configured and active - audio is transcribed in real time and not stored)</li>
+          <li>Server member roles and membership status (to determine permissions and enforce features)</li>
+          <li>Member presence/online status (only in servers with AI Voice Dispatch configured, used solely to display officer availability on the status board)</li>
+          <li>Message content (only to enforce the anti-promoting filter, power sticky messages, and calculate chat-based economy rewards — message text is never stored)</li>
+          <li>Voice channel audio (only in servers where AI Voice Dispatch is active — audio is transcribed in real time and immediately discarded; no audio recordings are stored)</li>
         </ul>
 
-        <h3>From Bot Usage</h3>
+        <h3>From the Web Portal (Civilian / LEO App)</h3>
+        <p>When you log in to the civilian or LEO web portal, we collect:</p>
+        <ul>
+          <li>Discord user ID, username, and avatar (for session authentication)</li>
+          <li>CAD characters, registered vehicles, and firearm records you create in the portal</li>
+          <li>Active job shift records (job check-in/check-out timestamps and role)</li>
+          <li>Officer status updates you submit (unit code, location, ten-code)</li>
+          <li>Voice channel self-move requests (we log the channel moved to, not ongoing voice activity)</li>
+        </ul>
+
+        <h3>From Bot Commands</h3>
         <p>When members use bot commands, we store data necessary to provide the feature:</p>
         <ul>
-          <li>CAD characters, vehicles, and firearms linked to your Discord user ID</li>
-          <li>Strike records, verification status, and economy balances</li>
+          <li>Strike records, verification status, and role assignment history</li>
+          <li>Economy balances, inventory items, and transaction history</li>
+          <li>911 call submissions and dispatch event records</li>
           <li>Server configuration settings entered by administrators</li>
         </ul>
 
@@ -79,34 +96,68 @@
           <li>Stripe customer ID and subscription/payment ID</li>
           <li>Discord user ID of the purchaser</li>
           <li>Guild ID the key is activated on</li>
-          <li>Purchase date and tier (monthly/lifetime)</li>
+          <li>Purchase date and tier (monthly / lifetime)</li>
         </ul>
 
-        <h2>2. How We Use Your Data</h2>
+        <h2>2. Discord Privileged Gateway Intents</h2>
+        <p>Discord requires bots that use certain data to declare "Privileged Gateway Intents." RolePlayManager uses three privileged intents. The table below explains exactly what each intent accesses and why it is required.</p>
+
+        <table class="intent-table">
+          <thead>
+            <tr>
+              <th>Intent</th>
+              <th>What it accesses</th>
+              <th>Why we need it</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Server Members Intent</td>
+              <td>Guild member list, join/leave events, role assignments</td>
+              <td>Required for the verification system to assign RP tags and roles to members, the strike system to look up members, staff permission checks, the role request system, and the voice mover feature. Without this intent, the bot cannot resolve member objects from IDs or respond to member joins.</td>
+            </tr>
+            <tr>
+              <td>Message Content Intent</td>
+              <td>Full text content of messages in channels where the bot is active</td>
+              <td>Required for the anti-promoting filter (detecting and removing non-whitelisted Discord invite links), sticky message reposting (re-sending a configured message after new activity), and chat-based economy rewards (awarding small currency amounts for member messages). Message text is read in memory only and never stored.</td>
+            </tr>
+            <tr>
+              <td>Presence Intent</td>
+              <td>Member online/idle/offline/DND status and activity</td>
+              <td>Used exclusively by the AI Voice Dispatch feature to display officer online status on the live dispatch status board. Only active in guilds that have Dispatch configured. Presence data is displayed in real time and not stored.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>3. How We Use Your Data</h2>
         <ul>
           <li>To provide, operate, and improve the Service</li>
-          <li>To authenticate you on the dashboard</li>
+          <li>To authenticate you on the dashboard and web portal</li>
           <li>To process and verify Premium access</li>
+          <li>To enforce server rules configured by administrators (strikes, anti-promoting, verification)</li>
+          <li>To power AI Voice Dispatch (real-time transcription and dispatch response)</li>
           <li>To enforce our Terms of Service</li>
         </ul>
         <p>We do not sell your data to third parties. We do not use your data for advertising.</p>
 
-        <h2>3. Data Retention</h2>
+        <h2>4. Data Retention</h2>
         <p>Bot data (CAD records, strikes, economy balances, configuration) is retained as long as the bot is present in your server or until you request deletion. If the bot is removed from a server, associated server data is retained for up to 90 days before being permanently deleted, unless a deletion request is submitted sooner.</p>
+        <p>Portal session cookies expire after 7 days of inactivity. Economy and CAD records tied to your Discord user ID persist until the bot is removed from the server or you request deletion.</p>
         <p>Discord user authentication tokens are stored only for the duration of your dashboard session. Premium key records are retained for billing and support purposes.</p>
-        <p>To request deletion of your personal data, contact us via Discord or email.</p>
+        <p>To request deletion of your personal data, contact us via Discord or email. We will respond within 30 days.</p>
 
-        <h2>4. Third-Party Services</h2>
+        <h2>5. Third-Party Services</h2>
         <p>We use the following third-party services which may process data on our behalf:</p>
         <ul>
           <li><strong>Discord</strong> - authentication and bot platform (<a href="https://discord.com/privacy" target="_blank" rel="noopener">discord.com/privacy</a>)</li>
           <li><strong>MongoDB Atlas</strong> - database hosting (MongoDB, Inc.)</li>
           <li><strong>Stripe</strong> - payment processing (<a href="https://stripe.com/privacy" target="_blank" rel="noopener">stripe.com/privacy</a>)</li>
-          <li><strong>OpenAI</strong> - voice transcription and AI dispatch responses. Audio is sent to OpenAI for real-time transcription and is not stored by us. OpenAI may retain data per their own policy: <a href="https://openai.com/privacy" target="_blank" rel="noopener">openai.com/privacy</a></li>
+          <li><strong>OpenAI</strong> - voice transcription (Whisper) and AI dispatch responses (GPT-4o-mini). Audio is sent to OpenAI for real-time transcription and is not stored by us. OpenAI may retain data per their own policy: <a href="https://openai.com/privacy" target="_blank" rel="noopener">openai.com/privacy</a></li>
           <li><strong>Koyeb</strong> - server hosting infrastructure</li>
+          <li><strong>Cloudflare Pages</strong> - static website hosting</li>
         </ul>
 
-        <h2>5. GDPR &amp; EU/EEA Users</h2>
+        <h2>6. GDPR &amp; EU/EEA Users</h2>
         <p>If you are located in the European Union or European Economic Area, the following applies:</p>
         <h3>Legal Basis for Processing</h3>
         <p>We process your data on the following legal bases: (a) <strong>contract performance</strong> - to provide the Service you have requested; (b) <strong>legitimate interest</strong> - to operate, secure, and improve the Service; and (c) <strong>legal obligation</strong> - where required by applicable law.</p>
@@ -117,22 +168,23 @@
           <li>Request correction of inaccurate data</li>
           <li>Request deletion of your data ("right to be forgotten")</li>
           <li>Object to or restrict processing of your data</li>
+          <li>Data portability (receive your data in a structured, machine-readable format)</li>
           <li>Lodge a complaint with your local data protection authority</li>
         </ul>
         <p>To exercise these rights, contact us via Discord or email. We will respond within 30 days.</p>
         <h3>International Transfers</h3>
         <p>RolePlayManager is operated from the United States. By using the Service, EU/EEA users consent to their data being transferred to and processed in the United States, where data protection laws may differ from those in the EU.</p>
 
-        <h2>6. Security</h2>
-        <p>We take reasonable technical measures to protect your data. However, no system is perfectly secure. Use of the Service is at your own risk.</p>
+        <h2>7. Security</h2>
+        <p>We take reasonable technical measures to protect your data, including JWT-based session authentication, HTTPS-only transmission, and access-controlled database hosting. However, no system is perfectly secure. Use of the Service is at your own risk.</p>
 
-        <h2>7. Children's Privacy</h2>
-        <p>The Service is not directed at children under 13. We do not knowingly collect data from children under 13. If you believe a child has provided data, contact us and we will delete it promptly.</p>
+        <h2>8. Children's Privacy</h2>
+        <p>The Service is not directed at children under 13, consistent with Discord's minimum age requirement. We do not knowingly collect data from children under 13. If you believe a child has provided data, contact us and we will delete it promptly.</p>
 
-        <h2>8. Changes to This Policy</h2>
-        <p>We may update this Privacy Policy at any time. Continued use of the Service after changes are posted constitutes acceptance of the new policy.</p>
+        <h2>9. Changes to This Policy</h2>
+        <p>We may update this Privacy Policy at any time. The "Last updated" date at the top of this page will reflect when changes were made. Continued use of the Service after changes are posted constitutes acceptance of the updated policy.</p>
 
-        <h2>9. Contact</h2>
+        <h2>10. Contact</h2>
         <p>For privacy questions or data deletion requests:</p>
         <ul>
           <li>Discord: <a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">discord.gg/cSdhfGPeV2</a></li>
