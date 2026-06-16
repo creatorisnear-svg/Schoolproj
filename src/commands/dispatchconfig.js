@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('dispatchsetup')
+  .setName('dispatchconfig')
   .setDescription('Configure the AI Voice Dispatch system (Premium only)');
 
 export async function execute(interaction) {

@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('ticketsupportsetup')
+  .setName('ticketsupportconfig')
   .setDescription('Setup the ticket support system (Admin/Staff)');
 
 export async function execute(interaction) {

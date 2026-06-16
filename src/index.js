@@ -343,14 +343,14 @@ client.on('guildCreate', async (guild) => {
       .setDescription(
         `RolePlayManager is now in **${guild.name}**.\n\n` +
         `Here's everything you can set up:\n\n` +
-        `**911 System** - \`/roleplaycommandsetup\`\n` +
-        `**Verification** - \`/verifysystemsetup\`\n` +
-        `**Ticket Support** - \`/ticketsupportsetup\`\n` +
-        `**Priority Tracker** - \`/prioritytrackersetup\`\n` +
-        `**Welcome System** - \`/welcomesystemsetup\`\n` +
-        `**Strike System** - \`/strikesystemsetup\`\n` +
-        `**RP Calendar** - \`/roleplaycalendersetup\`\n` +
-        `**AI Voice Dispatch** - \`/dispatchsetup\` *(Premium)*`
+        `**911 System** - \`/roleplaycommandconfig\`\n` +
+        `**Verification** - \`/verifysystemconfig\`\n` +
+        `**Ticket Support** - \`/ticketsupportconfig\`\n` +
+        `**Priority Tracker** - \`/prioritytrackerconfig\`\n` +
+        `**Welcome System** - \`/welcomesystemconfig\`\n` +
+        `**Strike System** - \`/strikesystemconfig\`\n` +
+        `**RP Calendar** - \`/roleplaycalenderconfig\`\n` +
+        `**AI Voice Dispatch** - \`/dispatchconfig\` *(Premium)*`
       )
       .addFields(
         {

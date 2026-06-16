@@ -877,6 +877,43 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'sticky': {
+          result.name = 'Sticky Messages';
+          result.description = 'Messages that automatically repost to stay at the bottom of a channel';
+          result.fields = [];
+          const { default: Sticky } = await import('../../models/Sticky.js');
+          const stickies = await Sticky.find({ guildId: guild.id }).lean();
+          result.stickies = stickies.map(s => ({
+            channelId: s.channelId,
+            channelName: guild.channels.cache.get(s.channelId)?.name || s.channelId,
+            messageContent: s.messageContent,
+            messageCount: s.messageCount || 0,
+          }));
+          result.channels = channels;
+          result.stats = [{ label: 'Active Stickies', value: stickies.length }];
+          break;
+        }
+
+        case 'reactionroles': {
+          result.name = 'Reaction Roles';
+          result.description = 'Messages where members react to receive a role automatically';
+          result.fields = [];
+          const { default: ReactionRole } = await import('../../models/ReactionRole.js');
+          const rrs = await ReactionRole.find({ guildId: guild.id }).lean();
+          result.reactionRoles = rrs.map(r => ({
+            messageId: r.messageId,
+            channelId: r.channelId,
+            channelName: guild.channels.cache.get(r.channelId)?.name || r.channelId,
+            pairs: (r.emojiRoles || []).map(p => ({
+              emoji: p.emoji,
+              roleId: p.roleId,
+              roleName: guild.roles.cache.get(p.roleId)?.name || p.roleId,
+            })),
+          }));
+          result.stats = [{ label: 'Reaction Role Messages', value: rrs.length }];
+          break;
+        }
+
         default:
           return res.status(404).json({ error: 'Module not found' });
       }
@@ -1217,6 +1254,81 @@ export function createApiRouter(client) {
         rrc.markModified('roles');
         await rrc.save();
       }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Sticky Messages CRUD ── */
+  router.post('/guild/:id/settings/sticky', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { channelId, content } = req.body;
+    if (!channelId || !content || !content.trim()) return res.status(400).json({ error: 'Channel and content are required' });
+    try {
+      const { default: Sticky } = await import('../../models/Sticky.js');
+      const guild = client.guilds.cache.get(req.params.id);
+      if (!guild) return res.status(404).json({ error: 'Guild not found' });
+      const channel = guild.channels.cache.get(channelId);
+      if (!channel || !channel.isTextBased()) return res.status(400).json({ error: 'Invalid channel' });
+      const existing = await Sticky.findOne({ guildId: req.params.id, channelId });
+      if (existing) {
+        if (existing.messageId) {
+          await channel.messages.fetch(existing.messageId).then(m => m.delete()).catch(() => {});
+        }
+        await existing.deleteOne();
+      }
+      const posted = await channel.send({ content: `__**Stickied Message:**__\n${content.trim()}` });
+      await Sticky.create({
+        guildId: req.params.id,
+        channelId,
+        messageId: posted.id,
+        messageContent: content.trim(),
+        createdBy: client.user.id,
+        messageCount: 0,
+      });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/settings/sticky/:channelId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: Sticky } = await import('../../models/Sticky.js');
+      const sticky = await Sticky.findOne({ guildId: req.params.id, channelId: req.params.channelId });
+      if (sticky) {
+        const guild = client.guilds.cache.get(req.params.id);
+        if (guild) {
+          const ch = guild.channels.cache.get(req.params.channelId);
+          if (ch && sticky.messageId) {
+            await ch.messages.fetch(sticky.messageId).then(m => m.delete()).catch(() => {});
+          }
+        }
+        await sticky.deleteOne();
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Reaction Roles CRUD ── */
+  router.delete('/guild/:id/settings/reactionroles/:messageId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: ReactionRole } = await import('../../models/ReactionRole.js');
+      await ReactionRole.deleteOne({ guildId: req.params.id, messageId: req.params.messageId });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });

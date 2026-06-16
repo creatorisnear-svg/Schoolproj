@@ -6,7 +6,7 @@ import { isAdmin } from '../utils/permissions.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('strikesystemsetup')
+  .setName('strikesystemconfig')
   .setDescription('Configure the strike system for your server');
 
 export async function execute(interaction) {

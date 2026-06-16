@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('prioritytrackersetup')
+  .setName('prioritytrackerconfig')
   .setDescription('Set up the priority tracker system (Admin/Staff)');
 
 export async function execute(interaction) {

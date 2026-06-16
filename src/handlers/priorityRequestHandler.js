@@ -73,7 +73,7 @@ export async function handlePriorityRequestCommand(interaction, sceneType, scene
     const priority = await Priority.findOne({ guildId: interaction.guildId });
     if (!priority || !priority.channelId) {
       return interaction.reply({
-        embeds: [errorEmbed('Priority tracker is not configured. Ask an admin to run `/prioritytrackersetup`.')],
+        embeds: [errorEmbed('Priority tracker is not configured. Ask an admin to run `/prioritytrackerconfig`.')],
         flags: 64,
       });
     }
@@ -239,7 +239,7 @@ export async function handlePriorityStop(interaction) {
 
     if (!priority) {
       return interaction.reply({
-        embeds: [errorEmbed('Priority tracker not found. Run `/prioritytrackersetup` to configure it.')],
+        embeds: [errorEmbed('Priority tracker not found. Run `/prioritytrackerconfig` to configure it.')],
         flags: 64,
       });
     }

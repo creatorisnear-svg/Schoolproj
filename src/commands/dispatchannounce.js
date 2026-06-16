@@ -34,7 +34,7 @@ export async function execute(interaction) {
     const cfg = await DispatchConfig.findOne({ guildId: interaction.guildId });
     if (!cfg?.aiEnabled) {
       return interaction.reply({
-        embeds: [errorEmbed('AI dispatch is not enabled on this server. Enable it in `/dispatchsetup`.')],
+        embeds: [errorEmbed('AI dispatch is not enabled on this server. Enable it in `/dispatchconfig`.')],
         flags: 64,
       });
     }

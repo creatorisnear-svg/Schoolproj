@@ -5,7 +5,7 @@ import MemberMovementConfig from '../models/MemberMovementConfig.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('movemesetup')
+  .setName('movemeconfig')
   .setDescription('Configure the Voice Mover system (Admin/Staff)');
 
 export async function execute(interaction) {

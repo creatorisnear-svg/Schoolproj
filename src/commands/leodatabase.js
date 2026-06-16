@@ -28,7 +28,7 @@ export async function execute(interaction) {
 
     if (!cadConfig || !cadConfig.leoRoleIds || cadConfig.leoRoleIds.length === 0) {
       return interaction.editReply({
-        embeds: [errorEmbed('Not Configured', 'The LEO database has not been configured yet. An administrator must run `/roleplaycommandsetup` first.')],
+        embeds: [errorEmbed('Not Configured', 'The LEO database has not been configured yet. An administrator must run `/roleplaycommandconfig` first.')],
       });
     }
 

@@ -5,7 +5,7 @@ import { isAdminOrManager, checkStaffPermission } from '../utils/permissions.js'
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('roleplaycalendersetup')
+  .setName('roleplaycalenderconfig')
   .setDescription('Set up the roleplay calendar system (Admin/Staff)');
 
 export async function execute(interaction) {

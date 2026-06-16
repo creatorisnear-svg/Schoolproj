@@ -218,23 +218,23 @@ export async function handleEnableCommandButton(interaction) {
     if (customId === 'enable_roleplay') {
       featureName = 'Roleplay Commands';
       model = RoleplayCommands;
-      setupCommand = 'Run `/roleplaycommandsetup` to configure.';
+      setupCommand = 'Run `/roleplaycommandconfig` to configure.';
     } else if (customId === 'enable_priority') {
       featureName = 'Priority Tracker';
       model = Priority;
-      setupCommand = 'Run `/prioritytrackersetup` to configure.';
+      setupCommand = 'Run `/prioritytrackerconfig` to configure.';
     } else if (customId === 'enable_strike') {
       featureName = 'Strike System';
       model = StrikeConfig;
-      setupCommand = 'Run `/strikesystemsetup` to configure.';
+      setupCommand = 'Run `/strikesystemconfig` to configure.';
     } else if (customId === 'enable_calendar') {
       featureName = 'Roleplay Calendar';
       model = RoleplayCalendar;
-      setupCommand = 'Run `/roleplaycalendersetup` to configure.';
+      setupCommand = 'Run `/roleplaycalenderconfig` to configure.';
     } else if (customId === 'enable_ticket') {
       featureName = 'Ticket Support';
       model = TicketConfig;
-      setupCommand = 'Run `/ticketsupportsetup` to configure.';
+      setupCommand = 'Run `/ticketsupportconfig` to configure.';
     } else if (customId === 'enable_antipromote') {
       featureName = 'Anti-Promoting';
       let config = await Config.findOne({ guildId }) || new Config({ guildId });
@@ -251,15 +251,15 @@ export async function handleEnableCommandButton(interaction) {
     } else if (customId === 'enable_verification') {
       featureName = 'Verification System';
       model = Verification;
-      setupCommand = 'Run `/verifysystemsetup` to configure.';
+      setupCommand = 'Run `/verifysystemconfig` to configure.';
     } else if (customId === 'enable_welcome') {
       featureName = 'Welcome System';
       model = Welcome;
-      setupCommand = 'Run `/welcomesystemsetup` to configure.';
+      setupCommand = 'Run `/welcomesystemconfig` to configure.';
     } else if (customId === 'enable_membermove') {
       featureName = 'Member Movement';
       model = MemberMovementConfig;
-      setupCommand = 'Run `/movemesetup` to configure and send the Voice Mover panel.';
+      setupCommand = 'Run `/movemeconfig` to configure and send the Voice Mover panel.';
     }
 
     // Save to database

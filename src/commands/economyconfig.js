@@ -4,7 +4,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('economysetup')
+  .setName('economyconfig')
   .setDescription('Configure the economy system (Staff/Admin)');
 
 export async function execute(interaction) {

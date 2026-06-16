@@ -84,7 +84,7 @@ export async function execute(interaction) {
 
     if (!calendar.channelId) {
       return interaction.reply({
-        embeds: [errorEmbed('Roleplay calendar channel is not configured. Use `/roleplaycalendersetup` to configure it.')],
+        embeds: [errorEmbed('Roleplay calendar channel is not configured. Use `/roleplaycalenderconfig` to configure it.')],
         flags: 64,
       });
     }

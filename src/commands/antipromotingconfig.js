@@ -5,7 +5,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('antipromotingsetup')
+  .setName('antipromotingconfig')
   .setDescription('Configure the anti-promoting system (Admin/Staff)');
 
 export async function execute(interaction) {

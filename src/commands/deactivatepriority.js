@@ -39,7 +39,7 @@ export async function execute(interaction) {
 
     if (!priority.channelId) {
       return interaction.reply({
-        embeds: [errorEmbed('Priority tracker channel is not configured. Use `/prioritytrackersetup` to configure it.')],
+        embeds: [errorEmbed('Priority tracker channel is not configured. Use `/prioritytrackerconfig` to configure it.')],
         flags: 64,
       });
     }

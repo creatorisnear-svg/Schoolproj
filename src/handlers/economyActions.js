@@ -455,7 +455,7 @@ export async function handleShopCategoryButton(interaction) {
 
   if (cat === 'Custom') {
     if (!guildItems.length) return interaction.update({
-      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Custom Items').setDescription('No custom items have been added yet. Staff can add items via `/economysetup`.').setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setTitle('Custom Items').setDescription('No custom items have been added yet. Staff can add items via `/economyconfig`.').setFooter({ text: 'RPM' })],
       components: [backRow], content: '',
     });
     const lines = shopItemLines(guildItems.map(i => ({ name: i.name, price: i.price, description: i.description, requiredRoleId: i.requiredRoleId })), sym);
@@ -520,7 +520,7 @@ export async function runBuy(interaction, itemName, quantity) {
   const guildItem = await EconomyStore.findOne({ guildId, name: new RegExp(`^${itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
   const isKnownVehicle = GTA_VEHICLES.some(v => v.name.toLowerCase() === itemName.toLowerCase());
   if (!guildItem && !isKnownVehicle) return interaction.reply({ embeds: [errorEmbed(`No item found named **"${itemName}"**. Use \`/shop\` to browse available items.`)], flags: 64 });
-  if (!guildItem) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** has no price set. Ask a staff member to price it via \`/economysetup\` before it can be purchased.`)], flags: 64 });
+  if (!guildItem) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** has no price set. Ask a staff member to price it via \`/economyconfig\` before it can be purchased.`)], flags: 64 });
   if (guildItem.requiredRoleId && !interaction.member?.roles?.cache?.has(guildItem.requiredRoleId)) {
     return interaction.reply({ embeds: [errorEmbed(`You need the <@&${guildItem.requiredRoleId}> role to purchase **${guildItem.name}**.`)], flags: 64 });
   }
@@ -786,7 +786,7 @@ export async function handleShopBrowseSelect(interaction) {
   const usable = guildItem?.usable ? ' *(usable)*' : '';
   const priceField = guildItem
     ? `${sym}${fmt(guildItem.price)}`
-    : '*No price set - ask staff to price this item via `/economysetup`*';
+    : '*No price set - ask staff to price this item via `/economyconfig`*';
   const footerNote = guildItem
     ? 'RPM - Use /buy to purchase this item'
     : 'RPM - This item is not yet available for purchase';

@@ -1102,7 +1102,7 @@ export async function handleTicketSupportEnableMenu(interaction) {
       await ticketConfig.save();
 
       return interaction.reply({
-        embeds: [successEmbed('Ticket Support Enabled', 'Members now have access to ticket support. Run `/ticketsupportsetup` to configure.')],
+        embeds: [successEmbed('Ticket Support Enabled', 'Members now have access to ticket support. Run `/ticketsupportconfig` to configure.')],
         flags: 64,
       });
     }

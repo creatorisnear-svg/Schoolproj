@@ -281,10 +281,12 @@ var SIDEBAR_GROUPS = [
     { id: 'antipromo',    label: 'Anti-Promoting' },
   ]},
   { title: 'Community', items: [
-    { id: 'tickets',     label: 'Ticket Support' },
-    { id: 'welcome',     label: 'Welcome System' },
-    { id: 'rolerequest', label: 'Role Request' },
-    { id: 'moveme',      label: 'Voice Mover' },
+    { id: 'tickets',       label: 'Ticket Support' },
+    { id: 'welcome',       label: 'Welcome System' },
+    { id: 'rolerequest',   label: 'Role Request' },
+    { id: 'moveme',        label: 'Voice Mover' },
+    { id: 'sticky',        label: 'Sticky Messages' },
+    { id: 'reactionroles', label: 'Reaction Roles' },
   ]},
   { title: 'Economy', items: [
     { id: 'economy',     label: 'Economy' },
@@ -399,8 +401,10 @@ function renderDashboard() {
     { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',         featureKey: 'calendarEnabled' },
     { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
     { id: 'civjobs',      label: 'Civilian Jobs',       desc: 'Job board, roles, shift hours',  featureKey: null },
-    { id: 'moveme',       label: 'Voice Mover',         desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
-    { id: 'dispatch',     label: 'AI Voice Dispatch',  desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
+    { id: 'moveme',        label: 'Voice Mover',        desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
+    { id: 'sticky',        label: 'Sticky Messages',   desc: 'Auto-reposting pinned messages', featureKey: null },
+    { id: 'reactionroles', label: 'Reaction Roles',    desc: 'React to get a role',            featureKey: null },
+    { id: 'dispatch',      label: 'AI Voice Dispatch', desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
   ];
 
   html += '<div class="overview-section" style="margin-top:16px;">' +
@@ -754,6 +758,10 @@ function renderSettings(mod) {
       html += renderMovemeSettings(data);
     } else if (mod === 'civjobs') {
       html += renderCivJobsSettings(data);
+    } else if (mod === 'sticky') {
+      html += renderStickySettings(data);
+    } else if (mod === 'reactionroles') {
+      html += renderReactionRolesSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -1835,6 +1843,105 @@ function deleteStoreItem(itemId) {
   _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+    else _pendingScrollRestore = null;
+  });
+}
+
+/* ── Sticky Messages Settings ── */
+function renderStickySettings(data) {
+  var stickies = data.stickies || [];
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Active Sticky Messages</h3></div>';
+  if (stickies.length === 0) {
+    html += '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No sticky messages configured. Use <code>/sticky create</code> in Discord to add one.</span></div>';
+  } else {
+    stickies.forEach(function(s) {
+      html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
+        '<span class="config-label">#' + esc(s.channelName) + '</span>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStickyMessage(\'' + esc(s.channelId) + '\')">Remove</button>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;width:100%;box-sizing:border-box;white-space:pre-wrap;word-break:break-word;">' + esc(s.messageContent) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);">Reposted ' + s.messageCount + ' times</div>' +
+        '</div>';
+    });
+  }
+  html += '</div>';
+  html += '<div class="config-section" style="margin-top:10px;"><div class="config-section-header"><h3>Add Sticky Message</h3></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<select id="sticky-channel-select" class="config-select" style="width:100%;">' +
+    '<option value="">Select a channel...</option>' +
+    (data.channels || []).map(function(c) { return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<textarea id="sticky-content-input" class="config-textarea" placeholder="Enter the sticky message content..." style="width:100%;min-height:80px;box-sizing:border-box;"></textarea>' +
+    '<button class="btn btn-success btn-sm" onclick="addStickyMessage()">Add Sticky</button>' +
+    '</div></div>';
+  html += '<div id="save-bar-container"></div>';
+  return html;
+}
+
+function addStickyMessage() {
+  var channelId = document.getElementById('sticky-channel-select') && document.getElementById('sticky-channel-select').value;
+  var content = document.getElementById('sticky-content-input') && document.getElementById('sticky-content-input').value.trim();
+  if (!channelId) { toast('Select a channel', 'error'); return; }
+  if (!content) { toast('Enter a message', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/settings/sticky', {
+    method: 'POST',
+    body: JSON.stringify({ channelId: channelId, content: content })
+  }).then(function(r) {
+    if (r && r.success) { toast('Sticky message added'); renderSettings('sticky'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
+  });
+}
+
+function deleteStickyMessage(channelId) {
+  if (!confirm('Remove the sticky message from this channel?')) return;
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/settings/sticky/' + channelId, {
+    method: 'DELETE'
+  }).then(function(r) {
+    if (r && r.success) { toast('Sticky removed'); renderSettings('sticky'); }
+    else _pendingScrollRestore = null;
+  });
+}
+
+/* ── Reaction Roles Settings ── */
+function renderReactionRolesSettings(data) {
+  var rrs = data.reactionRoles || [];
+  var html = '<div class="config-section"><div class="config-section-header"><h3>Reaction Role Messages</h3></div>';
+  if (rrs.length === 0) {
+    html += '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No reaction role messages configured. Use <code>/reactionrolemessage</code> in Discord to set one up.</span></div>';
+  } else {
+    rrs.forEach(function(r) {
+      html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
+        '<span class="config-label">#' + esc(r.channelName) + '</span>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteReactionRole(\'' + esc(r.messageId) + '\')">Remove</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);">Message ID: <code style="font-size:11px;">' + esc(r.messageId) + '</code></div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">' +
+        r.pairs.map(function(p) {
+          return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;">' +
+            esc(p.emoji) + ' &rarr; ' + esc(p.roleName) + '</span>';
+        }).join('') +
+        '</div></div>';
+    });
+  }
+  html += '</div>';
+  html += '<div class="config-section" style="margin-top:10px;"><div class="config-section-header"><h3>How to Add</h3></div>' +
+    '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">Use <code>/reactionrolemessage</code> in your Discord server to create a new reaction role message. Up to 5 emoji-role pairs per message.</span></div>' +
+    '</div>';
+  html += '<div id="save-bar-container"></div>';
+  return html;
+}
+
+function deleteReactionRole(messageId) {
+  if (!confirm('Remove this reaction role message?')) return;
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/settings/reactionroles/' + messageId, {
+    method: 'DELETE'
+  }).then(function(r) {
+    if (r && r.success) { toast('Reaction role removed'); renderSettings('reactionroles'); }
     else _pendingScrollRestore = null;
   });
 }

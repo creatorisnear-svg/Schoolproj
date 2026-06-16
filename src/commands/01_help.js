@@ -18,12 +18,12 @@ export async function execute(interaction) {
   const helpEmbed = new EmbedBuilder()
     .setColor(0x2B2D31)
     .setTitle('RolePlayManager — Command Reference')
-    .setDescription(`All commands organized by category. Most setup commands require Administrator permissions.\n\n${premiumNote}`)
+    .setDescription(`All commands organized by category. Most config commands require Administrator permissions.\n\n${premiumNote}`)
     .addFields(
       {
         name: 'Roleplay Systems',
         value:
-          '`/roleplaycommandsetup` Initial RP setup\n' +
+          '`/roleplaycommandconfig` Initial RP config\n' +
           '`/civiliandatabase` Civilian portal — 911, characters, vehicles, fines\n' +
           '`/leodatabase` LEO portal — plate/name search, BOLOs, tickets, calls\n' +
           '`/firedepartmentdatabase` Fire department records',
@@ -34,30 +34,30 @@ export async function execute(interaction) {
         value:
           '`/staff add` · `remove` · `list`\n' +
           '`/strike` Issue a strike  ·  `/removestrike` Remove a strike\n' +
-          '`/strikesystemsetup` Configure strike levels and actions\n' +
+          '`/strikesystemconfig` Configure strike levels and actions\n' +
           '`/clear` Bulk delete messages',
         inline: true,
       },
       {
         name: 'Verification',
         value:
-          '`/verifysystemsetup` Configure the verify system\n' +
+          '`/verifysystemconfig` Configure the verify system\n' +
           '`/verify` Begin the verification process',
         inline: true,
       },
       {
         name: 'Priority Tracker',
         value:
-          '`/prioritytrackersetup` Configure tracker\n' +
+          '`/prioritytrackerconfig` Configure tracker\n' +
           '`/activepriority` Start a priority event\n' +
           '`/deactivatepriority` End a priority event\n' +
           '`/prioritycooldown` Set cooldown duration',
         inline: true,
       },
       {
-        name: 'Economy — Setup',
+        name: 'Economy — Config',
         value:
-          '`/economysetup` Configure all economy settings\n' +
+          '`/economyconfig` Configure all economy settings\n' +
           '-# Currency symbol, work/crime/rob, gambling, chat money, income tax, role income, store, civilian jobs',
         inline: false,
       },
@@ -74,7 +74,7 @@ export async function execute(interaction) {
       {
         name: 'Tickets & Roles',
         value:
-          `\`/ticketsupportsetup\` Configure tickets${pTag}\n` +
+          `\`/ticketsupportconfig\` Configure tickets${pTag}\n` +
           '`/rolerequestadd` Add requestable roles\n' +
           '`/rolerequest` Request a role\n' +
           '`/manageroles` Approve or deny requests',
@@ -83,7 +83,7 @@ export async function execute(interaction) {
       {
         name: 'RP Calendar',
         value:
-          '`/roleplaycalendersetup` Configure calendar\n' +
+          '`/roleplaycalenderconfig` Configure calendar\n' +
           '`/setrp` Schedule an event\n' +
           '`/unsetrp` Remove an event',
         inline: true,
@@ -93,8 +93,8 @@ export async function execute(interaction) {
         value:
           '`/reactionrolemessage` Reaction roles\n' +
           '`/sticky` · `/stickylist` Sticky messages\n' +
-          '`/antipromotingsetup` Block invite links\n' +
-          '`/welcomesystemsetup` Welcome messages\n' +
+          '`/antipromotingconfig` Block invite links\n' +
+          '`/welcomesystemconfig` Welcome messages\n' +
           '`/setlogchannel` Set log channel',
         inline: true,
       },
@@ -102,14 +102,14 @@ export async function execute(interaction) {
         name: 'Voice Mover',
         value:
           '`/enablecommands` → Member Movement to enable\n' +
-          '`/movemesetup` Post the channel-picker panel\n' +
+          '`/movemeconfig` Post the channel-picker panel\n' +
           '-# Members select a voice channel from the dropdown to be moved',
         inline: true,
       },
       {
         name: `AI Dispatch${pTag}`,
         value:
-          '`/dispatchsetup` Configure AI voice dispatch\n' +
+          '`/dispatchconfig` Configure AI voice dispatch\n' +
           '`/dispatchannounce` Send a manual dispatch',
         inline: true,
       },

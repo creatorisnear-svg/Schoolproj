@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('verifysystemsetup')
+  .setName('verifysystemconfig')
   .setDescription('Configure the verification system for your server (Admin/Staff)');
 
 export async function execute(interaction) {

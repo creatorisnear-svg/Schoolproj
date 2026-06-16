@@ -6,7 +6,7 @@ import Config from '../models/Config.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('welcomesystemsetup')
+  .setName('welcomesystemconfig')
   .setDescription('Configure the welcome system for new members (Admin/Staff)');
 
 export async function execute(interaction) {
