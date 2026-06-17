@@ -249,8 +249,8 @@ nav .nav-links a:hover { color: var(--text); }
 footer { border-top: 1px solid var(--border); padding: 24px 0; }
 footer .container { display: flex; align-items: center; justify-content: space-between; }
 footer p { font-size: 12px; color: var(--text-dim); }
-footer .footer-links { display: flex; gap: 20px; list-style: none; }
-footer .footer-links a { font-size: 12px; color: var(--text-dim); }
+footer .footer-links { display: flex; gap: 20px; list-style: none; flex-wrap: wrap; }
+footer .footer-links a { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
 footer .footer-links a:hover { color: var(--text-muted); }
 
 /* ── Dashboard Layout ── */
@@ -657,6 +657,16 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   .index-premium-grid { grid-template-columns: 1fr !important; }
   .index-commands-grid { grid-template-columns: 1fr !important; }
   .index-changelog-header { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
+
+  /* Reduce bloated section padding on mobile */
+  .rpm-section { padding: 48px 0 !important; }
+  .faq-section { padding: 48px 0; }
+  .contact-section { padding: 48px 0; }
+  .cta { padding: 32px 0 48px; }
+  .features { padding: 48px 0; }
+
+  /* Footer links — prevent word-wrapping mid-phrase */
+  footer .footer-links { gap: 12px; justify-content: center; }
 }
 
 /* ── Overview Sections (Dashboard revamp) ── */

@@ -72,12 +72,26 @@
     #main-screen { display: none; }
 
     /* ── Mobile ── */
-    .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; padding-bottom: 1px; }
-    .tab { flex-shrink: 0; }
     .card-header { flex-wrap: wrap; gap: 10px; }
     .card-header .actions { flex-wrap: wrap; }
 
-    @media (max-width: 600px) {
+    @media (max-width: 640px) {
+      /* Tabs: 2×2 grid so all 4 are always visible */
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border-bottom: 1px solid #222;
+        margin-bottom: 24px;
+      }
+      .tab {
+        border-bottom: 2px solid transparent;
+        text-align: center;
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+      .tab.active { border-bottom-color: #5865f2; }
+
       .form-row { grid-template-columns: 1fr; }
       header { padding: 12px 16px; }
       header span { font-size: 15px; }
@@ -87,6 +101,7 @@
       .card-header { margin-bottom: 10px; }
       .card-title { font-size: 14px; }
       .video-thumb video { max-height: 300px; object-fit: contain; }
+      .section-label { font-size: 12px; }
     }
   </style>
 </head>
