@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('deactivatepriority')
@@ -25,6 +26,9 @@ export async function execute(interaction) {
       flags: 64,
     });
   }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'priority');
+  if (!access) return interaction.reply({ embeds: [buildPremiumEmbed('priority')], flags: 64 });
 
   try {
     const type = interaction.options.getString('type');

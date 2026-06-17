@@ -54,7 +54,7 @@ export async function isFeaturePremiumGated(featureKey) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
   const flag = await FeatureFlag.findOne({ feature: featureKey });
-  const result = flag ? flag.premium : featureKey === 'dispatch';
+  const result = flag ? flag.premium : (featureKey === 'dispatch' || featureKey === 'priority');
   featureFlagCache.set(featureKey, { value: result, ts: Date.now() });
   return result;
 }

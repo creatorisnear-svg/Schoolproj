@@ -3,6 +3,7 @@ import Priority from '../models/Priority.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('activepriority')
@@ -15,6 +16,9 @@ export async function execute(interaction) {
       flags: 64,
     });
   }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'priority');
+  if (!access) return interaction.reply({ embeds: [buildPremiumEmbed('priority')], flags: 64 });
 
   try {
     const priority = await Priority.findOne({ guildId: interaction.guildId });

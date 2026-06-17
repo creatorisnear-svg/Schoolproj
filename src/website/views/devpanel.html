@@ -313,6 +313,7 @@
   <div class="tabs-wrapper">
     <div class="tabs">
       <button class="tab active" onclick="switchTab('features')">Premium Features</button>
+      <button class="tab" onclick="switchTab('keys')">Premium Keys</button>
       <button class="tab" onclick="switchTab('announcements')">Announcements</button>
       <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
       <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
@@ -320,6 +321,22 @@
       <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
       <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
     </div>
+  </div>
+
+  <div id="panel-keys" class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:0;">All Premium Keys</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span id="keys-count" style="font-size:12px;color:#555;"></span>
+        <button class="btn btn-ghost btn-sm" onclick="loadKeys()">Refresh</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" id="keys-filter-all" onclick="filterKeys('all')" style="border-color:#5865f2;color:#7b8cec;">All</button>
+      <button class="btn btn-ghost btn-sm" id="keys-filter-active" onclick="filterKeys('active')">Active</button>
+      <button class="btn btn-ghost btn-sm" id="keys-filter-unused" onclick="filterKeys('unused')">Unused</button>
+    </div>
+    <div id="keys-list"><div class="empty">Loading...</div></div>
   </div>
 
   <div id="panel-features" class="panel active">
@@ -535,7 +552,7 @@
 </div>
 
 <script>
-  var TABS = ['features', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe'];
+  var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe'];
 
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -544,6 +561,7 @@
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('panel-' + name).classList.add('active');
     if (name === 'broadcast' && !_bcGuilds.length) loadBcGuilds();
+    if (name === 'keys') loadKeys();
   }
 
   function showAlert(msg, type) {
@@ -1031,6 +1049,84 @@
     }
     btn.disabled = false;
     btn.textContent = 'Open Test Checkout';
+  }
+
+  var _allKeys = [];
+  var _keysFilter = 'all';
+
+  async function loadKeys() {
+    var el = document.getElementById('keys-list');
+    el.innerHTML = '<div class="empty">Loading...</div>';
+    try {
+      _allKeys = await api('GET', '/premium-keys');
+      renderKeys();
+    } catch (e) {
+      el.innerHTML = '<div class="empty" style="color:#f04747;">Failed to load keys.</div>';
+    }
+  }
+
+  function filterKeys(f) {
+    _keysFilter = f;
+    ['all','active','unused'].forEach(function(n) {
+      var btn = document.getElementById('keys-filter-' + n);
+      if (btn) {
+        btn.style.borderColor = n === f ? '#5865f2' : '';
+        btn.style.color = n === f ? '#7b8cec' : '';
+      }
+    });
+    renderKeys();
+  }
+
+  function renderKeys() {
+    var el = document.getElementById('keys-list');
+    var keys = _allKeys;
+    if (_keysFilter === 'active') keys = keys.filter(function(k) { return k.guildId; });
+    if (_keysFilter === 'unused') keys = keys.filter(function(k) { return !k.guildId; });
+
+    var countEl = document.getElementById('keys-count');
+    if (countEl) countEl.textContent = keys.length + ' key' + (keys.length !== 1 ? 's' : '') + ' (' + _allKeys.filter(function(k){return k.guildId;}).length + ' active, ' + _allKeys.filter(function(k){return !k.guildId;}).length + ' unused)';
+
+    if (!keys.length) {
+      el.innerHTML = '<div class="empty">No keys found.</div>';
+      return;
+    }
+    el.innerHTML = keys.map(function(k) {
+      var isActive = !!k.guildId;
+      var plan = k.plan || 'manual';
+      var planColor = plan === 'lifetime' ? '#fbbf24' : plan === 'monthly' ? '#5865f2' : '#555';
+      var activatedDate = k.activatedAt ? new Date(k.activatedAt).toLocaleDateString() : null;
+      var createdDate = new Date(k.createdAt).toLocaleDateString();
+      return '<div class="card" style="margin-bottom:10px;">' +
+        '<div class="card-header" style="flex-wrap:wrap;gap:8px;">' +
+        '<div style="min-width:0;flex:1;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">' +
+        '<code style="background:#111;border:1px solid #222;border-radius:5px;padding:3px 8px;font-size:12px;color:#7b8cec;word-break:break-all;">' + esc(k.key) + '</code>' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:' + (isActive ? 'rgba(74,222,128,0.1)' : '#1a1a1a') + ';color:' + (isActive ? '#4ade80' : '#555') + ';">' + (isActive ? 'ACTIVE' : 'UNUSED') + '</span>' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#1a1a1a;color:' + planColor + ';">' + plan.toUpperCase() + '</span>' +
+        '</div>' +
+        (isActive ? '<div style="font-size:12px;color:#888;">Server: <strong style="color:#ccc;">' + esc(k.guildName || k.guildId) + '</strong> &mdash; activated ' + activatedDate + '</div>' : '') +
+        (!isActive ? '<div style="font-size:12px;color:#555;">Created ' + createdDate + '</div>' : '') +
+        '</div>' +
+        '<div class="actions" style="flex-shrink:0;">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteKey(\'' + esc(k.key) + '\')">Revoke</button>' +
+        '</div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function deleteKey(key) {
+    if (!confirm('Revoke key ' + key + '? This will immediately remove premium from the server using it.')) return;
+    try {
+      var res = await api('DELETE', '/premium-keys/' + encodeURIComponent(key));
+      if (res.ok) {
+        showAlert('Key revoked.', 'success');
+        loadKeys();
+      } else {
+        showAlert(res.error || 'Failed to revoke.', 'error');
+      }
+    } catch (e) {
+      showAlert('Request failed: ' + e.message, 'error');
+    }
   }
 
   async function init() {

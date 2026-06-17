@@ -324,6 +324,27 @@ export function createDevRouter(client) {
     }
   });
 
+  router.get('/premium-keys', devAuth, async (req, res) => {
+    try {
+      const keys = await PremiumKey.find({}).sort({ createdAt: -1 }).lean();
+      res.json(keys);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/premium-keys/:key', devAuth, async (req, res) => {
+    try {
+      const deleted = await PremiumKey.findOneAndDelete({ key: req.params.key });
+      if (!deleted) return res.status(404).json({ error: 'Key not found' });
+      const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+      if (deleted.guildId) clearPremiumCache(deleted.guildId);
+      res.json({ ok: true, deleted: deleted.key });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.get('/guilds', devAuth, (req, res) => {
     if (!client || !client.isReady()) return res.status(503).json({ error: 'Bot is not connected to Discord' });
     const guilds = [...client.guilds.cache.values()].map(g => ({

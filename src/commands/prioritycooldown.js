@@ -3,6 +3,7 @@ import Priority from '../models/Priority.js';
 import DispatchConfig from '../models/DispatchConfig.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 
 async function announceCooldownTTS(guildId, text) {
   try {
@@ -36,6 +37,9 @@ export async function execute(interaction) {
       flags: 64,
     });
   }
+
+  const access = await checkFeatureAccess(interaction.guildId, 'priority');
+  if (!access) return interaction.reply({ embeds: [buildPremiumEmbed('priority')], flags: 64 });
 
   try {
     const minutes = interaction.options.getInteger('minutes');
