@@ -2499,10 +2499,38 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
-      const { updateBlacklistPanel } = await import('../../handlers/blacklistHandler.js');
-      await updateBlacklistPanel(client, req.params.id);
-      res.json({ success: true });
+      const guildId = req.params.id;
+      const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+      const { default: Blacklist } = await import('../../models/Blacklist.js');
+      const { buildBlacklistPanelEmbed } = await import('../../handlers/blacklistHandler.js');
+
+      const bc = await BlacklistConfig.findOne({ guildId });
+      if (!bc || !bc.panelChannelId) {
+        return res.status(400).json({ error: 'Set a panel channel first using the channel picker above, then save.' });
+      }
+
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return res.status(400).json({ error: 'Bot is not in this server.' });
+
+      const channel = guild.channels.cache.get(bc.panelChannelId) || await guild.channels.fetch(bc.panelChannelId).catch(() => null);
+      if (!channel) return res.status(400).json({ error: 'Panel channel not found. Check the bot has access.' });
+
+      const entries = await Blacklist.find({ guildId });
+      const embed = buildBlacklistPanelEmbed(entries);
+
+      if (bc.panelMessageId) {
+        const existing = await channel.messages.fetch(bc.panelMessageId).catch(() => null);
+        if (existing) {
+          await existing.edit({ embeds: [embed] });
+          return res.json({ success: true, action: 'updated' });
+        }
+      }
+
+      const msg = await channel.send({ embeds: [embed] });
+      await BlacklistConfig.findOneAndUpdate({ guildId }, { panelMessageId: msg.id }, { upsert: true });
+      res.json({ success: true, action: 'posted' });
     } catch (err) {
+      console.error('[BLACKLIST] Panel post error:', err.message);
       res.status(500).json({ error: err.message });
     }
   });

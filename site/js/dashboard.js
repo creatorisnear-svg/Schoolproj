@@ -891,9 +891,13 @@ function renderBlacklistSettings(data) {
 
   html += '<div style="display:flex;flex-direction:column;gap:10px;">' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Discord ID</label>' +
-    '<input type="text" id="bl-discord-id" class="config-input" placeholder="e.g. 123456789012345678" style="width:100%;box-sizing:border-box;"></div>' +
-    '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Gamertag (PSN/Xbox/PC)</label>' +
+    '<div style="flex:1;min-width:200px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Member</label>' +
+    '<div style="position:relative;">' +
+    '<input type="text" id="bl-member-search" class="config-input" placeholder="Search members..." autocomplete="off" oninput="filterBlacklistMembers()" onfocus="showBlacklistDropdown()" style="width:100%;box-sizing:border-box;">' +
+    '<div id="bl-member-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:100;"></div>' +
+    '<input type="hidden" id="bl-discord-id" value="">' +
+    '</div></div>' +
+    '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Gamertag <span style="color:var(--text-dim);font-size:10px;">(PSN/Xbox/PC)</span></label>' +
     '<input type="text" id="bl-gamertag" class="config-input" placeholder="e.g. xX_Player_Xx" style="width:100%;box-sizing:border-box;"></div>' +
     '</div>' +
     '<div><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Reason <span style="color:var(--red);">*</span></label>' +
@@ -901,10 +905,12 @@ function renderBlacklistSettings(data) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted);">' +
     '<input type="checkbox" id="bl-ip-ban" style="accent-color:var(--red);width:15px;height:15px;"> ' +
-    'IP Ban — block all future verifications from the same IP address</label>' +
+    'IP Ban — block future verifications from the same IP address</label>' +
     '</div>' +
     '<div><button class="btn btn-danger btn-sm" onclick="addBlacklistEntry(this)">Add to Blacklist</button></div>' +
     '</div>';
+
+  setTimeout(function() { loadBlacklistMembers(); }, 0);
 
   html += '</div>';
 
@@ -943,6 +949,63 @@ function renderBlacklistSettings(data) {
   return html;
 }
 
+var _blacklistState = { members: [] };
+
+function loadBlacklistMembers() {
+  if (!currentGuild) return;
+  api('/guild/' + currentGuild.id + '/members').then(function(r) {
+    if (r && r.members) {
+      _blacklistState.members = r.members;
+    }
+  });
+}
+
+function filterBlacklistMembers() {
+  var input = document.getElementById('bl-member-search');
+  var dropdown = document.getElementById('bl-member-dropdown');
+  if (!input || !dropdown) return;
+  var q = input.value.trim().toLowerCase();
+  var list = _blacklistState.members;
+  var filtered = q
+    ? list.filter(function(m) { return m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q); })
+    : list.slice(0, 50);
+  if (!filtered.length) {
+    dropdown.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-dim);">' + (q ? 'No members found.' : 'Start typing to search...') + '</div>';
+  } else {
+    dropdown.innerHTML = filtered.slice(0, 50).map(function(m) {
+      return '<div class="staff-member-option" data-id="' + esc(m.id) + '" data-name="' + esc(m.displayName) + '" onclick="selectBlacklistMember(this)" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);">' +
+        '<img src="' + esc(m.avatar) + '" width="24" height="24" style="border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">' +
+        '<span>' + esc(m.displayName) + '</span>' +
+        (m.displayName !== m.username ? '<span style="color:var(--text-dim);font-size:11px;margin-left:4px;">(' + esc(m.username) + ')</span>' : '') +
+        '</div>';
+    }).join('');
+  }
+  dropdown.style.display = 'block';
+}
+
+function showBlacklistDropdown() {
+  var dd = document.getElementById('bl-member-dropdown');
+  if (dd) { dd.style.display = 'block'; filterBlacklistMembers(); }
+  document.addEventListener('click', hideBlacklistDropdownOutside, { once: true });
+}
+
+function hideBlacklistDropdownOutside(e) {
+  var input = document.getElementById('bl-member-search');
+  var dd = document.getElementById('bl-member-dropdown');
+  if (input && dd && !input.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+}
+
+function selectBlacklistMember(el) {
+  var id   = el.getAttribute('data-id');
+  var name = el.getAttribute('data-name');
+  var input  = document.getElementById('bl-member-search');
+  var hidden = document.getElementById('bl-discord-id');
+  var dd     = document.getElementById('bl-member-dropdown');
+  if (input)  input.value  = name;
+  if (hidden) hidden.value = id;
+  if (dd)     dd.style.display = 'none';
+}
+
 function addBlacklistEntry(btn) {
   if (!currentGuild) return;
   var discordId = (document.getElementById('bl-discord-id') || {}).value || '';
@@ -950,7 +1013,7 @@ function addBlacklistEntry(btn) {
   var reason    = (document.getElementById('bl-reason')     || {}).value || '';
   var ipBanned  = (document.getElementById('bl-ip-ban')     || {}).checked || false;
   if (!reason.trim()) { toast('Reason is required', 'error'); return; }
-  if (!discordId.trim() && !gamertag.trim()) { toast('Provide a Discord ID or gamertag', 'error'); return; }
+  if (!discordId.trim() && !gamertag.trim()) { toast('Select a member or enter a gamertag', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
   api('/guild/' + currentGuild.id + '/blacklist/add', {
     method: 'POST',
@@ -965,8 +1028,11 @@ function postBlacklistPanel(btn) {
   if (!currentGuild) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
   api('/guild/' + currentGuild.id + '/blacklist/panel', { method: 'POST' }).then(function(r) {
-    if (r && r.success) { toast('Panel posted to Discord'); }
-    else { toast(r && r.error ? r.error : 'Failed', 'error'); }
+    if (r && r.success) {
+      toast(r.action === 'updated' ? 'Panel refreshed in Discord' : 'Panel posted to Discord');
+    } else {
+      toast(r && r.error ? r.error : 'Failed to post panel', 'error');
+    }
     if (btn) { btn.disabled = false; btn.textContent = 'Post / Refresh Panel'; }
   });
 }

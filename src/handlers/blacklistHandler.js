@@ -5,7 +5,7 @@ import VerifiedUser from '../models/VerifiedUser.js';
 import Config from '../models/Config.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
-function buildPanelEmbed(entries) {
+export function buildBlacklistPanelEmbed(entries) {
   const active = entries.filter(e => e.active);
   const embed = new EmbedBuilder()
     .setColor('#2d2d2d')
@@ -50,7 +50,7 @@ export async function updateBlacklistPanel(client, guildId) {
     const channel = guild.channels.cache.get(bc.panelChannelId);
     if (!channel) return;
     const entries = await Blacklist.find({ guildId });
-    const embed = buildPanelEmbed(entries);
+    const embed = buildBlacklistPanelEmbed(entries);
     const msg = await channel.messages.fetch(bc.panelMessageId).catch(() => null);
     if (msg) {
       await msg.edit({ embeds: [embed] }).catch(() => {});
@@ -157,7 +157,7 @@ export async function handleBlacklistConfigMenu(interaction, client) {
       if (!channel) return interaction.editReply({ embeds: [errorEmbed('Panel channel not found.')], components: [] });
 
       const entries = await Blacklist.find({ guildId });
-      const embed = buildPanelEmbed(entries);
+      const embed = buildBlacklistPanelEmbed(entries);
 
       if (bc.panelMessageId) {
         const old = await channel.messages.fetch(bc.panelMessageId).catch(() => null);
