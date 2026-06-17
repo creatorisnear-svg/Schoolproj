@@ -860,24 +860,78 @@ function renderSettings(mod) {
 
 /* ── Blacklist Settings ── */
 function renderBlacklistSettings(data) {
+  var channels = data.channels || [];
   var entries = data.blacklistEntries || [];
-  var html = '<div class="config-section" style="margin-top:14px;">' +
-    '<div class="config-section-header"><h3>Blacklist Entries</h3></div>' +
-    '<div class="config-row"><span class="config-sublabel">Members blacklisted via <code>/blacklist</code>. Use <code>/blacklistconfig</code> in Discord to set up the live panel. IPs are not displayed here for privacy.</span></div>';
+  var html = '';
+
+  /* ── Section 1: Panel Configuration ── */
+  html += '<div class="config-section">' +
+    '<div class="config-section-header"><div><h3>Panel Configuration</h3>' +
+    '<p class="config-section-desc">The live blacklist panel is auto-updated in Discord whenever an entry is added or removed.</p>' +
+    '</div>' +
+    '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="postBlacklistPanel(this)">Post / Refresh Panel</button>' +
+    '</div>';
+
+  html += '<div class="config-row" style="justify-content:space-between;align-items:center;">' +
+    '<div><span class="config-label">Panel Channel</span>' +
+    '<p class="config-desc" style="margin:2px 0 0;">Channel where the live blacklist panel is posted</p></div>' +
+    '<select class="config-select" style="width:220px;" onchange="changeField(\'blacklist\',\'panelChannelId\',this.value)" data-key="panelChannelId">' +
+    '<option value="">Select a channel...</option>' +
+    channels.map(function(c) { return '<option value="' + esc(c.value) + '"' + (c.value === (data.panelChannelId || '') ? ' selected' : '') + '>#' + esc(c.label) + '</option>'; }).join('') +
+    '</select></div>';
+
+  html += '</div>';
+  html += '<div id="save-bar-container"></div>';
+
+  /* ── Section 2: Add Blacklist Entry ── */
+  html += '<div class="config-section" style="margin-top:10px;">' +
+    '<div class="config-section-header"><div><h3>Add Entry</h3>' +
+    '<p class="config-section-desc">Blacklist a member by Discord ID, gamertag, or both. IPs are never stored here — IP banning activates when a blacklisted member tries to verify again.</p>' +
+    '</div></div>';
+
+  html += '<div style="display:flex;flex-direction:column;gap:10px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Discord ID</label>' +
+    '<input type="text" id="bl-discord-id" class="config-input" placeholder="e.g. 123456789012345678" style="width:100%;box-sizing:border-box;"></div>' +
+    '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Gamertag (PSN/Xbox/PC)</label>' +
+    '<input type="text" id="bl-gamertag" class="config-input" placeholder="e.g. xX_Player_Xx" style="width:100%;box-sizing:border-box;"></div>' +
+    '</div>' +
+    '<div><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Reason <span style="color:var(--red);">*</span></label>' +
+    '<input type="text" id="bl-reason" class="config-input" placeholder="Reason for blacklisting..." style="width:100%;box-sizing:border-box;"></div>' +
+    '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted);">' +
+    '<input type="checkbox" id="bl-ip-ban" style="accent-color:var(--red);width:15px;height:15px;"> ' +
+    'IP Ban — block all future verifications from the same IP address</label>' +
+    '</div>' +
+    '<div><button class="btn btn-danger btn-sm" onclick="addBlacklistEntry(this)">Add to Blacklist</button></div>' +
+    '</div>';
+
+  html += '</div>';
+
+  /* ── Section 3: Active Entries ── */
+  html += '<div class="config-section" style="margin-top:10px;">' +
+    '<div class="config-section-header"><div><h3>Active Entries</h3>' +
+    '<p class="config-section-desc">IPs are stored privately and never displayed. Removing an entry automatically updates the Discord panel.</p>' +
+    '</div></div>';
 
   if (!entries.length) {
-    html += '<div class="config-row"><span class="config-sublabel" style="color:var(--text-dim);">No active blacklist entries.</span></div>';
+    html += '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No active blacklist entries.</span></div>';
   } else {
     html += '<div class="staff-list">';
     entries.forEach(function(e) {
-      var who = e.discordId ? '<@' + esc(e.discordId) + '>' : '';
-      var tag = e.gamertag ? '<code>' + esc(e.gamertag) + '</code>' : '';
-      var label = [who, tag].filter(Boolean).join(' ');
+      var who = e.discordId ? e.discordId : '';
+      var tag = e.gamertag ? e.gamertag : '';
+      var label = '';
+      if (who && tag) label = '<code>' + esc(tag) + '</code> <span style="color:var(--text-muted);font-size:11px;">(' + esc(who) + ')</span>';
+      else if (tag) label = '<code>' + esc(tag) + '</code>';
+      else if (who) label = '<span style="font-family:monospace;">' + esc(who) + '</span>';
       var date = e.addedAt ? new Date(e.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
       html += '<div class="staff-entry">' +
         '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:13px;color:var(--text);">' + label + (e.ipBanned ? ' <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:1px 5px;border-radius:3px;">IP BAN</span>' : '') + '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason) + (date ? ' — ' + date : '') + '</div>' +
+        '<div style="font-size:13px;color:var(--text);">' + label +
+        (e.ipBanned ? ' <span style="font-size:10px;background:rgba(248,113,113,0.12);color:var(--red);padding:1px 6px;border-radius:3px;margin-left:4px;">IP BAN</span>' : '') +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason || '') + (date ? ' — ' + date : '') + '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="removeBlacklistEntry(\'' + esc(e._id) + '\',this)">Remove</button>' +
         '</div>';
@@ -885,7 +939,36 @@ function renderBlacklistSettings(data) {
     html += '</div>';
   }
   html += '</div>';
+
   return html;
+}
+
+function addBlacklistEntry(btn) {
+  if (!currentGuild) return;
+  var discordId = (document.getElementById('bl-discord-id') || {}).value || '';
+  var gamertag  = (document.getElementById('bl-gamertag')   || {}).value || '';
+  var reason    = (document.getElementById('bl-reason')     || {}).value || '';
+  var ipBanned  = (document.getElementById('bl-ip-ban')     || {}).checked || false;
+  if (!reason.trim()) { toast('Reason is required', 'error'); return; }
+  if (!discordId.trim() && !gamertag.trim()) { toast('Provide a Discord ID or gamertag', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+  api('/guild/' + currentGuild.id + '/blacklist/add', {
+    method: 'POST',
+    body: JSON.stringify({ discordId: discordId.trim() || null, gamertag: gamertag.trim() || null, reason: reason.trim(), ipBanned }),
+  }).then(function(r) {
+    if (r && r.success) { toast('Entry added'); renderSettings('blacklist'); }
+    else { if (btn) { btn.disabled = false; btn.textContent = 'Add to Blacklist'; } toast(r && r.error ? r.error : 'Failed', 'error'); }
+  });
+}
+
+function postBlacklistPanel(btn) {
+  if (!currentGuild) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
+  api('/guild/' + currentGuild.id + '/blacklist/panel', { method: 'POST' }).then(function(r) {
+    if (r && r.success) { toast('Panel posted to Discord'); }
+    else { toast(r && r.error ? r.error : 'Failed', 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Post / Refresh Panel'; }
+  });
 }
 
 function removeBlacklistEntry(id, btn) {

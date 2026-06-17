@@ -889,7 +889,10 @@ export function createApiRouter(client) {
           const { default: Blacklist } = await import('../../models/Blacklist.js');
           const bc = await BlacklistConfig.findOne({ guildId: guild.id });
           const entries = await Blacklist.find({ guildId: guild.id, active: true }).sort({ addedAt: -1 });
-          result.fields = [];
+          result.fields = [
+            { key: 'panelChannelId', label: 'Panel Channel', description: 'Channel where the live blacklist panel is posted and auto-updated', type: 'select', value: bc?.panelChannelId || '', options: channels },
+          ];
+          result.channels = channels;
           result.blacklistEnabled = bc?.enabled ?? false;
           result.panelChannelId = bc?.panelChannelId || null;
           result.blacklistEntries = entries.map(e => ({
@@ -1089,6 +1092,17 @@ export function createApiRouter(client) {
             if (allowed.includes(k)) update[k] = v;
           }
           await Verification.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
+        case 'blacklist': {
+          const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+          const allowed = ['panelChannelId'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await BlacklistConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           break;
         }
 
@@ -2472,6 +2486,53 @@ export function createApiRouter(client) {
         addedAt: e.addedAt,
       }));
       res.json({ config: bc || {}, entries: safeEntries });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/guild/:id/blacklist/panel', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { updateBlacklistPanel } = await import('../../handlers/blacklistHandler.js');
+      await updateBlacklistPanel(client, req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/guild/:id/blacklist/add', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { discordId, gamertag, reason, ipBanned } = req.body;
+      if (!reason || (!discordId && !gamertag)) {
+        return res.status(400).json({ error: 'Provide at least a Discord ID or gamertag plus a reason' });
+      }
+      const { default: Blacklist } = await import('../../models/Blacklist.js');
+      await Blacklist.create({
+        guildId: req.params.id,
+        discordId: discordId || null,
+        gamertag: gamertag || null,
+        reason,
+        ipBanned: !!ipBanned,
+        addedBy: 'dashboard',
+        addedAt: new Date(),
+        active: true,
+      });
+      const { updateBlacklistPanel } = await import('../../handlers/blacklistHandler.js');
+      await updateBlacklistPanel(client, req.params.id).catch(() => {});
+      res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
