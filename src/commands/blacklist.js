@@ -7,14 +7,14 @@ import { executeBlacklist } from '../handlers/blacklistHandler.js';
 export const data = new SlashCommandBuilder()
   .setName('blacklist')
   .setDescription('Blacklist a member from the server (Admin/Staff, Premium)')
+  .addStringOption(opt =>
+    opt.setName('reason').setDescription('Reason for the blacklist').setRequired(true)
+  )
   .addUserOption(opt =>
     opt.setName('user').setDescription('Discord user to blacklist').setRequired(false)
   )
   .addStringOption(opt =>
     opt.setName('gamertag').setDescription('Gamertag / PSN / Xbox username to blacklist').setRequired(false)
-  )
-  .addStringOption(opt =>
-    opt.setName('reason').setDescription('Reason for the blacklist').setRequired(true)
   )
   .addBooleanOption(opt =>
     opt.setName('ip_ban').setDescription('Also IP ban this person? (blocks alt accounts at verification)').setRequired(false)

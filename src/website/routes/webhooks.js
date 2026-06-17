@@ -21,10 +21,14 @@ export function createWebhooksRouter(client) {
       console.log('[TopGG Webhook] No secret set — accepting all requests');
     }
 
-    const { user, type, isWeekend } = req.body;
-    console.log(`[TopGG Webhook] Payload — type=${type} user=${user} isWeekend=${isWeekend}`);
+    const body = req.body || {};
+    const user = body.user || body.userId || body.id;
+    const type = body.type;
+    const isWeekend = body.isWeekend;
+    console.log(`[TopGG Webhook] Payload — type=${type} user=${user} isWeekend=${isWeekend} raw=${JSON.stringify(body)}`);
 
-    if (!user || type !== 'upvote') {
+    const VOTE_TYPES = ['upvote', 'vote', 'vote.create'];
+    if (!user || !VOTE_TYPES.includes(type)) {
       console.log(`[TopGG Webhook] Ignoring non-upvote type: ${type}`);
       return res.status(200).json({ ok: true });
     }
