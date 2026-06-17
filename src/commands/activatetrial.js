@@ -8,7 +8,11 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  try {
+    await interaction.deferReply({ flags: 64 });
+  } catch {
+    return;
+  }
 
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
