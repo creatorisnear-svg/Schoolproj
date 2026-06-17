@@ -54,6 +54,10 @@ const verificationSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  panelMessageId: {
+    type: String,
+    default: null,
+  },
 });
 
 const Verification = mongoose.models.Verification || mongoose.model('Verification', verificationSchema);

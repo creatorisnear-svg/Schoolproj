@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Verification — RolePlayManager</title>
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .verify-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; width: 100%; max-width: 480px; }
+    .verify-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .verify-logo img { width: 32px; height: 32px; border-radius: 6px; }
+    .verify-logo span { font-size: 15px; font-weight: 600; color: var(--text); }
+    .verify-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .verify-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+    .verify-guild { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; padding: 10px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; }
+    .verify-guild strong { color: var(--text); }
+    .form-group { margin-bottom: 18px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+    .form-input, .form-textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+    .form-input:focus, .form-textarea:focus { border-color: #5865f2; }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-btn { width: 100%; padding: 11px; background: #5865f2; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; margin-top: 8px; }
+    .form-btn:hover:not(:disabled) { background: #4752c4; }
+    .form-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { padding: 12px 14px; border-radius: 6px; font-size: 13px; margin-top: 16px; }
+    .msg.error { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+    .msg.success { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+    .msg.info { background: var(--blue-bg); border: 1px solid rgba(96,165,250,0.2); color: var(--blue); }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .state-loading, .state-error, .state-success { text-align: center; padding: 20px 0; }
+    .state-loading p, .state-error p, .state-success p { color: var(--text-muted); font-size: 14px; margin-top: 8px; }
+    .state-error h3 { color: var(--red); margin-bottom: 8px; }
+    .state-success h3 { color: var(--green); margin-bottom: 8px; }
+    .state-success .check { font-size: 36px; margin-bottom: 12px; }
+    .pending-note { font-size: 12px; color: var(--text-dim); margin-top: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="verify-card">
+    <div class="verify-logo">
+      <img src="/img/logo.png" alt="RPM">
+      <span>RolePlayManager</span>
+    </div>
+    <div id="app">
+      <div class="state-loading">
+        <div class="spinner" style="width:20px;height:20px;border-width:3px;display:inline-block;border-color:rgba(255,255,255,0.15);border-top-color:#5865f2;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
+        <p>Loading verification form...</p>
+      </div>
+    </div>
+  </div>
+  <script src="/js/verify.js"></script>
+</body>
+</html>

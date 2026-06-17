@@ -9,6 +9,24 @@ import { checkFeatureAccess, isFeaturePremiumGated } from '../../utils/premiumCh
 
 const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
 
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+  return dp[m][n];
+}
+
+function isSimilar(input, blacklisted) {
+  const a = input.toLowerCase().trim();
+  const b = blacklisted.toLowerCase().trim();
+  if (a === b) return true;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return true;
+  const dist = levenshtein(a, b);
+  const similarity = 1 - dist / maxLen;
+  return similarity >= 0.8 || dist <= 2;
+}
+
 const _adminAccessCache = new Map();
 const _meCache = new Map();
 const _CACHE_TTL = 5 * 60 * 1000;
@@ -245,6 +263,7 @@ export function createApiRouter(client) {
         roleRequestEnabled: false,
         movemeEnabled: false,
         civJobsEnabled: false,
+        blacklistEnabled: false,
       };
 
       try {
@@ -330,6 +349,12 @@ export function createApiRouter(client) {
         const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
         const cjc = await CivilianJobConfig.findOne({ guildId: guild.id });
         if (cjc) config.civjobsEnabled = !!cjc.enabled;
+      } catch {}
+
+      try {
+        const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+        const blc = await BlacklistConfig.findOne({ guildId: guild.id });
+        if (blc) config.blacklistEnabled = !!blc.enabled;
       } catch {}
 
       let premium = false;
@@ -471,6 +496,11 @@ export function createApiRouter(client) {
         case 'civjobs': {
           const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
           await CivilianJobConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'blacklist': {
+          const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+          await BlacklistConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
         default:
@@ -852,6 +882,28 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'blacklist': {
+          result.name = 'Blacklist';
+          result.description = 'IP and gamertag-based blacklist with fuzzy matching. Blocks banned members at the verification wall.';
+          const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+          const { default: Blacklist } = await import('../../models/Blacklist.js');
+          const bc = await BlacklistConfig.findOne({ guildId: guild.id });
+          const entries = await Blacklist.find({ guildId: guild.id, active: true }).sort({ addedAt: -1 });
+          result.fields = [];
+          result.blacklistEnabled = bc?.enabled ?? false;
+          result.panelChannelId = bc?.panelChannelId || null;
+          result.blacklistEntries = entries.map(e => ({
+            _id: e._id.toString(),
+            discordId: e.discordId,
+            gamertag: e.gamertag,
+            reason: e.reason,
+            ipBanned: e.ipBanned,
+            addedBy: e.addedBy,
+            addedAt: e.addedAt,
+          }));
+          result.stats = [{ label: 'Blacklisted', value: entries.length }];
+          break;
+        }
         case 'staff': {
           result.name = 'Staff Management';
           result.description = 'Manage who has staff and manager permissions on this server';
@@ -2250,10 +2302,195 @@ export function createApiRouter(client) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('verify_button').setLabel('Click Here to Verify').setStyle(ButtonStyle.Primary)
       );
-      await channel.send({ embeds: [embed], components: [row] });
+      if (v.panelMessageId) {
+        const old = await channel.messages.fetch(v.panelMessageId).catch(() => null);
+        if (old) { await old.delete().catch(() => {}); }
+      }
+      const msg = await channel.send({ embeds: [embed], components: [row] });
+      v.panelMessageId = msg.id;
+      await v.save();
       res.json({ success: true });
     } catch (err) {
       console.error('[API] Verify panel send error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /* ── Web Verification: generate token (public, called by bot) ── */
+  router.get('/verify/:token', async (req, res) => {
+    try {
+      const { default: VerifyToken } = await import('../../models/VerifyToken.js');
+      const { default: Verification } = await import('../../models/Verification.js');
+      const record = await VerifyToken.findOne({ token: req.params.token });
+      if (!record) return res.status(404).json({ error: 'Invalid or expired link. Please click the Verify button in Discord again.' });
+      if (record.used) return res.status(410).json({ error: 'This verification link has already been used. Please click the Verify button in Discord again.' });
+      if (new Date() > record.expiresAt) return res.status(410).json({ error: 'This link has expired (15 min limit). Please click the Verify button in Discord again.' });
+      const vc = await Verification.findOne({ guildId: record.guildId });
+      if (!vc || !vc.enabled) return res.status(400).json({ error: 'Verification is not enabled on this server.' });
+      const guild = client.guilds.cache.get(record.guildId);
+      const questions = [];
+      if (vc.customQuestion) questions.push(vc.customQuestion);
+      if (vc.customQuestions?.length) {
+        for (const q of vc.customQuestions) {
+          if (q && !questions.includes(q)) questions.push(q);
+        }
+      }
+      res.json({ valid: true, guildName: guild?.name || 'the server', questions, approvalRequired: vc.approvalRequired });
+    } catch (err) {
+      console.error('[VERIFY API] GET error:', err.message);
+      res.status(500).json({ error: 'Server error.' });
+    }
+  });
+
+  router.post('/verify/:token', async (req, res) => {
+    try {
+      const { default: VerifyToken } = await import('../../models/VerifyToken.js');
+      const { default: Verification } = await import('../../models/Verification.js');
+      const { default: Blacklist } = await import('../../models/Blacklist.js');
+      const { default: PendingVerification } = await import('../../models/PendingVerification.js');
+      const { default: VerifiedUser } = await import('../../models/VerifiedUser.js');
+      const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+
+      const record = await VerifyToken.findOne({ token: req.params.token });
+      if (!record) return res.status(404).json({ error: 'Invalid or expired link.' });
+      if (record.used) return res.status(410).json({ error: 'This link has already been used.' });
+      if (new Date() > record.expiresAt) return res.status(410).json({ error: 'This link has expired. Please click the Verify button in Discord again.' });
+
+      const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+      const { psnxbox, answers } = req.body;
+      if (!psnxbox?.trim()) return res.status(400).json({ error: 'PSN/Xbox username is required.' });
+
+      const guildId = record.guildId;
+      const userId = record.userId;
+
+      const activeBlacklist = await Blacklist.find({ guildId, active: true });
+
+      const ipBanEntry = activeBlacklist.find(e => e.ipBanned && e.ipAddress && e.ipAddress === ip);
+      if (ipBanEntry) {
+        console.log(`[VERIFY] IP ban hit for user ${userId} in guild ${guildId} — IP ${ip}`);
+        record.used = true;
+        await record.save();
+        return res.status(403).json({ error: 'You are not permitted to verify on this server.' });
+      }
+
+      const gamertagEntry = activeBlacklist.find(e => e.gamertag && isSimilar(psnxbox.trim(), e.gamertag));
+      if (gamertagEntry) {
+        console.log(`[VERIFY] Gamertag blacklist hit for user ${userId} — submitted "${psnxbox.trim()}", matched "${gamertagEntry.gamertag}" in guild ${guildId}`);
+        record.used = true;
+        await record.save();
+        return res.status(403).json({ error: 'You are not permitted to verify on this server.' });
+      }
+
+      record.used = true;
+      await record.save();
+
+      const vc = await Verification.findOne({ guildId });
+      if (!vc || !vc.enabled) return res.status(400).json({ error: 'Verification is not enabled.' });
+
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return res.status(500).json({ error: 'Server not found.' });
+
+      const customAnswer = Array.isArray(answers) && answers.length ? answers.join('\n---\n') : (answers || null);
+
+      if (vc.approvalRequired) {
+        const pending = new PendingVerification({
+          guildId,
+          userId,
+          username: (await client.users.fetch(userId).catch(() => ({ username: userId }))).username,
+          psnxbox: psnxbox.trim(),
+          customAnswer,
+          ipAddress: ip,
+        });
+        await pending.save();
+
+        if (vc.approvalChannelId) {
+          const approvalChannel = guild.channels.cache.get(vc.approvalChannelId);
+          if (approvalChannel) {
+            const embed = new EmbedBuilder()
+              .setColor('#faa61a')
+              .setTitle('Verification Pending')
+              .addFields(
+                { name: 'Member', value: `<@${userId}>`, inline: true },
+                { name: 'PSN/XBOX', value: psnxbox.trim(), inline: true },
+              )
+              .setFooter({ text: 'RPM' });
+            if (customAnswer) embed.addFields({ name: 'Question Answer', value: customAnswer.slice(0, 1024) });
+            const approveBtn = new ButtonBuilder().setCustomId(`verify_approve_${pending._id}`).setLabel('Approve').setStyle(ButtonStyle.Success);
+            const rejectBtn = new ButtonBuilder().setCustomId(`verify_reject_${pending._id}`).setLabel('Reject').setStyle(ButtonStyle.Danger);
+            await approvalChannel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(approveBtn, rejectBtn)] });
+          }
+        }
+        return res.json({ success: true, pending: true, message: 'Your application has been submitted and is awaiting staff approval.' });
+      }
+
+      const member = await guild.members.fetch(userId).catch(() => null);
+      if (!member) return res.status(400).json({ error: 'You are no longer in the server.' });
+
+      const role = guild.roles.cache.get(vc.verifiedRoleId);
+      if (role) await member.roles.add(role).catch(() => {});
+      const unverifiedRole = guild.roles.cache.get(vc.unverifiedRoleId);
+      if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
+
+      if (vc.verifyDMMessage) {
+        await member.send(vc.verifyDMMessage.replace('{server}', guild.name)).catch(() => {});
+      }
+
+      await VerifiedUser.findOneAndUpdate(
+        { guildId, userId },
+        { psnxbox: psnxbox.trim(), ipAddress: ip, verifiedAt: new Date() },
+        { upsert: true }
+      );
+
+      console.log(`[VERIFY] Web verification complete for ${userId} in ${guildId}`);
+      return res.json({ success: true, pending: false, message: 'You have been verified! You can now access member channels.' });
+    } catch (err) {
+      console.error('[VERIFY API] POST error:', err.message);
+      res.status(500).json({ error: 'Server error. Please try again.' });
+    }
+  });
+
+  /* ── Blacklist API ── */
+  router.get('/guild/:id/settings/blacklist', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
+      const { default: Blacklist } = await import('../../models/Blacklist.js');
+      const bc = await BlacklistConfig.findOne({ guildId: req.params.id });
+      const entries = await Blacklist.find({ guildId: req.params.id, active: true }).sort({ addedAt: -1 });
+      const safeEntries = entries.map(e => ({
+        _id: e._id,
+        discordId: e.discordId,
+        gamertag: e.gamertag,
+        reason: e.reason,
+        ipBanned: e.ipBanned,
+        addedBy: e.addedBy,
+        addedAt: e.addedAt,
+      }));
+      res.json({ config: bc || {}, entries: safeEntries });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete('/guild/:id/blacklist/:entryId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: Blacklist } = await import('../../models/Blacklist.js');
+      await Blacklist.findByIdAndUpdate(req.params.entryId, { active: false });
+      const { updateBlacklistPanel } = await import('../../handlers/blacklistHandler.js');
+      await updateBlacklistPanel(client, req.params.id);
+      res.json({ success: true });
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });

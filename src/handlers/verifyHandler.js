@@ -1,9 +1,12 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { v4 as uuidv4 } from 'uuid';
 import Verification from '../models/Verification.js';
 import PendingVerification from '../models/PendingVerification.js';
-import Config from '../models/Config.js';
-import AuthorizedUser from '../models/AuthorizedUser.js';
+import VerifyToken from '../models/VerifyToken.js';
+import VerifiedUser from '../models/VerifiedUser.js';
 import { errorEmbed, successEmbed, infoEmbed } from '../utils/embedBuilder.js';
+
+const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://roleplaymanager.xyz';
 
 export async function handleVerifyModal(interaction) {
   try {
@@ -16,143 +19,120 @@ export async function handleVerifyModal(interaction) {
       });
     }
 
-    const modal = new ModalBuilder()
-      .setCustomId('verify_modal')
-      .setTitle('Verification');
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    const psnXboxInput = new TextInputBuilder()
-      .setCustomId('psnxbox')
-      .setLabel('PSN / XBOX Username')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
+    await VerifyToken.create({
+      token,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      expiresAt,
+      used: false,
+    });
 
-    modal.addComponents(new ActionRowBuilder().addComponents(psnXboxInput));
+    const verifyUrl = `${SITE_ORIGIN}/verify?token=${token}`;
 
-    const questionText = verification.customQuestion ||
-      (verification.customQuestions && verification.customQuestions.length > 0 ? verification.customQuestions[0] : null);
-    if (questionText) {
-      const customInput = new TextInputBuilder()
-        .setCustomId('custom_question')
-        .setLabel(questionText.slice(0, 45))
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true);
-      modal.addComponents(new ActionRowBuilder().addComponents(customInput));
-    }
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Complete Your Verification')
+      .setDescription('Click the button below to open the verification form on our website.\n\n-# This link expires in 15 minutes and can only be used once.')
+      .setFooter({ text: 'RPM' });
 
-    await interaction.showModal(modal);
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Open Verification Form')
+        .setURL(verifyUrl)
+        .setStyle(ButtonStyle.Link)
+    );
+
+    return interaction.reply({ embeds: [embed], components: [row], flags: 64 });
   } catch (error) {
-    console.error('Error showing verify modal:', error);
+    console.error('Error handling verify button:', error);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ embeds: [errorEmbed('An error occurred.')], flags: 64 }).catch(() => {});
     }
   }
 }
 
-export async function handleVerifyModalSubmit(interaction) {
-  const psnxbox = interaction.fields.getTextInputValue('psnxbox');
-  let customAnswer = null;
+export async function handleVerifyApprove(interaction, pendingId) {
   try {
-    customAnswer = interaction.fields.getTextInputValue('custom_question');
-  } catch (e) {}
+    const pending = await PendingVerification.findById(pendingId);
+    if (!pending) {
+      return interaction.update({ embeds: [errorEmbed('Verification record not found or already processed.')], components: [] });
+    }
 
-  console.log(`[VERIFY] User ${interaction.user.tag} (${interaction.user.id}) submitted verification. PSN/XBOX: ${psnxbox}`);
+    const guild = interaction.guild;
+    const verification = await Verification.findOne({ guildId: guild.id });
+    if (!verification) {
+      return interaction.update({ embeds: [errorEmbed('Verification config not found.')], components: [] });
+    }
 
+    const member = await guild.members.fetch(pending.userId).catch(() => null);
+    if (!member) {
+      await PendingVerification.findByIdAndDelete(pendingId);
+      return interaction.update({ embeds: [errorEmbed('Member no longer in server.')], components: [] });
+    }
+
+    const role = guild.roles.cache.get(verification.verifiedRoleId);
+    if (role) await member.roles.add(role).catch(() => {});
+    const unverifiedRole = guild.roles.cache.get(verification.unverifiedRoleId);
+    if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
+
+    if (verification.verifyDMMessage) {
+      const dmMsg = verification.verifyDMMessage.replace('{server}', guild.name);
+      await member.send(dmMsg).catch(() => {});
+    }
+
+    await VerifiedUser.findOneAndUpdate(
+      { guildId: guild.id, userId: pending.userId },
+      { psnxbox: pending.psnxbox, ipAddress: pending.ipAddress || null, verifiedAt: new Date() },
+      { upsert: true }
+    );
+
+    await PendingVerification.findByIdAndDelete(pendingId);
+
+    const approvedEmbed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Verification Approved')
+      .addFields(
+        { name: 'Member', value: `<@${pending.userId}>`, inline: true },
+        { name: 'Approved By', value: `<@${interaction.user.id}>`, inline: true },
+      )
+      .setFooter({ text: 'RPM' });
+
+    return interaction.update({ embeds: [approvedEmbed], components: [] });
+  } catch (err) {
+    console.error('[VERIFY] Approve error:', err.message);
+    return interaction.update({ embeds: [errorEmbed('An error occurred.')], components: [] });
+  }
+}
+
+export async function handleVerifyReject(interaction, pendingId) {
   try {
-    const verification = await Verification.findOne({ guildId: interaction.guildId });
-    if (!verification || !verification.enabled) {
-      console.warn(`[VERIFY] Verification attempt in guild ${interaction.guildId} but system is disabled/missing.`);
-      return;
+    const pending = await PendingVerification.findById(pendingId);
+    if (!pending) {
+      return interaction.update({ embeds: [errorEmbed('Verification record not found.')], components: [] });
     }
 
-    if (verification.oauthRequired) {
-      const userData = await AuthorizedUser.findOne({ userId: interaction.user.id });
-      if (!userData || !userData.accessToken) {
-        const clientId = process.env.DISCORD_CLIENT_ID;
-        const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
-        const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
-        const redirectUri = `https://${cleanDomain}/callback`;
-        const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20voice`;
+    await PendingVerification.findByIdAndDelete(pendingId);
 
-        const authEmbed = new EmbedBuilder()
-          .setColor('#2d2d2d')
-          .setTitle('Authorization Required')
-          .setDescription('To complete your verification, you must authorize your Discord account with RPM.\n\nPlease click the button below to authorize, then click the **Verify** button again to submit your application.')
-          .setFooter({ text: 'RPM' });
+    const rejectedEmbed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Verification Rejected')
+      .addFields(
+        { name: 'Member', value: `<@${pending.userId}>`, inline: true },
+        { name: 'Rejected By', value: `<@${interaction.user.id}>`, inline: true },
+      )
+      .setFooter({ text: 'RPM' });
 
-        const authRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setLabel('Authorize Account').setURL(authUrl).setStyle(ButtonStyle.Link)
-        );
-
-        return interaction.reply({ embeds: [authEmbed], components: [authRow], flags: 64 });
-      }
+    const member = await interaction.guild.members.fetch(pending.userId).catch(() => null);
+    if (member) {
+      await member.send('Your verification application was rejected. Please contact server staff for more information.').catch(() => {});
     }
 
-    if (verification.approvalRequired) {
-      console.log(`[VERIFY] Approval required for ${interaction.user.tag}. Creating pending record.`);
-      const pending = new PendingVerification({
-        guildId: interaction.guildId,
-        userId: interaction.user.id,
-        username: interaction.user.username,
-        psnxbox,
-        customAnswer,
-      });
-      await pending.save();
-
-      if (verification.approvalChannelId) {
-        const approvalChannel = await interaction.guild.channels.fetch(verification.approvalChannelId).catch(() => null);
-        if (approvalChannel) {
-          const embed = new EmbedBuilder()
-            .setColor('#faa61a')
-            .setTitle('Verification Pending')
-            .addFields(
-              { name: 'Member', value: `${interaction.user}`, inline: true },
-              { name: 'PSN/XBOX', value: psnxbox, inline: true }
-            )
-            .setFooter({ text: 'RPM' });
-
-          if (customAnswer) {
-            embed.addFields({ name: 'Custom Question Answer', value: customAnswer });
-          }
-
-          const approveButton = new ButtonBuilder()
-            .setCustomId(`verify_approve_${pending._id}`)
-            .setLabel('Approve')
-            .setStyle(ButtonStyle.Success);
-
-          const rejectButton = new ButtonBuilder()
-            .setCustomId(`verify_reject_${pending._id}`)
-            .setLabel('Reject')
-            .setStyle(ButtonStyle.Danger);
-
-          const row = new ActionRowBuilder().addComponents(approveButton, rejectButton);
-
-          await approvalChannel.send({ embeds: [embed], components: [row] });
-          console.log(`[VERIFY] Sent pending request for ${interaction.user.tag} to channel ${verification.approvalChannelId}`);
-        } else {
-          console.warn(`[VERIFY] Could not find approval channel ${verification.approvalChannelId} for guild ${interaction.guildId}`);
-        }
-      }
-
-      return interaction.reply({ embeds: [infoEmbed('Submitted', 'Awaiting approval.')], flags: 64 });
-    }
-
-    console.log(`[VERIFY] Instant verification for ${interaction.user.tag}. Applying roles.`);
-    const role = interaction.guild.roles.cache.get(verification.verifiedRoleId);
-    if (role) {
-      await interaction.member.roles.add(role);
-      console.log(`[VERIFY] Added verified role ${verification.verifiedRoleId} to ${interaction.user.tag}`);
-    } else {
-      console.error(`[VERIFY] Verified role ${verification.verifiedRoleId} not found in guild ${interaction.guildId}`);
-    }
-    
-    const unverifiedRole = interaction.guild.roles.cache.get(verification.unverifiedRoleId);
-    if (unverifiedRole) {
-      await interaction.member.roles.remove(unverifiedRole);
-      console.log(`[VERIFY] Removed unverified role ${verification.unverifiedRoleId} from ${interaction.user.tag}`);
-    }
-
-    return interaction.reply({ embeds: [successEmbed('Verified', 'You are now verified!')], flags: 64 });
-  } catch (error) {
-    console.error(`[VERIFY ERROR] Exception for ${interaction.user.tag}:`, error);
+    return interaction.update({ embeds: [rejectedEmbed], components: [] });
+  } catch (err) {
+    console.error('[VERIFY] Reject error:', err.message);
+    return interaction.update({ embeds: [errorEmbed('An error occurred.')], components: [] });
   }
 }

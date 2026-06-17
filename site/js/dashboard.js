@@ -269,6 +269,7 @@ var FEATURES = [
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
   { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
   { key: 'civjobsEnabled',      feature: 'civjobs',       name: 'Civilian Jobs',     icon: 'CJ',  desc: 'Job board with shift roles',        mod: 'civjobs' },
+  { key: 'blacklistEnabled',    feature: 'blacklist',     name: 'Blacklist',         icon: 'BL',  desc: 'Server blacklist with IP protection', mod: 'blacklist' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -281,6 +282,7 @@ var SIDEBAR_GROUPS = [
     { id: 'verification', label: 'Verification' },
     { id: 'strikes',      label: 'Strike System' },
     { id: 'antipromo',    label: 'Anti-Promoting' },
+    { id: 'blacklist',    label: 'Blacklist' },
   ]},
   { title: 'Community', items: [
     { id: 'tickets',       label: 'Ticket Support' },
@@ -358,7 +360,7 @@ function renderDashboard() {
   /* ── Section 1: Enable / Disable ── */
   var FEATURE_CATEGORIES = [
     { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
-    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote'] },
+    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote', 'blacklist'] },
     { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme'] },
     { title: 'Economy',               keys: ['economy', 'civjobs'] },
     { title: 'Advanced',              keys: ['dispatch'] },
@@ -409,6 +411,7 @@ function renderDashboard() {
     { id: 'reactionroles', label: 'Reaction Roles',    desc: 'React to get a role',            featureKey: null },
     { id: 'dispatch',      label: 'AI Voice Dispatch', desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
     { id: 'staff',         label: 'Staff Management',  desc: 'Assign staff roles and users',   featureKey: null },
+    { id: 'blacklist',     label: 'Blacklist',          desc: 'IP + gamertag blacklist (Premium)', featureKey: 'blacklistEnabled' },
   ];
 
   html += '<div class="overview-section" style="margin-top:16px;">' +
@@ -809,6 +812,8 @@ function renderSettings(mod) {
       html += renderReactionRolesSettings(data);
     } else if (mod === 'staff') {
       html += renderStaffSettings(data);
+    } else if (mod === 'blacklist') {
+      html += renderBlacklistSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -850,6 +855,45 @@ function renderSettings(mod) {
       var content = document.getElementById('settings-content');
       if (content) content.scrollTop = pos;
     }
+  });
+}
+
+/* ── Blacklist Settings ── */
+function renderBlacklistSettings(data) {
+  var entries = data.blacklistEntries || [];
+  var html = '<div class="config-section" style="margin-top:14px;">' +
+    '<div class="config-section-header"><h3>Blacklist Entries</h3></div>' +
+    '<div class="config-row"><span class="config-sublabel">Members blacklisted via <code>/blacklist</code>. Use <code>/blacklistconfig</code> in Discord to set up the live panel. IPs are not displayed here for privacy.</span></div>';
+
+  if (!entries.length) {
+    html += '<div class="config-row"><span class="config-sublabel" style="color:var(--text-dim);">No active blacklist entries.</span></div>';
+  } else {
+    html += '<div class="staff-list">';
+    entries.forEach(function(e) {
+      var who = e.discordId ? '<@' + esc(e.discordId) + '>' : '';
+      var tag = e.gamertag ? '<code>' + esc(e.gamertag) + '</code>' : '';
+      var label = [who, tag].filter(Boolean).join(' ');
+      var date = e.addedAt ? new Date(e.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      html += '<div class="staff-entry">' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;color:var(--text);">' + label + (e.ipBanned ? ' <span style="font-size:10px;background:rgba(248,113,113,0.15);color:var(--red);padding:1px 5px;border-radius:3px;">IP BAN</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason) + (date ? ' — ' + date : '') + '</div>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeBlacklistEntry(\'' + esc(e._id) + '\',this)">Remove</button>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function removeBlacklistEntry(id, btn) {
+  if (!currentGuild) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Removing...'; }
+  api('/guild/' + currentGuild.id + '/blacklist/' + id, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Entry removed'); renderSettings('blacklist'); }
+    else { if (btn) { btn.disabled = false; btn.textContent = 'Remove'; } toast(r && r.error ? r.error : 'Failed', 'error'); }
   });
 }
 

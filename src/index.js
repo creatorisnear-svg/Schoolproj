@@ -24,7 +24,7 @@ import Priority from './models/Priority.js';
 import DispatchConfig from './models/DispatchConfig.js';
 import Welcome from './models/Welcome.js';
 import Verification from './models/Verification.js';
-import { handleVerifyModal, handleVerifyModalSubmit } from './handlers/verifyHandler.js';
+import { handleVerifyModal, handleVerifyApprove, handleVerifyReject } from './handlers/verifyHandler.js';
 import { handleSelectMenu } from './handlers/selectMenuHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
 import { isMaintenanceMode } from './utils/maintenanceMode.js';
@@ -750,6 +750,8 @@ client.once('clientReady', async () => {
   console.log('============================================================');
   console.log('');
 
+  setTimeout(() => refreshAllVerifyPanels(client), 5000);
+
   const EmergencyCall = (await import('./models/EmergencyCall.js')).default;
   const BOLO = (await import('./models/BOLO.js')).default;
   const PremiumKey = (await import('./models/PremiumKey.js')).default;
@@ -900,7 +902,13 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'civjob_select') {
+      if (interaction.customId === 'blacklist_config_menu') {
+        const { handleBlacklistConfigMenu } = await import('./handlers/blacklistHandler.js');
+        await handleBlacklistConfigMenu(interaction, client);
+      } else if (interaction.customId === 'blacklist_panel_channel_select') {
+        const { handleBlacklistPanelChannelSelect } = await import('./handlers/blacklistHandler.js');
+        await handleBlacklistPanelChannelSelect(interaction, client);
+      } else if (interaction.customId === 'civjob_select') {
         const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
         await handleCivilianJobApply(interaction);
       } else if (interaction.customId.startsWith('economy')) {
@@ -913,6 +921,12 @@ client.on('interactionCreate', async interaction => {
       console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
+      } else if (interaction.customId.startsWith('verify_approve_')) {
+        const pendingId = interaction.customId.replace('verify_approve_', '');
+        await handleVerifyApprove(interaction, pendingId);
+      } else if (interaction.customId.startsWith('verify_reject_')) {
+        const pendingId = interaction.customId.replace('verify_reject_', '');
+        await handleVerifyReject(interaction, pendingId);
       } else if (interaction.customId === 'priority_approve' || interaction.customId === 'priority_deny') {
         const { handlePriorityRequestButton } = await import('./handlers/priorityRequestHandler.js');
         await handlePriorityRequestButton(interaction, client);
@@ -973,6 +987,50 @@ client.on('interactionCreate', async interaction => {
     }
   }
 });
+
+async function refreshAllVerifyPanels(discordClient) {
+  try {
+    if (mongoose.connection.readyState !== 1) return;
+    const verifications = await Verification.find({ enabled: true });
+    const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
+    const newEmbed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Server Verification')
+      .setDescription('Click the button below to begin the verification process. You will be redirected to our website to complete your application.')
+      .setFooter({ text: 'RPM' });
+    const newRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('verify_button').setLabel('Click Here to Verify').setStyle(ButtonStyle.Primary)
+    );
+    for (const v of verifications) {
+      if (!v.verifyChannelId) continue;
+      const guild = discordClient.guilds.cache.get(v.guildId);
+      if (!guild) continue;
+      const channel = guild.channels.cache.get(v.verifyChannelId);
+      if (!channel) continue;
+      try {
+        if (v.panelMessageId) {
+          const msg = await channel.messages.fetch(v.panelMessageId).catch(() => null);
+          if (msg) { await msg.edit({ embeds: [newEmbed], components: [newRow] }).catch(() => {}); continue; }
+        }
+        const messages = await channel.messages.fetch({ limit: 20 }).catch(() => null);
+        if (!messages) continue;
+        const panelMsg = messages.find(m =>
+          m.author.id === discordClient.user.id &&
+          m.components?.length > 0 &&
+          m.components[0]?.components?.some(c => c.customId === 'verify_button')
+        );
+        if (panelMsg) {
+          await panelMsg.edit({ embeds: [newEmbed], components: [newRow] }).catch(() => {});
+          v.panelMessageId = panelMsg.id;
+          await v.save().catch(() => {});
+        }
+      } catch (_) {}
+    }
+    console.log(`[VERIFY] Refreshed panels for ${verifications.length} guild(s)`);
+  } catch (err) {
+    console.error('[VERIFY REFRESH] Error:', err.message);
+  }
+}
 
 connectDatabase().then(() => {
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
