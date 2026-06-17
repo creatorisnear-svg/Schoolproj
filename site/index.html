@@ -124,7 +124,7 @@
           <div class="stat-label">Users</div>
         </div>
         <div class="stat">
-          <div class="stat-value">38</div>
+          <div class="stat-value" id="stat-commands">&mdash;</div>
           <div class="stat-label">Commands</div>
         </div>
       </div>
@@ -479,7 +479,8 @@
 
     fetch(API_BASE + '/api/stats').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('stat-servers').textContent = data.servers || '\u2014';
-      document.getElementById('stat-users').textContent = data.users || '\u2014';
+      document.getElementById('stat-users').textContent = (data.users || 0).toLocaleString();
+      if (data.commands) document.getElementById('stat-commands').textContent = data.commands;
     }).catch(function() {});
 
     fetch(API_BASE + '/api/bot-status').then(function(r) { return r.json(); }).then(function(data) {

@@ -74,9 +74,11 @@ export function createApiRouter(client) {
   });
 
   router.get('/stats', (req, res) => {
+    const realGuilds = client.guilds.cache.filter(g => g.memberCount <= 10000);
     const servers = client.guilds.cache.size;
-    const users = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
-    res.json({ servers, users });
+    const users = realGuilds.reduce((acc, g) => acc + g.memberCount, 0);
+    const commands = client.commands ? client.commands.size : 0;
+    res.json({ servers, users, commands });
   });
 
   router.get('/bot-status', (req, res) => {
