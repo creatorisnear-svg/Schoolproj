@@ -4,18 +4,30 @@ import { recordVote } from '../../utils/premiumCheck.js';
 export function createWebhooksRouter(client) {
   const router = express.Router();
 
+  router.get('/topgg', (req, res) => {
+    res.json({ ok: true, message: 'TopGG webhook endpoint is reachable' });
+  });
+
   router.post('/topgg', async (req, res) => {
     const secret = process.env.TOPGG_WEBHOOK_SECRET;
+    const incomingAuth = req.headers['authorization'] || '(none)';
+
     if (secret) {
-      const auth = req.headers['authorization'];
-      if (auth !== secret) {
+      if (incomingAuth !== secret) {
+        console.warn(`[TopGG Webhook] Auth FAILED — expected secret, got: "${incomingAuth}"`);
         return res.status(401).json({ error: 'Unauthorized' });
       }
+    } else {
+      console.log('[TopGG Webhook] No secret set — accepting all requests');
     }
 
-    const { user, type } = req.body;
-    console.log(`[TopGG Webhook] Received: type=${type} user=${user}`);
-    if (!user || type !== 'upvote') return res.status(200).json({ ok: true });
+    const { user, type, isWeekend } = req.body;
+    console.log(`[TopGG Webhook] Payload — type=${type} user=${user} isWeekend=${isWeekend}`);
+
+    if (!user || type !== 'upvote') {
+      console.log(`[TopGG Webhook] Ignoring non-upvote type: ${type}`);
+      return res.status(200).json({ ok: true });
+    }
 
     try {
       await recordVote(user);
@@ -34,6 +46,8 @@ export function createWebhooksRouter(client) {
           )
           .setFooter({ text: 'RPM' });
         discordUser.send({ embeds: [embed] }).catch(() => {});
+      } else {
+        console.warn(`[TopGG Webhook] Could not fetch Discord user ${user} to send DM`);
       }
     } catch (err) {
       console.error('[TopGG Webhook] Error recording vote:', err);
