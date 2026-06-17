@@ -4,25 +4,23 @@ import { EmbedBuilder } from 'discord.js';
 
 const premiumCache = new Map();
 const featureFlagCache = new Map();
+const trialCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
+
+export const TOPGG_VOTE_URL = `https://top.gg/bot/${process.env.TOPGG_BOT_ID || '0'}/vote`;
+const TRIAL_DAYS = 3;
+const VOTE_CREDIT_DAYS = 7;
 
 export async function isPremiumGuild(guildId) {
   const cached = premiumCache.get(guildId);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
   const key = await PremiumKey.findOne({ guildId });
-  // Lifetime keys are always valid.
-  // Monthly keys must have an active/trialing/past_due subscription status.
-  // 'cancelled' means the subscription was terminated - access should be revoked.
   let result = false;
   if (key) {
     if (key.plan === 'lifetime' || key.plan === 'manual') {
       result = true;
     } else {
-      // Subscription (monthly/quarterly) - check it is still active.
-      // 'cancelling' = cancel_at_period_end true, still paid until period ends.
-      // 'past_due'   = payment failed, Stripe is retrying - keep access during retry window.
-      // 'cancelled'/'canceled'/'unpaid' = fully terminated - revoke access.
       const activeStatuses = ['active', 'trialing', 'past_due', 'cancelling'];
       result = activeStatuses.includes(key.subscriptionStatus);
     }
@@ -31,9 +29,24 @@ export async function isPremiumGuild(guildId) {
   return result;
 }
 
+export async function isGuildOnTrial(guildId) {
+  const cached = trialCache.get(guildId);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
+
+  try {
+    const { default: GuildTrial } = await import('../models/GuildTrial.js');
+    const trial = await GuildTrial.findOne({ guildId, active: true });
+    const result = trial ? trial.expiresAt > new Date() : false;
+    trialCache.set(guildId, { value: result, ts: Date.now() });
+    return result;
+  } catch {
+    return false;
+  }
+}
+
 export function clearPremiumCache(guildId) {
-  if (guildId) premiumCache.delete(guildId);
-  else premiumCache.clear();
+  if (guildId) { premiumCache.delete(guildId); trialCache.delete(guildId); }
+  else { premiumCache.clear(); trialCache.clear(); }
 }
 
 export async function isFeaturePremiumGated(featureKey) {
@@ -55,7 +68,10 @@ export async function checkFeatureAccess(guildId, featureKey) {
   const premiumGated = await isFeaturePremiumGated(featureKey);
   if (!premiumGated) return { allowed: true };
   const hasPremium = await isPremiumGuild(guildId);
-  return { allowed: hasPremium, premiumRequired: true };
+  if (hasPremium) return { allowed: true };
+  const onTrial = await isGuildOnTrial(guildId);
+  if (onTrial) return { allowed: true, viaTrial: true };
+  return { allowed: false, premiumRequired: true };
 }
 
 export const LIMITS = {
@@ -83,37 +99,59 @@ export const LIMITS = {
 
 export async function getGuildLimits(guildId) {
   const premium = await isPremiumGuild(guildId);
-  return premium ? LIMITS.premium : LIMITS.free;
+  if (premium) return LIMITS.premium;
+  const trial = await isGuildOnTrial(guildId);
+  return trial ? LIMITS.premium : LIMITS.free;
 }
 
 export function buildPremiumEmbed(featureName) {
   return new EmbedBuilder()
-    .setColor(0x5865f2)
+    .setColor(0x2d2d2d)
     .setTitle('Premium Required')
     .setDescription(
       `**${featureName}** requires an active Premium subscription on this server.\n\n` +
-      `[**Get Premium →**](https://roleplaymanager.xyz/pricing)\n` +
-      `-# Already have a key? Use \`/activatepremium\` in this server to activate it.`
+      `### Purchase Premium\n` +
+      `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n` +
+      `-# Already have a key? Use \`/activatepremium\` to activate it.\n\n` +
+      `### Free 3-Day Trial\n` +
+      `Vote for us on Top.gg to unlock a free 3-day trial for your server.\n` +
+      `[Vote on Top.gg](${TOPGG_VOTE_URL}) then use \`/activatetrial\` here.\n` +
+      `-# One trial per server, ever. Voting takes 10 seconds.`
     )
     .setFooter({ text: 'RPM' });
 }
 
-export async function getPremiumUpsellEmbed(featureName) {
-  const { EmbedBuilder } = await import('discord.js');
-  return new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle('Premium Required')
-    .setDescription(
-      `**${featureName}** is a Premium feature.\n\n` +
-      `Upgrade your server to unlock:\n` +
-      `> AI Voice Dispatch\n` +
-      `> Advanced gambling (Blackjack & Roulette)\n` +
-      `> Unlimited CAD characters, vehicles, firearms & BOLOs\n` +
-      `> Unlimited sticky messages & ticket types\n` +
-      `> Unlimited role income entries\n` +
-      `> Extended leaderboard (top 25)\n\n` +
-      `To get Premium, join our support server and use \`/activatepremium\` once you have a key.`
-    )
-    .addFields({ name: 'Get Premium', value: '[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)', inline: true })
-    .setFooter({ text: 'RPM' });
+export async function recordVote(userId) {
+  const { default: VoteTrial } = await import('../models/VoteTrial.js');
+  const creditExpiresAt = new Date(Date.now() + VOTE_CREDIT_DAYS * 24 * 60 * 60 * 1000);
+  await VoteTrial.findOneAndUpdate(
+    { userId },
+    { votedAt: new Date(), creditExpiresAt, used: false, usedForGuildId: null, usedAt: null },
+    { upsert: true, new: true }
+  );
+}
+
+export async function activateTrialForGuild(guildId, activatedByUserId) {
+  const { default: VoteTrial } = await import('../models/VoteTrial.js');
+  const { default: GuildTrial } = await import('../models/GuildTrial.js');
+
+  const existingTrial = await GuildTrial.findOne({ guildId });
+  if (existingTrial) {
+    return { success: false, reason: 'used' };
+  }
+
+  const voteCredit = await VoteTrial.findOne({
+    userId: activatedByUserId,
+    used: false,
+    creditExpiresAt: { $gt: new Date() },
+  });
+  if (!voteCredit) {
+    return { success: false, reason: 'no_vote' };
+  }
+
+  const expiresAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  await GuildTrial.create({ guildId, activatedAt: new Date(), expiresAt, activatedBy: activatedByUserId, active: true });
+  await VoteTrial.updateOne({ userId: activatedByUserId }, { used: true, usedForGuildId: guildId, usedAt: new Date() });
+  trialCache.delete(guildId);
+  return { success: true, expiresAt };
 }

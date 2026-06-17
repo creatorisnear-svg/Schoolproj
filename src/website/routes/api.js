@@ -125,10 +125,13 @@ export function createApiRouter(client) {
       const flags = await FeatureFlag.find();
       const flagMap = {};
       flags.forEach(f => { flagMap[f.feature] = f.premium; });
+      const botId = process.env.TOPGG_BOT_ID || '';
+      flagMap._topggVoteUrl = botId ? `https://top.gg/bot/${botId}/vote` : '';
       res.json(flagMap);
     } catch {
       const fallback = {};
       DEFAULT_PREMIUM_FEATURES.forEach(f => { fallback[f] = true; });
+      fallback._topggVoteUrl = '';
       res.json(fallback);
     }
   });
@@ -386,7 +389,7 @@ export function createApiRouter(client) {
     if (enabled) {
       const access = await checkFeatureAccess(guildId, feature);
       if (!access.allowed) {
-        return res.status(403).json({ error: 'premium_required', message: 'This feature requires a premium key. Use `/activatepremium` in Discord or enter your key in the Premium section of the dashboard.' });
+        return res.status(403).json({ error: 'premium_required' });
       }
     }
 

@@ -48,6 +48,8 @@ PORTAL_GUILD_ID        — Discord server ID for the portal
 PORTAL_DOMAIN          — Portal domain for cookies
 BOT_INTERNAL_URL       — Optional: direct bot trigger URL for portal panic
 DEV_PASSWORD           — Password for /dev admin panel
+TOPGG_BOT_ID           — Bot's Discord user ID (public, for top.gg vote URL)
+TOPGG_WEBHOOK_SECRET   — Secret set in top.gg dashboard to verify incoming vote webhooks
 ```
 
 ---

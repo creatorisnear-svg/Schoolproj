@@ -11,6 +11,7 @@ var guilds = [];
 var pendingChanges = {};
 var sidebarOpen = false;
 var featureFlags = { dispatch: true };
+var TOPGG_VOTE_URL = '';
 
 function getToken() { return localStorage.getItem('dash_token'); }
 function setToken(t) { localStorage.setItem('dash_token', t); }
@@ -84,6 +85,7 @@ function showLogin() {
 function loadFeatureFlags(callback) {
   fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
     featureFlags = flags || { dispatch: true };
+    if (flags && flags._topggVoteUrl) TOPGG_VOTE_URL = flags._topggVoteUrl;
     callback();
   }).catch(function() {
     callback();
@@ -710,6 +712,7 @@ function toggleFeature(el) {
   if (el.classList.contains('loading')) return;
   var feature = el.getAttribute('data-feature');
   var key = el.getAttribute('data-key');
+  var featureName = el.closest('.feature-item') ? (el.closest('.feature-item').querySelector('.feature-name') || {}).textContent : feature;
   var newVal = !el.classList.contains('active');
   el.classList.add('loading');
   el.classList.toggle('active');
@@ -724,8 +727,38 @@ function toggleFeature(el) {
       toast(newVal ? 'Module enabled' : 'Module disabled');
     } else {
       el.classList.toggle('active');
+      if (result && result.error === 'premium_required') {
+        showPremiumModal(featureName);
+      }
     }
   });
+}
+
+function showPremiumModal(featureName) {
+  var existing = document.getElementById('premium-modal-overlay');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'premium-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML =
+    '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);max-width:440px;width:100%;padding:28px 28px 24px;">' +
+      '<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:16px;">Premium Required</div>' +
+      '<p style="font-size:14px;color:var(--text);margin:0 0 20px;line-height:1.6;">' +
+        (featureName ? '<strong>' + esc(String(featureName)) + '</strong> requires Premium on this server.' : 'This feature requires Premium on this server.') +
+      '</p>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;">' +
+        '<a href="https://roleplaymanager.xyz/pricing" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
+        '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
+          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or get a free 3-day trial</div>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then use <code>/activatetrial</code> in Discord to unlock all premium features for 3 days.</p>' +
+          '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary" style="text-align:center;text-decoration:none;display:block;">Vote on Top.gg</a>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">One trial per server, ever. Voting takes about 10 seconds.</div>' +
+        '</div>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'premium-modal-overlay\').remove()" style="margin-top:18px;background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:0;">Dismiss</button>' +
+    '</div>';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 /* ── Settings Page ── */
@@ -745,10 +778,20 @@ function renderSettings(mod) {
       '<div class="dash-header"><h1>' + esc(data.name) + '</h1><p>' + esc(data.description) + '</p></div>';
 
     if (data.premium) {
-      html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px;">' +
+      html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-        'Premium feature - requires an active premium key on this server.' +
-        (!currentGuild.premium ? ' <a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;margin-left:4px;">Activate Premium</a>' : '') +
+        'Premium feature — this server needs an active premium subscription.' +
+        '</div>' +
+        (!currentGuild.premium
+          ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+            '<a href="https://roleplaymanager.xyz/pricing" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
+            '<span style="color:var(--amber-dim);">·</span>' +
+            '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Vote on Top.gg for a free 3-day trial</a>' +
+            '<span style="color:var(--amber-dim);">·</span>' +
+            '<a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Activate Key</a>' +
+            '</div>'
+          : '') +
         '</div>';
     }
 

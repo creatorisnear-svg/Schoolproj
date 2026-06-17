@@ -16,6 +16,7 @@ import { createDevRouter } from './website/routes/dev.js';
 import { createPortalRouter } from './website/routes/portal.js';
 import { createPortalApiRouter } from './website/routes/portalApi.js';
 import { createCheckoutRouter } from './website/routes/checkout.js';
+import { createWebhooksRouter } from './website/routes/webhooks.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -220,6 +221,7 @@ app.get('/auth/site/callback', async (req, res) => {
 
 app.use('/api', createApiRouter(client));
 app.use('/checkout', createCheckoutRouter());
+app.use('/webhooks', createWebhooksRouter(client));
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', createPortalApiRouter(client));
 
@@ -941,4 +943,43 @@ connectDatabase().then(() => {
       console.error('[CivilianJobs] Expiry check error:', err.message);
     }
   }, 5 * 60 * 1000);
+
+  // Send expiry DMs for ended vote trials (every 30 minutes)
+  setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
+    try {
+      const { default: GuildTrial } = await import('./models/GuildTrial.js');
+      const { EmbedBuilder } = await import('discord.js');
+      const expired = await GuildTrial.find({
+        active: true,
+        expiresAt: { $lt: new Date() },
+        expiredMessageSent: false,
+      });
+      for (const trial of expired) {
+        trial.active = false;
+        trial.expiredMessageSent = true;
+        await trial.save();
+
+        const { clearPremiumCache } = await import('./utils/premiumCheck.js');
+        clearPremiumCache(trial.guildId);
+
+        const user = await client.users.fetch(trial.activatedBy).catch(() => null);
+        if (user) {
+          const embed = new EmbedBuilder()
+            .setColor(0x2d2d2d)
+            .setTitle('Your Free Trial Has Ended')
+            .setDescription(
+              `The 3-day free trial for your server has expired.\n\n` +
+              `Enjoyed the premium features? Consider purchasing a subscription to keep them:\n` +
+              `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n\n` +
+              `-# Thank you for voting and trying out RPM Premium.`
+            )
+            .setFooter({ text: 'RPM' });
+          user.send({ embeds: [embed] }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('[TrialExpiry] Check error:', err.message);
+    }
+  }, 30 * 60 * 1000);
 }).catch(() => {});
