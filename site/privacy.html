@@ -27,6 +27,12 @@
     .intent-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px; border-bottom: 1px solid var(--border); }
     .intent-table td { font-size: 13px; color: #b0b7c3; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; line-height: 1.6; }
     .intent-table td:first-child { font-weight: 600; color: var(--text); white-space: nowrap; width: 200px; }
+    .intent-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 16px 0 24px; }
+    .intent-table-wrap .intent-table { margin: 0; }
+    @media (max-width: 600px) {
+      .intent-table td:first-child { white-space: normal; width: auto; min-width: 110px; }
+      .legal-header h1 { font-size: 24px; }
+    }
   </style>
 </head>
 <body>
@@ -41,8 +47,35 @@
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
       </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="/#features" onclick="closeMobileNav()">Features</a>
+    <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+  </div>
+
+  <script>
+    function toggleMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var isOpen = overlay.classList.contains('open');
+      overlay.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      document.body.style.overflow = isOpen ? '' : 'hidden';
+    }
+    function closeMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      overlay.classList.remove('open');
+      btn.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  </script>
 
   <div class="legal-page">
     <div class="container" style="max-width:780px;">
@@ -92,6 +125,7 @@
         <h2>2. Discord Privileged Gateway Intents</h2>
         <p>Discord requires bots that use certain data to declare "Privileged Gateway Intents." RolePlayManager uses three privileged intents. The table below explains exactly what each intent accesses and why it is required.</p>
 
+        <div class="intent-table-wrap">
         <table class="intent-table">
           <thead>
             <tr>
@@ -118,6 +152,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
 
         <h2>3. How We Use Your Data</h2>
         <ul>

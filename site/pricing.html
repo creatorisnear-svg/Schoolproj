@@ -200,8 +200,36 @@
         <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
         <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
       </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="/#features" onclick="closeMobileNav()">Features</a>
+    <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+    <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
+  </div>
+
+  <script>
+    function toggleMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var isOpen = overlay.classList.contains('open');
+      overlay.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      document.body.style.overflow = isOpen ? '' : 'hidden';
+    }
+    function closeMobileNav() {
+      var btn = document.getElementById('nav-hamburger');
+      var overlay = document.getElementById('mobile-nav-overlay');
+      overlay.classList.remove('open');
+      btn.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  </script>
 
   <div class="pricing-page">
     <div class="container">

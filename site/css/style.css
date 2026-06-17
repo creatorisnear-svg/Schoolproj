@@ -608,6 +608,7 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
 
   /* Footer */
   footer .container { flex-direction: column; gap: 10px; text-align: center; }
+  footer .footer-links { flex-wrap: wrap; justify-content: center; gap: 12px; }
 
   /* Dashboard */
   .sidebar {
@@ -648,6 +649,14 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
 
   /* Premium 2-col grid → single col */
   .prem-grid { grid-template-columns: 1fr !important; }
+
+  /* Announcement bar */
+  .announcement-bar-item { padding: 12px 16px !important; font-size: 13px !important; }
+
+  /* Index page inline grids */
+  .index-premium-grid { grid-template-columns: 1fr !important; }
+  .index-commands-grid { grid-template-columns: 1fr !important; }
+  .index-changelog-header { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
 }
 
 /* ── Overview Sections (Dashboard revamp) ── */
@@ -698,4 +707,13 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   .dash-grid { grid-template-columns: 1fr; }
   .config-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .server-list { grid-template-columns: 1fr; }
+  /* Long monospace command names in commands section */
+  .index-commands-grid span[style*="monospace"] {
+    word-break: break-all;
+    overflow-wrap: break-word;
+    white-space: normal !important;
+  }
+  /* Legal pages */
+  .legal-page { padding: 80px 0 60px; }
+  .legal-header h1 { font-size: 24px; }
 }
