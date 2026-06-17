@@ -1,46 +1,63 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { isPremiumGuild } from '../utils/premiumCheck.js';
+import { isPremiumGuild, isGuildOnTrial, TOPGG_VOTE_URL } from '../utils/premiumCheck.js';
+import GuildTrial from '../models/GuildTrial.js';
 
 export const data = new SlashCommandBuilder()
   .setName('premium')
-  .setDescription('View premium features and how to activate premium for this server');
+  .setDescription('View premium status, features, and how to upgrade this server');
 
 export async function execute(interaction) {
-  await interaction.deferReply({ flags: 64 });
+  try { await interaction.deferReply({ flags: 64 }); } catch { return; }
 
   const guildId = interaction.guildId;
-  const hasPremium = await isPremiumGuild(guildId);
+  const [hasPremium, onTrial] = await Promise.all([
+    isPremiumGuild(guildId),
+    isGuildOnTrial(guildId),
+  ]);
 
-  const statusLine = hasPremium
-    ? '**Status:** Premium is **active** on this server.'
-    : '**Status:** This server is on the **free plan**.';
+  let trialExpiry = null;
+  if (onTrial) {
+    const trial = await GuildTrial.findOne({ guildId, active: true });
+    if (trial) trialExpiry = trial.expiresAt;
+  }
+
+  let statusLine;
+  if (hasPremium) {
+    statusLine = '> **Active** — this server has a Premium subscription.';
+  } else if (onTrial && trialExpiry) {
+    statusLine = `> **Free Trial** — expires <t:${Math.floor(trialExpiry.getTime() / 1000)}:R>.`;
+  } else {
+    statusLine = '> **Free Plan** — upgrade to unlock all premium features.';
+  }
+
+  let howTo;
+  if (hasPremium) {
+    howTo =
+      'This server already has Premium active. Use `/activatepremium` if you need to apply a new key.\n\n' +
+      '[Manage Subscription](https://roleplaymanager.xyz/pricing)';
+  } else {
+    howTo =
+      '### Purchase Premium\n' +
+      '[**roleplaymanager.xyz/pricing**](https://roleplaymanager.xyz/pricing)\n' +
+      '-# Once you have a key, run `/activatepremium` in this server to activate it.\n\n' +
+      '### Free 3-Day Trial\n' +
+      `[Vote for us on Top.gg](${TOPGG_VOTE_URL || 'https://top.gg'}) — takes 10 seconds. ` +
+      'After voting, run `/activatetrial` in this server to unlock all premium features for 3 days.\n' +
+      '-# One trial per server, ever.';
+  }
 
   const embed = new EmbedBuilder()
-    .setColor(hasPremium ? 0x43b581 : 0x5865f2)
+    .setColor(hasPremium ? 0x43b581 : onTrial ? 0x5865f2 : 0x2d2d2d)
     .setTitle('RolePlayManager Premium')
     .setDescription(
       statusLine + '\n\n' +
-      '### What Premium unlocks\n' +
-      '**AI Voice Dispatch**\n' +
-      '-# The bot joins your patrol voice channels, transcribes officer speech, generates a realistic AI dispatcher response, runs plate and name checks by voice, and auto-moves officers to traffic stop channels on 10-11.\n\n' +
-      '**Advanced Gambling**\n' +
-      '-# Blackjack and Roulette are premium-only. Free servers have access to Slots, Dice, Cockfight, and Russian Roulette.\n\n' +
-      '**Unlimited Limits**\n' +
-      '-# Free: 100 characters · 200 vehicles · 100 firearms · 20 BOLOs · 5 stickies · 5 ticket types · 2 role income entries · top-10 leaderboard\n' +
-      '-# Premium: all of the above are **unlimited** + top-25 leaderboard\n\n' +
-      '### How to activate\n' +
-      'Get a premium key from our support server, then run `/activatepremium` with your key.\n\n' +
-      '**[Get Premium → discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)**'
+      '### What Premium Unlocks\n' +
+      '`AI Voice Dispatch` — bot joins patrol voice channels, transcribes speech, generates AI dispatcher responses, runs plate/name checks by voice, auto-moves officers on 10-11\n\n' +
+      '`Advanced Gambling` — Blackjack and Roulette *(free servers keep Slots, Dice, Cockfight, Russian Roulette)*\n\n' +
+      '`Unlimited Everything` — characters, vehicles, firearms, BOLOs, stickies, ticket types, role income entries, top-25 leaderboard *(free: capped at lower limits)*\n\n' +
+      howTo
     )
-    .setFooter({ text: 'RPM' })
-    .setTimestamp();
-
-  if (!hasPremium) {
-    embed.addFields({
-      name: 'Already have a key?',
-      value: 'Use `/activatepremium key:<your-key>` to activate it on this server.',
-    });
-  }
+    .setFooter({ text: 'RPM' });
 
   return interaction.editReply({ embeds: [embed] });
 }
