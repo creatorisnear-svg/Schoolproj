@@ -52,27 +52,27 @@ async function getStripeClient() {
 }
 
 // Auto-create Stripe products & prices on first use.
-// Uses v2 field names in MongoDB so old cached price IDs are never reused
-// when amounts change. Prices: $6/mo, $15/3mo, $49.99 lifetime.
+// Uses v3 field names in MongoDB so old cached price IDs are never reused
+// when amounts change. Prices: $5/mo, $14/3mo, $48.99 lifetime.
 async function getOrCreatePrices(stripe) {
   let monthlyPriceId = null;
   let quarterlyPriceId = null;
   let lifetimePriceId = null;
 
-  // Try to load v2 cached price IDs from DB first
+  // Try to load v3 cached price IDs from DB first
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
-    if (cfg?.monthlyPriceIdV2 && cfg?.quarterlyPriceIdV2 && cfg?.lifetimePriceIdV2) {
+    if (cfg?.monthlyPriceIdV3 && cfg?.quarterlyPriceIdV3 && cfg?.lifetimePriceIdV3) {
       return {
-        monthlyPriceId: cfg.monthlyPriceIdV2,
-        quarterlyPriceId: cfg.quarterlyPriceIdV2,
-        lifetimePriceId: cfg.lifetimePriceIdV2,
+        monthlyPriceId: cfg.monthlyPriceIdV3,
+        quarterlyPriceId: cfg.quarterlyPriceIdV3,
+        lifetimePriceId: cfg.lifetimePriceIdV3,
       };
     }
-    monthlyPriceId = cfg?.monthlyPriceIdV2 || null;
-    quarterlyPriceId = cfg?.quarterlyPriceIdV2 || null;
-    lifetimePriceId = cfg?.lifetimePriceIdV2 || null;
+    monthlyPriceId = cfg?.monthlyPriceIdV3 || null;
+    quarterlyPriceId = cfg?.quarterlyPriceIdV3 || null;
+    lifetimePriceId = cfg?.lifetimePriceIdV3 || null;
   } catch (dbErr) {
     console.warn('[Stripe] DB lookup failed, proceeding without cache:', dbErr.message);
   }
@@ -81,56 +81,56 @@ async function getOrCreatePrices(stripe) {
   if (!monthlyPriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium - Monthly',
-      description: 'Monthly premium subscription. $6/month. Includes AI Voice Dispatch and all premium features. All sales final.',
+      description: 'Monthly premium subscription. $5/month. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 600,
+      unit_amount: 500,
       currency: 'usd',
       recurring: { interval: 'month' },
-      nickname: 'RPM Premium Monthly v2',
+      nickname: 'RPM Premium Monthly v3',
     });
     monthlyPriceId = price.id;
-    console.log(`[Stripe] Auto-created monthly price v2: ${monthlyPriceId}`);
+    console.log(`[Stripe] Auto-created monthly price v3: ${monthlyPriceId}`);
   }
 
   if (!quarterlyPriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium - 3 Month',
-      description: '3-month premium subscription billed every 3 months. $15 per period. Includes AI Voice Dispatch and all premium features. All sales final.',
+      description: '3-month premium subscription billed every 3 months. $14 per period. Includes AI Voice Dispatch and all premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 1500,
+      unit_amount: 1400,
       currency: 'usd',
       recurring: { interval: 'month', interval_count: 3 },
-      nickname: 'RPM Premium 3-Month v2',
+      nickname: 'RPM Premium 3-Month v3',
     });
     quarterlyPriceId = price.id;
-    console.log(`[Stripe] Auto-created quarterly price v2: ${quarterlyPriceId}`);
+    console.log(`[Stripe] Auto-created quarterly price v3: ${quarterlyPriceId}`);
   }
 
   if (!lifetimePriceId) {
     const product = await stripe.products.create({
       name: 'RolePlayManager Premium - Lifetime',
-      description: 'One-time lifetime premium purchase. $49.99. Includes AI Voice Dispatch and all current premium features. All sales final.',
+      description: 'One-time lifetime premium purchase. $48.99. Includes AI Voice Dispatch and all current premium features. All sales final.',
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: 4999,
+      unit_amount: 4899,
       currency: 'usd',
-      nickname: 'RPM Premium Lifetime v2',
+      nickname: 'RPM Premium Lifetime v3',
     });
     lifetimePriceId = price.id;
-    console.log(`[Stripe] Auto-created lifetime price v2: ${lifetimePriceId}`);
+    console.log(`[Stripe] Auto-created lifetime price v3: ${lifetimePriceId}`);
   }
 
-  // Cache the v2 IDs for future calls - non-fatal if this fails
+  // Cache the v3 IDs for future calls - non-fatal if this fails
   try {
     const { default: StripeConfig } = await import('../../models/StripeConfig.js');
     await StripeConfig.findOneAndUpdate(
       { key: 'global' },
-      { monthlyPriceIdV2: monthlyPriceId, quarterlyPriceIdV2: quarterlyPriceId, lifetimePriceIdV2: lifetimePriceId },
+      { monthlyPriceIdV3: monthlyPriceId, quarterlyPriceIdV3: quarterlyPriceId, lifetimePriceIdV3: lifetimePriceId },
       { upsert: true, new: true }
     );
   } catch (dbErr) {

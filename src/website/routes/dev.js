@@ -324,13 +324,29 @@ export function createDevRouter(client) {
     }
   });
 
+  router.get('/guilds', devAuth, (req, res) => {
+    if (!client || !client.isReady()) return res.status(503).json({ error: 'Bot is not connected to Discord' });
+    const guilds = [...client.guilds.cache.values()].map(g => ({
+      id: g.id,
+      name: g.name,
+      memberCount: g.memberCount,
+      icon: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=32` : null,
+    })).sort((a, b) => b.memberCount - a.memberCount);
+    res.json(guilds);
+  });
+
   router.post('/broadcast', devAuth, async (req, res) => {
-    const { message } = req.body;
+    const { message, guildIds } = req.body;
     if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
     if (message.trim().length > 1500) return res.status(400).json({ error: 'Message too long (max 1500 chars)' });
     if (!client || !client.isReady()) return res.status(503).json({ error: 'Bot is not connected to Discord' });
 
-    const guilds = [...client.guilds.cache.values()];
+    let guilds = [...client.guilds.cache.values()];
+    if (Array.isArray(guildIds) && guildIds.length > 0) {
+      const idSet = new Set(guildIds);
+      guilds = guilds.filter(g => idSet.has(g.id));
+    }
+
     let sent = 0, failed = 0;
     const errors = [];
 

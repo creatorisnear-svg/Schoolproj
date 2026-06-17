@@ -467,8 +467,8 @@
         <div class="form-group">
           <label>Plan</label>
           <select id="testcheckout-plan">
-            <option value="monthly">Monthly ($9.99/mo)</option>
-            <option value="lifetime">Lifetime ($49.99)</option>
+            <option value="monthly">Monthly ($5.00/mo)</option>
+            <option value="lifetime">Lifetime ($48.99)</option>
           </select>
         </div>
         <div class="form-group" style="display:flex;align-items:flex-end;">
@@ -508,13 +508,24 @@
   <div id="panel-broadcast" class="panel">
     <div class="add-form">
       <h3>Broadcast to Server Owners</h3>
-      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to every server owner the bot is currently in. Write it like a normal message - not a bot response.</p>
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to selected server owners. One message per second to avoid Discord rate limits.</p>
+
+      <div class="section-label" style="margin-bottom:10px;">Select Servers</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="bcSelectAll(true)">Select All</button>
+        <button class="btn btn-ghost btn-sm" onclick="bcSelectAll(false)">Deselect All</button>
+        <span id="bc-selected-count" style="font-size:12px;color:#666;align-self:center;"></span>
+      </div>
+      <div id="bc-server-list" style="max-height:260px;overflow-y:auto;border:1px solid #1e1e1e;border-radius:8px;margin-bottom:16px;background:#0d0d0d;">
+        <div style="padding:16px;font-size:13px;color:#555;">Loading servers...</div>
+      </div>
+
       <div class="form-group">
         <label>Message</label>
-        <textarea id="bc-message" rows="6" placeholder="Hey, just wanted to give you a heads up..."></textarea>
+        <textarea id="bc-message" rows="5" placeholder="Hey, just wanted to give you a heads up..."></textarea>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="sendBroadcast()" id="bc-btn">Send to All Owners</button>
+        <button class="btn btn-primary" onclick="sendBroadcast()" id="bc-btn">Send to Selected</button>
         <span id="bc-status" style="font-size:13px;color:#888;"></span>
       </div>
     </div>
@@ -532,6 +543,7 @@
     });
     document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'broadcast' && !_bcGuilds.length) loadBcGuilds();
   }
 
   function showAlert(msg, type) {
@@ -775,20 +787,68 @@
     }
   }
 
+  var _bcGuilds = [];
+
+  async function loadBcGuilds() {
+    var listEl = document.getElementById('bc-server-list');
+    listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#555;">Loading servers...</div>';
+    try {
+      var guilds = await api('GET', '/guilds');
+      _bcGuilds = guilds;
+      renderBcGuilds();
+    } catch (e) {
+      listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#f04747;">Failed to load servers.</div>';
+    }
+  }
+
+  function renderBcGuilds() {
+    var listEl = document.getElementById('bc-server-list');
+    if (!_bcGuilds.length) {
+      listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#555;">No servers found.</div>';
+      updateBcCount();
+      return;
+    }
+    listEl.innerHTML = _bcGuilds.map(function(g) {
+      var iconHtml = g.icon
+        ? '<img src="' + esc(g.icon) + '" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+        : '<div style="width:24px;height:24px;border-radius:50%;background:#1e1e1e;flex-shrink:0;"></div>';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;transition:background .1s;" onmouseover="this.style.background=\'#111\'" onmouseout="this.style.background=\'\'">' +
+        '<input type="checkbox" data-guild-id="' + esc(g.id) + '" checked onchange="updateBcCount()" style="width:15px;height:15px;accent-color:#5865f2;flex-shrink:0;">' +
+        iconHtml +
+        '<span style="flex:1;min-width:0;font-size:13px;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(g.name) + '</span>' +
+        '<span style="font-size:11px;color:#555;flex-shrink:0;">' + g.memberCount.toLocaleString() + ' members</span>' +
+        '</label>';
+    }).join('');
+    updateBcCount();
+  }
+
+  function updateBcCount() {
+    var checked = document.querySelectorAll('#bc-server-list input[type=checkbox]:checked').length;
+    var total = _bcGuilds.length;
+    document.getElementById('bc-selected-count').textContent = checked + ' of ' + total + ' selected';
+  }
+
+  function bcSelectAll(val) {
+    document.querySelectorAll('#bc-server-list input[type=checkbox]').forEach(function(cb) { cb.checked = val; });
+    updateBcCount();
+  }
+
   async function sendBroadcast() {
     var msg = document.getElementById('bc-message').value.trim();
     if (!msg) { showAlert('Write a message first.', 'error'); return; }
+    var selectedIds = Array.from(document.querySelectorAll('#bc-server-list input[type=checkbox]:checked')).map(function(cb) { return cb.dataset.guildId; });
+    if (!selectedIds.length) { showAlert('Select at least one server.', 'error'); return; }
     var btn = document.getElementById('bc-btn');
     var status = document.getElementById('bc-status');
     var resultBox = document.getElementById('bc-result');
     btn.disabled = true;
     btn.textContent = 'Sending...';
-    status.textContent = 'This may take a moment...';
+    status.textContent = 'This may take ~' + selectedIds.length + 's...';
     resultBox.style.display = 'none';
     try {
-      var res = await api('POST', '/broadcast', { message: msg });
+      var res = await api('POST', '/broadcast', { message: msg, guildIds: selectedIds });
       btn.disabled = false;
-      btn.textContent = 'Send to All Owners';
+      btn.textContent = 'Send to Selected';
       if (res && res.total !== undefined) {
         status.textContent = '';
         var failHtml = '';
@@ -813,7 +873,7 @@
       }
     } catch (e) {
       btn.disabled = false;
-      btn.textContent = 'Send to All Owners';
+      btn.textContent = 'Send to Selected';
       status.textContent = '';
       showAlert('Request failed: ' + e.message, 'error');
     }

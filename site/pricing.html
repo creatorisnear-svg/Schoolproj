@@ -239,7 +239,7 @@
           <div class="plan-badge">Most Popular</div>
           <div class="plan-name">Premium Monthly</div>
           <div class="plan-price">
-            <span class="plan-price-amount">$6</span>
+            <span class="plan-price-amount">$5</span>
             <span class="plan-price-period">/ month</span>
           </div>
           <div class="plan-desc">Billed monthly. Cancel any time. No refunds on partial months.</div>
@@ -256,7 +256,7 @@
         <div class="plan-card">
           <div class="plan-name">Premium 3-Month</div>
           <div class="plan-price">
-            <span class="plan-price-amount">$15</span>
+            <span class="plan-price-amount">$14</span>
             <span class="plan-price-period">/ 3 mo</span>
           </div>
           <div class="plan-desc">Billed every 3 months. Cancel any time. No refunds on partial periods.</div>
@@ -265,7 +265,7 @@
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Save $3 vs monthly</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Save $1 vs monthly</li>
           </ul>
           <button class="plan-cta primary" onclick="openCheckout('quarterly')">Get 3-Month</button>
         </div>
@@ -274,7 +274,7 @@
         <div class="plan-card">
           <div class="plan-name">Lifetime</div>
           <div class="plan-price">
-            <span class="plan-price-amount">$49.99</span>
+            <span class="plan-price-amount">$48.99</span>
             <span class="plan-price-period">one-time</span>
           </div>
           <div class="plan-desc">Pay once, never again. All sales final. No refunds.</div>
@@ -301,7 +301,7 @@
 
         <div class="faq-item">
           <div class="faq-q">What is the difference between the plans?</div>
-          <div class="faq-a">All paid plans include the same premium features. Monthly is $6/month on a recurring charge. 3-Month is $15 every 3 months — saves $3 vs monthly. Lifetime is a one-time $49.99 payment with no recurring charges ever. Monthly and 3-Month can be cancelled at any time from your dashboard.</div>
+          <div class="faq-a">All paid plans include the same premium features. Monthly is $5/month on a recurring charge. 3-Month is $14 every 3 months — saves $1 vs monthly. Lifetime is a one-time $48.99 payment with no recurring charges ever. Monthly and 3-Month can be cancelled at any time from your dashboard.</div>
         </div>
 
         <div class="faq-item">
@@ -341,7 +341,7 @@
   <div class="modal-overlay" id="checkout-modal">
     <div class="modal">
       <h2 id="modal-title">Get Premium</h2>
-      <p class="modal-sub" id="modal-sub">Monthly plan &mdash; $6.00/month. Cancel any time.</p>
+      <p class="modal-sub" id="modal-sub">Monthly plan &mdash; $5.00/month. Cancel any time.</p>
 
       <div class="modal-section">
         <label class="tos-accept">
@@ -370,13 +370,13 @@
       var sub = document.getElementById('modal-sub');
       if (plan === 'monthly') {
         title.textContent = 'Get Premium Monthly';
-        sub.textContent = 'Monthly plan \u2014 $6.00/month. Recurring charge. Cancel any time.';
+        sub.textContent = 'Monthly plan \u2014 $5.00/month. Recurring charge. Cancel any time.';
       } else if (plan === 'quarterly') {
         title.textContent = 'Get Premium 3-Month';
-        sub.textContent = '3-month plan \u2014 $15.00 every 3 months. Recurring charge. Cancel any time.';
+        sub.textContent = '3-month plan \u2014 $14.00 every 3 months. Recurring charge. Cancel any time.';
       } else {
         title.textContent = 'Get Lifetime Access';
-        sub.textContent = 'One-time payment \u2014 $49.99. No recurring charges. All sales final.';
+        sub.textContent = 'One-time payment \u2014 $48.99. No recurring charges. All sales final.';
       }
       document.getElementById('tos-checkbox').checked = false;
       document.getElementById('btn-pay').disabled = true;
