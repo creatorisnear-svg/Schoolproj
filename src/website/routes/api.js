@@ -376,6 +376,19 @@ export function createApiRouter(client) {
         console.error('[DASHBOARD] Premium check error:', err.message);
       }
 
+      let onTrial = false;
+      let trialExpiresAt = null;
+      if (!premium) {
+        try {
+          const { default: GuildTrial } = await import('../../models/GuildTrial.js');
+          const trial = await GuildTrial.findOne({ guildId: guild.id, active: true });
+          if (trial && trial.expiresAt > new Date()) {
+            onTrial = true;
+            trialExpiresAt = trial.expiresAt;
+          }
+        } catch {}
+      }
+
       res.json({
         id: guild.id,
         name: guild.name,
@@ -383,6 +396,8 @@ export function createApiRouter(client) {
         memberCount: guild.memberCount,
         premium,
         premiumDetails,
+        onTrial,
+        trialExpiresAt,
         config,
       });
     } catch (err) {
@@ -1931,6 +1946,67 @@ export function createApiRouter(client) {
     } catch (err) {
       console.error('[DASHBOARD] Premium activation error:', err.message);
       res.status(500).json({ error: 'Failed to activate premium key' });
+    }
+  });
+
+  /* ── Trial Activation ── */
+  router.post('/guild/:id/trial/activate', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const guildId = req.params.id;
+
+    let userId;
+    try {
+      const meCached = _meCache.get(token);
+      if (meCached && meCached.exp > Date.now()) {
+        userId = meCached.data.user.id;
+      } else {
+        const userRes = await axios.get('https://discord.com/api/users/@me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        userId = userRes.data.id;
+      }
+    } catch {
+      return res.status(401).json({ error: 'Could not verify your Discord identity' });
+    }
+
+    try {
+      const { isPremiumGuild, isGuildOnTrial, activateTrialForGuild } = await import('../../utils/premiumCheck.js');
+
+      const alreadyPremium = await isPremiumGuild(guildId);
+      if (alreadyPremium) {
+        return res.status(400).json({ error: 'This server already has an active Premium subscription.' });
+      }
+
+      const alreadyOnTrial = await isGuildOnTrial(guildId);
+      if (alreadyOnTrial) {
+        return res.status(400).json({ error: 'This server already has an active free trial running.' });
+      }
+
+      const result = await activateTrialForGuild(guildId, userId);
+
+      if (!result.success) {
+        if (result.reason === 'used') {
+          return res.status(400).json({ error: 'This server has already used its one-time free trial.' });
+        }
+        if (result.reason === 'no_vote') {
+          return res.status(400).json({ error: 'no_vote' });
+        }
+        return res.status(400).json({ error: 'Could not activate trial.' });
+      }
+
+      return res.json({ success: true, expiresAt: result.expiresAt });
+    } catch (err) {
+      console.error('[DASHBOARD] Trial activation error:', err.message);
+      return res.status(500).json({ error: 'Failed to activate trial' });
     }
   });
 

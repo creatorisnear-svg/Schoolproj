@@ -484,6 +484,25 @@ function activatePremium() {
   });
 }
 
+function redeemTrial(btn) {
+  if (!currentGuild) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Redeeming...'; }
+  api('/guild/' + currentGuild.id + '/trial/activate', { method: 'POST' }).then(function(result) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Redeem Trial'; }
+    if (result && result.success) {
+      var modal = document.getElementById('premium-modal-overlay');
+      if (modal) modal.remove();
+      currentGuild.onTrial = true;
+      currentGuild.trialExpiresAt = result.expiresAt;
+      toast('3-day trial activated! All premium features are now unlocked.');
+      renderDashboard();
+    } else if (result && result.error === 'no_vote') {
+      toast('No vote credit found. Vote on Top.gg first, then try again.', 'error');
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
 function cancelSubscription() {
   var plan = (currentGuild && currentGuild.premiumDetails && currentGuild.premiumDetails.plan) || 'monthly';
   var planLabel = plan === 'quarterly' ? '3-month' : 'monthly';
@@ -564,6 +583,21 @@ function renderPremiumSection(g) {
       '</div></div>';
   }
 
+  if (g.onTrial && !g.premium) {
+    var trialExpires = g.trialExpiresAt ? new Date(g.trialExpiresAt) : null;
+    var trialExpiresStr = trialExpires ? trialExpires.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'soon';
+    return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(251,191,36,0.3);">' +
+      '<div class="config-section-header" style="background:rgba(251,191,36,0.04);">' +
+      '<h3 style="color:#fbbf24;">Free Trial</h3>' +
+      '<span class="status-badge" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);"><span class="status-dot" style="background:#fbbf24;"></span>Active</span>' +
+      '</div>' +
+      '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
+      '<div><span class="config-label">3-day trial is active on this server.</span>' +
+      '<div class="config-sublabel">All premium features are unlocked until <strong>' + trialExpiresStr + '</strong>. Consider upgrading before it expires.</div></div>' +
+      '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">Upgrade to Premium</a>' +
+      '</div></div>';
+  }
+
   return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(88,101,242,0.4);">' +
     '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
     '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
@@ -584,7 +618,17 @@ function renderPremiumSection(g) {
     '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
     '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
     '<button id="activate-premium-btn" class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
-    '</div></div></div></div>';
+    '</div>' +
+    '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">' +
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 3-Day Trial</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then redeem your trial below — no Discord command needed.</p>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary btn-sm">Vote on Top.gg</a>' +
+    '<button class="btn btn-secondary btn-sm" onclick="redeemTrial(this)">Redeem Trial</button>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">One trial per server, ever. Vote credit valid for 7 days.</div>' +
+    '</div>' +
+    '</div></div></div>';
 }
 
 function premFeatureItem(text) {
@@ -753,9 +797,12 @@ function showPremiumModal(featureName) {
         '<a href="https://roleplaymanager.xyz/pricing" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
         '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
           '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or get a free 3-day trial</div>' +
-          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then use <code>/activatetrial</code> in Discord to unlock all premium features for 3 days.</p>' +
-          '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary" style="text-align:center;text-decoration:none;display:block;">Vote on Top.gg</a>' +
-          '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">One trial per server, ever. Voting takes about 10 seconds.</div>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg to earn a trial credit, then redeem it here — no Discord command needed.</p>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary" style="text-align:center;text-decoration:none;flex:1;">Vote on Top.gg</a>' +
+          '<button class="btn btn-secondary" style="flex:1;" onclick="redeemTrial(this)">Redeem Trial</button>' +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">One trial per server, ever. Vote credit valid for 7 days.</div>' +
         '</div>' +
       '</div>' +
       '<button onclick="document.getElementById(\'premium-modal-overlay\').remove()" style="margin-top:18px;background:none;border:none;color:var(--text-dim);font-size:12px;cursor:pointer;padding:0;">Dismiss</button>' +
@@ -787,10 +834,12 @@ function renderSettings(mod) {
         'Premium feature — this server needs an active premium subscription.' +
         '</div>' +
         (!currentGuild.premium
-          ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
             '<a href="https://roleplaymanager.xyz/pricing" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +
-            '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Vote on Top.gg for a free 3-day trial</a>' +
+            '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Vote on Top.gg</a>' +
+            '<span style="color:var(--amber-dim);">·</span>' +
+            '<a href="#" onclick="redeemTrial(this);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Redeem Trial</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +
             '<a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Activate Key</a>' +
             '</div>'
