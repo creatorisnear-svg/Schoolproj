@@ -1522,6 +1522,31 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  /* ── Guild Members List (for staff picker) ── */
+  router.get('/guild/:id/members', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    try {
+      const members = await guild.members.fetch({ limit: 1000 });
+      const list = members
+        .filter(m => !m.user.bot)
+        .map(m => ({
+          id: m.user.id,
+          username: m.user.username,
+          displayName: m.displayName || m.user.username,
+          avatar: m.user.displayAvatarURL({ size: 32, extension: 'webp' }),
+        }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      res.json({ members: list });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   /* ── Staff Management CRUD ── */
   router.post('/guild/:id/staff/add', async (req, res) => {
     const token = getToken(req);

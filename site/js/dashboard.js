@@ -294,6 +294,7 @@ var SIDEBAR_GROUPS = [
   ]},
   { title: 'Advanced', items: [
     { id: 'dispatch',    label: 'AI Voice Dispatch' },
+    { id: 'staff',       label: 'Staff Management' },
     { id: 'general',     label: 'General Settings' },
   ]},
 ];
@@ -405,6 +406,7 @@ function renderDashboard() {
     { id: 'sticky',        label: 'Sticky Messages',   desc: 'Auto-reposting pinned messages', featureKey: null },
     { id: 'reactionroles', label: 'Reaction Roles',    desc: 'React to get a role',            featureKey: null },
     { id: 'dispatch',      label: 'AI Voice Dispatch', desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
+    { id: 'staff',         label: 'Staff Management',  desc: 'Assign staff roles and users',   featureKey: null },
   ];
 
   html += '<div class="overview-section" style="margin-top:16px;">' +
@@ -762,6 +764,8 @@ function renderSettings(mod) {
       html += renderStickySettings(data);
     } else if (mod === 'reactionroles') {
       html += renderReactionRolesSettings(data);
+    } else if (mod === 'staff') {
+      html += renderStaffSettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -1843,6 +1847,176 @@ function deleteStoreItem(itemId) {
   _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/economy/store/' + itemId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Item removed'); renderSettings('economy'); }
+    else _pendingScrollRestore = null;
+  });
+}
+
+/* ── Staff Management Settings ── */
+var _staffState = { members: [], position: 'staff' };
+
+function renderStaffSettings(data) {
+  var staffRoles = data.staffRoles || [];
+  var staffUsers = data.staffUsers || [];
+  var roles = data.roles || [];
+
+  var html = '';
+
+  /* Staff Roles */
+  html += '<div class="config-section"><div class="config-section-header"><div><h3>Staff Roles</h3><p class="config-section-desc">Any member with one of these roles will have staff/manager access to the bot.</p></div></div>';
+  if (staffRoles.length === 0) {
+    html += '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No staff roles added yet.</span></div>';
+  } else {
+    staffRoles.forEach(function(r) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div>' +
+          '<span class="config-label">@' + esc(r.roleName) + '</span>' +
+          '<span style="margin-left:10px;font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">' + esc(r.position) + '</span>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(\'' + esc(r.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;margin-top:8px;">' +
+    '<div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">' +
+    '<select id="staff-role-select" class="config-select" style="flex:1;min-width:180px;">' +
+    '<option value="">Select a role...</option>' +
+    roles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
+    '</select>' +
+    '<select id="staff-role-position" class="config-select" style="width:130px;">' +
+    '<option value="staff">Staff</option>' +
+    '<option value="manager">Manager</option>' +
+    '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addStaffRole()">Add Role</button>' +
+    '</div></div>';
+  html += '</div>';
+
+  /* Staff Users */
+  html += '<div class="config-section" style="margin-top:10px;"><div class="config-section-header"><div><h3>Staff Users</h3><p class="config-section-desc">Individual members granted staff or manager access regardless of their roles.</p></div></div>';
+  if (staffUsers.length === 0) {
+    html += '<div class="config-row"><span style="color:var(--text-dim);font-size:13px;">No individual staff users added yet.</span></div>';
+  } else {
+    staffUsers.forEach(function(u) {
+      html += '<div class="config-row" style="justify-content:space-between;">' +
+        '<div>' +
+          '<span class="config-label">' + esc(u.username) + '</span>' +
+          '<span style="margin-left:10px;font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">' + esc(u.position) + '</span>' +
+        '</div>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(\'' + esc(u.id) + '\')">Remove</button>' +
+        '</div>';
+    });
+  }
+  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;margin-top:8px;">' +
+    '<div style="display:flex;gap:8px;width:100%;flex-wrap:wrap;">' +
+    '<div style="flex:1;min-width:200px;position:relative;">' +
+    '<input id="staff-user-search" type="text" class="config-input" placeholder="Search members..." autocomplete="off" oninput="filterStaffMembers()" onfocus="showStaffDropdown()" style="width:100%;box-sizing:border-box;">' +
+    '<div id="staff-user-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:100;"></div>' +
+    '<input id="staff-user-id" type="hidden" value="">' +
+    '</div>' +
+    '<select id="staff-user-position" class="config-select" style="width:130px;">' +
+    '<option value="staff">Staff</option>' +
+    '<option value="manager">Manager</option>' +
+    '</select>' +
+    '<button class="btn btn-success btn-sm" onclick="addStaffUser()">Add User</button>' +
+    '</div></div>';
+  html += '</div>';
+
+  html += '<div id="save-bar-container"></div>';
+
+  /* Load members in background */
+  setTimeout(function() { loadStaffMembers(); }, 0);
+
+  return html;
+}
+
+function loadStaffMembers() {
+  api('/guild/' + currentGuild.id + '/members').then(function(r) {
+    if (r && r.members) {
+      _staffState.members = r.members;
+      filterStaffMembers();
+    }
+  });
+}
+
+function filterStaffMembers() {
+  var input = document.getElementById('staff-user-search');
+  var dropdown = document.getElementById('staff-user-dropdown');
+  if (!input || !dropdown) return;
+  var q = input.value.trim().toLowerCase();
+  var filtered = q
+    ? _staffState.members.filter(function(m) {
+        return m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q);
+      })
+    : _staffState.members.slice(0, 50);
+  if (filtered.length === 0) {
+    dropdown.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-dim);">' + (q ? 'No members found.' : 'Start typing to search...') + '</div>';
+  } else {
+    dropdown.innerHTML = filtered.slice(0, 50).map(function(m) {
+      return '<div class="staff-member-option" data-id="' + esc(m.id) + '" data-name="' + esc(m.displayName) + '" onclick="selectStaffMember(this)" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);">' +
+        '<img src="' + esc(m.avatar) + '" width="24" height="24" style="border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">' +
+        '<span>' + esc(m.displayName) + '</span>' +
+        (m.displayName !== m.username ? '<span style="color:var(--text-dim);font-size:11px;">(' + esc(m.username) + ')</span>' : '') +
+        '</div>';
+    }).join('');
+  }
+  dropdown.style.display = 'block';
+}
+
+function showStaffDropdown() {
+  var dropdown = document.getElementById('staff-user-dropdown');
+  if (dropdown) { dropdown.style.display = 'block'; filterStaffMembers(); }
+  document.addEventListener('click', hideStaffDropdownOutside, { once: true });
+}
+
+function hideStaffDropdownOutside(e) {
+  var wrap = document.getElementById('staff-user-search');
+  var dd = document.getElementById('staff-user-dropdown');
+  if (wrap && dd && !wrap.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+}
+
+function selectStaffMember(el) {
+  var id = el.getAttribute('data-id');
+  var name = el.getAttribute('data-name');
+  var input = document.getElementById('staff-user-search');
+  var hiddenId = document.getElementById('staff-user-id');
+  var dropdown = document.getElementById('staff-user-dropdown');
+  if (input) input.value = name;
+  if (hiddenId) hiddenId.value = id;
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+function addStaffRole() {
+  var roleId = document.getElementById('staff-role-select') && document.getElementById('staff-role-select').value;
+  var position = document.getElementById('staff-role-position') && document.getElementById('staff-role-position').value;
+  if (!roleId) { toast('Select a role', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/staff/add', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'role', roleId: roleId, position: position || 'staff' })
+  }).then(function(r) {
+    if (r && r.success) { toast('Staff role added'); renderSettings('staff'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
+  });
+}
+
+function addStaffUser() {
+  var userId = document.getElementById('staff-user-id') && document.getElementById('staff-user-id').value;
+  var position = document.getElementById('staff-user-position') && document.getElementById('staff-user-position').value;
+  if (!userId) { toast('Select a member from the list', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/staff/add', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'user', userId: userId, position: position || 'staff' })
+  }).then(function(r) {
+    if (r && r.success) { toast('Staff member added'); renderSettings('staff'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
+  });
+}
+
+function removeStaffEntry(entryId) {
+  if (!confirm('Remove this staff entry?')) return;
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/staff/' + entryId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Staff entry removed'); renderSettings('staff'); }
     else _pendingScrollRestore = null;
   });
 }
