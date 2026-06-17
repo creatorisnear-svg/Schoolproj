@@ -8,7 +8,7 @@ import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import PremiumKey from '../../models/PremiumKey.js';
-import { clearFeatureFlagCache, clearPremiumCache } from '../../utils/premiumCheck.js';
+import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 
 const upload = multer({
@@ -359,6 +359,17 @@ export function createDevRouter(client) {
     if (typeof active !== 'boolean') return res.status(400).json({ error: 'active must be boolean' });
     setMaintenanceMode(active);
     res.json(getMaintenanceStatus());
+  });
+
+  router.post('/grant-vote', devAuth, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+      await recordVote(userId);
+      res.json({ ok: true, message: `Vote credit granted to ${userId}` });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.patch('/features/:feature', devAuth, async (req, res) => {

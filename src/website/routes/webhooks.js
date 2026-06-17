@@ -14,10 +14,12 @@ export function createWebhooksRouter(client) {
     }
 
     const { user, type } = req.body;
+    console.log(`[TopGG Webhook] Received: type=${type} user=${user}`);
     if (!user || type !== 'upvote') return res.status(200).json({ ok: true });
 
     try {
       await recordVote(user);
+      console.log(`[TopGG Webhook] Vote credit recorded for user ${user}`);
 
       const discordUser = await client.users.fetch(user).catch(() => null);
       if (discordUser) {
