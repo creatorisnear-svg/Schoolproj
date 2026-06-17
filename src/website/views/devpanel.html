@@ -286,6 +286,9 @@
       .btn { font-size: 12px; }
       .video-thumb { aspect-ratio: 16/9; }
       .card { padding: 14px; }
+      .maintenance-card { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+      .maintenance-card-actions { flex-direction: row; align-items: center; gap: 10px; width: 100%; }
+      #maintenance-toggle-btn { flex: 1; min-width: 0 !important; }
     }
     @media (max-width: 400px) {
       header .brand { font-size: 13px; }
@@ -421,12 +424,12 @@
       </div>
     </div>
     <div class="section-label">Bot Maintenance Mode</div>
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;">
+    <div class="card maintenance-card" style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;">
       <div>
         <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Maintenance Mode</div>
         <div id="maintenance-status-text" style="font-size:13px;color:#888;">Loading...</div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <div class="maintenance-card-actions" style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
         <span id="maintenance-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;"></span>
         <button id="maintenance-toggle-btn" class="btn btn-primary" onclick="toggleMaintenance()" style="min-width:110px;">Loading...</button>
       </div>
