@@ -1,1 +1,1 @@
-- [Mongoose Model Guards](mongoose-model-guards.md) — all 37 models need `mongoose.models.X ||` guard; EmergencyCall.js uses named import pattern requiring `models` in import.
+- [Mongoose Model Guards](mongoose-model-guards.md) - all 37 models need `mongoose.models.X ||` guard; EmergencyCall.js uses named import pattern requiring `models` in import.

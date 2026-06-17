@@ -104,7 +104,7 @@
       .video-thumb video { max-height: 300px; object-fit: contain; }
       .section-label { font-size: 11px; }
 
-      /* All 8 tabs as a 4-col × 2-row grid — always fully visible */
+      /* All 8 tabs as a 4-col × 2-row grid - always fully visible */
       .tabs-wrapper::after { display: none; }
       .tabs {
         display: grid;
@@ -255,10 +255,10 @@
         <div class="form-group">
           <label>Aspect Ratio</label>
           <select id="vid-ratio">
-            <option value="16:9">16:9 — Landscape</option>
-            <option value="9:16">9:16 — Portrait</option>
-            <option value="1:1">1:1 — Square</option>
-            <option value="4:3">4:3 — Classic</option>
+            <option value="16:9">16:9 - Landscape</option>
+            <option value="9:16">9:16 - Portrait</option>
+            <option value="1:1">1:1 - Square</option>
+            <option value="4:3">4:3 - Classic</option>
           </select>
         </div>
         <button class="btn btn-primary" id="vid-upload-btn" onclick="createVideo()">Add Video</button>
@@ -301,7 +301,7 @@
           <button id="gen-key-btn" class="btn btn-primary btn-sm" onclick="generateKeys()" style="height:38px;white-space:nowrap;">Generate</button>
         </div>
         <div id="gen-result" style="display:none;margin-top:12px;">
-          <label style="margin-bottom:6px;">Generated Keys — copy before closing</label>
+          <label style="margin-bottom:6px;">Generated Keys - copy before closing</label>
           <textarea id="gen-keys-output" rows="4" readonly style="font-family:monospace;font-size:12px;background:#0d0d0d;color:#7b8cec;"></textarea>
           <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="copyGenKeys()">Copy All</button>
         </div>
@@ -325,7 +325,7 @@
     <!-- Broadcast -->
     <div id="panel-broadcast" class="panel">
       <div class="add-form">
-        <h3>Global Announce — Broadcast to Server Owners</h3>
+        <h3>Global Announce - Broadcast to Server Owners</h3>
         <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to the owner of each selected server. Rate-limited to 1 per second.</p>
         <div class="section-label" style="margin-bottom:10px;">Select Servers</div>
         <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
@@ -854,7 +854,7 @@
       if (res && res.total !== undefined) {
         const failHtml = res.errors && res.errors.length
           ? '<div style="margin-top:10px;"><div class="section-label" style="margin-bottom:8px;">Failed (' + res.errors.length + ')</div>' +
-            res.errors.map(e => `<div style="font-size:12px;color:#888;padding:4px 0;border-bottom:1px solid #1a1a1a;"><strong style="color:#ccc;">${esc(e.guild)}</strong> — ${esc(e.reason)}</div>`).join('') + '</div>'
+            res.errors.map(e => `<div style="font-size:12px;color:#888;padding:4px 0;border-bottom:1px solid #1a1a1a;"><strong style="color:#ccc;">${esc(e.guild)}</strong> - ${esc(e.reason)}</div>`).join('') + '</div>'
           : '';
         resultBox.style.display = 'block';
         resultBox.innerHTML = `<div class="impact-notice" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.05);">
@@ -886,12 +886,12 @@
       btn.textContent = 'Disable Maintenance'; btn.style.background = '#2a2a2a'; btn.style.color = '#ccc';
       badge.textContent = 'Active'; badge.style.background = 'rgba(240,71,71,.15)'; badge.style.color = '#f04747';
       badge.style.border = '1px solid rgba(240,71,71,.3)'; badge.style.display = '';
-      text.textContent = status.since ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' — all non-admin commands blocked.' : 'Active — all non-admin commands are blocked.';
+      text.textContent = status.since ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' - all non-admin commands blocked.' : 'Active - all non-admin commands are blocked.';
       text.style.color = '#f04747';
     } else {
       btn.textContent = 'Enable Maintenance'; btn.style.background = ''; btn.style.color = '';
       badge.style.display = 'none';
-      text.textContent = 'Inactive — all commands working normally.'; text.style.color = '#888';
+      text.textContent = 'Inactive - all commands working normally.'; text.style.color = '#888';
     }
   }
 
@@ -928,7 +928,7 @@
           <span style="width:10px;height:10px;border-radius:50%;background:${connColor};flex-shrink:0;"></span>
           <div><div style="font-size:14px;font-weight:600;color:${connColor};">${s.connected ? 'Connected' : 'Connection failed'}</div><div style="font-size:12px;color:#666;margin-top:2px;">${s.error ? s.error : 'Stripe API reachable'}</div></div>
         </div>
-        ${s.mode === 'live' ? '<div style="background:#2a1f0a;border:1px solid #faa61a33;border-radius:8px;padding:10px 14px;font-size:12px;color:#faa61a;">Live key — test checkout is disabled. Use Generate Test Key instead.</div>' : ''}
+        ${s.mode === 'live' ? '<div style="background:#2a1f0a;border:1px solid #faa61a33;border-radius:8px;padding:10px 14px;font-size:12px;color:#faa61a;">Live key - test checkout is disabled. Use Generate Test Key instead.</div>' : ''}
       </div>`;
     } catch (e) { card.innerHTML = '<div style="font-size:13px;color:#f04747;">Failed to fetch Stripe status.</div>'; }
   }

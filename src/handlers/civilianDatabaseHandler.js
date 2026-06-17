@@ -437,7 +437,7 @@ export async function handleCivilianManageCharacterSelect(interaction) {
     if (vehicleCount > 0) {
       description += '**Vehicles**\n';
       character.vehicles.slice(0, 5).forEach(v => {
-        const plate = v.licensePlate ? ` — \`${v.licensePlate}\`` : '';
+        const plate = v.licensePlate ? ` - \`${v.licensePlate}\`` : '';
         description += `> ${v.color || ''} ${v.make || ''} ${v.model || ''}${plate}\n`.replace(/\s+/g, ' ');
       });
       if (vehicleCount > 5) description += `-# ...and ${vehicleCount - 5} more\n`;

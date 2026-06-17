@@ -13,19 +13,19 @@ export async function execute(interaction) {
 
   const premiumNote = premium
     ? '-# Premium is active on this server.'
-    : `-# Commands marked **★** require Premium — run \`/premium\` to learn more.`;
+    : `-# Commands marked **★** require Premium - run \`/premium\` to learn more.`;
 
   const helpEmbed = new EmbedBuilder()
     .setColor(0x2B2D31)
-    .setTitle('RolePlayManager — Command Reference')
+    .setTitle('RolePlayManager - Command Reference')
     .setDescription(`All commands organized by category. Most config commands require Administrator permissions.\n\n${premiumNote}`)
     .addFields(
       {
         name: 'Roleplay Systems',
         value:
           '`/roleplaycommandconfig` Initial RP config\n' +
-          '`/civiliandatabase` Civilian portal — 911, characters, vehicles, fines\n' +
-          '`/leodatabase` LEO portal — plate/name search, BOLOs, tickets, calls\n' +
+          '`/civiliandatabase` Civilian portal - 911, characters, vehicles, fines\n' +
+          '`/leodatabase` LEO portal - plate/name search, BOLOs, tickets, calls\n' +
           '`/firedepartmentdatabase` Fire department records',
         inline: false,
       },
@@ -55,14 +55,14 @@ export async function execute(interaction) {
         inline: true,
       },
       {
-        name: 'Economy — Config',
+        name: 'Economy - Config',
         value:
           '`/economyconfig` Configure all economy settings\n' +
           '-# Currency symbol, work/crime/rob, gambling, chat money, income tax, role income, store, civilian jobs',
         inline: false,
       },
       {
-        name: 'Economy — Members',
+        name: 'Economy - Members',
         value:
           '`/balance` Cash & bank  ·  `/deposit` · `/withdraw`\n' +
           '`/give` Send cash  ·  `/income` Collect role income\n' +

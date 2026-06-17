@@ -1825,7 +1825,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             return;
           }
           if (_now - firstTs >= 12000) {
-            // Entry expired — reset
+            // Entry expired - reset
             _crossUserHallucinationTracker.set(_suppressKey, { firstUserId: userId, firstTs: _now });
           }
         } else {
@@ -3095,7 +3095,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     } else if (voiceAction === 'out_of_service') {
       await OfficerStatus.deleteOne({ guildId: guild.id, userId }).catch(() => {});
-      // Brief 10-7 acknowledgment — only when officer addressed dispatch directly
+      // Brief 10-7 acknowledgment - only when officer addressed dispatch directly
       if (hadTrigger && !dispatchResponse && config.aiEnabled && hasAIKey()) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
@@ -3133,9 +3133,9 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         if (isInStopChannel) clearExtendedStay(guild.id);
       }
 
-      // Brief acknowledgment for common status codes — only when officer addressed dispatch
+      // Brief acknowledgment for common status codes - only when officer addressed dispatch
       // (trigger word, call sign, or emergency phrase). Without a trigger, status is updated
-      // silently in DB only — the bot must NOT speak back to unaddressed radio chatter.
+      // silently in DB only - the bot must NOT speak back to unaddressed radio chatter.
       else if (hadTrigger && !dispatchResponse && config.aiEnabled && hasAIKey()) {
         const SILENT_CODES = new Set(['10-4', '10-6']); // already handled by SIMPLE_ACK_CODES
         if (!SILENT_CODES.has(parsed.code)) {

@@ -23,7 +23,7 @@ export function buildBlacklistPanelEmbed(entries) {
     const tag = e.gamertag && e.discordId ? ` (${e.gamertag})` : '';
     const ipTag = e.ipBanned ? ' `IP BAN`' : '';
     const date = new Date(e.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${who}${tag}${ipTag}\n-# ${e.reason} — ${date}`;
+    return `${who}${tag}${ipTag}\n-# ${e.reason} - ${date}`;
   });
 
   const chunks = [];
@@ -250,7 +250,7 @@ export async function handleBlacklistConfigMenu(interaction, client) {
       const tag = e.gamertag && e.discordId ? ` (${e.gamertag})` : '';
       const ipTag = e.ipBanned ? ' `IP BAN`' : '';
       const date = new Date(e.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      return `${who}${tag}${ipTag} — ${e.reason} — ${date}`;
+      return `${who}${tag}${ipTag} - ${e.reason} - ${date}`;
     });
     const embed = new EmbedBuilder().setColor('#2d2d2d').setTitle('Active Blacklist').setDescription(lines.join('\n').slice(0, 4000)).setFooter({ text: 'RPM' });
     return interaction.editReply({ embeds: [embed], components: [] });

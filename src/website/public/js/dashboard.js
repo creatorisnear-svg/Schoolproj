@@ -363,7 +363,7 @@ function renderDashboard() {
   html += '<div class="overview-section" style="margin-top:16px;">' +
     '<div class="overview-section-header">' +
     '<h2 class="overview-section-title">Configure Modules</h2>' +
-    '<p class="overview-section-sub">Set up channels, roles, and options — click any card to open settings</p>' +
+    '<p class="overview-section-sub">Set up channels, roles, and options - click any card to open settings</p>' +
     '</div><div class="configure-module-grid">';
 
   CONFIGURE_CARDS.forEach(function(m) {
@@ -1514,7 +1514,7 @@ function renderMovemeSettings(data) {
     '<span style="font-size:11px;color:var(--text-dim);">Only these channels appear in the mover panel</span></div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
     '<div class="channel-tags" id="moveme-channel-tags">' +
-    (allowedTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added — all voice channels will show if left empty.</span>') +
+    (allowedTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added - all voice channels will show if left empty.</span>') +
     '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="moveme-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
@@ -1529,7 +1529,7 @@ function renderMovemeSettings(data) {
     '</div>' +
     '<div class="config-row"><span class="config-sublabel">Posts a voice channel selector embed to the configured Panel Channel. Members must already be in a voice channel to use it. Run this after setting and saving the channel above.</span></div>' +
     (data.panelChannelId
-      ? '<div class="config-row"><span style="font-size:12px;color:var(--text-dim);">Current panel channel: <code>' + esc(data.panelChannelId) + '</code>' + (data.panelMessageId ? ' — panel exists' : ' — no panel sent yet') + '</span></div>'
+      ? '<div class="config-row"><span style="font-size:12px;color:var(--text-dim);">Current panel channel: <code>' + esc(data.panelChannelId) + '</code>' + (data.panelMessageId ? ' - panel exists' : ' - no panel sent yet') + '</span></div>'
       : '<div class="config-row"><span style="font-size:12px;color:var(--amber);">Save a Panel Channel above before sending the panel.</span></div>') +
     '</div>';
 
@@ -1570,7 +1570,7 @@ function removeMovemeChannel(id) {
       }
     });
     if (tagsEl.querySelectorAll('.channel-tag').length === 0) {
-      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels added — all voice channels will show if left empty.</span>';
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels added - all voice channels will show if left empty.</span>';
     }
   }
   showSaveBar('moveme');
@@ -1608,7 +1608,7 @@ function renderCivJobsSettings(data) {
     jobs.forEach(function(j) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<div class="config-left">' +
-        '<span class="config-label">' + esc(j.name) + ' — @' + esc(j.roleName) + '</span>' +
+        '<span class="config-label">' + esc(j.name) + ' - @' + esc(j.roleName) + '</span>' +
         '<div class="config-sublabel">' +
         (j.description ? esc(j.description) + ' | ' : '') +
         'Shift: ' + esc(String(j.durationHours)) + 'h' +
@@ -1714,7 +1714,7 @@ function renderStaffSettings(data) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<div class="config-left">' +
         '<span class="config-label">' + esc(s.username) + '</span>' +
-        '<div class="config-sublabel">User ID: ' + esc(s.userId) + ' — ' + (s.position === 'manager' ? 'Manager' : 'Staff') + '</div>' +
+        '<div class="config-sublabel">User ID: ' + esc(s.userId) + ' - ' + (s.position === 'manager' ? 'Manager' : 'Staff') + '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteStaffEntry(\'' + esc(s.id) + '\')">Remove</button>' +
         '</div>';

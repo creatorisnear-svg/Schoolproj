@@ -1387,7 +1387,7 @@ function startDispatchStream() {
     };
     es.onerror = () => { es.close(); _dispatchEvtSrc = null; };
     _dispatchEvtSrc = es;
-  } catch { /* EventSource not supported — polling fallback still active */ }
+  } catch { /* EventSource not supported - polling fallback still active */ }
 }
 
 function updateCountdown() {

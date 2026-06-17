@@ -6,7 +6,7 @@ import { checkStaffPermission } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('leodatabase')
-  .setDescription('LEO Database — search records, manage BOLOs, respond to calls');
+  .setDescription('LEO Database - search records, manage BOLOs, respond to calls');
 
 export async function execute(interaction) {
   let deferred = false;

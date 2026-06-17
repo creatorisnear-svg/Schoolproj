@@ -4,7 +4,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
   .setName('civiliandatabase')
-  .setDescription('Civilian Database — manage characters, report emergencies, and more');
+  .setDescription('Civilian Database - manage characters, report emergencies, and more');
 
 export async function execute(interaction) {
   try {

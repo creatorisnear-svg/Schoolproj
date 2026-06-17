@@ -22,7 +22,7 @@ function setupMenu() {
 function statusLine(config) {
   const chCount = (config?.allowedChannelIds || []).length;
   const panelStatus = config?.panelChannelId
-    ? `Panel channel: <#${config.panelChannelId}>${config?.panelMessageId ? ' — panel active' : ' — not sent yet'}`
+    ? `Panel channel: <#${config.panelChannelId}>${config?.panelMessageId ? ' - panel active' : ' - not sent yet'}`
     : 'No panel channel set';
   return `**Voice Mover Setup**\n\n${panelStatus}\nAllowed channels: ${chCount > 0 ? chCount + ' configured' : 'all channels (no filter set)'}\n\nSelect an option below to configure:`;
 }
@@ -48,7 +48,7 @@ export async function handleMovemeSetupMenu(interaction) {
         .setMinValues(1).setMaxValues(1)
     );
     return interaction.update({
-      content: '**Voice Mover Setup — Add Channel**\n\nSelect the voice channel you want to add to the allowed list:',
+      content: '**Voice Mover Setup - Add Channel**\n\nSelect the voice channel you want to add to the allowed list:',
       components: [row],
     });
   }
@@ -74,7 +74,7 @@ export async function handleMovemeSetupMenu(interaction) {
         .setMinValues(1).setMaxValues(1)
     );
     return interaction.update({
-      content: '**Voice Mover Setup — Remove Channel**\n\nSelect the voice channel to remove from the allowed list:',
+      content: '**Voice Mover Setup - Remove Channel**\n\nSelect the voice channel to remove from the allowed list:',
       components: [row],
     });
   }
@@ -84,7 +84,7 @@ export async function handleMovemeSetupMenu(interaction) {
     const ids = config.allowedChannelIds || [];
     let listText;
     if (ids.length === 0) {
-      listText = '> No filter set — all voice channels will show in the panel.';
+      listText = '> No filter set - all voice channels will show in the panel.';
     } else {
       listText = ids.map(id => {
         const ch = interaction.guild.channels.cache.get(id);
@@ -92,7 +92,7 @@ export async function handleMovemeSetupMenu(interaction) {
       }).join('\n');
     }
     return interaction.update({
-      content: `**Voice Mover Setup — Allowed Channels (${ids.length})**\n\n${listText}\n\nSelect another option below:`,
+      content: `**Voice Mover Setup - Allowed Channels (${ids.length})**\n\n${listText}\n\nSelect another option below:`,
       components: [setupMenu()],
     });
   }
@@ -103,7 +103,7 @@ export async function handleMovemeSetupMenu(interaction) {
     config.markModified('allowedChannelIds');
     await config.save();
     return interaction.update({
-      content: statusLine(config) + '\n\n> ✅ Channel filter cleared — all voice channels will now show in the panel.',
+      content: statusLine(config) + '\n\n> ✅ Channel filter cleared - all voice channels will now show in the panel.',
       components: [setupMenu()],
     });
   }
@@ -118,7 +118,7 @@ export async function handleMovemeSetupMenu(interaction) {
         .setMinValues(1).setMaxValues(1)
     );
     return interaction.update({
-      content: '**Voice Mover Setup — Send Panel**\n\nSelect the text channel where the voice mover panel should be posted:',
+      content: '**Voice Mover Setup - Send Panel**\n\nSelect the text channel where the voice mover panel should be posted:',
       components: [row],
     });
   }
@@ -177,12 +177,12 @@ export async function handleMovemeRemoveVC(interaction) {
 
   const remaining = config.allowedChannelIds.length;
   return interaction.update({
-    content: statusLine(config) + `\n\n> ✅ **${ch?.name ?? vcId}** removed. ${remaining > 0 ? `${remaining} channel(s) remain.` : 'No filter set — all channels will now show.'}`,
+    content: statusLine(config) + `\n\n> ✅ **${ch?.name ?? vcId}** removed. ${remaining > 0 ? `${remaining} channel(s) remain.` : 'No filter set - all channels will now show.'}`,
     components: [setupMenu()],
   });
 }
 
-/* ── Panel channel selected — build and send panel ── */
+/* ── Panel channel selected - build and send panel ── */
 export async function handleMovemePanelChannel(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({ embeds: [errorEmbed('Staff only.')], flags: 64 });
@@ -266,7 +266,7 @@ export async function handleMovemePanelChannel(interaction) {
   } catch (err) {
     console.error('[MemberMovement] Failed to send panel:', err.message);
     return interaction.update({
-      content: statusLine(config) + '\n\n> ❌ Failed to send panel — check that I have permission to post in that channel.',
+      content: statusLine(config) + '\n\n> ❌ Failed to send panel - check that I have permission to post in that channel.',
       components: [setupMenu()],
     });
   }

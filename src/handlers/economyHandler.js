@@ -830,7 +830,7 @@ export async function handleEconomyMenu(interaction) {
     return interaction.update({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
         .setTitle('Item Updated')
-        .setDescription(`**${item.name}** — ${roleText}.\n\nYou can set the required role below or click **Done**.`)
+        .setDescription(`**${item.name}** - ${roleText}.\n\nYou can set the required role below or click **Done**.`)
         .setFooter({ text: 'RPM' })],
       components: interaction.message.components,
     });
@@ -847,7 +847,7 @@ export async function handleEconomyMenu(interaction) {
     return interaction.update({
       embeds: [new EmbedBuilder().setColor(0x2d2d2d)
         .setTitle('Item Updated')
-        .setDescription(`**${item.name}** — ${roleText}.\n\nYou can set the reward role above or click **Done**.`)
+        .setDescription(`**${item.name}** - ${roleText}.\n\nYou can set the reward role above or click **Done**.`)
         .setFooter({ text: 'RPM' })],
       components: interaction.message.components,
     });
@@ -1522,13 +1522,13 @@ export async function handleEconomyModal(interaction) {
         new ActionRowBuilder().addComponents(
           new RoleSelectMenuBuilder()
             .setCustomId(`economysetup_store_rewardrole_${itemId}`)
-            .setPlaceholder('Reward Role — granted on purchase (optional)')
+            .setPlaceholder('Reward Role - granted on purchase (optional)')
             .setMinValues(0).setMaxValues(1)
         ),
         new ActionRowBuilder().addComponents(
           new RoleSelectMenuBuilder()
             .setCustomId(`economysetup_store_reqrole_${itemId}`)
-            .setPlaceholder('Required Role — must have to buy (optional)')
+            .setPlaceholder('Required Role - must have to buy (optional)')
             .setMinValues(0).setMaxValues(1)
         ),
         new ActionRowBuilder().addComponents(

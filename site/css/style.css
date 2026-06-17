@@ -665,7 +665,7 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   .cta { padding: 32px 0 48px; }
   .features { padding: 48px 0; }
 
-  /* Footer links — prevent word-wrapping mid-phrase */
+  /* Footer links - prevent word-wrapping mid-phrase */
   footer .footer-links { gap: 12px; justify-content: center; }
 }
 

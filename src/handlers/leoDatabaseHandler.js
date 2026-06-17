@@ -108,7 +108,7 @@ export async function handleLEODatabaseMenu(interaction) {
 
         return new EmbedBuilder()
           .setColor(call.respondingLeoId ? 0x5865F2 : 0xF23F43)
-          .setTitle(`Call ${index + 1}  —  ${call.issue}`)
+          .setTitle(`Call ${index + 1}  -  ${call.issue}`)
           .setDescription(description)
           .setFooter({ text: `RPM  •  ID: ${call.callId}` })
           .setTimestamp(call.timestamp);
@@ -452,12 +452,12 @@ export async function handleLEOSearchPlateModal(interaction) {
     if (vehicleBolos.length > 0) {
       description += `> BOLO ACTIVE\n`;
       vehicleBolos.forEach(bolo => {
-        description += `> \`${bolo.boloId}\` — ${bolo.reason}\n`;
+        description += `> \`${bolo.boloId}\` - ${bolo.reason}\n`;
       });
     } else if (character.status === 'wanted') {
-      description += `> WANTED${character.wantedReason ? ` — ${character.wantedReason}` : ''}\n`;
+      description += `> WANTED${character.wantedReason ? ` - ${character.wantedReason}` : ''}\n`;
     } else {
-      description += `> CLEAR — No flags on record\n`;
+      description += `> CLEAR - No flags on record\n`;
     }
 
     const buttons = new ActionRowBuilder()
@@ -794,11 +794,11 @@ export async function handleLEOSearchCharacterModal(interaction) {
     // Status line at top
     let statusLine = '';
     if (bolos.length > 0) {
-      statusLine = `> **BOLO ACTIVE** — ${bolos.map(b => b.reason).join(', ')}\n\n`;
+      statusLine = `> **BOLO ACTIVE** - ${bolos.map(b => b.reason).join(', ')}\n\n`;
     } else if (character.status === 'wanted') {
-      statusLine = `> **WANTED**${character.wantedReason ? ` — ${character.wantedReason}` : ''}\n\n`;
+      statusLine = `> **WANTED**${character.wantedReason ? ` - ${character.wantedReason}` : ''}\n\n`;
     } else {
-      statusLine = `> CLEAR — No active alerts\n\n`;
+      statusLine = `> CLEAR - No active alerts\n\n`;
     }
 
     let description = `### ${character.characterName}\n${statusLine}`;
@@ -857,7 +857,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
     if (bolos.length > 0) {
       description += `**Active BOLOs**\n`;
       bolos.forEach(bolo => {
-        description += `> \`${bolo.boloId}\` — ${bolo.reason}`;
+        description += `> \`${bolo.boloId}\` - ${bolo.reason}`;
         if (bolo.description) description += `  ·  ${bolo.description}`;
         description += `\n> Issued by <@${bolo.issuedBy}> <t:${Math.floor(bolo.createdAt.getTime() / 1000)}:R>\n`;
       });

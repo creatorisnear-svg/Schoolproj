@@ -326,7 +326,7 @@ export function createApiRouter() {
       });
       await call.save();
 
-      /* Respond immediately — Discord notification fires in background */
+      /* Respond immediately - Discord notification fires in background */
       res.json({ success: true, callId });
 
       /* Post to dispatch channel if configured (non-blocking) */
@@ -1153,7 +1153,7 @@ export function createApiRouter() {
     }
   });
 
-  /* ══════════════════════ /dispatch/events (SSE — push status changes) ══════════════════════ */
+  /* ══════════════════════ /dispatch/events (SSE - push status changes) ══════════════════════ */
   router.get('/dispatch/events', portalAuth, (req, res) => {
     const guildId = GUILD_ID();
     res.setHeader('Content-Type', 'text/event-stream');

@@ -44,7 +44,7 @@ export async function execute(interaction) {
 
   const chCount = (config.allowedChannelIds || []).length;
   const panelStatus = config.panelChannelId
-    ? `Panel channel: <#${config.panelChannelId}>${config.panelMessageId ? ' — panel active' : ' — not sent yet'}`
+    ? `Panel channel: <#${config.panelChannelId}>${config.panelMessageId ? ' - panel active' : ' - not sent yet'}`
     : 'No panel channel set';
 
   const menu = new ActionRowBuilder().addComponents(

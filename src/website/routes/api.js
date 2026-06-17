@@ -878,7 +878,7 @@ export function createApiRouter(client) {
 
         case 'civjobs': {
           result.name = 'Civilian Jobs';
-          result.description = 'Set up civilian job roles with shift durations — members check in through a job board';
+          result.description = 'Set up civilian job roles with shift durations - members check in through a job board';
           const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
           const cjc = await CivilianJobConfig.findOne({ guildId: guild.id });
           result.fields = [
@@ -2457,7 +2457,7 @@ export function createApiRouter(client) {
 
       const ipBanEntry = activeBlacklist.find(e => e.ipBanned && e.ipAddress && e.ipAddress === ip);
       if (ipBanEntry) {
-        console.log(`[VERIFY] IP ban hit for user ${userId} in guild ${guildId} — IP ${ip}`);
+        console.log(`[VERIFY] IP ban hit for user ${userId} in guild ${guildId} - IP ${ip}`);
         record.used = true;
         await record.save();
         return res.status(403).json({ error: 'You are not permitted to verify on this server.' });
@@ -2465,7 +2465,7 @@ export function createApiRouter(client) {
 
       const gamertagEntry = activeBlacklist.find(e => e.gamertag && isSimilar(psnxbox.trim(), e.gamertag));
       if (gamertagEntry) {
-        console.log(`[VERIFY] Gamertag blacklist hit for user ${userId} — submitted "${psnxbox.trim()}", matched "${gamertagEntry.gamertag}" in guild ${guildId}`);
+        console.log(`[VERIFY] Gamertag blacklist hit for user ${userId} - submitted "${psnxbox.trim()}", matched "${gamertagEntry.gamertag}" in guild ${guildId}`);
         record.used = true;
         await record.save();
         return res.status(403).json({ error: 'You are not permitted to verify on this server.' });

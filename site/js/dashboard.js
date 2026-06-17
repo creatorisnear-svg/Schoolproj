@@ -417,7 +417,7 @@ function renderDashboard() {
   html += '<div class="overview-section" style="margin-top:16px;">' +
     '<div class="overview-section-header">' +
     '<h2 class="overview-section-title">Configure Modules</h2>' +
-    '<p class="overview-section-sub">Set up channels, roles, and options — click any card to open settings</p>' +
+    '<p class="overview-section-sub">Set up channels, roles, and options - click any card to open settings</p>' +
     '</div><div class="configure-module-grid">';
 
   CONFIGURE_CARDS.forEach(function(m) {
@@ -621,7 +621,7 @@ function renderPremiumSection(g) {
     '</div>' +
     '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">' +
     '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 3-Day Trial</div>' +
-    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then redeem your trial below — no Discord command needed.</p>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then redeem your trial below - no Discord command needed.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
     '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary btn-sm">Vote on Top.gg</a>' +
     '<button class="btn btn-secondary btn-sm" onclick="redeemTrial(this)">Redeem Trial</button>' +
@@ -797,7 +797,7 @@ function showPremiumModal(featureName) {
         '<a href="https://roleplaymanager.xyz/pricing" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
         '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
           '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or get a free 3-day trial</div>' +
-          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg to earn a trial credit, then redeem it here — no Discord command needed.</p>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg to earn a trial credit, then redeem it here - no Discord command needed.</p>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
           '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary" style="text-align:center;text-decoration:none;flex:1;">Vote on Top.gg</a>' +
           '<button class="btn btn-secondary" style="flex:1;" onclick="redeemTrial(this)">Redeem Trial</button>' +
@@ -831,7 +831,7 @@ function renderSettings(mod) {
       html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);">' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-        'Premium feature — this server needs an active premium subscription.' +
+        'Premium feature - this server needs an active premium subscription.' +
         '</div>' +
         (!currentGuild.premium
           ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
@@ -935,7 +935,7 @@ function renderBlacklistSettings(data) {
   /* ── Section 2: Add Blacklist Entry ── */
   html += '<div class="config-section" style="margin-top:10px;">' +
     '<div class="config-section-header"><div><h3>Add Entry</h3>' +
-    '<p class="config-section-desc">Blacklist a member by Discord ID, gamertag, or both. IPs are never stored here — IP banning activates when a blacklisted member tries to verify again.</p>' +
+    '<p class="config-section-desc">Blacklist a member by Discord ID, gamertag, or both. IPs are never stored here - IP banning activates when a blacklisted member tries to verify again.</p>' +
     '</div></div>';
 
   html += '<div style="display:flex;flex-direction:column;gap:10px;">' +
@@ -955,7 +955,7 @@ function renderBlacklistSettings(data) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted);">' +
     '<input type="checkbox" id="bl-ip-ban" style="accent-color:var(--red);width:15px;height:15px;"> ' +
-    'IP Ban — block future verifications from the same IP address</label>' +
+    'IP Ban - block future verifications from the same IP address</label>' +
     '</div>' +
     '<div><button class="btn btn-danger btn-sm" onclick="addBlacklistEntry(this)">Add to Blacklist</button></div>' +
     '</div>';
@@ -988,7 +988,7 @@ function renderBlacklistSettings(data) {
         '<div style="font-size:13px;color:var(--text);">' + label +
         (e.ipBanned ? ' <span style="font-size:10px;background:rgba(248,113,113,0.12);color:var(--red);padding:1px 6px;border-radius:3px;margin-left:4px;">IP BAN</span>' : '') +
         '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason || '') + (date ? ' — ' + date : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason || '') + (date ? ' - ' + date : '') + '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="removeBlacklistEntry(\'' + esc(e._id) + '\',this)">Remove</button>' +
         '</div>';
@@ -1328,7 +1328,7 @@ function renderTicketTypesSection(data) {
     '</div>';
 
   if (count === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below — each type becomes a button on the ticket panel.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
   } else {
     var buttonColorLabels = { Primary: 'Blue', Secondary: 'Grey', Success: 'Green', Danger: 'Red' };
     (data.ticketTypes || []).forEach(function(t) {
@@ -1634,7 +1634,7 @@ function renderCivJobsSettings(data) {
     '</div>';
 
   if (jobs.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No jobs yet. Add a job below — each job appears in the civ portal job board. Role and shift duration are required.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No jobs yet. Add a job below - each job appears in the civ portal job board. Role and shift duration are required.</span></div>';
   } else {
     jobs.forEach(function(j) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
@@ -2051,7 +2051,7 @@ function mmAction(action) {
     if (r && r.success) {
       toast(r.message || 'Done');
       var infoEl = document.getElementById('mm-selected-info');
-      if (infoEl && r.newBalance !== undefined) infoEl.textContent = 'Selected: ' + _mmSelectedUser.username + ' — New balance: ' + r.newBalance;
+      if (infoEl && r.newBalance !== undefined) infoEl.textContent = 'Selected: ' + _mmSelectedUser.username + ' - New balance: ' + r.newBalance;
     } else if (r && r.error) toast(r.error, 'error');
   });
 }
