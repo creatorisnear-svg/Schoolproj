@@ -365,6 +365,10 @@
     </div>
   </div>
 
+  <button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+
   <!-- Checkout Modal -->
   <div class="modal-overlay" id="checkout-modal">
     <div class="modal">
@@ -390,6 +394,13 @@
   <script>
     var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
     var selectedPlan = null;
+
+    (function() {
+      var btn = document.getElementById('back-to-top');
+      window.addEventListener('scroll', function() {
+        btn.classList.toggle('visible', window.scrollY > 300);
+      }, { passive: true });
+    })();
 
     function openCheckout(plan) {
       selectedPlan = plan;
