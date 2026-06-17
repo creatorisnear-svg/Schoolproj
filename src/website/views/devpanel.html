@@ -281,7 +281,6 @@
       .feature-card-info { min-width: 0; width: 100%; }
       .card-header { flex-wrap: wrap; gap: 8px; }
       .actions { flex-wrap: wrap; width: 100%; justify-content: flex-end; }
-      .tab { padding: 8px 12px; font-size: 12px; }
       .add-form { padding: 16px; }
       .btn { font-size: 12px; }
       .video-thumb { aspect-ratio: 16/9; }
@@ -289,11 +288,45 @@
       .maintenance-card { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
       .maintenance-card-actions { flex-direction: row; align-items: center; gap: 10px; width: 100%; }
       #maintenance-toggle-btn { flex: 1; min-width: 0 !important; }
+
+      /* Wrap tabs into a visible grid — no hidden overflow on mobile */
+      .tabs-wrapper::after { display: none; }
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        overflow-x: visible;
+        border-bottom: none;
+        gap: 0;
+        border: 1px solid #1e1e1e;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .tab {
+        padding: 9px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-bottom: none;
+        border-right: 1px solid #1e1e1e;
+        border-bottom: 1px solid #1e1e1e;
+        margin-bottom: 0;
+        white-space: normal;
+        line-height: 1.3;
+      }
+      .tab:nth-child(4n) { border-right: none; }
+      .tab:nth-last-child(-n+4):nth-child(4n+1),
+      .tab:nth-last-child(-n+4):nth-child(4n+1) ~ .tab { border-bottom: none; }
+      .tab.active {
+        background: rgba(88,101,242,0.15);
+        color: #7b8cec;
+        border-bottom-color: transparent;
+      }
     }
     @media (max-width: 400px) {
       header .brand { font-size: 13px; }
       .sign-out-btn { padding: 4px 8px; font-size: 11px; }
       .container { padding: 12px 10px; }
+      .tabs { grid-template-columns: repeat(4, 1fr); }
+      .tab { font-size: 10px; padding: 8px 2px; }
     }
   </style>
 </head>
