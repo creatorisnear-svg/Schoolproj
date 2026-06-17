@@ -36,6 +36,39 @@ const ALL_FEATURES = [
 const DEV_PASSWORD = process.env.DEV_PASSWORD || '67678967';
 const sessions = new Set();
 
+// Brute-force protection for dev login
+const _loginAttempts = new Map();
+const LOGIN_WINDOW = 15 * 60_000;   // 15 minutes
+const LOGIN_MAX    = 5;              // attempts before lockout
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, e] of _loginAttempts) { if (now > e.resetAt) _loginAttempts.delete(ip); }
+}, 5 * 60_000);
+function loginRateLimit(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = _loginAttempts.get(ip);
+  if (entry && now < entry.resetAt && entry.count >= LOGIN_MAX) {
+    const remaining = Math.ceil((entry.resetAt - now) / 60_000);
+    return res.redirect(`/dev/login?error=locked&min=${remaining}`);
+  }
+  next();
+}
+function recordLoginFail(req) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = _loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW });
+  } else {
+    entry.count++;
+  }
+}
+function clearLoginFail(req) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  _loginAttempts.delete(ip);
+}
+
 function devAuth(req, res, next) {
   const token = req.cookies?.dev_session;
   if (token && sessions.has(token)) return next();
@@ -51,7 +84,13 @@ export function createDevRouter(client) {
   const router = Router();
 
   router.get('/login', (req, res) => {
-    const error = req.query.error ? '<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">Incorrect password.</div>' : '';
+    let error = '';
+    if (req.query.error === 'locked') {
+      const min = req.query.min || '15';
+      error = `<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">Too many failed attempts. Try again in ${min} minute${min === '1' ? '' : 's'}.</div>`;
+    } else if (req.query.error) {
+      error = '<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">Incorrect password.</div>';
+    }
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,9 +131,13 @@ export function createDevRouter(client) {
 </html>`);
   });
 
-  router.post('/auth', (req, res) => {
+  router.post('/auth', loginRateLimit, (req, res) => {
     const { password } = req.body;
-    if (password !== DEV_PASSWORD) return res.redirect('/dev/login?error=1');
+    if (password !== DEV_PASSWORD) {
+      recordLoginFail(req);
+      return res.redirect('/dev/login?error=1');
+    }
+    clearLoginFail(req);
     const token = randomBytes(32).toString('hex');
     sessions.add(token);
     res.cookie('dev_session', token, {
@@ -319,6 +362,30 @@ export function createDevRouter(client) {
         });
       }
       res.json({ ok: true, url: session.url });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/premium-keys', devAuth, async (req, res) => {
+    try {
+      const { plan = 'manual', count = 1 } = req.body;
+      const validPlans = ['monthly', 'quarterly', 'lifetime', 'manual'];
+      if (!validPlans.includes(plan)) return res.status(400).json({ error: 'Invalid plan. Must be monthly, quarterly, lifetime, or manual.' });
+      const qty = Math.min(Math.max(parseInt(count) || 1, 1), 25);
+      const seg = () => randomBytes(2).toString('hex').toUpperCase();
+      const keys = [];
+      for (let i = 0; i < qty; i++) {
+        const key = `RPM-${seg()}${seg()}-${seg()}${seg()}-${seg()}${seg()}`;
+        await PremiumKey.create({
+          key,
+          plan,
+          subscriptionStatus: plan === 'monthly' || plan === 'quarterly' ? 'active' : null,
+          createdAt: new Date(),
+        });
+        keys.push(key);
+      }
+      res.json({ ok: true, keys });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -78,12 +78,36 @@ const client = new Client({
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.set('trust proxy', 1); // Trust first proxy (Koyeb) so req.ip = real client IP
 
 app.use(cookieParser());
 // Stripe webhooks need the raw body - must be registered BEFORE express.json()
 app.use('/checkout/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 
+// ── Security headers ──────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: https://cdn.discordapp.com https://images.unsplash.com; " +
+    "connect-src 'self' https://discord.com https://api.stripe.com; " +
+    "frame-src https://js.stripe.com https://checkout.stripe.com; " +
+    "object-src 'none'; " +
+    "base-uri 'self';"
+  );
+  next();
+});
+
+// ── CORS (only allow site origin) ─────────────────────────────────────────────
 const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://roleplaymanager.xyz';
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -96,6 +120,30 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+
+// ── General API rate limiter (per IP) ─────────────────────────────────────────
+const _apiRateMap = new Map();
+const API_RATE_WINDOW = 60_000;   // 1 minute
+const API_RATE_LIMIT  = 120;      // requests per window
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, e] of _apiRateMap) { if (now > e.resetAt) _apiRateMap.delete(ip); }
+}, 5 * 60_000);
+function apiRateLimit(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = _apiRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _apiRateMap.set(ip, { count: 1, resetAt: now + API_RATE_WINDOW });
+    return next();
+  }
+  entry.count++;
+  if (entry.count > API_RATE_LIMIT) {
+    res.setHeader('Retry-After', '60');
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
+  next();
+}
 app.use('/css', express.static(resolve('src/website/public/css')));
 app.use('/js', express.static(resolve('src/website/public/js')));
 app.use('/img', express.static(resolve('src/website/public/img')));
@@ -219,11 +267,11 @@ app.get('/auth/site/callback', async (req, res) => {
   }
 });
 
-app.use('/api', createApiRouter(client));
-app.use('/checkout', createCheckoutRouter());
+app.use('/api', apiRateLimit, createApiRouter(client));
+app.use('/checkout', apiRateLimit, createCheckoutRouter());
 app.use('/webhooks', createWebhooksRouter(client));
 app.use('/portal', createPortalRouter(client));
-app.use('/api/portal', createPortalApiRouter(client));
+app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
 
 app.get('/callback', async (req, res) => {
   console.log('[OAUTH CALLBACK] Received code, attempting exchange...');

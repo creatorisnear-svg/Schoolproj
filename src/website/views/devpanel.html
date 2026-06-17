@@ -324,7 +324,32 @@
   </div>
 
   <div id="panel-keys" class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:14px;">Generate New Key</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:140px;">
+          <label class="form-label">Plan</label>
+          <select id="gen-plan" class="form-input">
+            <option value="manual">Manual (gift)</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="lifetime">Lifetime</option>
+          </select>
+        </div>
+        <div style="width:80px;">
+          <label class="form-label">Quantity</label>
+          <input id="gen-count" type="number" class="form-input" value="1" min="1" max="25" style="width:100%;">
+        </div>
+        <button id="gen-key-btn" class="btn btn-primary btn-sm" onclick="generateKeys()" style="height:38px;white-space:nowrap;">Generate</button>
+      </div>
+      <div id="gen-result" style="margin-top:12px;display:none;">
+        <label class="form-label" style="margin-bottom:6px;">Generated Keys (copy before closing)</label>
+        <textarea id="gen-keys-output" class="form-input" rows="4" readonly style="font-family:monospace;font-size:12px;resize:vertical;background:#0d0d0d;color:#7b8cec;"></textarea>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="copyGenKeys()">Copy All</button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <div class="section-label" style="margin-bottom:0;">All Premium Keys</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span id="keys-count" style="font-size:12px;color:#555;"></span>
@@ -1049,6 +1074,42 @@
     }
     btn.disabled = false;
     btn.textContent = 'Open Test Checkout';
+  }
+
+  async function generateKeys() {
+    var btn = document.getElementById('gen-key-btn');
+    var plan = document.getElementById('gen-plan').value;
+    var count = parseInt(document.getElementById('gen-count').value) || 1;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    try {
+      var res = await api('POST', '/premium-keys', { plan: plan, count: count });
+      if (res.ok && res.keys) {
+        var out = document.getElementById('gen-keys-output');
+        out.value = res.keys.join('\n');
+        document.getElementById('gen-result').style.display = 'block';
+        showAlert('Generated ' + res.keys.length + ' key' + (res.keys.length !== 1 ? 's' : '') + '.', 'success');
+        loadKeys();
+      } else {
+        showAlert(res.error || 'Failed to generate.', 'error');
+      }
+    } catch (e) {
+      showAlert('Request failed: ' + e.message, 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Generate';
+  }
+
+  function copyGenKeys() {
+    var out = document.getElementById('gen-keys-output');
+    if (!out || !out.value) return;
+    navigator.clipboard.writeText(out.value).then(function() {
+      showAlert('Copied to clipboard.', 'success');
+    }).catch(function() {
+      out.select();
+      document.execCommand('copy');
+      showAlert('Copied.', 'success');
+    });
   }
 
   var _allKeys = [];
