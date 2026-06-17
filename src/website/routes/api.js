@@ -2555,6 +2555,7 @@ export function createApiRouter(client) {
       const safeEntries = entries.map(e => ({
         _id: e._id,
         discordId: e.discordId,
+        discordUsername: e.discordUsername || null,
         gamertag: e.gamertag,
         reason: e.reason,
         ipBanned: e.ipBanned,
@@ -2619,14 +2620,23 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
-      const { discordId, gamertag, reason, ipBanned } = req.body;
+      const { discordId, discordUsername, gamertag, reason, ipBanned } = req.body;
       if (!reason || (!discordId && !gamertag)) {
         return res.status(400).json({ error: 'Provide at least a Discord ID or gamertag plus a reason' });
       }
       const { default: Blacklist } = await import('../../models/Blacklist.js');
+      let resolvedUsername = discordUsername || null;
+      if (!resolvedUsername && discordId) {
+        try {
+          const guild = client.guilds.cache.get(req.params.id);
+          const member = await guild?.members.fetch(discordId).catch(() => null);
+          if (member) resolvedUsername = member.displayName || member.user.username;
+        } catch {}
+      }
       await Blacklist.create({
         guildId: req.params.id,
         discordId: discordId || null,
+        discordUsername: resolvedUsername,
         gamertag: gamertag || null,
         reason,
         ipBanned: !!ipBanned,

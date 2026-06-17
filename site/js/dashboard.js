@@ -945,6 +945,7 @@ function renderBlacklistSettings(data) {
     '<input type="text" id="bl-member-search" class="config-input" placeholder="Search members..." autocomplete="off" oninput="filterBlacklistMembers()" onfocus="showBlacklistDropdown()" style="width:100%;box-sizing:border-box;">' +
     '<div id="bl-member-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);max-height:200px;overflow-y:auto;z-index:100;"></div>' +
     '<input type="hidden" id="bl-discord-id" value="">' +
+    '<input type="hidden" id="bl-discord-username" value="">' +
     '</div></div>' +
     '<div style="flex:1;min-width:160px;"><label class="config-label" style="font-size:11px;margin-bottom:4px;display:block;">Gamertag <span style="color:var(--text-dim);font-size:10px;">(PSN/Xbox/PC)</span></label>' +
     '<input type="text" id="bl-gamertag" class="config-input" placeholder="e.g. xX_Player_Xx" style="width:100%;box-sizing:border-box;"></div>' +
@@ -974,12 +975,13 @@ function renderBlacklistSettings(data) {
   } else {
     html += '<div class="staff-list">';
     entries.forEach(function(e) {
-      var who = e.discordId ? e.discordId : '';
+      var who = e.discordUsername || e.discordId || '';
+      var whoId = e.discordId || '';
       var tag = e.gamertag ? e.gamertag : '';
       var label = '';
       if (who && tag) label = '<code>' + esc(tag) + '</code> <span style="color:var(--text-muted);font-size:11px;">(' + esc(who) + ')</span>';
       else if (tag) label = '<code>' + esc(tag) + '</code>';
-      else if (who) label = '<span style="font-family:monospace;">' + esc(who) + '</span>';
+      else if (who) label = '<span style="font-weight:500;">' + esc(who) + (whoId && who !== whoId ? '</span> <span style="color:var(--text-dim);font-size:11px;font-family:monospace;">(' + esc(whoId) + ')' : '') + '</span>';
       var date = e.addedAt ? new Date(e.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
       html += '<div class="staff-entry">' +
         '<div style="flex:1;min-width:0;">' +
@@ -1022,7 +1024,7 @@ function filterBlacklistMembers() {
     dropdown.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:var(--text-dim);">' + (q ? 'No members found.' : 'Start typing to search...') + '</div>';
   } else {
     dropdown.innerHTML = filtered.slice(0, 50).map(function(m) {
-      return '<div class="staff-member-option" data-id="' + esc(m.id) + '" data-name="' + esc(m.displayName) + '" onclick="selectBlacklistMember(this)" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);">' +
+      return '<div class="staff-member-option" data-id="' + esc(m.id) + '" data-name="' + esc(m.displayName) + '" data-username="' + esc(m.displayName) + '" onclick="selectBlacklistMember(this)" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);">' +
         '<img src="' + esc(m.avatar) + '" width="24" height="24" style="border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">' +
         '<span>' + esc(m.displayName) + '</span>' +
         (m.displayName !== m.username ? '<span style="color:var(--text-dim);font-size:11px;margin-left:4px;">(' + esc(m.username) + ')</span>' : '') +
@@ -1045,28 +1047,38 @@ function hideBlacklistDropdownOutside(e) {
 }
 
 function selectBlacklistMember(el) {
-  var id   = el.getAttribute('data-id');
-  var name = el.getAttribute('data-name');
-  var input  = document.getElementById('bl-member-search');
-  var hidden = document.getElementById('bl-discord-id');
-  var dd     = document.getElementById('bl-member-dropdown');
-  if (input)  input.value  = name;
-  if (hidden) hidden.value = id;
-  if (dd)     dd.style.display = 'none';
+  var id       = el.getAttribute('data-id');
+  var name     = el.getAttribute('data-name');
+  var username = el.getAttribute('data-username') || name;
+  var input    = document.getElementById('bl-member-search');
+  var hidden   = document.getElementById('bl-discord-id');
+  var hiddenUn = document.getElementById('bl-discord-username');
+  var dd       = document.getElementById('bl-member-dropdown');
+  if (input)    input.value    = name;
+  if (hidden)   hidden.value   = id;
+  if (hiddenUn) hiddenUn.value = username;
+  if (dd)       dd.style.display = 'none';
 }
 
 function addBlacklistEntry(btn) {
   if (!currentGuild) return;
-  var discordId = (document.getElementById('bl-discord-id') || {}).value || '';
-  var gamertag  = (document.getElementById('bl-gamertag')   || {}).value || '';
-  var reason    = (document.getElementById('bl-reason')     || {}).value || '';
-  var ipBanned  = (document.getElementById('bl-ip-ban')     || {}).checked || false;
+  var discordId       = (document.getElementById('bl-discord-id')       || {}).value || '';
+  var discordUsername = (document.getElementById('bl-discord-username')  || {}).value || '';
+  var gamertag        = (document.getElementById('bl-gamertag')          || {}).value || '';
+  var reason          = (document.getElementById('bl-reason')            || {}).value || '';
+  var ipBanned        = (document.getElementById('bl-ip-ban')            || {}).checked || false;
   if (!reason.trim()) { toast('Reason is required', 'error'); return; }
   if (!discordId.trim() && !gamertag.trim()) { toast('Select a member or enter a gamertag', 'error'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
   api('/guild/' + currentGuild.id + '/blacklist/add', {
     method: 'POST',
-    body: JSON.stringify({ discordId: discordId.trim() || null, gamertag: gamertag.trim() || null, reason: reason.trim(), ipBanned }),
+    body: JSON.stringify({
+      discordId: discordId.trim() || null,
+      discordUsername: discordUsername.trim() || null,
+      gamertag: gamertag.trim() || null,
+      reason: reason.trim(),
+      ipBanned,
+    }),
   }).then(function(r) {
     if (r && r.success) { toast('Entry added'); renderSettings('blacklist'); }
     else { if (btn) { btn.disabled = false; btn.textContent = 'Add to Blacklist'; } toast(r && r.error ? r.error : 'Failed', 'error'); }

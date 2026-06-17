@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const blacklistSchema = new mongoose.Schema({
   guildId: { type: String, required: true },
   discordId: { type: String, default: null },
+  discordUsername: { type: String, default: null },
   gamertag: { type: String, default: null },
   reason: { type: String, required: true },
   ipBanned: { type: Boolean, default: false },

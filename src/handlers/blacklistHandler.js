@@ -128,6 +128,69 @@ export async function executeBlacklist(interaction, { targetUser, gamertag, reas
   }
 }
 
+export async function executeRemoveBlacklist(interaction, { targetUser, gamertag }) {
+  await interaction.deferReply({ flags: 64 });
+  try {
+    const guildId = interaction.guildId;
+    const discordId = targetUser?.id || null;
+
+    let entries = [];
+    if (discordId) {
+      entries = await Blacklist.find({ guildId, discordId, active: true });
+    } else if (gamertag) {
+      const q = gamertag.trim().toLowerCase();
+      const all = await Blacklist.find({ guildId, active: true, gamertag: { $ne: null } });
+      entries = all.filter(e => e.gamertag && e.gamertag.toLowerCase().includes(q));
+    }
+
+    if (!entries.length) {
+      const who = discordId ? `<@${discordId}>` : `\`${gamertag}\``;
+      return interaction.editReply({
+        embeds: [errorEmbed(`No active blacklist entry found for ${who}.`)],
+      });
+    }
+
+    for (const entry of entries) {
+      await Blacklist.findByIdAndUpdate(entry._id, { active: false });
+    }
+
+    const config = await Config.findOne({ guildId });
+    if (config?.logChannelId) {
+      const logChannel = interaction.guild.channels.cache.get(config.logChannelId);
+      if (logChannel) {
+        const display = discordId ? `<@${discordId}>` : `\`${gamertag}\``;
+        const logEmbed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setTitle('Blacklist Entry Removed')
+          .addFields(
+            { name: 'Removed By', value: `<@${interaction.user.id}>`, inline: true },
+            { name: 'Target', value: display, inline: true },
+            { name: 'Entries Removed', value: String(entries.length), inline: true },
+          )
+          .setFooter({ text: 'RPM' })
+          .setTimestamp();
+        await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+      }
+    }
+
+    await updateBlacklistPanel(interaction.client, guildId);
+
+    const display = discordId ? `<@${discordId}>` : `\`${gamertag}\``;
+    const plural = entries.length > 1 ? ` (${entries.length} entries)` : '';
+    return interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Blacklist Entry Removed')
+        .setDescription(`${display} has been removed from the blacklist.${plural}`)
+        .setFooter({ text: 'RPM' })
+        .setTimestamp()],
+    });
+  } catch (err) {
+    console.error('[BLACKLIST] executeRemoveBlacklist error:', err.message);
+    return interaction.editReply({ embeds: [errorEmbed('Something went wrong.')] });
+  }
+}
+
 export async function handleBlacklistConfigMenu(interaction, client) {
   const value = interaction.values[0];
 
