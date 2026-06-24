@@ -39,12 +39,14 @@
   </style>
 </head>
 <body>
-  <div class="verify-card">
+  <a href="#verify-main" class="skip-nav">Skip to main content</a>
+  <main id="verify-main">
+  <div class="verify-card" role="region" aria-label="Server verification form">
     <div class="verify-logo">
-      <img src="/img/logo.png" alt="RPM">
+      <img src="/img/logo.png" alt="RolePlayManager logo">
       <span>RolePlayManager</span>
     </div>
-    <div id="app">
+    <div id="app" role="status" aria-live="polite" aria-atomic="true">
       <div class="state-loading">
         <div class="spinner" style="width:20px;height:20px;border-width:3px;display:inline-block;border-color:rgba(255,255,255,0.15);border-top-color:#5865f2;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
         <p>Loading verification form...</p>
@@ -52,5 +54,26 @@
     </div>
   </div>
   <script src="/js/verify.js"></script>
+  </main>
+
+  <div class="cookie-banner" id="cookie-banner" role="region" aria-label="Cookie and data consent notice" style="display:none;">
+    <p>We collect your IP address when you access this page. By submitting this form you agree to our <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/tos" target="_blank" rel="noopener">Terms of Service</a>.</p>
+    <div class="cookie-banner-actions">
+      <button class="cookie-accept" onclick="setCookieConsent(true)" aria-label="Accept and close notice">Accept</button>
+      <button class="cookie-decline" onclick="setCookieConsent(false)" aria-label="Decline and close notice">Decline</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var banner = document.getElementById('cookie-banner');
+      if (banner && !localStorage.getItem('rpm_cookie_consent')) banner.style.display = 'flex';
+    })();
+    function setCookieConsent(accepted) {
+      localStorage.setItem('rpm_cookie_consent', accepted ? 'accepted' : 'declined');
+      var banner = document.getElementById('cookie-banner');
+      if (banner) banner.style.display = 'none';
+    }
+  </script>
 </body>
 </html>

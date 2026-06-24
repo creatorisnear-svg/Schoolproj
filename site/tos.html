@@ -34,24 +34,25 @@
   </style>
 </head>
 <body>
-  <nav>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+  <nav aria-label="Main navigation">
     <div class="container">
-      <a href="/" class="logo">
-        <img src="/img/logo.png" alt="RPM">
+      <a href="/" class="logo" aria-label="RolePlayManager home">
+        <img src="/img/logo.png" alt="RolePlayManager logo">
         <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
       </a>
-      <ul class="nav-links">
+      <ul class="nav-links" role="list">
         <li><a href="/#features">Features</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
       </ul>
-      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
-        <span></span><span></span><span></span>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-overlay">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
       </button>
     </div>
   </nav>
 
-  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" role="dialog" aria-label="Mobile navigation" aria-modal="false">
     <a href="/#features" onclick="closeMobileNav()">Features</a>
     <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
     <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
@@ -64,6 +65,7 @@
       var isOpen = overlay.classList.contains('open');
       overlay.classList.toggle('open', !isOpen);
       btn.classList.toggle('open', !isOpen);
+      btn.setAttribute('aria-expanded', String(!isOpen));
       document.body.style.overflow = isOpen ? '' : 'hidden';
     }
     function closeMobileNav() {
@@ -71,16 +73,25 @@
       var overlay = document.getElementById('mobile-nav-overlay');
       overlay.classList.remove('open');
       btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
     }
     (function() {
-      var btn = document.getElementById('back-to-top');
-      window.addEventListener('scroll', function() {
-        btn.classList.toggle('visible', window.scrollY > 300);
+      var bttBtn = document.getElementById('back-to-top');
+      if (bttBtn) window.addEventListener('scroll', function() {
+        bttBtn.classList.toggle('visible', window.scrollY > 300);
       }, { passive: true });
+      var banner = document.getElementById('cookie-banner');
+      if (banner && !localStorage.getItem('rpm_cookie_consent')) banner.style.display = 'flex';
     })();
+    function setCookieConsent(accepted) {
+      localStorage.setItem('rpm_cookie_consent', accepted ? 'accepted' : 'declined');
+      var banner = document.getElementById('cookie-banner');
+      if (banner) banner.style.display = 'none';
+    }
   </script>
 
+  <main id="main-content">
   <div class="legal-page">
     <div class="container" style="max-width:780px;">
       <a href="/" class="back-link">
@@ -90,7 +101,7 @@
 
       <div class="legal-header">
         <h1>Terms of Service</h1>
-        <p>Last updated: June 16, 2026 &mdash; Effective immediately upon use of the Service.</p>
+        <p>Last updated: June 24, 2026 &mdash; Effective immediately upon use of the Service.</p>
       </div>
 
       <div class="legal-notice">
@@ -191,11 +202,23 @@
 
         <h2>14. Governing Law</h2>
         <p>These Terms are governed by and construed in accordance with the laws of the United States, without regard to conflict of law principles. Any disputes arising under these Terms shall be resolved in the applicable courts of the United States. Users in other jurisdictions are subject to local mandatory consumer protection laws where applicable.</p>
+        <p><strong>EU/EEA Users:</strong> Nothing in these Terms limits or excludes any rights you have under the laws of your jurisdiction, including but not limited to mandatory consumer protection rights, the right to withdraw from digital service contracts within 14 days (where applicable), and rights under the General Data Protection Regulation (GDPR).</p>
 
         <h2>15. Changes to These Terms</h2>
         <p>We may update these Terms at any time. The "Last updated" date at the top of this page will reflect when changes were made. Continued use of the Service after changes are posted constitutes your acceptance of the updated Terms.</p>
 
-        <h2>16. Contact</h2>
+        <h2>16. IP Address Collection and Data Processing</h2>
+        <p>When you access any part of our Service via the web — including the verification page, the dashboard, or the Civilian/LEO portal — your IP address is automatically processed by our servers and hosting infrastructure. <strong>Under EU law (GDPR) and applicable US privacy law, an IP address is considered personally identifiable information (PII).</strong></p>
+        <p>By using the web-based portions of the Service (including completing a server verification form), you acknowledge and consent to:</p>
+        <ul>
+          <li>Your IP address being processed by our hosting provider (Koyeb) and recorded in standard server access logs</li>
+          <li>IP address logs being retained for up to 30 days for security and operational purposes</li>
+          <li>Your IP address being used to prevent abuse, enforce rate limits, and investigate unauthorized access</li>
+        </ul>
+        <p>We do not sell, broker, or share your IP address with third parties for advertising or profiling purposes. Full details of our data collection and your rights are set out in our <a href="/privacy">Privacy Policy</a>.</p>
+        <p><strong>EU/EEA Users:</strong> You have the right to request access to, correction of, and deletion of IP address records associated with your use of the Service under the GDPR. To exercise these rights, contact us via Discord or email listed below.</p>
+
+        <h2>17. Contact</h2>
         <p>For questions about these Terms:</p>
         <ul>
           <li>Discord: <a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">discord.gg/cSdhfGPeV2</a></li>
@@ -206,11 +229,21 @@
     </div>
   </div>
 
+  </main>
+
   <button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
   </button>
 
-  <footer style="border-top:1px solid var(--border);padding:28px 0;margin-top:48px;">
+  <div class="cookie-banner" id="cookie-banner" role="region" aria-label="Cookie and data consent notice" style="display:none;">
+    <p>We use cookies and collect your IP address to operate this service. By continuing to use this site you agree to our <a href="/privacy">Privacy Policy</a> and <a href="/tos">Terms of Service</a>.</p>
+    <div class="cookie-banner-actions">
+      <button class="cookie-accept" onclick="setCookieConsent(true)" aria-label="Accept and close cookie notice">Accept</button>
+      <button class="cookie-decline" onclick="setCookieConsent(false)" aria-label="Decline and close cookie notice">Decline</button>
+    </div>
+  </div>
+
+  <footer style="border-top:1px solid var(--border);padding:28px 0;margin-top:48px;" aria-label="Site footer">
     <div class="container" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
       <p style="font-size:13px;color:var(--text-dim);margin:0;">RolePlayManager &copy; 2025</p>
       <div style="display:flex;gap:20px;flex-wrap:wrap;">

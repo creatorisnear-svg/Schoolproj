@@ -65,13 +65,14 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+  <nav aria-label="Main navigation">
     <div class="container">
-      <a href="/" class="logo">
-        <img src="/img/logo.png" alt="RPM">
+      <a href="/" class="logo" aria-label="RolePlayManager home">
+        <img src="/img/logo.png" alt="RolePlayManager logo">
         <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
       </a>
-      <ul class="nav-links">
+      <ul class="nav-links" role="list">
         <li><a href="#features">Features</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="#commands">Commands</a></li>
@@ -80,13 +81,13 @@
         <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
         <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
       </ul>
-      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
-        <span></span><span></span><span></span>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-overlay">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
       </button>
     </div>
   </nav>
 
-  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" role="dialog" aria-label="Mobile navigation" aria-modal="false">
     <a href="#features" onclick="closeMobileNav()">Features</a>
     <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
     <a href="#commands" onclick="closeMobileNav()">Commands</a>
@@ -96,8 +97,9 @@
     <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
   </div>
 
-  <div id="announcements-bar" style="display:none;"></div>
+  <div id="announcements-bar" style="display:none;" role="status" aria-live="polite"></div>
 
+  <main id="main-content">
   <section class="hero">
     <div class="container">
       <img src="/img/logo.png" alt="RolePlayManager" class="hero-logo">
@@ -461,11 +463,21 @@
     </div>
   </section>
 
+  </main>
+
   <button class="back-to-top" id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
   </button>
 
-  <footer>
+  <div class="cookie-banner" id="cookie-banner" role="region" aria-label="Cookie and data consent notice" style="display:none;">
+    <p>We use cookies and collect your IP address to operate this service. By continuing to use this site you agree to our <a href="/privacy">Privacy Policy</a> and <a href="/tos">Terms of Service</a>.</p>
+    <div class="cookie-banner-actions">
+      <button class="cookie-accept" onclick="setCookieConsent(true)" aria-label="Accept and close cookie notice">Accept</button>
+      <button class="cookie-decline" onclick="setCookieConsent(false)" aria-label="Decline and close cookie notice">Decline</button>
+    </div>
+  </div>
+
+  <footer aria-label="Site footer">
     <div class="container">
       <p>RolePlayManager &copy; 2025</p>
       <ul class="footer-links">
@@ -647,6 +659,7 @@
       var isOpen = overlay.classList.contains('open');
       overlay.classList.toggle('open', !isOpen);
       btn.classList.toggle('open', !isOpen);
+      btn.setAttribute('aria-expanded', String(!isOpen));
       document.body.style.overflow = isOpen ? '' : 'hidden';
     }
     function closeMobileNav() {
@@ -654,7 +667,21 @@
       var overlay = document.getElementById('mobile-nav-overlay');
       overlay.classList.remove('open');
       btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
+    }
+
+    (function() {
+      var banner = document.getElementById('cookie-banner');
+      if (!banner) return;
+      var consent = localStorage.getItem('rpm_cookie_consent');
+      if (!consent) banner.style.display = 'flex';
+    })();
+
+    function setCookieConsent(accepted) {
+      localStorage.setItem('rpm_cookie_consent', accepted ? 'accepted' : 'declined');
+      var banner = document.getElementById('cookie-banner');
+      if (banner) banner.style.display = 'none';
     }
   </script>
 </body>

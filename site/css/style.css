@@ -4,6 +4,106 @@
   box-sizing: border-box;
 }
 
+/* ── Skip Navigation (ADA/WCAG 2.1 AA) ── */
+.skip-nav {
+  position: absolute;
+  top: -100%;
+  left: 8px;
+  z-index: 9999;
+  background: #5865f2;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 6px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-nav:focus {
+  top: 0;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  color: #fff;
+}
+
+/* ── Focus Indicators (WCAG 2.1 AA) ── */
+*:focus-visible {
+  outline: 2px solid #5865f2;
+  outline-offset: 2px;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #5865f2;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── Cookie / Data Consent Banner ── */
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 8000;
+  background: #16181e;
+  border-top: 1px solid #23272f;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+}
+.cookie-banner p {
+  font-size: 13px;
+  color: #b0b7c3;
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.5;
+}
+.cookie-banner p a {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+.cookie-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.cookie-accept {
+  background: #5865f2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.cookie-accept:hover { background: #4752c4; }
+.cookie-decline {
+  background: transparent;
+  color: #7a818e;
+  border: 1px solid #23272f;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.cookie-decline:hover { color: #e8eaed; border-color: #363b47; }
+
 :root {
   --bg: #0a0b0e;
   --bg-secondary: #111318;

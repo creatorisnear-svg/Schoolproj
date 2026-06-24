@@ -46,8 +46,14 @@
       });
     }
 
-    html += '<button type="submit" class="form-btn" id="submit-btn">Submit Verification</button>' +
-      '<div id="form-msg"></div>' +
+    html += '<div class="form-group" style="margin-top:20px;">' +
+      '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:#b0b7c3;line-height:1.5;">' +
+      '<input type="checkbox" id="tos-agree" required style="margin-top:2px;flex-shrink:0;accent-color:#5865f2;width:15px;height:15px;cursor:pointer;" aria-required="true">' +
+      '<span>I have read and agree to the <a href="/tos" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:underline;">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:underline;">Privacy Policy</a>. I understand that my IP address is collected and processed when I access this page, as described in the Privacy Policy.</span>' +
+      '</label>' +
+      '</div>' +
+      '<button type="submit" class="form-btn" id="submit-btn" aria-label="Submit verification form">Submit Verification</button>' +
+      '<div id="form-msg" role="alert" aria-live="polite"></div>' +
       '</form>';
 
     app.innerHTML = html;
@@ -58,8 +64,15 @@
       var msgEl = document.getElementById('form-msg');
       var psnxbox = document.getElementById('psnxbox').value.trim();
 
+      var tosAgree = document.getElementById('tos-agree');
+      if (tosAgree && !tosAgree.checked) {
+        msgEl.innerHTML = '<div class="msg error" role="alert">You must agree to the Terms of Service and Privacy Policy to proceed.</div>';
+        tosAgree.focus();
+        return;
+      }
+
       if (!psnxbox) {
-        msgEl.innerHTML = '<div class="msg error">PSN/Xbox username is required.</div>';
+        msgEl.innerHTML = '<div class="msg error" role="alert">PSN/Xbox username is required.</div>';
         return;
       }
 
