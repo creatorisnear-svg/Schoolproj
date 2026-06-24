@@ -91,6 +91,67 @@
       var banner = document.getElementById('cookie-banner');
       if (banner) banner.style.display = 'none';
     }
+
+    (function() {
+      var form = document.getElementById('dsr-form');
+      if (!form) return;
+
+      var typeLabels = {
+        deletion: 'Data Deletion (Right to be Forgotten)',
+        access: 'Data Access Request',
+        correction: 'Data Correction Request',
+        portability: 'Data Portability Request',
+        restriction: 'Restriction of Processing',
+        objection: 'Objection to Processing'
+      };
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var msgEl = document.getElementById('dsr-msg');
+        var discord = document.getElementById('dsr-discord').value.trim();
+        var email = document.getElementById('dsr-email').value.trim();
+        var type = document.getElementById('dsr-type').value;
+        var details = document.getElementById('dsr-details').value.trim();
+
+        if (!discord) {
+          msgEl.innerHTML = '<div style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);padding:10px 13px;border-radius:6px;font-size:13px;">Discord username is required.</div>';
+          document.getElementById('dsr-discord').focus();
+          return;
+        }
+        if (!email || !email.includes('@')) {
+          msgEl.innerHTML = '<div style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);padding:10px 13px;border-radius:6px;font-size:13px;">A valid email address is required.</div>';
+          document.getElementById('dsr-email').focus();
+          return;
+        }
+        if (!type) {
+          msgEl.innerHTML = '<div style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);padding:10px 13px;border-radius:6px;font-size:13px;">Please select a request type.</div>';
+          document.getElementById('dsr-type').focus();
+          return;
+        }
+
+        msgEl.innerHTML = '';
+
+        var subject = 'GDPR Data Request: ' + (typeLabels[type] || type);
+        var body = 'GDPR DATA REQUEST\n' +
+          '------------------\n' +
+          'Request Type: ' + (typeLabels[type] || type) + '\n' +
+          'Discord Username: ' + discord + '\n' +
+          'Contact Email: ' + email + '\n' +
+          (details ? '\nAdditional Details:\n' + details + '\n' : '') +
+          '\n------------------\n' +
+          'Submitted from: roleplaymanager.xyz/privacy\n' +
+          'Date: ' + new Date().toUTCString();
+
+        var mailto = 'mailto:creatorisnear@gmail.com' +
+          '?subject=' + encodeURIComponent(subject) +
+          '&body=' + encodeURIComponent(body);
+
+        window.location.href = mailto;
+
+        document.getElementById('dsr-form').style.display = 'none';
+        document.getElementById('dsr-success').style.display = 'block';
+      });
+    })();
   </script>
 
   <main id="main-content">
@@ -224,7 +285,64 @@
           <li>Data portability (receive your data in a structured, machine-readable format)</li>
           <li>Lodge a complaint with your local data protection authority</li>
         </ul>
-        <p>To exercise these rights, contact us via Discord or email. We will respond within 30 days.</p>
+        <p>To exercise any of these rights, use the form below or contact us directly. We will respond within 30 days.</p>
+
+        <div id="dsr-form-wrap" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:20px 0;">
+          <h3 style="margin-top:0;margin-bottom:4px;font-size:15px;font-weight:700;color:var(--text);">Submit a Data Request</h3>
+          <p style="font-size:12px;color:var(--text-dim);margin-bottom:18px;">Your request will be sent to our team via email. We respond within 30 days.</p>
+
+          <form id="dsr-form" novalidate>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+              <div>
+                <label for="dsr-discord" style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Discord Username <span aria-hidden="true" style="color:var(--red);">*</span></label>
+                <input id="dsr-discord" type="text" placeholder="username or user#0000" required autocomplete="off"
+                  style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;"
+                  aria-required="true">
+              </div>
+              <div>
+                <label for="dsr-email" style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Email Address <span aria-hidden="true" style="color:var(--red);">*</span></label>
+                <input id="dsr-email" type="email" placeholder="you@example.com" required autocomplete="email"
+                  style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;"
+                  aria-required="true">
+              </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label for="dsr-type" style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Request Type <span aria-hidden="true" style="color:var(--red);">*</span></label>
+              <select id="dsr-type" required aria-required="true"
+                style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;appearance:none;">
+                <option value="">Select a request type...</option>
+                <option value="deletion">Deletion — delete all my personal data (right to be forgotten)</option>
+                <option value="access">Access — provide a copy of data held about me</option>
+                <option value="correction">Correction — correct inaccurate data</option>
+                <option value="portability">Portability — export my data in a structured format</option>
+                <option value="restriction">Restriction — restrict processing of my data</option>
+                <option value="objection">Objection — object to processing of my data</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom:18px;">
+              <label for="dsr-details" style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Additional Details <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);">(optional)</span></label>
+              <textarea id="dsr-details" rows="3" placeholder="Any additional context about your request..."
+                style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+
+            <div id="dsr-msg" role="alert" aria-live="polite" style="margin-bottom:12px;"></div>
+
+            <button type="submit" id="dsr-submit"
+              style="background:#5865f2;color:#fff;border:none;border-radius:6px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;"
+              onmouseover="this.style.background='#4752c4'" onmouseout="this.style.background='#5865f2'">
+              Send Request
+            </button>
+          </form>
+
+          <div id="dsr-success" style="display:none;text-align:center;padding:20px 0;">
+            <div style="font-size:28px;margin-bottom:10px;color:var(--green);">&#10003;</div>
+            <p style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">Request sent</p>
+            <p style="font-size:13px;color:var(--text-muted);">Your email client should have opened with a pre-filled message. If it did not open, email us directly at <a href="mailto:creatorisnear@gmail.com" style="color:var(--blue);">creatorisnear@gmail.com</a> with your request details.</p>
+          </div>
+        </div>
+
         <h3>International Transfers</h3>
         <p>RolePlayManager is operated from the United States. By using the Service, EU/EEA users consent to their data being transferred to and processed in the United States, where data protection laws may differ from those in the EU.</p>
 
