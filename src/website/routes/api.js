@@ -919,12 +919,13 @@ export function createApiRouter(client) {
           result.fields = [
             { key: 'enabled', label: 'Enable Applications', description: 'Allow members to apply for positions', type: 'toggle', value: ac?.enabled ?? false },
             { key: 'reviewChannelId', label: 'Review Channel', description: 'Channel where submissions are posted for staff review', type: 'select', value: ac?.reviewChannelId || '', options: channels },
-            { key: 'panelHeader', label: 'Panel Title', description: 'Title shown on the applications embed', type: 'text', value: ac?.panelHeader || 'Applications' },
-            { key: 'panelBody', label: 'Panel Description', description: 'Description shown on the applications embed', type: 'text', value: ac?.panelBody || '' },
-            { key: 'panelImageUrl', label: 'Banner Image URL', description: 'Optional image shown at the bottom of the panel embed (paste a direct image URL)', type: 'text', value: ac?.panelImageUrl || '' },
             { key: 'useWebhook', label: 'Send Panel via Webhook', description: 'Send the panel embed through your server webhook instead of the bot', type: 'toggle', value: ac?.useWebhook ?? false },
             { key: 'webhookUrl', label: 'Webhook URL', description: 'Discord webhook URL (only used if Send via Webhook is enabled)', type: 'text', value: ac?.webhookUrl || '' },
           ];
+          result.panelHeader = ac?.panelHeader || 'Applications';
+          result.panelBody = ac?.panelBody || 'Click the button below to view and apply for available positions.';
+          result.panelImageUrl = ac?.panelImageUrl || '';
+          result.activeTypeIds = ac?.activeTypeIds || [];
           result.appyTypes = appyTypes.map(t => ({
             typeId: t.typeId,
             name: t.name,
@@ -1276,7 +1277,7 @@ export function createApiRouter(client) {
 
         case 'appys': {
           const { default: AppyConfig } = await import('../../models/AppyConfig.js');
-          const allowed = ['enabled', 'reviewChannelId', 'useWebhook', 'webhookUrl', 'panelImageUrl', 'panelHeader', 'panelBody'];
+          const allowed = ['enabled', 'reviewChannelId', 'useWebhook', 'webhookUrl'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -1738,21 +1739,34 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { channelId } = req.body;
+    const { channelId, panelHeader, panelBody, panelImageUrl, activeTypeIds } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
     try {
       const { default: AppyConfig } = await import('../../models/AppyConfig.js');
       const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
       const axios = (await import('axios')).default;
-      const ac = await AppyConfig.findOne({ guildId: req.params.id });
+      const ac = await AppyConfig.findOneAndUpdate(
+        { guildId: req.params.id },
+        {
+          ...(panelHeader !== undefined && { panelHeader }),
+          ...(panelBody !== undefined && { panelBody }),
+          ...(panelImageUrl !== undefined && { panelImageUrl }),
+          ...(Array.isArray(activeTypeIds) && { activeTypeIds }),
+        },
+        { upsert: true, new: true }
+      );
       if (!ac) return res.status(404).json({ error: 'Applications not configured' });
+
+      const header = panelHeader ?? ac.panelHeader ?? 'Applications';
+      const body = panelBody ?? ac.panelBody ?? 'Click the button below to view and apply for available positions.';
+      const img = panelImageUrl ?? ac.panelImageUrl ?? null;
 
       const panelEmbed = new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle(ac.panelHeader || 'Applications')
-        .setDescription(ac.panelBody || 'Click the button below to view and apply for available positions.')
+        .setTitle(header)
+        .setDescription(body)
         .setFooter({ text: 'RPM' });
-      if (ac.panelImageUrl) panelEmbed.setImage(ac.panelImageUrl);
+      if (img) panelEmbed.setImage(img);
 
       const applyBtn = new ButtonBuilder()
         .setCustomId('appy_open')

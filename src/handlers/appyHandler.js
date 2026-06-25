@@ -28,6 +28,9 @@ export async function handleAppyOpen(interaction, client) {
     config = await AppyConfig.findOne({ guildId });
     if (!config?.enabled) return interaction.reply({ embeds: [_errEmbed('Applications are currently disabled.')], flags: 64 });
     types = await AppyPanel.find({ guildId }).sort({ createdAt: 1 });
+    if (config.activeTypeIds && config.activeTypeIds.length > 0) {
+      types = types.filter(t => config.activeTypeIds.includes(t.typeId));
+    }
     if (!types || types.length === 0) return interaction.reply({ embeds: [_errEmbed('No application types are configured yet.')], flags: 64 });
   } catch (err) {
     console.error('[Appys] handleAppyOpen DB error:', err.message);

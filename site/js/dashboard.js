@@ -1707,6 +1707,8 @@ function renderAppySettings(data) {
   var types = data.appyTypes || [];
   var allRoles = data.roles || [];
   var allChannels = data.channels || [];
+  var activeTypeIds = data.activeTypeIds || [];
+
   var roleOpts = allRoles.map(function(r) {
     return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
   }).join('');
@@ -1716,134 +1718,157 @@ function renderAppySettings(data) {
 
   var html = renderSettingsFields(data, 'appys');
 
-  html += '<div class="config-section" style="margin-top:4px;">' +
-    '<div class="config-section-header"><h3>Application Types</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + types.length + ' type' + (types.length === 1 ? '' : 's') + ' configured</span>' +
+  html += '<div style="display:flex;gap:10px;margin:18px 0 12px;">' +
+    '<button id="appy-btn-send" class="btn btn-secondary" style="flex:1;padding:10px 6px;font-size:13px;" onclick="showAppyAction(\'send\')">Send Panel</button>' +
+    '<button id="appy-btn-create" class="btn btn-secondary" style="flex:1;padding:10px 6px;font-size:13px;" onclick="showAppyAction(\'create\')">Make Application</button>' +
+    '<button id="appy-btn-edit" class="btn btn-secondary" style="flex:1;padding:10px 6px;font-size:13px;" onclick="showAppyAction(\'edit\')">Edit Application</button>' +
     '</div>';
 
-  if (types.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No application types yet. Create one below — each type appears in the select menu when members click the panel button.</span></div>';
-  } else {
-    types.forEach(function(t) {
-      html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:12px;">' +
-        '<div style="display:flex;justify-content:space-between;width:100%;align-items:center;">' +
-        '<span class="config-label" style="font-size:13px;">' + esc(t.name) + '</span>' +
-        '<div style="display:flex;gap:6px;">' +
-        '<button class="btn btn-secondary btn-sm" onclick="editAppyType(\'' + esc(t.typeId) + '\')">Edit</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteAppyType(\'' + esc(t.typeId) + '\')">Remove</button>' +
-        '</div>' +
-        '</div>' +
-        (t.description ? '<div class="config-sublabel">' + esc(t.description) + '</div>' : '') +
-        '<div class="config-sublabel">' + t.questions.length + ' question' + (t.questions.length === 1 ? '' : 's') +
-        (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') +
-        '</div>' +
-        '</div>';
-    });
-  }
+  var panelLastChannel = data.panelChannelId ? (allChannels.find(function(c) { return c.value === data.panelChannelId; }) || null) : null;
+  var typeCheckboxes = types.length === 0
+    ? '<span class="config-sublabel">No application types created yet.</span>'
+    : types.map(function(t) {
+        var isChecked = activeTypeIds.length === 0 || activeTypeIds.indexOf(t.typeId) !== -1;
+        return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;">' +
+          '<input type="checkbox" value="' + esc(t.typeId) + '" class="appy-type-check"' + (isChecked ? ' checked' : '') + '> ' +
+          esc(t.name) + '</label>';
+      }).join('');
 
-  html += '<div id="appy-create-form" style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:14px;display:none;flex-direction:column;gap:10px;">' +
-    '<div style="font-size:13px;font-weight:600;color:var(--text);" id="appy-form-title">Create Application Type</div>' +
+  html += '<div id="appy-action-send" style="display:none;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--card);flex-direction:column;gap:12px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text);">Send Panel</div>' +
+    '<span class="config-sublabel">Configure the embed, choose which application types are included, then send to a channel.</span>' +
+    '<div class="config-row"><label class="config-label">Panel Title</label>' +
+    '<input id="appy-panel-header" type="text" class="config-input" placeholder="Applications" value="' + esc(data.panelHeader || 'Applications') + '"></div>' +
+    '<div class="config-row"><label class="config-label">Panel Description</label>' +
+    '<input id="appy-panel-body" type="text" class="config-input" placeholder="Click the button below to apply." value="' + esc(data.panelBody || '') + '"></div>' +
+    '<div class="config-row"><label class="config-label">Banner Image URL</label>' +
+    '<input id="appy-panel-image" type="text" class="config-input" placeholder="https://i.imgur.com/..." value="' + esc(data.panelImageUrl || '') + '"></div>' +
+    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Application Types to Include</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' + typeCheckboxes + '</div>' +
+    '<div class="config-row"><label class="config-label">Send to Channel</label>' +
+    '<select id="appy-send-channel" class="config-select" style="min-width:200px;"><option value="">Select channel...</option>' + channelOpts + '</select></div>' +
+    (panelLastChannel ? '<span class="config-sublabel">Last sent to: <code>#' + esc(panelLastChannel.label) + '</code></span>' : '') +
+    '<div style="display:flex;gap:8px;margin-top:4px;">' +
+    '<button class="btn btn-primary btn-sm" onclick="sendAppyPanel()">Send Panel to Discord</button>' +
+    '</div></div>';
+
+  html += '<div id="appy-action-create" style="display:none;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--card);flex-direction:column;gap:12px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text);">Make Application</div>' +
     '<input id="appy-name" type="text" class="config-input" placeholder="Application name (e.g. LEO Application)">' +
-    '<input id="appy-desc" type="text" class="config-input" placeholder="Short description (shown in select menu, optional)">' +
-    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Accept Role (optional - assigned when accepted)</div>' +
+    '<input id="appy-desc" type="text" class="config-input" placeholder="Short description shown in the select menu (optional)">' +
+    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Questions</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
-    '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion()">+ Add Question</button>' +
+    '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-questions-list\')">+ Add Question</button>' +
+    '<div style="display:flex;gap:8px;margin-top:4px;">' +
+    '<button class="btn btn-success btn-sm" onclick="saveAppyType(false)">Save Application</button>' +
+    '</div></div>';
+
+  var editTypeList = types.length === 0
+    ? '<span class="config-sublabel">No application types created yet.</span>'
+    : types.map(function(t) {
+        return '<div class="config-row" style="justify-content:space-between;">' +
+          '<div class="config-left">' +
+          '<span class="config-label" style="font-size:13px;">' + esc(t.name) + '</span>' +
+          (t.description ? '<div class="config-sublabel">' + esc(t.description) + '</div>' : '') +
+          '<div class="config-sublabel">' + t.questions.length + ' question' + (t.questions.length === 1 ? '' : 's') +
+          (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;">' +
+          '<button class="btn btn-secondary btn-sm" onclick="loadAppyEditForm(\'' + esc(t.typeId) + '\')">Edit</button>' +
+          '<button class="btn btn-danger btn-sm" onclick="deleteAppyType(\'' + esc(t.typeId) + '\')">Remove</button>' +
+          '</div></div>';
+      }).join('');
+
+  html += '<div id="appy-action-edit" style="display:none;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--card);flex-direction:column;gap:4px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Edit Application</div>' +
+    '<div id="appy-edit-type-list" style="display:flex;flex-direction:column;gap:4px;">' + editTypeList + '</div>' +
+    '<div id="appy-edit-form" style="display:none;border-top:1px solid var(--border);padding-top:14px;margin-top:10px;flex-direction:column;gap:10px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text);">Editing Application</div>' +
+    '<input id="appy-edit-name" type="text" class="config-input" placeholder="Application name">' +
+    '<input id="appy-edit-desc" type="text" class="config-input" placeholder="Short description (optional)">' +
+    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
+    '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
+    '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
+    '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-edit-questions-list\')">+ Add Question</button>' +
     '<input type="hidden" id="appy-edit-id" value="">' +
     '<div style="display:flex;gap:8px;margin-top:4px;">' +
-    '<button class="btn btn-success btn-sm" onclick="saveAppyType()">Save</button>' +
-    '<button class="btn btn-secondary btn-sm" onclick="closeAppyForm()">Cancel</button>' +
-    '</div>' +
-    '</div>' +
-    '<div class="config-row" style="justify-content:flex-start;gap:8px;margin-top:8px;">' +
-    '<button class="btn btn-success btn-sm" onclick="openAppyCreateForm()">Create Application Type</button>' +
-    '</div>' +
-    '</div>';
-
-  html += '<div class="config-section" style="margin-top:8px;">' +
-    '<div class="config-section-header"><h3>Send Panel to Discord</h3></div>' +
-    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<span class="config-sublabel">Choose a channel to post the applications panel in. Members will see the button and select which application to apply for.</span>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-    '<select id="appy-send-channel" class="config-select" style="min-width:200px;"><option value="">Select channel...</option>' + channelOpts + '</select>' +
-    '<button class="btn btn-primary btn-sm" onclick="sendAppyPanel()">Send Panel to Discord</button>' +
-    '</div>' +
-    (data.panelChannelId ? '<span class="config-sublabel">Last sent to: <code>#' + esc(allChannels.find(function(c){ return c.value === data.panelChannelId; })?.label || data.panelChannelId) + '</code></span>' : '') +
-    '</div>' +
-    '</div>';
+    '<button class="btn btn-success btn-sm" onclick="saveAppyType(true)">Save Changes</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="closeAppyEditForm()">Cancel</button>' +
+    '</div></div></div>';
 
   return html;
 }
 
-function openAppyCreateForm() {
-  document.getElementById('appy-form-title').textContent = 'Create Application Type';
-  document.getElementById('appy-name').value = '';
-  document.getElementById('appy-desc').value = '';
-  document.getElementById('appy-role').value = '';
-  document.getElementById('appy-edit-id').value = '';
-  document.getElementById('appy-questions-list').innerHTML = '';
-  addAppyQuestion();
-  document.getElementById('appy-create-form').style.display = 'flex';
-  document.getElementById('appy-create-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+function showAppyAction(which) {
+  ['send', 'create', 'edit'].forEach(function(k) {
+    var el = document.getElementById('appy-action-' + k);
+    var btn = document.getElementById('appy-btn-' + k);
+    var isActive = k === which;
+    if (el) el.style.display = isActive ? 'flex' : 'none';
+    if (btn) {
+      btn.style.borderColor = isActive ? 'var(--accent)' : '';
+      btn.style.color = isActive ? 'var(--accent)' : '';
+    }
+  });
+  if (which === 'create') {
+    var list = document.getElementById('appy-questions-list');
+    if (list && list.children.length === 0) addAppyQuestion(null, 'appy-questions-list');
+  }
 }
 
-function closeAppyForm() {
-  document.getElementById('appy-create-form').style.display = 'none';
-}
-
-function addAppyQuestion(val) {
-  var list = document.getElementById('appy-questions-list');
+function addAppyQuestion(val, listId) {
+  var list = document.getElementById(listId || 'appy-questions-list');
   if (!list) return;
   var idx = list.children.length;
+  var qClass = listId === 'appy-edit-questions-list' ? 'appy-edit-question-input' : 'appy-question-input';
   var row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-  row.innerHTML = '<input type="text" class="config-input appy-question-input" placeholder="Question ' + (idx + 1) + '" style="flex:1;" value="' + esc(val || '') + '">' +
+  row.innerHTML = '<input type="text" class="config-input ' + qClass + '" placeholder="Question ' + (idx + 1) + '" style="flex:1;" value="' + esc(val || '') + '">' +
     '<button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">Remove</button>';
   list.appendChild(row);
 }
 
-function editAppyType(typeId) {
+function loadAppyEditForm(typeId) {
   api('/guild/' + currentGuild.id + '/settings/appys').then(function(data) {
     var t = (data.appyTypes || []).find(function(x) { return x.typeId === typeId; });
-    if (!t) { toast('Type not found', 'error'); return; }
-    document.getElementById('appy-form-title').textContent = 'Edit Application Type';
-    document.getElementById('appy-name').value = t.name || '';
-    document.getElementById('appy-desc').value = t.description || '';
-    document.getElementById('appy-role').value = t.acceptRoleId || '';
+    if (!t) { toast('Application type not found', 'error'); return; }
+    document.getElementById('appy-edit-name').value = t.name || '';
+    document.getElementById('appy-edit-desc').value = t.description || '';
+    document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
     document.getElementById('appy-edit-id').value = typeId;
-    var list = document.getElementById('appy-questions-list');
+    var list = document.getElementById('appy-edit-questions-list');
     list.innerHTML = '';
-    (t.questions || []).forEach(function(q) { addAppyQuestion(q); });
-    if (!list.children.length) addAppyQuestion();
-    document.getElementById('appy-create-form').style.display = 'flex';
-    document.getElementById('appy-create-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    (t.questions || []).forEach(function(q) { addAppyQuestion(q, 'appy-edit-questions-list'); });
+    if (!list.children.length) addAppyQuestion(null, 'appy-edit-questions-list');
+    var editForm = document.getElementById('appy-edit-form');
+    editForm.style.display = 'flex';
+    editForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 }
 
-function saveAppyType() {
-  var name = (document.getElementById('appy-name').value || '').trim();
-  var desc = (document.getElementById('appy-desc').value || '').trim();
-  var roleId = document.getElementById('appy-role').value || null;
-  var editId = document.getElementById('appy-edit-id').value || '';
-  var inputs = document.querySelectorAll('.appy-question-input');
-  var questions = Array.from(inputs).map(function(i) { return i.value.trim(); }).filter(Boolean);
+function closeAppyEditForm() {
+  var editForm = document.getElementById('appy-edit-form');
+  if (editForm) editForm.style.display = 'none';
+}
+
+function saveAppyType(isEdit) {
+  var prefix = isEdit ? 'appy-edit-' : 'appy-';
+  var name = (document.getElementById(prefix + 'name').value || '').trim();
+  var desc = (document.getElementById(prefix + 'desc').value || '').trim();
+  var roleId = document.getElementById(prefix + 'role').value || null;
+  var typeId = isEdit ? (document.getElementById('appy-edit-id').value || '') : '';
+  var qClass = isEdit ? '.appy-edit-question-input' : '.appy-question-input';
+  var questions = Array.from(document.querySelectorAll(qClass)).map(function(i) { return i.value.trim(); }).filter(Boolean);
   if (!name) { toast('Enter an application name', 'error'); return; }
   if (!questions.length) { toast('Add at least one question', 'error'); return; }
+  var url = isEdit ? '/guild/' + currentGuild.id + '/appys/type/' + typeId : '/guild/' + currentGuild.id + '/appys/type';
+  var method = isEdit ? 'PUT' : 'POST';
   _pendingScrollRestore = getDashScrollPos();
-  var url, method;
-  if (editId) {
-    url = '/guild/' + currentGuild.id + '/appys/type/' + editId;
-    method = 'PUT';
-  } else {
-    url = '/guild/' + currentGuild.id + '/appys/type';
-    method = 'POST';
-  }
-  api(url, {
-    method: method,
-    body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId })
-  }).then(function(r) {
-    if (r && r.success) { toast(editId ? 'Application updated' : 'Application created'); renderSettings('appys'); }
+  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId }) }).then(function(r) {
+    if (r && r.success) { toast(isEdit ? 'Application updated' : 'Application created'); renderSettings('appys'); }
     else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });
 }
@@ -1860,9 +1885,13 @@ function deleteAppyType(typeId) {
 function sendAppyPanel() {
   var channelId = document.getElementById('appy-send-channel') && document.getElementById('appy-send-channel').value;
   if (!channelId) { toast('Select a channel first', 'error'); return; }
+  var header = document.getElementById('appy-panel-header') ? document.getElementById('appy-panel-header').value : '';
+  var body = document.getElementById('appy-panel-body') ? document.getElementById('appy-panel-body').value : '';
+  var imageUrl = document.getElementById('appy-panel-image') ? document.getElementById('appy-panel-image').value : '';
+  var activeTypeIds = Array.from(document.querySelectorAll('.appy-type-check:checked')).map(function(c) { return c.value; });
   api('/guild/' + currentGuild.id + '/appys/panel/send', {
     method: 'POST',
-    body: JSON.stringify({ channelId: channelId })
+    body: JSON.stringify({ channelId: channelId, panelHeader: header, panelBody: body, panelImageUrl: imageUrl, activeTypeIds: activeTypeIds })
   }).then(function(r) {
     if (r && r.success) { toast('Panel sent to Discord'); renderSettings('appys'); }
     else if (r && r.error) toast(r.error, 'error');

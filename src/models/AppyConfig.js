@@ -11,6 +11,7 @@ const appyConfigSchema = new mongoose.Schema({
   panelBody:       { type: String, default: 'Click the button below to view and apply for available positions.' },
   panelChannelId:  { type: String, default: null },
   panelMessageId:  { type: String, default: null },
+  activeTypeIds:   { type: [String], default: [] },
 });
 
 export default mongoose.models.AppyConfig
