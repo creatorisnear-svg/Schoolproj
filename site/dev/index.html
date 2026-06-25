@@ -571,10 +571,10 @@
     var countEl = document.getElementById('verified-count');
     var filtered = _verifiedData.filter(function(v) {
       if (!search) return true;
-      return (v.discordId||'').includes(search) ||
-        (v.discordUsername||'').toLowerCase().includes(search) ||
-        (v.robloxUsername||'').toLowerCase().includes(search) ||
-        (v.answers||[]).some(function(a){ return String(a).toLowerCase().includes(search); });
+      return (v.userId||'').includes(search) ||
+        (v.discordName||'').toLowerCase().includes(search) ||
+        (v.psnxbox||'').toLowerCase().includes(search) ||
+        (v.ipAddress||'').includes(search);
     });
     countEl.textContent = '(' + filtered.length + (search ? ' of ' + _verifiedData.length : '') + ')';
     if (!filtered.length) {
@@ -583,14 +583,13 @@
     }
     el.innerHTML = filtered.map(function(v) {
       var date = v.verifiedAt ? new Date(v.verifiedAt).toLocaleDateString() : 'Unknown';
-      var answers = (v.answers||[]).filter(Boolean);
       return '<div class="card" style="margin-bottom:10px;">' +
         '<div class="card-header">' +
         '<div style="min-width:0;flex:1;">' +
-        '<div style="font-size:14px;font-weight:700;color:#fff;">' + esc(v.discordUsername || v.discordId) + '</div>' +
-        '<div style="font-size:12px;color:#666;margin-top:2px;">ID: ' + esc(v.discordId) + ' &middot; Verified ' + date + '</div>' +
-        (v.robloxUsername ? '<div style="font-size:12px;color:#888;margin-top:2px;">Roblox: ' + esc(v.robloxUsername) + '</div>' : '') +
-        (answers.length ? '<div style="margin-top:8px;font-size:12px;color:#777;">' + answers.map(function(a,i){ return '<span style="display:block;margin-top:2px;"><span style="color:#555;">Q' + (i+1) + ':</span> ' + esc(String(a)) + '</span>'; }).join('') + '</div>' : '') +
+        '<div style="font-size:14px;font-weight:700;color:#fff;">' + esc(v.discordName || v.userId) + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:2px;">ID: ' + esc(v.userId) + ' &middot; Verified ' + date + '</div>' +
+        (v.psnxbox ? '<div style="font-size:12px;color:#aaa;margin-top:3px;">PSN/Xbox: <strong>' + esc(v.psnxbox) + '</strong></div>' : '') +
+        (v.ipAddress ? '<div style="font-size:12px;color:#666;margin-top:2px;font-family:monospace;">IP: ' + esc(v.ipAddress) + '</div>' : '') +
         '</div>' +
         '</div>' +
         '</div>';
