@@ -1745,9 +1745,15 @@ function renderAppySettings(data) {
     '<input id="appy-panel-image" type="text" class="config-input" placeholder="https://i.imgur.com/..." value="' + esc(data.panelImageUrl || '') + '"></div>' +
     '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Application Types to Include</div>' +
     '<div style="display:flex;flex-direction:column;gap:8px;">' + typeCheckboxes + '</div>' +
-    '<div class="config-row"><label class="config-label">Send to Channel</label>' +
-    '<select id="appy-send-channel" class="config-select" style="min-width:200px;"><option value="">Select channel...</option>' + channelOpts + '</select></div>' +
+    '<div class="config-row"><label class="config-label">Panel Channel</label>' +
+    '<select id="appy-send-channel" class="config-select" style="min-width:200px;"><option value="">Where the panel button is posted...</option>' +
+    allChannels.map(function(c) { return '<option value="' + esc(c.value) + '"' + (c.value === data.panelChannelId ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
+    '</select></div>' +
     (panelLastChannel ? '<span class="config-sublabel">Last sent to: <code>#' + esc(panelLastChannel.label) + '</code></span>' : '') +
+    '<div class="config-row"><label class="config-label">Applications Go To</label>' +
+    '<select id="appy-review-channel" class="config-select" style="min-width:200px;"><option value="">Where staff review submissions...</option>' +
+    allChannels.map(function(c) { return '<option value="' + esc(c.value) + '"' + (c.value === data.reviewChannelId ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') +
+    '</select></div>' +
     '<div style="display:flex;gap:8px;margin-top:4px;">' +
     '<button class="btn btn-primary btn-sm" onclick="sendAppyPanel()">Send Panel to Discord</button>' +
     '</div></div>';
@@ -1884,14 +1890,16 @@ function deleteAppyType(typeId) {
 
 function sendAppyPanel() {
   var channelId = document.getElementById('appy-send-channel') && document.getElementById('appy-send-channel').value;
-  if (!channelId) { toast('Select a channel first', 'error'); return; }
+  if (!channelId) { toast('Select a panel channel first', 'error'); return; }
+  var reviewChannelId = document.getElementById('appy-review-channel') && document.getElementById('appy-review-channel').value;
+  if (!reviewChannelId) { toast('Select a channel for applications to go to', 'error'); return; }
   var header = document.getElementById('appy-panel-header') ? document.getElementById('appy-panel-header').value : '';
   var body = document.getElementById('appy-panel-body') ? document.getElementById('appy-panel-body').value : '';
   var imageUrl = document.getElementById('appy-panel-image') ? document.getElementById('appy-panel-image').value : '';
   var activeTypeIds = Array.from(document.querySelectorAll('.appy-type-check:checked')).map(function(c) { return c.value; });
   api('/guild/' + currentGuild.id + '/appys/panel/send', {
     method: 'POST',
-    body: JSON.stringify({ channelId: channelId, panelHeader: header, panelBody: body, panelImageUrl: imageUrl, activeTypeIds: activeTypeIds })
+    body: JSON.stringify({ channelId: channelId, reviewChannelId: reviewChannelId, panelHeader: header, panelBody: body, panelImageUrl: imageUrl, activeTypeIds: activeTypeIds })
   }).then(function(r) {
     if (r && r.success) { toast('Panel sent to Discord'); renderSettings('appys'); }
     else if (r && r.error) toast(r.error, 'error');

@@ -918,13 +918,13 @@ export function createApiRouter(client) {
           const appyTypes = await AppyPanel.find({ guildId: guild.id }).sort({ createdAt: 1 });
           result.fields = [
             { key: 'enabled', label: 'Enable Applications', description: 'Allow members to apply for positions', type: 'toggle', value: ac?.enabled ?? false },
-            { key: 'reviewChannelId', label: 'Review Channel', description: 'Channel where submissions are posted for staff review', type: 'select', value: ac?.reviewChannelId || '', options: channels },
             { key: 'useWebhook', label: 'Send Panel via Webhook', description: 'Send the panel embed through your server webhook instead of the bot', type: 'toggle', value: ac?.useWebhook ?? false },
             { key: 'webhookUrl', label: 'Webhook URL', description: 'Discord webhook URL (only used if Send via Webhook is enabled)', type: 'text', value: ac?.webhookUrl || '' },
           ];
           result.panelHeader = ac?.panelHeader || 'Applications';
           result.panelBody = ac?.panelBody || 'Click the button below to view and apply for available positions.';
           result.panelImageUrl = ac?.panelImageUrl || '';
+          result.reviewChannelId = ac?.reviewChannelId || null;
           result.activeTypeIds = ac?.activeTypeIds || [];
           result.appyTypes = appyTypes.map(t => ({
             typeId: t.typeId,
@@ -1739,7 +1739,7 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { channelId, panelHeader, panelBody, panelImageUrl, activeTypeIds } = req.body;
+    const { channelId, panelHeader, panelBody, panelImageUrl, activeTypeIds, reviewChannelId } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
     try {
       const { default: AppyConfig } = await import('../../models/AppyConfig.js');
@@ -1752,6 +1752,7 @@ export function createApiRouter(client) {
           ...(panelBody !== undefined && { panelBody }),
           ...(panelImageUrl !== undefined && { panelImageUrl }),
           ...(Array.isArray(activeTypeIds) && { activeTypeIds }),
+          ...(reviewChannelId !== undefined && { reviewChannelId }),
         },
         { upsert: true, new: true }
       );
