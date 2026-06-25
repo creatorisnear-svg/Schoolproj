@@ -593,6 +593,9 @@
         <div style="width:auto;">
           <input id="verified-search" type="text" class="form-input" placeholder="Search name / PSN / IP..." oninput="filterVerified()" style="min-width:200px;">
         </div>
+        <div style="width:auto;">
+          <button class="btn" onclick="initVerifiedTab(true)" style="white-space:nowrap;">Refresh</button>
+        </div>
       </div>
     </div>
 
@@ -1254,23 +1257,26 @@
   var _verifiedData = [];
   var _verifiedTabReady = false;
 
-  async function initVerifiedTab() {
-    if (_verifiedTabReady) return;
-    _verifiedTabReady = true;
+  async function initVerifiedTab(force) {
+    if (_verifiedTabReady && !force) return;
+    var sel = document.getElementById('verified-guild-select');
+    sel.innerHTML = '<option value="">Loading servers...</option>';
     try {
       var res = await api('GET', '/guilds');
       _verifiedGuilds = Array.isArray(res) ? res : [];
-      var sel = document.getElementById('verified-guild-select');
       if (!_verifiedGuilds.length) {
         sel.innerHTML = '<option value="">No servers available</option>';
+        _verifiedTabReady = false;
         return;
       }
       sel.innerHTML = '<option value="">Select a server...</option>' +
         _verifiedGuilds.map(function(g) {
           return '<option value="' + esc(g.id) + '">' + esc(g.name) + ' (' + g.memberCount + ' members)</option>';
         }).join('');
+      _verifiedTabReady = true;
     } catch (e) {
-      document.getElementById('verified-guild-select').innerHTML = '<option value="">Error loading servers</option>';
+      sel.innerHTML = '<option value="">Error loading servers - click Refresh</option>';
+      _verifiedTabReady = false;
     }
   }
 

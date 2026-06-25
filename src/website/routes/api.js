@@ -694,6 +694,7 @@ export function createApiRouter(client) {
         case 'priority': {
           result.name = 'Priority Tracker';
           result.description = 'Real-time priority event tracking with cooldowns';
+          result.premium = await isFeaturePremiumGated('priority');
           const { default: Priority } = await import('../../models/Priority.js');
           const pc = await Priority.findOne({ guildId: guild.id });
           result.fields = [
@@ -912,6 +913,7 @@ export function createApiRouter(client) {
         case 'appys': {
           result.name = 'Applications';
           result.description = 'Create application panels members can apply to in DMs. Requires Premium.';
+          result.premium = await isFeaturePremiumGated('appys');
           const { default: AppyConfig } = await import('../../models/AppyConfig.js');
           const { default: AppyPanel } = await import('../../models/AppyPanel.js');
           const ac = await AppyConfig.findOne({ guildId: guild.id });
@@ -1062,6 +1064,16 @@ export function createApiRouter(client) {
 
     if (!changes || Object.keys(changes).length === 0) {
       return res.status(400).json({ error: 'No changes provided' });
+    }
+
+    // Block saving settings for premium-gated modules when guild lacks premium
+    const PREMIUM_SETTINGS_MODS = ['dispatch', 'appys', 'priority'];
+    if (PREMIUM_SETTINGS_MODS.includes(mod)) {
+      const { checkFeatureAccess } = await import('../../utils/premiumCheck.js');
+      const access = await checkFeatureAccess(guild.id, mod);
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'premium_required' });
+      }
     }
 
     try {

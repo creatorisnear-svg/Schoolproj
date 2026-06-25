@@ -830,13 +830,15 @@ function renderSettings(mod) {
       '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
       '<div class="dash-header"><h1>' + esc(data.name) + '</h1><p>' + esc(data.description) + '</p></div>';
 
+    var isPremiumLocked = data.premium && !currentGuild.premium;
+
     if (data.premium) {
       html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);">' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-        'Premium feature - this server needs an active premium subscription.' +
+        (isPremiumLocked ? 'Premium required - activate a key to configure this feature.' : 'Premium feature - active on this server.') +
         '</div>' +
-        (!currentGuild.premium
+        (isPremiumLocked
           ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
             '<a href="https://roleplaymanager.xyz/pricing" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +
@@ -848,6 +850,11 @@ function renderSettings(mod) {
             '</div>'
           : '') +
         '</div>';
+    }
+
+    if (isPremiumLocked) {
+      html += '<div style="position:relative;">' +
+        '<div style="pointer-events:none;opacity:0.35;user-select:none;">';
     }
 
     if (mod === 'economy') {
@@ -870,6 +877,12 @@ function renderSettings(mod) {
       html += renderAppySettings(data);
     } else {
       html += renderSettingsFields(data, mod);
+    }
+
+    if (isPremiumLocked) {
+      html += '</div>' +
+        '<div style="position:absolute;inset:0;cursor:not-allowed;" title="Premium required to configure this feature."></div>' +
+        '</div>';
     }
 
     if (data.stats && data.stats.length > 0) {
