@@ -1743,7 +1743,8 @@ export function createApiRouter(client) {
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
     try {
       const { default: AppyConfig } = await import('../../models/AppyConfig.js');
-      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const { default: AppyPanel } = await import('../../models/AppyPanel.js');
+      const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
       const axios = (await import('axios')).default;
       const ac = await AppyConfig.findOneAndUpdate(
         { guildId: req.params.id },
@@ -1758,34 +1759,54 @@ export function createApiRouter(client) {
       );
       if (!ac) return res.status(404).json({ error: 'Applications not configured' });
 
+      // Fetch application types to populate dropdown
+      let types = await AppyPanel.find({ guildId: req.params.id }).sort({ createdAt: 1 });
+      if (ac.activeTypeIds && ac.activeTypeIds.length > 0) {
+        types = types.filter(t => ac.activeTypeIds.includes(t.typeId));
+      }
+      if (!types || types.length === 0) {
+        return res.status(400).json({ error: 'No application types configured. Add at least one type before sending the panel.' });
+      }
+
       const header = panelHeader ?? ac.panelHeader ?? 'Applications';
-      const body = panelBody ?? ac.panelBody ?? 'We are currently accepting applications for available positions within our community.\n\nReview the available options using the dropdown menu below and submit your application. Our team will review your submission and follow up via DM.';
+      const body = panelBody ?? ac.panelBody ?? 'We are currently accepting applications for available positions within our community.\n\nReview the options below and select the one you wish to apply for. Our team will review your submission and follow up via DM.';
       const img = panelImageUrl ?? ac.panelImageUrl ?? null;
 
       const description =
         `### ${header}\n` +
         `${body}\n` +
         `\u200b\n` +
-        `-# Use the dropdown below to select an application type and begin your submission.`;
+        `-# Select an application type from the dropdown below to begin your submission.`;
 
-      const panelEmbed = new EmbedBuilder()
+      // Banner embed (image at top) + content embed
+      const embeds = [];
+      if (img) {
+        const bannerEmbed = new EmbedBuilder().setImage(img);
+        embeds.push(bannerEmbed);
+      }
+      const contentEmbed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setDescription(description)
         .setFooter({ text: 'RPM' });
-      if (img) panelEmbed.setImage(img);
+      embeds.push(contentEmbed);
 
-      const applyBtn = new ButtonBuilder()
-        .setCustomId('appy_open')
-        .setLabel('View Applications')
-        .setStyle(ButtonStyle.Primary);
-      const row = new ActionRowBuilder().addComponents(applyBtn);
+      // Dropdown with all application types
+      const selectOptions = types.map(t => ({
+        label: t.name.slice(0, 100),
+        description: (t.description || '').slice(0, 100) || undefined,
+        value: t.typeId,
+      }));
+      const select = new StringSelectMenuBuilder()
+        .setCustomId('appy_type_select')
+        .setPlaceholder('Select an application...')
+        .addOptions(selectOptions);
+      const row = new ActionRowBuilder().addComponents(select);
 
       let messageId = null;
 
       if (ac.useWebhook && ac.webhookUrl) {
-        const embedJson = panelEmbed.toJSON();
         const payload = {
-          embeds: [embedJson],
+          embeds: embeds.map(e => e.toJSON()),
           components: [row.toJSON()],
         };
         const response = await axios.post(ac.webhookUrl + '?wait=true', payload, {
@@ -1795,7 +1816,7 @@ export function createApiRouter(client) {
       } else {
         const channel = guild.channels.cache.get(channelId);
         if (!channel) return res.status(404).json({ error: 'Channel not found' });
-        const msg = await channel.send({ embeds: [panelEmbed], components: [row] });
+        const msg = await channel.send({ embeds, components: [row] });
         messageId = msg.id;
       }
 
