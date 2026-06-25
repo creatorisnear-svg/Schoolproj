@@ -1,1 +1,2 @@
 - [Mongoose Model Guards](mongoose-model-guards.md) - all 37 models need `mongoose.models.X ||` guard; EmergencyCall.js uses named import pattern requiring `models` in import.
+- [Appys Feature Architecture](appys-architecture.md) - Applications system: AppyConfig+AppyPanel+AppySubmission models; DM Q&A flow; premium gated; panel sent via bot or webhook.

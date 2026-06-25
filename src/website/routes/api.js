@@ -7,7 +7,7 @@ import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { checkFeatureAccess, isFeaturePremiumGated } from '../../utils/premiumCheck.js';
 
-const DEFAULT_PREMIUM_FEATURES = ['dispatch'];
+const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'appys'];
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -264,6 +264,7 @@ export function createApiRouter(client) {
         movemeEnabled: false,
         civJobsEnabled: false,
         blacklistEnabled: false,
+        appysEnabled: false,
       };
 
       try {
@@ -355,6 +356,12 @@ export function createApiRouter(client) {
         const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
         const blc = await BlacklistConfig.findOne({ guildId: guild.id });
         if (blc) config.blacklistEnabled = !!blc.enabled;
+      } catch {}
+
+      try {
+        const { default: AppyConfig } = await import('../../models/AppyConfig.js');
+        const ac = await AppyConfig.findOne({ guildId: guild.id });
+        if (ac) config.appysEnabled = !!ac.enabled;
       } catch {}
 
       let premium = false;
@@ -516,6 +523,11 @@ export function createApiRouter(client) {
         case 'blacklist': {
           const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');
           await BlacklistConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
+        case 'appys': {
+          const { default: AppyConfig } = await import('../../models/AppyConfig.js');
+          await AppyConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
         default:
@@ -897,6 +909,37 @@ export function createApiRouter(client) {
           break;
         }
 
+        case 'appys': {
+          result.name = 'Applications';
+          result.description = 'Create application panels members can apply to in DMs. Requires Premium.';
+          const { default: AppyConfig } = await import('../../models/AppyConfig.js');
+          const { default: AppyPanel } = await import('../../models/AppyPanel.js');
+          const ac = await AppyConfig.findOne({ guildId: guild.id });
+          const appyTypes = await AppyPanel.find({ guildId: guild.id }).sort({ createdAt: 1 });
+          result.fields = [
+            { key: 'enabled', label: 'Enable Applications', description: 'Allow members to apply for positions', type: 'toggle', value: ac?.enabled ?? false },
+            { key: 'reviewChannelId', label: 'Review Channel', description: 'Channel where submissions are posted for staff review', type: 'select', value: ac?.reviewChannelId || '', options: channels },
+            { key: 'panelHeader', label: 'Panel Title', description: 'Title shown on the applications embed', type: 'text', value: ac?.panelHeader || 'Applications' },
+            { key: 'panelBody', label: 'Panel Description', description: 'Description shown on the applications embed', type: 'text', value: ac?.panelBody || '' },
+            { key: 'panelImageUrl', label: 'Banner Image URL', description: 'Optional image shown at the bottom of the panel embed (paste a direct image URL)', type: 'text', value: ac?.panelImageUrl || '' },
+            { key: 'useWebhook', label: 'Send Panel via Webhook', description: 'Send the panel embed through your server webhook instead of the bot', type: 'toggle', value: ac?.useWebhook ?? false },
+            { key: 'webhookUrl', label: 'Webhook URL', description: 'Discord webhook URL (only used if Send via Webhook is enabled)', type: 'text', value: ac?.webhookUrl || '' },
+          ];
+          result.appyTypes = appyTypes.map(t => ({
+            typeId: t.typeId,
+            name: t.name,
+            description: t.description || '',
+            questions: t.questions || [],
+            acceptRoleId: t.acceptRoleId || null,
+            acceptRoleName: t.acceptRoleId ? (guild.roles.cache.get(t.acceptRoleId)?.name || 'Unknown Role') : null,
+          }));
+          result.roles = roles;
+          result.channels = channels;
+          result.panelChannelId = ac?.panelChannelId || null;
+          result.stats = [{ label: 'Application Types', value: appyTypes.length }];
+          break;
+        }
+
         case 'blacklist': {
           result.name = 'Blacklist';
           result.description = 'IP and gamertag-based blacklist with fuzzy matching. Blocks banned members at the verification wall.';
@@ -1228,6 +1271,17 @@ export function createApiRouter(client) {
             if (allowed.includes(k)) update[k] = v;
           }
           await CivilianJobConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
+          break;
+        }
+
+        case 'appys': {
+          const { default: AppyConfig } = await import('../../models/AppyConfig.js');
+          const allowed = ['enabled', 'reviewChannelId', 'useWebhook', 'webhookUrl', 'panelImageUrl', 'panelHeader', 'panelBody'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (allowed.includes(k)) update[k] = v;
+          }
+          await AppyConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           break;
         }
 
@@ -1606,6 +1660,135 @@ export function createApiRouter(client) {
       }
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Applications (Appys) CRUD ── */
+  router.post('/guild/:id/appys/type', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { name, description, questions, acceptRoleId } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
+    if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
+    try {
+      const { default: AppyPanel } = await import('../../models/AppyPanel.js');
+      const { v4: uuidv4 } = await import('uuid');
+      await AppyPanel.create({
+        typeId: uuidv4(),
+        guildId: req.params.id,
+        name: name.trim(),
+        description: (description || '').trim(),
+        questions: questions.map(q => q.trim()).filter(Boolean),
+        acceptRoleId: acceptRoleId || null,
+      });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.put('/guild/:id/appys/type/:typeId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { name, description, questions, acceptRoleId } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
+    if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
+    try {
+      const { default: AppyPanel } = await import('../../models/AppyPanel.js');
+      await AppyPanel.findOneAndUpdate(
+        { typeId: req.params.typeId, guildId: req.params.id },
+        {
+          name: name.trim(),
+          description: (description || '').trim(),
+          questions: questions.map(q => q.trim()).filter(Boolean),
+          acceptRoleId: acceptRoleId || null,
+        }
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/appys/type/:typeId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: AppyPanel } = await import('../../models/AppyPanel.js');
+      await AppyPanel.deleteOne({ typeId: req.params.typeId, guildId: req.params.id });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/guild/:id/appys/panel/send', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const guild = client.guilds.cache.get(req.params.id);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+    const { channelId } = req.body;
+    if (!channelId) return res.status(400).json({ error: 'channelId is required' });
+    try {
+      const { default: AppyConfig } = await import('../../models/AppyConfig.js');
+      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const axios = (await import('axios')).default;
+      const ac = await AppyConfig.findOne({ guildId: req.params.id });
+      if (!ac) return res.status(404).json({ error: 'Applications not configured' });
+
+      const panelEmbed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle(ac.panelHeader || 'Applications')
+        .setDescription(ac.panelBody || 'Click the button below to view and apply for available positions.')
+        .setFooter({ text: 'RPM' });
+      if (ac.panelImageUrl) panelEmbed.setImage(ac.panelImageUrl);
+
+      const applyBtn = new ButtonBuilder()
+        .setCustomId('appy_open')
+        .setLabel('Click here for applications')
+        .setStyle(ButtonStyle.Primary);
+      const row = new ActionRowBuilder().addComponents(applyBtn);
+
+      let messageId = null;
+
+      if (ac.useWebhook && ac.webhookUrl) {
+        const embedJson = panelEmbed.toJSON();
+        const payload = {
+          embeds: [embedJson],
+          components: [row.toJSON()],
+        };
+        const response = await axios.post(ac.webhookUrl + '?wait=true', payload, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        messageId = response.data?.id || null;
+      } else {
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) return res.status(404).json({ error: 'Channel not found' });
+        const msg = await channel.send({ embeds: [panelEmbed], components: [row] });
+        messageId = msg.id;
+      }
+
+      await AppyConfig.findOneAndUpdate(
+        { guildId: req.params.id },
+        { panelChannelId: channelId, panelMessageId: messageId },
+        { upsert: true }
+      );
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[Appys] Send panel error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   /* ── Guild Members List (for staff picker) ── */

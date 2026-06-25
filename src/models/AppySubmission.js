@@ -8,7 +8,7 @@ const answerSchema = new mongoose.Schema({
 const appySubmissionSchema = new mongoose.Schema({
   submissionId:    { type: String, required: true, unique: true },
   guildId:         { type: String, required: true },
-  panelId:         { type: String, required: true },
+  typeId:          { type: String, required: true },
   userId:          { type: String, required: true },
   username:        { type: String, required: true },
   answers:         { type: [answerSchema], default: [] },

@@ -270,6 +270,7 @@ var FEATURES = [
   { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
   { key: 'civjobsEnabled',      feature: 'civjobs',       name: 'Civilian Jobs',     icon: 'CJ',  desc: 'Job board with shift roles',        mod: 'civjobs' },
   { key: 'blacklistEnabled',    feature: 'blacklist',     name: 'Blacklist',         icon: 'BL',  desc: 'Server blacklist with IP protection', mod: 'blacklist' },
+  { key: 'appysEnabled',        feature: 'appys',         name: 'Applications',      icon: 'APP', desc: 'Application panels with DM Q&A flow', mod: 'appys' },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -289,6 +290,7 @@ var SIDEBAR_GROUPS = [
     { id: 'welcome',       label: 'Welcome System' },
     { id: 'rolerequest',   label: 'Role Request' },
     { id: 'moveme',        label: 'Voice Mover' },
+    { id: 'appys',         label: 'Applications' },
     { id: 'sticky',        label: 'Sticky Messages' },
     { id: 'reactionroles', label: 'Reaction Roles' },
   ]},
@@ -361,7 +363,7 @@ function renderDashboard() {
   var FEATURE_CATEGORIES = [
     { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
     { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote', 'blacklist'] },
-    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme'] },
+    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme', 'appys'] },
     { title: 'Economy',               keys: ['economy', 'civjobs'] },
     { title: 'Advanced',              keys: ['dispatch'] },
   ];
@@ -407,6 +409,7 @@ function renderDashboard() {
     { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
     { id: 'civjobs',      label: 'Civilian Jobs',       desc: 'Job board, roles, shift hours',  featureKey: null },
     { id: 'moveme',        label: 'Voice Mover',        desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
+    { id: 'appys',         label: 'Applications',       desc: 'Application panels + DM Q&A (Premium)', featureKey: 'appysEnabled' },
     { id: 'sticky',        label: 'Sticky Messages',   desc: 'Auto-reposting pinned messages', featureKey: null },
     { id: 'reactionroles', label: 'Reaction Roles',    desc: 'React to get a role',            featureKey: null },
     { id: 'dispatch',      label: 'AI Voice Dispatch', desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
@@ -863,6 +866,8 @@ function renderSettings(mod) {
       html += renderStaffSettings(data);
     } else if (mod === 'blacklist') {
       html += renderBlacklistSettings(data);
+    } else if (mod === 'appys') {
+      html += renderAppySettings(data);
     } else {
       html += renderSettingsFields(data, mod);
     }
@@ -1692,6 +1697,175 @@ function deleteCivJob(jobId) {
   api('/guild/' + currentGuild.id + '/civjobs/job/' + jobId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Job removed'); renderSettings('civjobs'); }
     else _pendingScrollRestore = null;
+  });
+}
+
+/* ── Applications (Appys) Settings ── */
+window._appyEditState = {};
+
+function renderAppySettings(data) {
+  var types = data.appyTypes || [];
+  var allRoles = data.roles || [];
+  var allChannels = data.channels || [];
+  var roleOpts = allRoles.map(function(r) {
+    return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
+  }).join('');
+  var channelOpts = allChannels.map(function(c) {
+    return '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
+  }).join('');
+
+  var html = renderSettingsFields(data, 'appys');
+
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Application Types</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + types.length + ' type' + (types.length === 1 ? '' : 's') + ' configured</span>' +
+    '</div>';
+
+  if (types.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No application types yet. Create one below — each type appears in the select menu when members click the panel button.</span></div>';
+  } else {
+    types.forEach(function(t) {
+      html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:12px;">' +
+        '<div style="display:flex;justify-content:space-between;width:100%;align-items:center;">' +
+        '<span class="config-label" style="font-size:13px;">' + esc(t.name) + '</span>' +
+        '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-secondary btn-sm" onclick="editAppyType(\'' + esc(t.typeId) + '\')">Edit</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteAppyType(\'' + esc(t.typeId) + '\')">Remove</button>' +
+        '</div>' +
+        '</div>' +
+        (t.description ? '<div class="config-sublabel">' + esc(t.description) + '</div>' : '') +
+        '<div class="config-sublabel">' + t.questions.length + ' question' + (t.questions.length === 1 ? '' : 's') +
+        (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') +
+        '</div>' +
+        '</div>';
+    });
+  }
+
+  html += '<div id="appy-create-form" style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:14px;display:none;flex-direction:column;gap:10px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text);" id="appy-form-title">Create Application Type</div>' +
+    '<input id="appy-name" type="text" class="config-input" placeholder="Application name (e.g. LEO Application)">' +
+    '<input id="appy-desc" type="text" class="config-input" placeholder="Short description (shown in select menu, optional)">' +
+    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Accept Role (optional - assigned when accepted)</div>' +
+    '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);margin-bottom:2px;">Questions</div>' +
+    '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
+    '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion()">+ Add Question</button>' +
+    '<input type="hidden" id="appy-edit-id" value="">' +
+    '<div style="display:flex;gap:8px;margin-top:4px;">' +
+    '<button class="btn btn-success btn-sm" onclick="saveAppyType()">Save</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="closeAppyForm()">Cancel</button>' +
+    '</div>' +
+    '</div>' +
+    '<div class="config-row" style="justify-content:flex-start;gap:8px;margin-top:8px;">' +
+    '<button class="btn btn-success btn-sm" onclick="openAppyCreateForm()">Create Application Type</button>' +
+    '</div>' +
+    '</div>';
+
+  html += '<div class="config-section" style="margin-top:8px;">' +
+    '<div class="config-section-header"><h3>Send Panel to Discord</h3></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
+    '<span class="config-sublabel">Choose a channel to post the applications panel in. Members will see the button and select which application to apply for.</span>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+    '<select id="appy-send-channel" class="config-select" style="min-width:200px;"><option value="">Select channel...</option>' + channelOpts + '</select>' +
+    '<button class="btn btn-primary btn-sm" onclick="sendAppyPanel()">Send Panel to Discord</button>' +
+    '</div>' +
+    (data.panelChannelId ? '<span class="config-sublabel">Last sent to: <code>#' + esc(allChannels.find(function(c){ return c.value === data.panelChannelId; })?.label || data.panelChannelId) + '</code></span>' : '') +
+    '</div>' +
+    '</div>';
+
+  return html;
+}
+
+function openAppyCreateForm() {
+  document.getElementById('appy-form-title').textContent = 'Create Application Type';
+  document.getElementById('appy-name').value = '';
+  document.getElementById('appy-desc').value = '';
+  document.getElementById('appy-role').value = '';
+  document.getElementById('appy-edit-id').value = '';
+  document.getElementById('appy-questions-list').innerHTML = '';
+  addAppyQuestion();
+  document.getElementById('appy-create-form').style.display = 'flex';
+  document.getElementById('appy-create-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeAppyForm() {
+  document.getElementById('appy-create-form').style.display = 'none';
+}
+
+function addAppyQuestion(val) {
+  var list = document.getElementById('appy-questions-list');
+  if (!list) return;
+  var idx = list.children.length;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  row.innerHTML = '<input type="text" class="config-input appy-question-input" placeholder="Question ' + (idx + 1) + '" style="flex:1;" value="' + esc(val || '') + '">' +
+    '<button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">Remove</button>';
+  list.appendChild(row);
+}
+
+function editAppyType(typeId) {
+  api('/guild/' + currentGuild.id + '/settings/appys').then(function(data) {
+    var t = (data.appyTypes || []).find(function(x) { return x.typeId === typeId; });
+    if (!t) { toast('Type not found', 'error'); return; }
+    document.getElementById('appy-form-title').textContent = 'Edit Application Type';
+    document.getElementById('appy-name').value = t.name || '';
+    document.getElementById('appy-desc').value = t.description || '';
+    document.getElementById('appy-role').value = t.acceptRoleId || '';
+    document.getElementById('appy-edit-id').value = typeId;
+    var list = document.getElementById('appy-questions-list');
+    list.innerHTML = '';
+    (t.questions || []).forEach(function(q) { addAppyQuestion(q); });
+    if (!list.children.length) addAppyQuestion();
+    document.getElementById('appy-create-form').style.display = 'flex';
+    document.getElementById('appy-create-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+function saveAppyType() {
+  var name = (document.getElementById('appy-name').value || '').trim();
+  var desc = (document.getElementById('appy-desc').value || '').trim();
+  var roleId = document.getElementById('appy-role').value || null;
+  var editId = document.getElementById('appy-edit-id').value || '';
+  var inputs = document.querySelectorAll('.appy-question-input');
+  var questions = Array.from(inputs).map(function(i) { return i.value.trim(); }).filter(Boolean);
+  if (!name) { toast('Enter an application name', 'error'); return; }
+  if (!questions.length) { toast('Add at least one question', 'error'); return; }
+  _pendingScrollRestore = getDashScrollPos();
+  var url, method;
+  if (editId) {
+    url = '/guild/' + currentGuild.id + '/appys/type/' + editId;
+    method = 'PUT';
+  } else {
+    url = '/guild/' + currentGuild.id + '/appys/type';
+    method = 'POST';
+  }
+  api(url, {
+    method: method,
+    body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId })
+  }).then(function(r) {
+    if (r && r.success) { toast(editId ? 'Application updated' : 'Application created'); renderSettings('appys'); }
+    else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
+  });
+}
+
+function deleteAppyType(typeId) {
+  if (!confirm('Remove this application type? Existing submissions will not be deleted.')) return;
+  _pendingScrollRestore = getDashScrollPos();
+  api('/guild/' + currentGuild.id + '/appys/type/' + typeId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Application type removed'); renderSettings('appys'); }
+    else _pendingScrollRestore = null;
+  });
+}
+
+function sendAppyPanel() {
+  var channelId = document.getElementById('appy-send-channel') && document.getElementById('appy-send-channel').value;
+  if (!channelId) { toast('Select a channel first', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/appys/panel/send', {
+    method: 'POST',
+    body: JSON.stringify({ channelId: channelId })
+  }).then(function(r) {
+    if (r && r.success) { toast('Panel sent to Discord'); renderSettings('appys'); }
+    else if (r && r.error) toast(r.error, 'error');
   });
 }
 

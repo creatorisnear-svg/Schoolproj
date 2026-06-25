@@ -6,6 +6,11 @@ const appyConfigSchema = new mongoose.Schema({
   reviewChannelId: { type: String, default: null },
   useWebhook:      { type: Boolean, default: false },
   webhookUrl:      { type: String, default: null },
+  panelImageUrl:   { type: String, default: null },
+  panelHeader:     { type: String, default: 'Applications' },
+  panelBody:       { type: String, default: 'Click the button below to view and apply for available positions.' },
+  panelChannelId:  { type: String, default: null },
+  panelMessageId:  { type: String, default: null },
 });
 
 export default mongoose.models.AppyConfig

@@ -166,6 +166,19 @@ Full currency economy. `EconomyConfig` stores per-guild settings. Key mechanics:
 - Panel posted via Discord bot; configured via dashboard
 - API: `GET/POST /api/guild/:id/settings/moveme`, `POST /api/guild/:id/settings/moveme/panel/send`
 
+### Applications (Appys) — Premium Feature
+- **Models**: `AppyConfig` (per-guild config + panel visual settings), `AppyPanel` (individual application types, stored as typeId), `AppySubmission` (per-submission record)
+- **Flow**: Staff creates application types (name, description, questions[], optional acceptRoleId) via dashboard. Staff sends a panel embed to a channel (optionally via webhook). Members click "Click here for applications" → ephemeral StringSelectMenu lists all types → member picks one → bot DMs questions one-by-one → submission posted to review channel with Accept/Deny buttons → staff accepts/denies → user DM'd + role assigned if configured.
+- **Premium gated**: `appys` in `DEFAULT_PREMIUM_FEATURES` in api.js; feature toggle blocked if not premium; dashboard shows Premium badge.
+- **DM timeout**: 10 minutes of inactivity cancels the session (in-memory Map).
+- **Re-apply block**: checked against pending AppySubmission before starting DM flow.
+- **Panel image**: staff pastes a direct image URL (shown via `embed.setImage`).
+- **Webhook send**: if `useWebhook + webhookUrl` set on AppyConfig, panel is POSTed to Discord webhook with `?wait=true` instead of bot sending directly.
+- **Button routing**: `appy_open` → `handleAppyOpen`; `appy_type_select` select menu → `handleAppyTypeSelect`; `appy_accept_*` / `appy_deny_*` → `handleAppyAccept` / `handleAppyDeny` (all in `src/handlers/appyHandler.js`)
+- **DM routing**: `messageCreate` in `src/index.js` handles DMs (no guild) by calling `handleDMReply` from appyHandler.
+- **API**: `GET/POST /api/guild/:id/settings/appys`, `POST /api/guild/:id/appys/type`, `PUT /api/guild/:id/appys/type/:typeId`, `DELETE /api/guild/:id/appys/type/:typeId`, `POST /api/guild/:id/appys/panel/send`
+- **Dashboard**: sidebar Community → Applications; `renderAppySettings(data)` + `openAppyCreateForm`, `saveAppyType`, `editAppyType`, `deleteAppyType`, `sendAppyPanel` helpers.
+
 ### Verification System
 Customizable RP tags, questions, welcome messages, role assignment. Panel posted to a channel; members click to open a verification modal.
 

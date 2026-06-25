@@ -627,7 +627,17 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 // Chat money handler
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.guild) return;
+  if (message.author.bot) return;
+
+  if (!message.guild) {
+    try {
+      const { handleDMReply } = await import('./handlers/appyHandler.js');
+      await handleDMReply(message, client);
+    } catch (err) {
+      console.error('[Appys] DM handler error:', err.message);
+    }
+    return;
+  }
 
   // Anti-promoting
   try {
@@ -908,6 +918,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'blacklist_panel_channel_select') {
         const { handleBlacklistPanelChannelSelect } = await import('./handlers/blacklistHandler.js');
         await handleBlacklistPanelChannelSelect(interaction, client);
+      } else if (interaction.customId === 'appy_type_select') {
+        const { handleAppyTypeSelect } = await import('./handlers/appyHandler.js');
+        await handleAppyTypeSelect(interaction, client);
       } else if (interaction.customId === 'civjob_select') {
         const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
         await handleCivilianJobApply(interaction);
@@ -964,6 +977,15 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'collect_income' || interaction.customId.startsWith('economy')) {
         const { handleEconomyButton } = await import('./handlers/economyHandler.js');
         await handleEconomyButton(interaction);
+      } else if (interaction.customId === 'appy_open') {
+        const { handleAppyOpen } = await import('./handlers/appyHandler.js');
+        await handleAppyOpen(interaction, client);
+      } else if (interaction.customId.startsWith('appy_accept_')) {
+        const { handleAppyAccept } = await import('./handlers/appyHandler.js');
+        await handleAppyAccept(interaction, client);
+      } else if (interaction.customId.startsWith('appy_deny_')) {
+        const { handleAppyDeny } = await import('./handlers/appyHandler.js');
+        await handleAppyDeny(interaction, client);
       } else {
         await handleSelectMenu(interaction);
       }

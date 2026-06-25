@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
 import AppyConfig from '../models/AppyConfig.js';
 import AppyPanel from '../models/AppyPanel.js';
 import AppySubmission from '../models/AppySubmission.js';
@@ -15,60 +15,82 @@ export function hasActiveAppySession(userId) {
   return _activeSessions.has(userId);
 }
 
-export async function handleApplyButton(interaction, client) {
-  const panelId = interaction.customId.replace('appy_apply_', '');
+function _errEmbed(msg) {
+  return new EmbedBuilder().setColor('#2d2d2d').setDescription(msg).setFooter({ text: 'RPM' });
+}
+
+export async function handleAppyOpen(interaction, client) {
+  const guildId = interaction.guildId;
+  if (!guildId) return;
+
+  let config, types;
+  try {
+    config = await AppyConfig.findOne({ guildId });
+    if (!config?.enabled) return interaction.reply({ embeds: [_errEmbed('Applications are currently disabled.')], flags: 64 });
+    types = await AppyPanel.find({ guildId }).sort({ createdAt: 1 });
+    if (!types || types.length === 0) return interaction.reply({ embeds: [_errEmbed('No application types are configured yet.')], flags: 64 });
+  } catch (err) {
+    console.error('[Appys] handleAppyOpen DB error:', err.message);
+    return interaction.reply({ embeds: [_errEmbed('An error occurred. Please try again later.')], flags: 64 });
+  }
+
+  const options = types.map(t => ({
+    label: t.name.slice(0, 100),
+    description: (t.description || '').slice(0, 100) || undefined,
+    value: t.typeId,
+  }));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('appy_type_select')
+    .setPlaceholder('Select an application...')
+    .addOptions(options);
+
+  const row = new ActionRowBuilder().addComponents(select);
+  const embed = new EmbedBuilder()
+    .setColor('#2d2d2d')
+    .setTitle('Applications')
+    .setDescription('Select the application you want to submit below.')
+    .setFooter({ text: 'RPM' });
+
+  await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+}
+
+export async function handleAppyTypeSelect(interaction, client) {
+  const typeId = interaction.values[0];
+  const guildId = interaction.guildId;
 
   if (_activeSessions.has(interaction.user.id)) {
-    const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setDescription('You already have an active application in progress. Check your DMs.')
-      .setFooter({ text: 'RPM' });
-    return interaction.reply({ embeds: [embed], flags: 64 });
+    return interaction.reply({ embeds: [_errEmbed('You already have an active application in progress. Check your DMs.')], flags: 64 });
   }
 
   let panel, config;
   try {
-    panel = await AppyPanel.findOne({ panelId });
-    if (!panel) {
-      const embed = new EmbedBuilder().setColor('#2d2d2d').setDescription('This application panel no longer exists.').setFooter({ text: 'RPM' });
-      return interaction.reply({ embeds: [embed], flags: 64 });
-    }
-    config = await AppyConfig.findOne({ guildId: panel.guildId });
-    if (!config?.enabled) {
-      const embed = new EmbedBuilder().setColor('#2d2d2d').setDescription('Applications are currently disabled.').setFooter({ text: 'RPM' });
-      return interaction.reply({ embeds: [embed], flags: 64 });
-    }
+    panel = await AppyPanel.findOne({ typeId, guildId });
+    if (!panel) return interaction.reply({ embeds: [_errEmbed('This application type no longer exists.')], flags: 64 });
+    config = await AppyConfig.findOne({ guildId });
+    if (!config?.enabled) return interaction.reply({ embeds: [_errEmbed('Applications are currently disabled.')], flags: 64 });
   } catch (err) {
-    console.error('[Appys] handleApplyButton DB error:', err.message);
-    const embed = new EmbedBuilder().setColor('#2d2d2d').setDescription('An error occurred. Please try again later.').setFooter({ text: 'RPM' });
-    return interaction.reply({ embeds: [embed], flags: 64 });
+    console.error('[Appys] handleAppyTypeSelect DB error:', err.message);
+    return interaction.reply({ embeds: [_errEmbed('An error occurred.')], flags: 64 });
   }
 
-  const existing = await AppySubmission.findOne({ guildId: panel.guildId, panelId, userId: interaction.user.id, status: 'pending' }).catch(() => null);
-  if (existing) {
-    const embed = new EmbedBuilder().setColor('#2d2d2d').setDescription('You already have a pending application for this panel.').setFooter({ text: 'RPM' });
-    return interaction.reply({ embeds: [embed], flags: 64 });
-  }
+  const existing = await AppySubmission.findOne({ guildId, typeId, userId: interaction.user.id, status: 'pending' }).catch(() => null);
+  if (existing) return interaction.reply({ embeds: [_errEmbed(`You already have a pending application for **${panel.name}**.`)], flags: 64 });
 
   if (!panel.questions || panel.questions.length === 0) {
-    const embed = new EmbedBuilder().setColor('#2d2d2d').setDescription('This panel has no questions configured yet.').setFooter({ text: 'RPM' });
-    return interaction.reply({ embeds: [embed], flags: 64 });
+    return interaction.reply({ embeds: [_errEmbed('This application has no questions configured yet.')], flags: 64 });
   }
 
   const firstEmbed = new EmbedBuilder()
     .setColor('#2d2d2d')
     .setTitle(panel.name)
     .setDescription(`### Application Started\n\n**Question 1 of ${panel.questions.length}**\n${panel.questions[0]}`)
-    .setFooter({ text: 'RPM | Reply to this message with your answer. You have 10 minutes.' });
+    .setFooter({ text: 'RPM | Reply to this message with your answer. You have 10 minutes per question.' });
 
   try {
     await interaction.user.send({ embeds: [firstEmbed] });
   } catch {
-    const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setDescription('I could not send you a DM. Enable direct messages from server members and try again.')
-      .setFooter({ text: 'RPM' });
-    return interaction.reply({ embeds: [embed], flags: 64 });
+    return interaction.reply({ embeds: [_errEmbed('I could not send you a DM. Enable direct messages from server members and try again.')], flags: 64 });
   }
 
   const timeout = setTimeout(async () => {
@@ -76,24 +98,20 @@ export async function handleApplyButton(interaction, client) {
     const timeoutEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Application Timed Out')
-      .setDescription(`Your application for **${panel.name}** was cancelled because you took too long to respond.`)
+      .setDescription(`Your application for **${panel.name}** was cancelled due to inactivity.`)
       .setFooter({ text: 'RPM' });
     interaction.user.send({ embeds: [timeoutEmbed] }).catch(() => {});
   }, 10 * 60 * 1000);
 
   _activeSessions.set(interaction.user.id, {
-    panelId,
-    guildId: panel.guildId,
+    typeId,
+    guildId,
     questionIndex: 0,
     answers: [],
     timeout,
   });
 
-  const ackEmbed = new EmbedBuilder()
-    .setColor('#2d2d2d')
-    .setDescription('Check your DMs to complete your application.')
-    .setFooter({ text: 'RPM' });
-  await interaction.reply({ embeds: [ackEmbed], flags: 64 });
+  await interaction.reply({ embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Check your DMs to complete your application.').setFooter({ text: 'RPM' })], flags: 64 });
 }
 
 export async function handleDMReply(message, client) {
@@ -102,15 +120,9 @@ export async function handleDMReply(message, client) {
 
   let panel;
   try {
-    panel = await AppyPanel.findOne({ panelId: session.panelId });
-    if (!panel) {
-      _clearSession(message.author.id);
-      return;
-    }
-  } catch {
-    _clearSession(message.author.id);
-    return;
-  }
+    panel = await AppyPanel.findOne({ typeId: session.typeId });
+    if (!panel) { _clearSession(message.author.id); return; }
+  } catch { _clearSession(message.author.id); return; }
 
   session.answers.push({ question: panel.questions[session.questionIndex], answer: message.content });
   session.questionIndex++;
@@ -133,7 +145,7 @@ export async function handleDMReply(message, client) {
   const submission = new AppySubmission({
     submissionId,
     guildId: session.guildId,
-    panelId: session.panelId,
+    typeId: session.typeId,
     userId: message.author.id,
     username: message.author.username,
     answers: session.answers,
@@ -162,7 +174,6 @@ export async function handleDMReply(message, client) {
 
   const guild = client.guilds.cache.get(session.guildId);
   if (!guild) return;
-
   const reviewChannel = guild.channels.cache.get(config.reviewChannelId);
   if (!reviewChannel) return;
 
@@ -176,14 +187,8 @@ export async function handleDMReply(message, client) {
     .setDescription(`### Applicant\n<@${message.author.id}> (${message.author.username})\n\n### Responses\n${answersText}`)
     .setFooter({ text: 'RPM' });
 
-  const acceptBtn = new ButtonBuilder()
-    .setCustomId(`appy_accept_${submissionId}`)
-    .setLabel('Accept')
-    .setStyle(ButtonStyle.Success);
-  const denyBtn = new ButtonBuilder()
-    .setCustomId(`appy_deny_${submissionId}`)
-    .setLabel('Deny')
-    .setStyle(ButtonStyle.Danger);
+  const acceptBtn = new ButtonBuilder().setCustomId(`appy_accept_${submissionId}`).setLabel('Accept').setStyle(ButtonStyle.Success);
+  const denyBtn = new ButtonBuilder().setCustomId(`appy_deny_${submissionId}`).setLabel('Deny').setStyle(ButtonStyle.Danger);
   const row = new ActionRowBuilder().addComponents(acceptBtn, denyBtn);
 
   try {
@@ -198,20 +203,17 @@ export async function handleDMReply(message, client) {
 
 export async function handleAppyAccept(interaction, client) {
   const submissionId = interaction.customId.replace('appy_accept_', '');
-
   let submission;
   try {
     submission = await AppySubmission.findOne({ submissionId });
     if (!submission) return interaction.reply({ content: 'Submission not found.', flags: 64 });
     if (submission.status !== 'pending') return interaction.reply({ content: 'This application has already been reviewed.', flags: 64 });
-  } catch (err) {
-    return interaction.reply({ content: 'An error occurred.', flags: 64 });
-  }
+  } catch { return interaction.reply({ content: 'An error occurred.', flags: 64 }); }
 
   submission.status = 'accepted';
   await submission.save();
 
-  const panel = await AppyPanel.findOne({ panelId: submission.panelId }).catch(() => null);
+  const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
   const guild = client.guilds.cache.get(submission.guildId);
 
   if (panel?.acceptRoleId && guild) {
@@ -224,12 +226,12 @@ export async function handleAppyAccept(interaction, client) {
   try {
     const user = await client.users.fetch(submission.userId).catch(() => null);
     if (user) {
-      const acceptEmbed = new EmbedBuilder()
+      const embed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('Application Accepted')
-        .setDescription(`Your application for **${panel?.name || 'the panel'}** has been accepted.`)
+        .setDescription(`Your application for **${panel?.name || 'the position'}** has been accepted.`)
         .setFooter({ text: 'RPM' });
-      await user.send({ embeds: [acceptEmbed] }).catch(() => {});
+      await user.send({ embeds: [embed] }).catch(() => {});
     }
   } catch {}
 
@@ -245,30 +247,27 @@ export async function handleAppyAccept(interaction, client) {
 
 export async function handleAppyDeny(interaction, client) {
   const submissionId = interaction.customId.replace('appy_deny_', '');
-
   let submission;
   try {
     submission = await AppySubmission.findOne({ submissionId });
     if (!submission) return interaction.reply({ content: 'Submission not found.', flags: 64 });
     if (submission.status !== 'pending') return interaction.reply({ content: 'This application has already been reviewed.', flags: 64 });
-  } catch {
-    return interaction.reply({ content: 'An error occurred.', flags: 64 });
-  }
+  } catch { return interaction.reply({ content: 'An error occurred.', flags: 64 }); }
 
   submission.status = 'denied';
   await submission.save();
 
-  const panel = await AppyPanel.findOne({ panelId: submission.panelId }).catch(() => null);
+  const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
 
   try {
     const user = await client.users.fetch(submission.userId).catch(() => null);
     if (user) {
-      const denyEmbed = new EmbedBuilder()
+      const embed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('Application Denied')
-        .setDescription(`Your application for **${panel?.name || 'the panel'}** has been denied.`)
+        .setDescription(`Your application for **${panel?.name || 'the position'}** has been denied.`)
         .setFooter({ text: 'RPM' });
-      await user.send({ embeds: [denyEmbed] }).catch(() => {});
+      await user.send({ embeds: [embed] }).catch(() => {});
     }
   } catch {}
 
