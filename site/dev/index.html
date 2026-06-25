@@ -574,6 +574,27 @@
     }
   }
 
+  async function deleteVerifiedMember(guildId, userId, displayName) {
+    if (!confirm('Delete verification record for ' + displayName + '?\n\nThis removes their name, PSN/Xbox, and IP from the database. They will need to re-verify to regain access.')) return;
+    try {
+      var res = await api('DELETE', '/verified/' + guildId + '/' + userId);
+      if (res.ok) {
+        _verifiedData = _verifiedData.filter(function(v) { return v.userId !== userId; });
+        var card = document.getElementById('vcard-' + userId);
+        if (card) card.remove();
+        var exportBtn = document.getElementById('verified-export-btn');
+        if (!_verifiedData.length) exportBtn.style.display = 'none';
+        var countEl = document.getElementById('verified-count');
+        countEl.textContent = '(' + _verifiedData.length + ')';
+        showAlert('Deleted record for ' + displayName + '.', 'success');
+      } else {
+        showAlert(res.error || 'Failed to delete.', 'error');
+      }
+    } catch (e) {
+      showAlert('Request failed: ' + e.message, 'error');
+    }
+  }
+
   function exportVerifiedCsv() {
     if (!_verifiedData.length) return;
     var sel = document.getElementById('verified-guild-select');
@@ -623,13 +644,17 @@
     }
     el.innerHTML = filtered.map(function(v) {
       var date = v.verifiedAt ? new Date(v.verifiedAt).toLocaleDateString() : 'Unknown';
-      return '<div class="card" style="margin-bottom:10px;">' +
+      var guildId = document.getElementById('verified-guild-select').value;
+      return '<div class="card" style="margin-bottom:10px;" id="vcard-' + esc(v.userId) + '">' +
         '<div class="card-header">' +
         '<div style="min-width:0;flex:1;">' +
         '<div style="font-size:14px;font-weight:700;color:#fff;">' + esc(v.discordName || v.userId) + '</div>' +
         '<div style="font-size:12px;color:#666;margin-top:2px;">ID: ' + esc(v.userId) + ' &middot; Verified ' + date + '</div>' +
         (v.psnxbox ? '<div style="font-size:12px;color:#aaa;margin-top:3px;">PSN/Xbox: <strong>' + esc(v.psnxbox) + '</strong></div>' : '') +
         (v.ipAddress ? '<div style="font-size:12px;color:#666;margin-top:2px;font-family:monospace;">IP: ' + esc(v.ipAddress) + '</div>' : '') +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteVerifiedMember(\'' + esc(guildId) + '\',\'' + esc(v.userId) + '\',\'' + esc(v.discordName || v.userId) + '\')">Delete</button>' +
         '</div>' +
         '</div>' +
         '</div>';

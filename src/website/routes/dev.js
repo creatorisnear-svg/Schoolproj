@@ -504,6 +504,17 @@ export function createDevRouter(client) {
     }
   });
 
+  router.delete('/verified/:guildId/:userId', devAuth, async (req, res) => {
+    try {
+      const { guildId, userId } = req.params;
+      const result = await VerifiedUser.deleteOne({ guildId, userId });
+      if (result.deletedCount === 0) return res.status(404).json({ error: 'Record not found' });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   router.patch('/features/:feature', devAuth, async (req, res) => {
     const { feature } = req.params;
     const { premium } = req.body;
