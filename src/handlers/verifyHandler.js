@@ -78,6 +78,11 @@ export async function handleVerifyApprove(interaction, pendingId) {
     const unverifiedRole = guild.roles.cache.get(verification.unverifiedRoleId);
     if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
 
+    if (verification.rpTag && pending.psnxbox) {
+      const newNickname = `${verification.rpTag} | ${pending.psnxbox}`;
+      await member.setNickname(newNickname).catch(() => {});
+    }
+
     if (verification.verifyDMMessage) {
       const dmMsg = verification.verifyDMMessage.replace('{server}', guild.name);
       await member.send(dmMsg).catch(() => {});
