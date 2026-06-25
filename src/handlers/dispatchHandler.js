@@ -4181,38 +4181,6 @@ async function checkTrafficStops(guild) {
         }
       }
 
-      // Also post a text prompt with buttons in the dispatch channel
-      if (config.dispatchChannelId) {
-        const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-          await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-        if (dispatchCh?.isTextBased()) {
-          const embed = new EmbedBuilder()
-            .setColor('#FF8C00')
-            .setTitle('Traffic Stop Check-In')
-            .setDescription(
-              `<@${officer.userId}> - dispatch checked in on your traffic stop${officer.subject ? ` with **${officer.subject}**` : ''}.` +
-              (minutesIn !== null && minutesIn > 0 ? `\n-# ${minutesIn} minute${minutesIn !== 1 ? 's' : ''} on scene` : '')
-            )
-            .setFooter({ text: 'RPM • Dispatch' })
-            .setTimestamp();
-
-          const stillOnBtn = new ButtonBuilder()
-            .setCustomId(`dispatch_stop_still_${officer.userId}`)
-            .setLabel('Still on Stop')
-            .setStyle(ButtonStyle.Primary);
-
-          const clearBtn = new ButtonBuilder()
-            .setCustomId(`dispatch_stop_clear_${officer.userId}`)
-            .setLabel('10-8 - Stop Clear')
-            .setStyle(ButtonStyle.Success);
-
-          await dispatchCh.send({
-            content: `<@${officer.userId}>`,
-            embeds: [embed],
-            components: [new ActionRowBuilder().addComponents(stillOnBtn, clearBtn)],
-          }).catch(() => {});
-        }
-      }
 
       // Only visit one officer per cycle to avoid overlapping channel visits
       break;
