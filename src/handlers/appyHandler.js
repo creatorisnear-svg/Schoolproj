@@ -2,6 +2,29 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelec
 import AppyConfig from '../models/AppyConfig.js';
 import AppyPanel from '../models/AppyPanel.js';
 import AppySubmission from '../models/AppySubmission.js';
+import Config from '../models/Config.js';
+
+async function _postAppyLog(client, guildId, { action, applicantId, applicantUsername, panelName, staffUser }) {
+  try {
+    const cfg = await Config.findOne({ guildId });
+    if (!cfg?.logChannelId) return;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return;
+    const logChannel = guild.channels.cache.get(cfg.logChannelId);
+    if (!logChannel) return;
+    const isAccept = action === 'accepted';
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`Application ${isAccept ? 'Accepted' : 'Denied'}`)
+      .setDescription(
+        `### Applicant\n<@${applicantId}> (${applicantUsername})\n` +
+        `### Application\n${panelName}\n` +
+        `### Reviewed by\n<@${staffUser.id}> (${staffUser.username})`
+      )
+      .setFooter({ text: 'RPM' });
+    await logChannel.send({ embeds: [embed] }).catch(() => {});
+  } catch {}
+}
 
 const _activeSessions = new Map();
 
@@ -246,6 +269,14 @@ export async function handleAppyAccept(interaction, client) {
     .setFooter({ text: 'RPM' });
 
   await interaction.update({ embeds: [updatedEmbed], components: [] });
+
+  await _postAppyLog(client, submission.guildId, {
+    action: 'accepted',
+    applicantId: submission.userId,
+    applicantUsername: submission.username,
+    panelName: panel?.name || 'Unknown Application',
+    staffUser: interaction.user,
+  });
 }
 
 export async function handleAppyDeny(interaction, client) {
@@ -282,4 +313,12 @@ export async function handleAppyDeny(interaction, client) {
     .setFooter({ text: 'RPM' });
 
   await interaction.update({ embeds: [updatedEmbed], components: [] });
+
+  await _postAppyLog(client, submission.guildId, {
+    action: 'denied',
+    applicantId: submission.userId,
+    applicantUsername: submission.username,
+    panelName: panel?.name || 'Unknown Application',
+    staffUser: interaction.user,
+  });
 }
