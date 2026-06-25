@@ -2030,10 +2030,25 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           hadTrigger = true;
           console.log(`[Dispatch] Trigger "${alphaWords[dispatchIdx]}" found at word ${dispatchIdx} - command: "${commandText}"`);
         } else {
-          // No trigger word or call sign detected - always ignore.
-          // Officers must say "dispatch" (or a call sign, or an emergency phrase) to get a response.
-          console.log(`[Dispatch] Ignoring - no trigger word detected in: "${raw.slice(0, 60)}"`);
-          return;
+          // No trigger word or call sign detected.
+          // Check if we're in roll call mode - if so, allow bare status codes through.
+          const rollCallExpiry = statusRollCallMode.get(guild.id);
+          if (rollCallExpiry && Date.now() < rollCallExpiry) {
+            const normalized = normalizeSpokenCodes(raw);
+            if (ROLL_CALL_STATUS_RE.test(normalized)) {
+              hadTrigger = true;
+              transcript = raw;
+              fullVoiceContext = raw;
+              console.log(`[Dispatch] Roll call mode - bare status from ${officerName}: "${raw.slice(0, 40)}"`);
+            } else {
+              console.log(`[Dispatch] Ignoring - no trigger in roll call window: "${raw.slice(0, 60)}"`);
+              return;
+            }
+          } else {
+            if (rollCallExpiry) statusRollCallMode.delete(guild.id); // expired, clean up
+            console.log(`[Dispatch] Ignoring - no trigger word detected in: "${raw.slice(0, 60)}"`);
+            return;
+          }
         }
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
@@ -3888,6 +3903,20 @@ const recentStatusAcks = new Map();
 // are announced together in one TTS instead of back-to-back individual announcements.
 const pending10_8Queues = new Map();
 
+/**
+ * Per-guild "status roll call" mode.
+ * Set when dispatch broadcasts "all units update your status".
+ * While active, any officer can say bare "10-8", "ten eight", "available",
+ * "10-6", "ten six", "busy" WITHOUT the trigger word "dispatch" and their
+ * status will be updated + acknowledged normally.
+ * Value is the expiry timestamp (Date.now() + 3 minutes).
+ */
+const statusRollCallMode = new Map();
+const ROLL_CALL_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+
+/** Regex that matches bare status-update phrases after normalizeSpokenCodes() */
+const ROLL_CALL_STATUS_RE = /\b10[-\s]8\b|\bten.?eight\b|\bavailable\b|\bin.?service\b|\bback\s+(?:in\s+service|on\s+patrol|available)\b|\b10[-\s]6\b|\bten.?six\b|\bbusy\b/i;
+
 async function flush10_8Queue(guild, config) {
   const q = pending10_8Queues.get(guild.id);
   pending10_8Queues.delete(guild.id);
@@ -4287,19 +4316,28 @@ async function checkStatusReminders(guild) {
           const nameList = needsReminder.length === 1
             ? needsReminder[0]
             : needsReminder.slice(0, -1).join(', ') + ' and ' + needsReminder.at(-1);
-          parts.push(`Attention all units, ${nameList}, please remember to update your current status on the radio. If you are available, say ten eight. If you are busy, say ten six.`);
+          parts.push(`Attention all units, ${nameList}, please update your current status. If you are available, say ten eight. If you are busy, say ten six.`);
         }
 
         if (stillOnScene.length > 0) {
           for (const officer of stillOnScene) {
             const subjectPart = officer.subject ? ` with ${officer.subject}` : '';
-            parts.push(`${officer.name}, dispatch showing you still on scene${subjectPart}. Are you still on scene? Please confirm or say ten eight if you are clear.`);
+            parts.push(`${officer.name}, dispatch showing you still on scene${subjectPart}. Please confirm or say ten eight if you are clear.`);
           }
         }
 
         const ttsText = parts.join(' ');
-        const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer);
+
+        // Activate roll call mode for 3 minutes so officers can respond with
+        // bare "10-8" or "ten eight" without needing the "dispatch" trigger word.
+        statusRollCallMode.set(guild.id, Date.now() + ROLL_CALL_DURATION_MS);
+        console.log(`[Dispatch] Roll call mode activated for ${guild.name} (3 min)`);
+
+        // Fire TTS in background - don't await so the timer callback returns fast
+        generateDispatchTTS(ttsText)
+          .then(buf => playDispatchVoice(guild.id, buf))
+          .catch(err => console.error('[Dispatch TTS] Status reminder TTS error:', err.message));
+
       } catch (err) {
         console.error('[Dispatch TTS] Status reminder TTS error:', err.message);
       }
@@ -4353,9 +4391,16 @@ async function runHourlyStatusReset(guild) {
       if (hasOfficers) {
         try {
           const { playDispatchVoice } = await import('../utils/voiceListener.js');
-          const ttsText = 'Attention all units, dispatch is performing an hourly status reset. All officer statuses have been cleared. All units please update your current status on the radio. Say ten eight if available, ten six if busy, or your current code if you are on scene.';
-          const ttsBuffer = await generateDispatchTTS(ttsText);
-          playDispatchVoice(guild.id, ttsBuffer);
+          const ttsText = 'Attention all units, dispatch is performing an hourly status reset. All officer statuses have been cleared. All units please update your current status. Say ten eight if available, ten six if busy, or your current code if on scene.';
+
+          // Open roll call mode for 3 minutes so officers can reply with bare "10-8"
+          statusRollCallMode.set(guild.id, Date.now() + ROLL_CALL_DURATION_MS);
+          console.log(`[Dispatch] Roll call mode activated for ${guild.name} (3 min, hourly reset)`);
+
+          // Fire TTS in background - don't block the reset on TTS generation
+          generateDispatchTTS(ttsText)
+            .then(buf => playDispatchVoice(guild.id, buf))
+            .catch(err => console.error('[Dispatch TTS] Hourly reset TTS error:', err.message));
         } catch (err) {
           console.error('[Dispatch TTS] Hourly reset TTS error:', err.message);
         }
