@@ -1769,19 +1769,27 @@ export function createApiRouter(client) {
       }
 
       const header = panelHeader ?? ac.panelHeader ?? 'Applications';
-      const body = panelBody ?? ac.panelBody ?? 'We are currently accepting applications for available positions within our community.\n\nReview the options below and select the one you wish to apply for. Our team will review your submission and follow up via DM.';
+      const NEW_DEFAULT_BODY = 'We are currently accepting applications for available positions within our community.\n\nReview the options below and select the one you wish to apply for. Our team will review your submission and follow up via DM.';
+      const OLD_DEFAULTS = [
+        'Click the button below to view and apply for available positions.',
+        'Click here to view and apply for available positions.',
+      ];
+      const storedBody = ac.panelBody;
+      const resolvedBody = panelBody ?? (storedBody && !OLD_DEFAULTS.includes(storedBody) ? storedBody : null) ?? NEW_DEFAULT_BODY;
       const img = panelImageUrl ?? ac.panelImageUrl ?? null;
 
       const description =
         `### ${header}\n` +
-        `${body}\n` +
+        `${resolvedBody}\n` +
         `\u200b\n` +
         `-# Select an application type from the dropdown below to begin your submission.`;
 
-      // Banner embed (image at top) + content embed
+      // Banner embed (image at top, same color as content) + content embed
       const embeds = [];
       if (img) {
-        const bannerEmbed = new EmbedBuilder().setImage(img);
+        const bannerEmbed = new EmbedBuilder()
+          .setColor('#2d2d2d')
+          .setImage(img);
         embeds.push(bannerEmbed);
       }
       const contentEmbed = new EmbedBuilder()
