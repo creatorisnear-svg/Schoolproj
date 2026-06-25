@@ -1759,19 +1759,24 @@ export function createApiRouter(client) {
       if (!ac) return res.status(404).json({ error: 'Applications not configured' });
 
       const header = panelHeader ?? ac.panelHeader ?? 'Applications';
-      const body = panelBody ?? ac.panelBody ?? 'Click the button below to view and apply for available positions.';
+      const body = panelBody ?? ac.panelBody ?? 'We are currently accepting applications for available positions within our community.\n\nReview the available options using the dropdown menu below and submit your application. Our team will review your submission and follow up via DM.';
       const img = panelImageUrl ?? ac.panelImageUrl ?? null;
+
+      const description =
+        `### ${header}\n` +
+        `${body}\n` +
+        `\u200b\n` +
+        `-# Use the dropdown below to select an application type and begin your submission.`;
 
       const panelEmbed = new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle(header)
-        .setDescription(body)
+        .setDescription(description)
         .setFooter({ text: 'RPM' });
       if (img) panelEmbed.setImage(img);
 
       const applyBtn = new ButtonBuilder()
         .setCustomId('appy_open')
-        .setLabel('Click here for applications')
+        .setLabel('View Applications')
         .setStyle(ButtonStyle.Primary);
       const row = new ActionRowBuilder().addComponents(applyBtn);
 
