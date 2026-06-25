@@ -454,6 +454,7 @@
           <input id="verified-search" type="text" class="form-input" placeholder="Name, PSN, Discord ID..." oninput="filterVerified()" style="width:100%;background:#111;border:1px solid #222;border-radius:8px;padding:8px 12px;color:#fff;font-family:inherit;font-size:13px;box-sizing:border-box;">
         </div>
         <button class="btn" onclick="initVerifiedTab(true)" style="white-space:nowrap;align-self:flex-end;">Refresh</button>
+      <button class="btn" onclick="exportVerifiedCsv()" id="verified-export-btn" style="white-space:nowrap;align-self:flex-end;display:none;">Export CSV</button>
       </div>
       <div class="section-label" style="margin-bottom:10px;">Verified Members <span id="verified-count" style="font-weight:400;color:#555;"></span></div>
       <div id="verified-list"><div class="empty" style="padding:32px;text-align:center;color:#555;font-size:13px;">Select a server above.</div></div>
@@ -553,16 +554,55 @@
     var guildId = document.getElementById('verified-guild-select').value;
     var el = document.getElementById('verified-list');
     var countEl = document.getElementById('verified-count');
-    if (!guildId) { el.innerHTML = '<div style="padding:32px;text-align:center;color:#555;font-size:13px;">Select a server above.</div>'; countEl.textContent = ''; return; }
+    var exportBtn = document.getElementById('verified-export-btn');
+    if (!guildId) {
+      el.innerHTML = '<div style="padding:32px;text-align:center;color:#555;font-size:13px;">Select a server above.</div>';
+      countEl.textContent = '';
+      exportBtn.style.display = 'none';
+      return;
+    }
     el.innerHTML = '<div style="padding:32px;text-align:center;color:#555;font-size:13px;">Loading...</div>';
+    exportBtn.style.display = 'none';
     try {
       var data = await api('GET', '/verified/' + guildId);
       _verifiedData = Array.isArray(data) ? data : [];
       filterVerified();
+      if (_verifiedData.length) exportBtn.style.display = '';
     } catch (e) {
       el.innerHTML = '<div style="padding:32px;text-align:center;color:#f04747;font-size:13px;">Failed to load members.</div>';
       countEl.textContent = '';
     }
+  }
+
+  function exportVerifiedCsv() {
+    if (!_verifiedData.length) return;
+    var sel = document.getElementById('verified-guild-select');
+    var guildName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text.replace(/\s*\(.*\)$/, '').trim() : 'members';
+    var rows = [['Discord Name', 'Discord ID', 'PSN/Xbox', 'IP Address', 'Verified At']];
+    _verifiedData.forEach(function(v) {
+      rows.push([
+        v.discordName || '',
+        v.userId || '',
+        v.psnxbox || '',
+        v.ipAddress || '',
+        v.verifiedAt ? new Date(v.verifiedAt).toISOString() : ''
+      ]);
+    });
+    var csv = rows.map(function(r) {
+      return r.map(function(cell) {
+        var s = String(cell).replace(/"/g, '""');
+        return /[,"\n]/.test(s) ? '"' + s + '"' : s;
+      }).join(',');
+    }).join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = guildName.replace(/[^a-z0-9_\-]/gi, '_') + '_verified_members.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function filterVerified() {

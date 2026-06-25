@@ -54,7 +54,7 @@ TOPGG_WEBHOOK_SECRET   - Secret set in top.gg dashboard to verify incoming vote 
 
 ---
 
-## CRITICAL: Two Separate Dashboard Files
+## CRITICAL: Two Separate Dashboard Files + Dev Panel Location
 
 **This is the most important thing for any AI working on this project.**
 
@@ -67,6 +67,16 @@ There are TWO completely separate dashboard implementations:
 
 **Always edit `site/` for anything the user sees in their browser.**
 The Koyeb dashboard (`src/website/public/`) is a secondary/legacy version. `site/` is the live production dashboard.
+
+### Dev Panel — also in `site/`, NOT Koyeb
+
+The developer panel at `roleplaymanager.xyz/dev` is **`site/dev/index.html`**, served by **Cloudflare Pages**.
+- `src/website/views/devpanel.html` exists but is served by Koyeb at the Koyeb subdomain — users do NOT access it through roleplaymanager.xyz.
+- **Always edit `site/dev/index.html`** for anything visible at roleplaymanager.xyz/dev.
+- Cloudflare Pages auto-deploys on GitHub push (~30 seconds). Koyeb deploys take longer (~2 minutes).
+- Replit is dev-only: changes must be pushed to GitHub to reach the live site on either host.
+- The `site/dev/index.html` dev panel calls the Koyeb API at `API_BASE = https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app` with `Authorization: Bearer <DEV_PASSWORD>`.
+- Verified Members API: `GET /dev/verified/:guildId` returns `{ userId, discordName, psnxbox, ipAddress, verifiedAt }`.
 
 ---
 
