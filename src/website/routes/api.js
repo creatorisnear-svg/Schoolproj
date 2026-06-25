@@ -1746,12 +1746,17 @@ export function createApiRouter(client) {
       const { default: AppyPanel } = await import('../../models/AppyPanel.js');
       const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
       const axios = (await import('axios')).default;
+      // Sanitize image URL — treat empty string as null, reject non-https
+      const sanitizedImageUrl = (typeof panelImageUrl === 'string' && panelImageUrl.trim().startsWith('https://'))
+        ? panelImageUrl.trim()
+        : (panelImageUrl !== undefined ? null : undefined);
+
       const ac = await AppyConfig.findOneAndUpdate(
         { guildId: req.params.id },
         {
           ...(panelHeader !== undefined && { panelHeader }),
           ...(panelBody !== undefined && { panelBody }),
-          ...(panelImageUrl !== undefined && { panelImageUrl }),
+          ...(sanitizedImageUrl !== undefined && { panelImageUrl: sanitizedImageUrl }),
           ...(Array.isArray(activeTypeIds) && { activeTypeIds }),
           ...(reviewChannelId !== undefined && { reviewChannelId }),
         },
@@ -1776,7 +1781,8 @@ export function createApiRouter(client) {
       ];
       const storedBody = ac.panelBody;
       const resolvedBody = panelBody ?? (storedBody && !OLD_DEFAULTS.includes(storedBody) ? storedBody : null) ?? NEW_DEFAULT_BODY;
-      const img = panelImageUrl ?? ac.panelImageUrl ?? null;
+      const _cleanUrl = u => (typeof u === 'string' && u.trim().startsWith('https://') ? u.trim() : null);
+      const img = _cleanUrl(panelImageUrl) ?? _cleanUrl(ac.panelImageUrl) ?? null;
 
       const description =
         `### ${header}\n` +
