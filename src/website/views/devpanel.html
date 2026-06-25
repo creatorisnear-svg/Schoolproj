@@ -353,6 +353,7 @@
       <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
       <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
       <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
+      <button class="tab" onclick="switchTab('verified')">Verified Members</button>
     </div>
   </div>
 
@@ -580,6 +581,30 @@
     </div>
   </div>
 
+  <div id="panel-verified" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:14px;">Select Server</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;">
+          <select id="verified-guild-select" class="form-input" onchange="loadVerifiedMembers()">
+            <option value="">Loading servers...</option>
+          </select>
+        </div>
+        <div style="width:auto;">
+          <input id="verified-search" type="text" class="form-input" placeholder="Search name / PSN / IP..." oninput="filterVerified()" style="min-width:200px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-bottom:10px;">
+      Verified Members
+      <span id="verified-count" style="font-weight:400;color:#555;font-size:12px;margin-left:8px;"></span>
+    </div>
+    <div id="verified-table-wrap">
+      <div class="empty" style="padding:24px 0;color:#444;">Select a server above to view verified members.</div>
+    </div>
+  </div>
+
   <div id="panel-broadcast" class="panel">
     <div class="add-form">
       <h3>Broadcast to Server Owners</h3>
@@ -610,7 +635,7 @@
 </div>
 
 <script>
-  var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe'];
+  var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified'];
 
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(function(t, i) {
@@ -620,6 +645,7 @@
     document.getElementById('panel-' + name).classList.add('active');
     if (name === 'broadcast' && !_bcGuilds.length) loadBcGuilds();
     if (name === 'keys') loadKeys();
+    if (name === 'verified') initVerifiedTab();
   }
 
   function showAlert(msg, type) {
@@ -1222,6 +1248,103 @@
       showAlert('Request failed: ' + e.message, 'error');
     }
   }
+
+  // ── Verified Members ──────────────────────────────────────────────────────
+  var _verifiedGuilds = [];
+  var _verifiedData = [];
+  var _verifiedTabReady = false;
+
+  async function initVerifiedTab() {
+    if (_verifiedTabReady) return;
+    _verifiedTabReady = true;
+    try {
+      var res = await api('GET', '/guilds');
+      _verifiedGuilds = Array.isArray(res) ? res : [];
+      var sel = document.getElementById('verified-guild-select');
+      if (!_verifiedGuilds.length) {
+        sel.innerHTML = '<option value="">No servers available</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">Select a server...</option>' +
+        _verifiedGuilds.map(function(g) {
+          return '<option value="' + esc(g.id) + '">' + esc(g.name) + ' (' + g.memberCount + ' members)</option>';
+        }).join('');
+    } catch (e) {
+      document.getElementById('verified-guild-select').innerHTML = '<option value="">Error loading servers</option>';
+    }
+  }
+
+  async function loadVerifiedMembers() {
+    var sel = document.getElementById('verified-guild-select');
+    var guildId = sel.value;
+    var wrap = document.getElementById('verified-table-wrap');
+    var countEl = document.getElementById('verified-count');
+    document.getElementById('verified-search').value = '';
+    if (!guildId) {
+      _verifiedData = [];
+      countEl.textContent = '';
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#444;">Select a server above to view verified members.</div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#555;">Loading...</div>';
+    countEl.textContent = '';
+    try {
+      var data = await api('GET', '/verified/' + encodeURIComponent(guildId));
+      _verifiedData = Array.isArray(data) ? data : [];
+      renderVerifiedTable(_verifiedData);
+    } catch (e) {
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#f04747;">Error: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  function filterVerified() {
+    var q = document.getElementById('verified-search').value.trim().toLowerCase();
+    if (!q) { renderVerifiedTable(_verifiedData); return; }
+    var filtered = _verifiedData.filter(function(u) {
+      return (u.discordName || '').toLowerCase().includes(q) ||
+        (u.psnxbox || '').toLowerCase().includes(q) ||
+        (u.ipAddress || '').includes(q) ||
+        (u.userId || '').includes(q);
+    });
+    renderVerifiedTable(filtered, true);
+  }
+
+  function renderVerifiedTable(rows, filtered) {
+    var wrap = document.getElementById('verified-table-wrap');
+    var countEl = document.getElementById('verified-count');
+    countEl.textContent = '(' + rows.length + (filtered ? ' filtered' : ' total') + ')';
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#444;">' +
+        (filtered ? 'No members match that search.' : 'No verified members in this server.') +
+        '</div>';
+      return;
+    }
+    var html = '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<thead><tr style="border-bottom:1px solid #222;text-align:left;">' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">Discord</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">User ID</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">PSN / Xbox</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">IP Address</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">Verified At</th>' +
+      '</tr></thead><tbody>';
+
+    rows.forEach(function(u, i) {
+      var bg = i % 2 === 0 ? '#0d0d0d' : '#111';
+      var date = u.verifiedAt ? new Date(u.verifiedAt).toLocaleString() : 'Unknown';
+      html += '<tr style="background:' + bg + ';border-bottom:1px solid #1a1a1a;">' +
+        '<td style="padding:9px 12px;color:#ddd;">' + esc(u.discordName || '(not in server)') + '</td>' +
+        '<td style="padding:9px 12px;"><code style="font-size:11px;color:#7b8cec;background:#1a1a2e;padding:2px 6px;border-radius:4px;">' + esc(u.userId) + '</code></td>' +
+        '<td style="padding:9px 12px;color:#ccc;">' + (u.psnxbox ? esc(u.psnxbox) : '<span style="color:#444;">—</span>') + '</td>' +
+        '<td style="padding:9px 12px;"><code style="font-size:12px;color:#888;">' + (u.ipAddress ? esc(u.ipAddress) : '<span style="color:#444;">—</span>') + '</code></td>' +
+        '<td style="padding:9px 12px;color:#555;font-size:12px;white-space:nowrap;">' + esc(date) + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  }
+  // ── End Verified Members ──────────────────────────────────────────────────
 
   async function init() {
     var check = await fetch('/dev/check').then(function(r) { return r.json(); });

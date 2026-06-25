@@ -8,6 +8,7 @@ import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import PremiumKey from '../../models/PremiumKey.js';
+import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 
@@ -471,6 +472,33 @@ export function createDevRouter(client) {
     try {
       await recordVote(userId);
       res.json({ ok: true, message: `Vote credit granted to ${userId}` });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get('/verified/:guildId', devAuth, async (req, res) => {
+    try {
+      const { guildId } = req.params;
+      const users = await VerifiedUser.find({ guildId }).sort({ verifiedAt: -1 }).lean();
+      // Enrich with Discord display name if bot is available
+      const guild = client?.guilds?.cache?.get(guildId);
+      const enriched = await Promise.all(users.map(async (u) => {
+        let discordName = null;
+        if (guild) {
+          const member = guild.members.cache.get(u.userId) ||
+            await guild.members.fetch(u.userId).catch(() => null);
+          discordName = member?.displayName || member?.user?.username || null;
+        }
+        return {
+          userId: u.userId,
+          discordName,
+          psnxbox: u.psnxbox || null,
+          ipAddress: u.ipAddress || null,
+          verifiedAt: u.verifiedAt,
+        };
+      }));
+      res.json(enriched);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -1812,25 +1812,26 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       // different users within 12 seconds, it is almost certainly Whisper
       // hallucinating from shared ambient channel noise, not real speech.
       // Real officers don't key up and say the identical thing seconds apart.
-      if (_words.length <= 4) {
+      // Only suppress very short (≤2 word) identical phrases across users within 5s.
+      // Longer phrases like "dispatch ten eight" are almost certainly real speech from
+      // different officers who happened to say the same thing - do NOT suppress those.
+      if (_words.length <= 2) {
         const _suppressKey = `${guild.id}:${_norm}`;
         const _now = Date.now();
         const _entry = _crossUserHallucinationTracker.get(_suppressKey);
         if (_entry) {
           const { firstUserId, firstTs } = _entry;
-          if (_now - firstTs < 12000 && firstUserId !== userId) {
-            // Second different user with same short phrase within 12s → suppress
+          if (_now - firstTs < 5000 && firstUserId !== userId) {
+            // Second different user with same 1-2 word phrase within 5s → suppress
             _crossUserHallucinationTracker.delete(_suppressKey);
             console.log(`[Dispatch] Cross-user hallucination suppressed: "${_t}" (2 users, ${_now - firstTs}ms apart)`);
             return;
           }
-          if (_now - firstTs >= 12000) {
-            // Entry expired - reset
+          if (_now - firstTs >= 5000) {
             _crossUserHallucinationTracker.set(_suppressKey, { firstUserId: userId, firstTs: _now });
           }
         } else {
           _crossUserHallucinationTracker.set(_suppressKey, { firstUserId: userId, firstTs: _now });
-          // Prune old entries to avoid unbounded growth
           if (_crossUserHallucinationTracker.size > 200) {
             const cutoff = _now - 30000;
             for (const [k, v] of _crossUserHallucinationTracker) {
@@ -1849,7 +1850,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     const now = Date.now();
     const lastEntry = _transcriptDedup.get(dedupKey);
     const normalized = transcript.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-    if (lastEntry && (now - lastEntry.ts < 12000) && lastEntry.text === normalized) {
+    if (lastEntry && (now - lastEntry.ts < 6000) && lastEntry.text === normalized) {
       console.log(`[Dispatch] Dedup - ignoring repeated transcript from ${officerName}`);
       return;
     }
