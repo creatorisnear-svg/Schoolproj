@@ -111,7 +111,7 @@ export async function handleAppyTypeSelect(interaction, client) {
     .setColor('#2d2d2d')
     .setTitle(panel.name)
     .setDescription(`### Application Started\n\n**Question 1 of ${panel.questions.length}**\n${panel.questions[0]}`)
-    .setFooter({ text: 'RPM | Reply to this message with your answer. You have 10 minutes per question.' });
+    .setFooter({ text: 'RPM | Reply to this message with your answer. You have 30 minutes per question.' });
 
   try {
     await interaction.user.send({ embeds: [firstEmbed] });
@@ -119,22 +119,25 @@ export async function handleAppyTypeSelect(interaction, client) {
     return interaction.reply({ embeds: [_errEmbed('I could not send you a DM. Enable direct messages from server members and try again.')], flags: 64 });
   }
 
-  const timeout = setTimeout(async () => {
-    _activeSessions.delete(interaction.user.id);
+  const userId = interaction.user.id;
+  const makeTimeout = (panelName) => setTimeout(async () => {
+    _activeSessions.delete(userId);
     const timeoutEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Application Timed Out')
-      .setDescription(`Your application for **${panel.name}** was cancelled due to inactivity.`)
+      .setDescription(`Your application for **${panelName}** was cancelled due to inactivity.\n-# You can restart the application at any time.`)
       .setFooter({ text: 'RPM' });
     interaction.user.send({ embeds: [timeoutEmbed] }).catch(() => {});
-  }, 10 * 60 * 1000);
+  }, 30 * 60 * 1000);
 
-  _activeSessions.set(interaction.user.id, {
+  _activeSessions.set(userId, {
     typeId,
     guildId,
     questionIndex: 0,
     answers: [],
-    timeout,
+    panelName: panel.name,
+    timeout: makeTimeout(panel.name),
+    makeTimeout,
   });
 
   await interaction.reply({ embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Check your DMs to complete your application.').setFooter({ text: 'RPM' })], flags: 64 });
@@ -154,11 +157,15 @@ export async function handleDMReply(message, client) {
   session.questionIndex++;
 
   if (session.questionIndex < panel.questions.length) {
+    // Reset the 30-min timer for the next question
+    clearTimeout(session.timeout);
+    session.timeout = session.makeTimeout(session.panelName);
+
     const nextEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle(panel.name)
       .setDescription(`**Question ${session.questionIndex + 1} of ${panel.questions.length}**\n${panel.questions[session.questionIndex]}`)
-      .setFooter({ text: 'RPM | Reply with your answer.' });
+      .setFooter({ text: 'RPM | Reply with your answer. You have 30 minutes per question.' });
     await message.author.send({ embeds: [nextEmbed] }).catch(() => {});
     return;
   }
