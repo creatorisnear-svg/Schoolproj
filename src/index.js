@@ -236,18 +236,45 @@ app.use('/dev', createDevRouter(client));
 
 app.get('/auth/site/callback', async (req, res) => {
   const { code, state } = req.query;
-  const siteRedirect = state || 'https://roleplaymanager.xyz/dashboard/';
 
-  if (!code) return res.redirect(siteRedirect);
+  // Validate state is a safe redirect target before any redirect — prevents open redirect.
+  const ALLOWED_REDIRECT_ORIGINS = [
+    'https://roleplaymanager.xyz',
+    'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app',
+  ];
+  const DEFAULT_REDIRECT = 'https://roleplaymanager.xyz/dashboard/';
+  let safeRedirect = DEFAULT_REDIRECT;
+  if (state) {
+    try {
+      const stateUrl = new URL(state);
+      if (ALLOWED_REDIRECT_ORIGINS.includes(stateUrl.origin)) {
+        safeRedirect = stateUrl.href;
+      } else {
+        console.warn(`[SITE AUTH] Rejected untrusted state redirect: ${stateUrl.origin}`);
+      }
+    } catch {
+      console.warn('[SITE AUTH] Could not parse state as URL, using default redirect');
+    }
+  }
+
+  if (!code) return res.redirect(safeRedirect);
 
   try {
-    const domain = process.env.DOMAIN;
-    if (!domain) {
-      console.error('[SITE AUTH] DOMAIN env var not set - cannot build redirect URI');
-      return res.redirect(siteRedirect + '#error=no_domain');
+    // Build redirect_uri: prefer the explicit DISCORD_CALLBACK_URL env var (most reliable),
+    // then fall back to deriving from request headers (works behind Koyeb's reverse proxy).
+    // Take first comma-separated value from proxy headers to handle multi-hop chains.
+    let redirectUri;
+    if (process.env.DISCORD_CALLBACK_URL) {
+      redirectUri = process.env.DISCORD_CALLBACK_URL;
+    } else {
+      const rawProto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const rawHost = req.headers['x-forwarded-host'] || req.headers['host'] || '';
+      const proto = rawProto.split(',')[0].trim();
+      const host = rawHost.split(',')[0].trim();
+      redirectUri = `${proto}://${host}/auth/site/callback`;
     }
-    const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
-    const redirectUri = `https://${cleanDomain}/auth/site/callback`;
+
+    console.log(`[SITE AUTH] Exchanging code with redirect_uri: ${redirectUri}`);
 
     const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
@@ -260,10 +287,11 @@ app.get('/auth/site/callback', async (req, res) => {
     });
 
     const { access_token } = tokenRes.data;
-    res.redirect(siteRedirect + '#token=' + access_token);
+    res.redirect(safeRedirect + '#token=' + access_token);
   } catch (err) {
-    console.error('[SITE AUTH]', err.response?.data || err.message);
-    res.redirect(siteRedirect + '#error=auth_failed');
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    console.error('[SITE AUTH] Token exchange failed:', detail);
+    res.redirect(safeRedirect + '#error=auth_failed');
   }
 });
 

@@ -66,18 +66,27 @@ function esc(str) {
 }
 
 /* ── Login / Auth ── */
-function showLogin() {
+function showLogin(errorCode) {
   var clientId = '1441306995641683978';
   var redirectUri = encodeURIComponent(API_BASE + '/auth/site/callback');
   var state = encodeURIComponent(SITE_URL + '/dashboard/');
   var loginUrl = 'https://discord.com/api/oauth2/authorize?client_id=' + clientId +
     '&redirect_uri=' + redirectUri + '&response_type=code&scope=identify%20guilds&state=' + state;
 
+  var errorMessages = {
+    'auth_failed': 'Sign-in failed. This is usually caused by an expired link or a configuration issue. Please try again.',
+    'no_domain': 'Server configuration error. Please contact the bot owner.',
+  };
+  var errorHtml = errorCode
+    ? '<p style="color:#f04747;font-size:0.85rem;margin-bottom:12px;">' + (errorMessages[errorCode] || 'Authentication error: ' + esc(errorCode) + '. Please try again.') + '</p>'
+    : '';
+
   app.innerHTML =
     '<div class="login-page"><div class="login-box">' +
     '<img src="/img/logo.png" alt="RPM">' +
     '<h2>Dashboard</h2>' +
     '<p>Sign in with Discord to manage your servers.</p>' +
+    errorHtml +
     '<a href="' + loginUrl + '" class="btn btn-primary" style="width:100%;justify-content:center;">Sign in with Discord</a>' +
     '</div></div>';
 }
@@ -153,9 +162,17 @@ function closeSidebar() {
 /* ── Init ── */
 function init() {
   var hash = window.location.hash;
-  if (hash && hash.indexOf('#token=') === 0) {
-    setToken(hash.substring(7));
+  if (hash && hash.length > 1) {
+    var hashParams = new URLSearchParams(hash.slice(1));
+    var hashToken = hashParams.get('token');
+    var hashError = hashParams.get('error');
     history.replaceState(null, '', window.location.pathname);
+    if (hashToken) {
+      setToken(hashToken);
+    } else if (hashError) {
+      showLogin(hashError);
+      return;
+    }
   }
   var token = getToken();
   if (!token) { showLogin(); return; }
