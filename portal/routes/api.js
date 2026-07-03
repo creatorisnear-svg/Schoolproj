@@ -86,7 +86,7 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
         color: 0x2e2e36,
         title: '🚔  Officer Status Board',
         description: '*No officers currently on duty.*',
-        footer: { text: 'RPM Portal • Auto-updates on status change' },
+        footer: { text: 'DOJRP CAD • Auto-updates on status change' },
         timestamp: new Date().toISOString(),
       };
     } else {
@@ -111,7 +111,7 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
         title: '🚔  Officer Status Board',
         description: `**${activeOfficers.length}** officer${activeOfficers.length !== 1 ? 's' : ''} active  •  **${officers.length}** total on shift`,
         fields,
-        footer: { text: 'RPM Portal • Auto-updates on status change' },
+        footer: { text: 'DOJRP CAD • Auto-updates on status change' },
         timestamp: new Date().toISOString(),
       };
     }
@@ -193,7 +193,7 @@ export function createApiRouter() {
 
       const isLeo = guildId ? await getLeoStatus(freshRoles, guildId) : false;
 
-      let serverName = process.env.PORTAL_SERVER_NAME || 'Member Portal';
+      let serverName = process.env.PORTAL_SERVER_NAME || 'DOJRP CAD';
       let serverIcon = null;
       try {
         const gRes = await axios.get(`${DISCORD_BASE}/guilds/${guildId}`, { headers: botHeaders() });
@@ -343,9 +343,9 @@ export function createApiRouter() {
           embeds: [{
             color: 0xff4444,
             title: `🚨 911 Call - ${callId}`,
-            description: `Submitted via **Member Portal** by **${req.portalUser.displayName || req.portalUser.username}**`,
+            description: `Submitted via **DOJRP CAD** by **${req.portalUser.displayName || req.portalUser.username}**`,
             fields,
-            footer: { text: 'RPM Portal • Respond with /duty' },
+            footer: { text: 'DOJRP CAD • Respond with /duty' },
             timestamp: new Date().toISOString(),
           }],
         }, { headers: botHeaders() });
@@ -744,9 +744,9 @@ export function createApiRouter() {
         await axios.post(`${DISCORD_BASE}/channels/${dmRes.data.id}/messages`, {
           embeds: [{
             color: 0x4f7ef7, title: 'Role Request',
-            description: `**${req.portalUser.username}** requested **${roleType.roleName}** via the Member Portal.`,
+            description: `**${req.portalUser.username}** requested **${roleType.roleName}** via the DOJRP CAD.`,
             fields: [{ name: 'Request ID', value: requestId }],
-            footer: { text: 'RPM Portal' },
+            footer: { text: 'DOJRP CAD' },
           }],
         }, { headers: botHeaders() });
       } catch { /* DM failed */ }
@@ -846,8 +846,8 @@ export function createApiRouter() {
           embeds: [{
             color: 0x4f7ef7,
             title: `Officer Responding - ${call.callId}`,
-            description: `**${displayName}** is responding via the Member Portal.\n**Status:** 10-76 En Route${call.location ? `\n**Location:** ${call.location}` : ''}`,
-            footer: { text: 'RPM Portal • Status auto-set to 10-76' },
+            description: `**${displayName}** is responding via the DOJRP CAD.\n**Status:** 10-76 En Route${call.location ? `\n**Location:** ${call.location}` : ''}`,
+            footer: { text: 'DOJRP CAD • Status auto-set to 10-76' },
             timestamp: new Date().toISOString(),
           }],
         }, { headers: botHeaders() }).catch(() => {});
@@ -1013,13 +1013,13 @@ export function createApiRouter() {
           const panicEmbed = {
             color: 0xff0000,
             title: '10-99 - OFFICER NEEDS IMMEDIATE ASSISTANCE',
-            description: `**${displayName}** has activated their panic button via the Member Portal.\n-# All units respond immediately.`,
+            description: `**${displayName}** has activated their panic button via the DOJRP CAD.\n-# All units respond immediately.`,
             fields: [
               { name: 'Officer', value: displayName, inline: true },
               ...(location?.trim() ? [{ name: 'Last Known Location', value: location.trim(), inline: true }] : []),
               { name: 'Code', value: '10-99 - Emergency', inline: true },
             ],
-            footer: { text: 'RPM Portal • ALL UNITS RESPOND' },
+            footer: { text: 'DOJRP CAD • ALL UNITS RESPOND' },
             timestamp: new Date().toISOString(),
           };
           if (dispatchCfg.dispatchChannelId) {

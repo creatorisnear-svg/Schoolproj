@@ -205,7 +205,7 @@ function showLogin(error) {
 }
 
 function showApp() {
-  const serverName = me.serverName || 'Member Portal';
+  const serverName = me.serverName || 'DOJRP CAD';
   ['login-server-name','sidebar-server-name','topbar-server-name'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = serverName;
@@ -1049,8 +1049,8 @@ async function loadEconomy() {
   try {
     const [ecoRes, shopRes, lbRes] = await Promise.all([
       api('/economy'),
-      isLeoMode ? Promise.resolve([]) : api('/economy/shop'),
-      isLeoMode ? Promise.resolve({ entries: [] }) : api('/economy/leaderboard'),
+      isLeoMode ? Promise.resolve([]) : api('/economy/shop').catch(() => []),
+      isLeoMode ? Promise.resolve({ entries: [] }) : api('/economy/leaderboard').catch(() => ({ entries: [] })),
     ]);
 
     const cur = ecoRes.currency || '$';
@@ -1088,14 +1088,15 @@ async function loadEconomy() {
 
     const cur2 = lbRes.currency || cur;
     const lbEntries = lbRes.entries || [];
+    const rankColors = ['#f5c542','#a8a8a8','#cd7f32'];
     document.getElementById('leaderboard-list').innerHTML = lbEntries.length
       ? lbEntries.map(e => {
-          const medals = ['🥇', '🥈', '🥉'];
           const rcClass = e.rank <= 3 ? ` lb-row-${['gold','silver','bronze'][e.rank-1]}` : '';
+          const rankHtml = e.rank <= 3
+            ? `<span class="lb-rank-badge" style="color:${rankColors[e.rank-1]};border-color:${rankColors[e.rank-1]}40">#${e.rank}</span>`
+            : `<span class="lb-rank">${e.rank}</span>`;
           return `<div class="lb-row${rcClass}">
-            <div class="lb-rank-wrap">
-              ${e.rank <= 3 ? `<span class="lb-medal">${medals[e.rank-1]}</span>` : `<span class="lb-rank">${e.rank}</span>`}
-            </div>
+            <div class="lb-rank-wrap">${rankHtml}</div>
             <div class="lb-info">
               <div class="lb-name">${esc(e.name)}</div>
               <div class="lb-breakdown">${fmt(e.cash, cur2)} cash &middot; ${fmt(e.bank, cur2)} bank</div>

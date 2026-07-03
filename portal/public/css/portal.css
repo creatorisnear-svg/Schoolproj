@@ -766,13 +766,13 @@ html, body {
 .lb-row-gold   { border-left: 3px solid #f5c542; background: rgba(245,197,66,0.04); }
 .lb-row-silver { border-left: 3px solid #a8a8a8; background: rgba(168,168,168,0.04); }
 .lb-row-bronze { border-left: 3px solid #cd7f32; background: rgba(205,127,50,0.04); }
-.lb-rank-wrap  { width: 32px; text-align: center; flex-shrink: 0; }
-.lb-medal      { font-size: 20px; line-height: 1; display: block; }
+.lb-rank-wrap  { width: 36px; text-align: center; flex-shrink: 0; }
+.lb-rank-badge { font-size: 11px; font-weight: 800; padding: 2px 5px; border-radius: 5px; border: 1px solid; letter-spacing: -0.3px; display: inline-block; }
 .lb-rank       { font-size: 12px; font-weight: 700; color: var(--text-sub); }
-.lb-info       { flex: 1; min-width: 0; }
+.lb-info       { flex: 1; min-width: 0; overflow: hidden; }
 .lb-name       { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-breakdown  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.lb-total      { font-size: 14px; font-weight: 700; color: var(--success); flex-shrink: 0; }
+.lb-breakdown  { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-total      { font-size: 13px; font-weight: 700; color: var(--success); flex-shrink: 0; white-space: nowrap; padding-left: 8px; }
 
 /* ══════════════════════════════════════════════════════
    ROLE REQUESTS
