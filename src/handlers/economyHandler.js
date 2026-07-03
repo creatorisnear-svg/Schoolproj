@@ -122,6 +122,33 @@ function slotMult(reels) {
   return 0;
 }
 
+// ── Interactive blackjack sessions (in-memory, keyed by guildId_userId) ──────
+const bjSessions = new Map();
+
+function bjHitStandRow(sessionId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`bj_hit_${sessionId}`).setLabel('Hit').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`bj_stand_${sessionId}`).setLabel('Stand').setStyle(ButtonStyle.Danger),
+  );
+}
+
+function bjEmbed(player, dealer, showAll, result, sym, winnings, newCash) {
+  const dealerDisplay = showAll
+    ? `${handStr(dealer)} **(${handTotal(dealer)})**`
+    : `${handStr([dealer[0]])} \`??\``;
+  let color = 0x2d2d2d;
+  let title = 'Blackjack';
+  let desc = `**Your Hand:** ${handStr(player)} **(${handTotal(player)})**\n**Dealer:** ${dealerDisplay}`;
+  if (result) {
+    const titles = { blackjack: 'Blackjack!', win: 'You Win!', lose: 'Dealer Wins', bust: 'Bust!', dealer_bust: 'Dealer Bust - You Win!', push: 'Push - Tie' };
+    title = titles[result] || result;
+    color = ['win','blackjack','dealer_bust'].includes(result) ? 0x43b581 : result === 'push' ? 0xfaa61a : 0xf04747;
+    const outcomeStr = winnings > 0 ? `You won **${sym}${fmt(Math.abs(winnings))}**!` : winnings < 0 ? `You lost **${sym}${fmt(Math.abs(winnings))}**.` : 'Bet returned.';
+    desc += `\n\n${outcomeStr}\n**Cash:** ${sym}${fmt(newCash)}`;
+  }
+  return new EmbedBuilder().setColor(color).setTitle(title).setDescription(desc).setFooter({ text: 'RPM' });
+}
+
 // ── Menu builders ─────────────────────────────────────────────────────────────
 export function getEconomyMenu() {
   return {
@@ -1029,6 +1056,64 @@ export async function handleEconomyButton(interaction) {
   const guildId = interaction.guildId;
   const { customId } = interaction;
 
+  // ── Interactive blackjack: Hit / Stand ────────────────────────────────────
+  if (customId.startsWith('bj_hit_') || customId.startsWith('bj_stand_')) {
+    const isHit = customId.startsWith('bj_hit_');
+    const sessionId = customId.slice(isHit ? 'bj_hit_'.length : 'bj_stand_'.length);
+    const session = bjSessions.get(sessionId);
+
+    if (!session || session.userId !== interaction.user.id) {
+      return interaction.reply({ embeds: [errorEmbed('No active blackjack session. Start a new game with `/gamble blackjack`.')], flags: 64 });
+    }
+
+    const { deck, player, dealer, bet, sym, maxBalance, userId } = session;
+    const bal = await getBalance(guildId, userId, 0);
+
+    if (isHit) {
+      player.push(deck.pop());
+      const pt = handTotal(player);
+
+      if (pt > 21) {
+        // Bust
+        clearTimeout(session.timer); bjSessions.delete(sessionId);
+        bal.cash = Math.max(0, bal.cash - bet);
+        bal.gamblingCooldown = new Date(); await bal.save();
+        return interaction.update({ embeds: [bjEmbed(player, dealer, true, 'bust', sym, -bet, bal.cash)], components: [] });
+      }
+
+      if (pt === 21) {
+        // Auto-stand on 21
+        while (handTotal(dealer) < 17) dealer.push(deck.pop());
+        const dt = handTotal(dealer);
+        let result, winnings;
+        if (dt > 21) { result = 'dealer_bust'; winnings = bet; }
+        else if (pt > dt) { result = 'win'; winnings = bet; }
+        else if (dt > pt) { result = 'lose'; winnings = -bet; }
+        else { result = 'push'; winnings = 0; }
+        clearTimeout(session.timer); bjSessions.delete(sessionId);
+        bal.cash = Math.max(0, Math.min(bal.cash + winnings, maxBalance));
+        bal.gamblingCooldown = new Date(); await bal.save();
+        return interaction.update({ embeds: [bjEmbed(player, dealer, true, result, sym, winnings, bal.cash)], components: [] });
+      }
+
+      // Still in play — show updated hand
+      return interaction.update({ embeds: [bjEmbed(player, dealer, false, null, sym, 0, 0)], components: [bjHitStandRow(sessionId)] });
+    }
+
+    // Stand — dealer plays out
+    while (handTotal(dealer) < 17) dealer.push(deck.pop());
+    const pt = handTotal(player), dt = handTotal(dealer);
+    let result, winnings;
+    if (dt > 21) { result = 'dealer_bust'; winnings = bet; }
+    else if (pt > dt) { result = 'win'; winnings = bet; }
+    else if (dt > pt) { result = 'lose'; winnings = -bet; }
+    else { result = 'push'; winnings = 0; }
+    clearTimeout(session.timer); bjSessions.delete(sessionId);
+    bal.cash = Math.max(0, Math.min(bal.cash + winnings, maxBalance));
+    bal.gamblingCooldown = new Date(); await bal.save();
+    return interaction.update({ embeds: [bjEmbed(player, dealer, true, result, sym, winnings, bal.cash)], components: [] });
+  }
+
   if (customId === 'collect_income') {
     const { runIncome } = await import('./economyActions.js');
     return runIncome(interaction);
@@ -1312,20 +1397,47 @@ export async function handleEconomyModal(interaction) {
     if (cdRem > 0) return interaction.reply({ embeds: [errorEmbed(`You can gamble again in **${formatMs(cdRem)}**.`)], flags: 64 });
 
     if (game === 'blackjack') {
+      // Block starting a new hand while one is already active (prevents reroll abuse)
+      const sessionId = `${guildId}_${userId}`;
+      if (bjSessions.has(sessionId)) {
+        return interaction.reply({ embeds: [errorEmbed('You already have an active blackjack hand. Click **Hit** or **Stand** to finish it first.')], flags: 64 });
+      }
+
       const deck = newDeck(), player = [deck.pop(), deck.pop()], dealer = [deck.pop(), deck.pop()];
-      let pt = handTotal(player), dt = handTotal(dealer);
-      while (dt < 17) { dealer.push(deck.pop()); dt = handTotal(dealer); }
-      let result = 'lose';
-      if (pt > 21) result = 'lose';
-      else if (dt > 21 || pt > dt) result = (pt === 21 && player.length === 2) ? 'blackjack' : 'win';
-      else if (pt === dt) result = 'push';
-      let winAmt = 0;
-      if (result === 'blackjack') { winAmt = Math.floor(bet * 1.5); bal.cash = Math.min(bal.cash + winAmt, config.maxBalance); }
-      else if (result === 'win')  { winAmt = bet; bal.cash = Math.min(bal.cash + bet, config.maxBalance); }
-      else if (result === 'lose') { bal.cash = Math.max(0, bal.cash - bet); }
-      bal.gamblingCooldown = new Date(); await bal.save();
-      const txt = { blackjack: `Blackjack! +**${sym}${fmt(winAmt)}**`, win: `You win **${sym}${fmt(winAmt)}**!`, lose: `You lose **${sym}${fmt(bet)}**.`, push: 'Push - bet returned.' }[result];
-      return interaction.reply({ embeds: [new EmbedBuilder().setColor(result === 'lose' ? 0xf04747 : result === 'push' ? 0xfaa61a : 0x43b581).setTitle('Blackjack').setDescription(`**Your hand:** ${handStr(player)} (${pt})\n**Dealer:** ${handStr(dealer)} (${dt})\n\n${txt}\n**Cash:** ${sym}${fmt(bal.cash)}`).setFooter({ text: 'RPM' })], flags: 64 });
+      const pt = handTotal(player), dt = handTotal(dealer);
+
+      // Resolve naturals immediately (check both before awarding player blackjack)
+      if (pt === 21 || dt === 21) {
+        let result, winnings;
+        if (pt === 21 && dt === 21) { result = 'push'; winnings = 0; }
+        else if (pt === 21)         { result = 'blackjack'; winnings = Math.floor(bet * 1.5); }
+        else                         { result = 'lose'; winnings = -bet; }
+        bal.cash = Math.max(0, Math.min(bal.cash + winnings, config.maxBalance));
+        bal.gamblingCooldown = new Date(); await bal.save();
+        return interaction.reply({ embeds: [bjEmbed(player, dealer, true, result, sym, winnings, bal.cash)], flags: 64 });
+      }
+
+      // Store session; player chooses Hit/Stand
+      // On timeout: treat as forfeit — deduct bet and set cooldown so abandoned hands have consequence.
+      const timer = setTimeout(async () => {
+        if (!bjSessions.has(sessionId)) return;
+        bjSessions.delete(sessionId);
+        try {
+          const timeoutBal = await EconomyBalance.findOne({ guildId, userId });
+          if (timeoutBal) {
+            timeoutBal.cash = Math.max(0, timeoutBal.cash - bet);
+            timeoutBal.gamblingCooldown = new Date();
+            await timeoutBal.save();
+          }
+        } catch {}
+      }, 3 * 60 * 1000);
+      bjSessions.set(sessionId, { deck, player, dealer, bet, sym, maxBalance: config.maxBalance, userId, guildId, timer });
+
+      return interaction.reply({
+        embeds: [bjEmbed(player, dealer, false, null, sym, 0, 0)],
+        components: [bjHitStandRow(sessionId)],
+        flags: 64,
+      });
     }
 
     if (game === 'slots') {
