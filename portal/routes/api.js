@@ -658,20 +658,37 @@ export function createApiRouter() {
     try {
       const guildId = GUILD_ID();
       if (!guildId) return res.json({ entries: [], currency: '$' });
-      const balances = await EconomyBalance.find({ guildId }).sort({ bank: -1 }).limit(10);
-      const config = await EconomyConfig.findOne({ guildId });
-      const entries = await Promise.all(balances.map(async (b, i) => {
-        let name = 'Unknown';
-        try {
-          const m = await fetchGuildMember(b.userId);
-          name = m?.nick || null;
-          if (!name) {
-            const uRes = await axios.get(`${DISCORD_BASE}/users/${b.userId}`, { headers: botHeaders() });
-            name = uRes.data.global_name || uRes.data.username || 'Unknown';
-          }
-        } catch { /* skip */ }
-        return { rank: i + 1, name: name || 'Unknown', cash: b.cash, bank: b.bank, total: b.cash + b.bank };
+
+      const [allBalances, config] = await Promise.all([
+        EconomyBalance.find({ guildId }),
+        EconomyConfig.findOne({ guildId }),
+      ]);
+
+      // Sort by total wealth (cash + bank) in JS — MongoDB can't sort computed fields
+      const sorted = [...allBalances]
+        .sort((a, b) => (b.cash + b.bank) - (a.cash + a.bank))
+        .slice(0, 10);
+
+      // Batch-fetch all guild members in one API call — avoid N individual requests
+      let memberMap = {};
+      try {
+        const mRes = await axios.get(
+          `${DISCORD_BASE}/guilds/${guildId}/members?limit=1000`,
+          { headers: botHeaders() }
+        );
+        for (const m of mRes.data) {
+          memberMap[m.user.id] = m.nick || m.user.global_name || m.user.username || null;
+        }
+      } catch { /* fall back to partial names */ }
+
+      const entries = sorted.map((b, i) => ({
+        rank: i + 1,
+        name: memberMap[b.userId] || `Member #${b.userId.slice(-4)}`,
+        cash: b.cash,
+        bank: b.bank,
+        total: b.cash + b.bank,
       }));
+
       res.json({ entries, currency: config?.currencySymbol || '$' });
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });

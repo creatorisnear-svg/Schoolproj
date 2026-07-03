@@ -380,40 +380,117 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 }
 
 /* ══════════════════════════════════════════════════════
-   BUTTONS
+   BUTTON SYSTEM
 ══════════════════════════════════════════════════════ */
+
+/* Base */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  border-radius: 6px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  padding: 0 16px;
+  height: 36px;
   cursor: pointer;
-  transition: background 0.12s, transform 0.1s, opacity 0.12s, box-shadow 0.12s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s, opacity 0.12s;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
   text-decoration: none;
-  letter-spacing: -0.1px;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
 .btn:disabled:active { transform: none; }
 
-.btn-primary { background: var(--accent); color: #fff; padding: 9px 18px; box-shadow: 0 1px 6px rgba(76,120,245,0.25); }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 2px 10px rgba(76,120,245,0.35); }
+/* Primary — solid accent, blue glow */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2), 0 0 0 0 rgba(59,130,246,0);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow: 0 2px 12px rgba(59,130,246,0.38);
+}
+.btn-primary:active:not(:disabled) { box-shadow: none; }
 
-.btn-secondary { background: var(--elevated); color: var(--text); border: 1px solid var(--border); padding: 9px 18px; }
-.btn-secondary:hover:not(:disabled) { background: var(--border); }
+/* Secondary — glass card look */
+.btn-secondary {
+  background: var(--elevated);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border);
+  border-color: var(--border-light);
+}
 
-.btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(242,87,87,0.2); padding: 9px 18px; }
-.btn-danger:hover:not(:disabled) { background: rgba(242,87,87,0.18); }
+/* Danger — red tint, deepens on hover */
+.btn-danger {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border-color: rgba(239,68,68,0.25);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.5);
+  box-shadow: 0 2px 10px rgba(239,68,68,0.15);
+}
 
-.btn-sm { padding: 6px 12px; font-size: 12px; }
+/* Success — teal tint */
+.btn-success {
+  background: var(--success-dim);
+  color: var(--success);
+  border-color: rgba(13,205,160,0.25);
+}
+.btn-success:hover:not(:disabled) {
+  background: rgba(13,205,160,0.18);
+  border-color: rgba(13,205,160,0.5);
+  box-shadow: 0 2px 10px rgba(13,205,160,0.12);
+}
+
+/* Ghost — no background, just text */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+/* Pill modifier */
+.btn-pill { border-radius: 999px; }
+
+/* Block modifier */
+.btn-block { width: 100%; }
+
+/* Icon-only square button */
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 6px;
+}
+.btn-icon.btn-sm { width: 30px; height: 30px; }
+
+/* Sizes */
+.btn-lg { height: 44px; padding: 0 22px; font-size: 14px; border-radius: 7px; }
+.btn-sm { height: 30px; padding: 0 12px; font-size: 12px; border-radius: 5px; }
+.btn-xs { height: 24px; padding: 0 9px; font-size: 11px; border-radius: 4px; letter-spacing: 0; }
 
 /* ══════════════════════════════════════════════════════
    OVERVIEW
@@ -2261,15 +2338,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   padding: 4px 0 8px;
 }
 
-/* ══════════════════════════════════════════════════════
-   SMALL BUTTON VARIANT (btn-xs)
-══════════════════════════════════════════════════════ */
-.btn-xs {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 5px;
-  white-space: nowrap;
-}
+/* btn-xs already defined in the button system above */
 
 /* ══════════════════════════════════════════════════════
    ECONOMY ACTION ROW
@@ -2409,11 +2478,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   /* ── Forms ── */
   .form-grid-2 { grid-template-columns: 1fr; }
 
-  /* ── Buttons — bigger tap targets ── */
-  .btn { min-height: 38px; }
-  .btn-sm { min-height: 34px; font-size: 12px; }
-  .btn-xs { min-height: 28px; font-size: 11px; padding: 4px 10px; }
-  .btn-lg { min-height: 48px; font-size: 15px; }
+  /* ── Buttons — tap target sizes now set in the bottom revamp block ── */
 }
 
 @media (min-width: 769px) {
@@ -3254,4 +3319,154 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 @media (max-width: 768px) {
   .section-label::before { height: 10px; }
   .section-label { font-size: 8px; }
+}
+
+/* ══════════════════════════════════════════════════════
+   ECONOMY — EMPTY STATES
+══════════════════════════════════════════════════════ */
+.eco-empty-inv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 12px;
+  color: var(--text-sub);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.eco-empty-inv svg { opacity: 0.25; }
+
+/* ══════════════════════════════════════════════════════
+   BOTTOM NAV — ENHANCED
+══════════════════════════════════════════════════════ */
+#bottom-nav {
+  background: rgba(11,15,24,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+}
+
+.bnav-item {
+  border-radius: 10px;
+  margin: 4px 2px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.bnav-item.active {
+  color: var(--accent);
+  background: rgba(59,130,246,0.10);
+}
+
+.bnav-item:active { transform: scale(0.92); }
+
+/* Active indicator dot above the active icon */
+.bnav-item.active::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 2px 2px;
+}
+.bnav-item { position: relative; }
+
+.bnav-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  transition: background 0.15s;
+}
+.bnav-item.active .bnav-icon svg {
+  filter: drop-shadow(0 0 6px rgba(59,130,246,0.55));
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION LABELS — ENHANCED
+══════════════════════════════════════════════════════ */
+.section-label {
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════════
+   CARDS — ELEVATED HOVER EFFECT
+══════════════════════════════════════════════════════ */
+.char-card,
+.stat-card,
+.officer-card,
+.bolo-item-v2,
+.ticket-item,
+.fine-item,
+.dcc,
+.dispatch-call {
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.char-card:hover,
+.officer-card:hover,
+.bolo-item-v2:hover,
+.ticket-item:hover,
+.fine-item:hover {
+  border-color: var(--border-light);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+}
+
+/* ══════════════════════════════════════════════════════
+   SHOP — BUY BUTTON
+══════════════════════════════════════════════════════ */
+.shop-item .btn-primary {
+  font-size: 11px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+}
+
+/* ══════════════════════════════════════════════════════
+   LEADERBOARD — TOP 3 BADGES
+══════════════════════════════════════════════════════ */
+.lb-rank-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid;
+  letter-spacing: 0.05em;
+}
+
+.lb-row-gold   { border-left: 3px solid #f5c542; }
+.lb-row-silver { border-left: 3px solid #c0c0c0; }
+.lb-row-bronze { border-left: 3px solid #cd7f32; }
+
+/* ══════════════════════════════════════════════════════
+   PAGE HEADER ACTIONS — CONSISTENT BUTTON LOOK
+══════════════════════════════════════════════════════ */
+.page-header .btn-danger {
+  font-size: 12px;
+  height: 32px;
+  padding: 0 14px;
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE — BUTTON MIN-HEIGHT (OVERRIDE REVAMP SYSTEM)
+══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .btn     { height: 40px; }
+  .btn-lg  { height: 48px; }
+  .btn-sm  { height: 34px; }
+  .btn-xs  { height: 26px; font-size: 11px; }
+  .btn-icon { width: 40px; height: 40px; }
+  .btn-icon.btn-sm { width: 34px; height: 34px; }
+
+  /* Shop buy button stays compact */
+  .shop-item .btn-primary { height: 30px; }
+
+  /* Inventory action buttons */
+  .inv-actions .btn-xs { height: 26px; }
+
+  /* Page header danger button stays compact */
+  .page-header .btn-danger { height: 34px; }
 }

@@ -1078,22 +1078,27 @@ async function loadEconomy() {
       ? inv.map(i => `
         <div class="inv-item">
           <span class="inv-name">${i.itemName}</span>
-          <span class="inv-qty">x${i.quantity}</span>
+          <span class="inv-qty">&times;${i.quantity}</span>
           <div class="inv-actions">
             <button class="btn btn-secondary btn-xs" onclick="sellItem(${JSON.stringify(i.itemName)}, 1)">Sell</button>
             <button class="btn btn-primary btn-xs" onclick="useItem(${JSON.stringify(i.itemName)})">Use</button>
           </div>
         </div>`).join('')
-      : '<div class="empty-state" style="padding:16px 0">Inventory is empty.</div>';
+      : `<div class="eco-empty-inv">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          <span>No items in inventory</span>
+        </div>`;
 
     const cur2 = lbRes.currency || cur;
     const lbEntries = lbRes.entries || [];
-    const rankColors = ['#f5c542','#a8a8a8','#cd7f32'];
+    const rankColors = ['#f5c542','#c0c0c0','#cd7f32'];
+    const rankLabels = ['1ST','2ND','3RD'];
     document.getElementById('leaderboard-list').innerHTML = lbEntries.length
       ? lbEntries.map(e => {
-          const rcClass = e.rank <= 3 ? ` lb-row-${['gold','silver','bronze'][e.rank-1]}` : '';
-          const rankHtml = e.rank <= 3
-            ? `<span class="lb-rank-badge" style="color:${rankColors[e.rank-1]};border-color:${rankColors[e.rank-1]}40">#${e.rank}</span>`
+          const isTop3 = e.rank <= 3;
+          const rcClass = isTop3 ? ` lb-row-${['gold','silver','bronze'][e.rank-1]}` : '';
+          const rankHtml = isTop3
+            ? `<span class="lb-rank-badge" style="color:${rankColors[e.rank-1]};border-color:${rankColors[e.rank-1]}50;background:${rankColors[e.rank-1]}12">${rankLabels[e.rank-1]}</span>`
             : `<span class="lb-rank">${e.rank}</span>`;
           return `<div class="lb-row${rcClass}">
             <div class="lb-rank-wrap">${rankHtml}</div>
@@ -1104,7 +1109,10 @@ async function loadEconomy() {
             <div class="lb-total">${fmt(e.total, cur2)}</div>
           </div>`;
         }).join('')
-      : '<div class="empty-state" style="padding:12px 0">No data yet.</div>';
+      : `<div class="eco-empty-inv">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>No leaderboard data yet</span>
+        </div>`;
   } catch {
     document.getElementById('economy-balance').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Failed to load economy data.</p>';
   }

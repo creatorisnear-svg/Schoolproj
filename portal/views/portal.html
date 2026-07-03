@@ -230,32 +230,52 @@
 
       <!-- ECONOMY -->
       <div id="tab-economy" class="tab-pane">
-        <div class="page-header"><h2>Economy</h2></div>
+        <div class="page-header">
+          <h2>Economy</h2>
+        </div>
         <div id="economy-balance" class="balance-grid"></div>
 
         <div class="eco-actions-row" id="eco-actions-row">
           <div class="eco-action-block">
-            <input id="deposit-input" class="form-input" type="text" placeholder="Amount or all">
-            <button class="btn btn-secondary btn-sm" onclick="doDeposit()">Deposit</button>
+            <input id="deposit-input" class="form-input" type="text" placeholder="Deposit amount...">
+            <button class="btn btn-secondary btn-sm" onclick="doDeposit()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+              Deposit
+            </button>
           </div>
           <div class="eco-action-block">
-            <input id="withdraw-input" class="form-input" type="text" placeholder="Amount or all">
-            <button class="btn btn-secondary btn-sm" onclick="doWithdraw()">Withdraw</button>
+            <input id="withdraw-input" class="form-input" type="text" placeholder="Withdraw amount...">
+            <button class="btn btn-secondary btn-sm" onclick="doWithdraw()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 12 3 16 7"/><line x1="12" y1="3" x2="12" y2="12"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+              Withdraw
+            </button>
           </div>
-          <button id="btn-work" class="btn btn-primary btn-sm" onclick="doWork()">Work</button>
+          <button id="btn-work" class="btn btn-primary btn-sm" onclick="doWork()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            Collect Work Pay
+          </button>
         </div>
         <div id="eco-action-msg" class="eco-action-msg hidden"></div>
 
         <div class="economy-grid">
           <div class="economy-col">
-            <div class="section-label">Shop</div>
+            <div class="section-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              Shop
+            </div>
             <input id="shop-search" class="shop-search" type="text" placeholder="Search items..." oninput="filterShop(this.value)">
             <div id="shop-list" class="shop-list"><div class="empty-state">Loading shop...</div></div>
           </div>
           <div class="economy-col">
-            <div class="section-label">Inventory</div>
+            <div class="section-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Inventory
+            </div>
             <div id="inventory-list" class="inventory-list"><div class="empty-state">Loading...</div></div>
-            <div class="section-label">Leaderboard</div>
+            <div class="section-label" style="margin-top:10px">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Leaderboard
+            </div>
             <div id="leaderboard-list" class="lb-list"><div class="empty-state">Loading...</div></div>
           </div>
         </div>
