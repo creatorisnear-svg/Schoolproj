@@ -599,75 +599,94 @@ function renderHomePriorityWidget(d) {
   if (!inner) return;
   if (homePriorityCountdownTimer) { clearInterval(homePriorityCountdownTimer); homePriorityCountdownTimer = null; }
 
-  if (d?.active) {
-    inner.innerHTML = `
-      <div class="hpw-row hpw-active">
-        <div class="hpw-left">
-          <span class="hpw-dot hpw-dot-active"></span>
-          <div class="hpw-text">
-            <div class="hpw-title">Priority Active</div>
-            ${d.issuedBy ? `<div class="hpw-sub">Hosted by ${esc(d.issuedBy)}</div>` : ''}
-            ${d.customMessage ? `<div class="hpw-msg">${esc(d.customMessage)}</div>` : ''}
-          </div>
-        </div>
-        <div class="hpw-right">
-          <div class="hpw-countdown" id="hpw-timer">--:--</div>
-          <div class="hpw-countdown-label">${d.expiresAt ? 'remaining' : 'elapsed'}</div>
-        </div>
-      </div>`;
+  // Always render BOTH sections: priority status + cooldown status
+  inner.innerHTML = _hpwPriorityHTML(d) + '<div class="hpw-divider"></div>' + _hpwCooldownHTML(d);
 
-    if (d.expiresAt) {
-      const tick = () => {
-        const el = document.getElementById('hpw-timer');
-        if (!el) return clearInterval(homePriorityCountdownTimer);
-        const diff = Math.max(0, Math.floor((new Date(d.expiresAt).getTime() - Date.now()) / 1000));
-        const m = Math.floor(diff / 60), s = diff % 60;
-        el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-      };
-      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
-    } else if (d.activatedAt) {
-      const tick = () => {
-        const el = document.getElementById('hpw-timer');
-        if (!el) return clearInterval(homePriorityCountdownTimer);
-        el.textContent = elapsedSince(d.activatedAt);
-      };
-      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
-    }
-
-  } else if (d?.cooldown) {
-    inner.innerHTML = `
-      <div class="hpw-row hpw-cooldown">
-        <div class="hpw-left">
-          <span class="hpw-dot hpw-dot-cooldown"></span>
-          <div class="hpw-text">
-            <div class="hpw-title">Cooldown</div>
-            ${d.cooldownIssuedBy ? `<div class="hpw-sub">Last host: ${esc(d.cooldownIssuedBy)}</div>` : ''}
-          </div>
-        </div>
-        ${d.cooldownEndsAt ? `<div class="hpw-right"><div class="hpw-countdown hpw-countdown-cd" id="hpw-timer">--:--</div><div class="hpw-countdown-label">remaining</div></div>` : ''}
-      </div>`;
-
-    if (d.cooldownEndsAt) {
-      const tick = () => {
-        const el = document.getElementById('hpw-timer');
-        if (!el) return clearInterval(homePriorityCountdownTimer);
-        const diff = Math.max(0, Math.floor((new Date(d.cooldownEndsAt).getTime() - Date.now()) / 1000));
-        const m = Math.floor(diff / 60), s = diff % 60;
-        el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-      };
-      tick(); homePriorityCountdownTimer = setInterval(tick, 1000);
-    }
-
-  } else {
-    inner.innerHTML = `
-      <div class="hpw-row hpw-inactive">
-        <span class="hpw-dot hpw-dot-inactive"></span>
-        <div class="hpw-text">
-          <div class="hpw-title hpw-title-inactive">Priority: Inactive</div>
-          <div class="hpw-sub">Server open</div>
-        </div>
-      </div>`;
+  // Single interval ticks both countdowns simultaneously
+  const hasTick = (d?.active && (d.expiresAt || d.activatedAt)) || (d?.cooldown && d.cooldownEndsAt);
+  if (hasTick) {
+    const tick = () => {
+      if (d?.active) {
+        const el = document.getElementById('hpw-p-timer');
+        if (el) {
+          if (d.expiresAt) {
+            const diff = Math.max(0, Math.floor((new Date(d.expiresAt).getTime() - Date.now()) / 1000));
+            el.textContent = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
+          } else if (d.activatedAt) {
+            el.textContent = elapsedSince(d.activatedAt);
+          }
+        }
+      }
+      if (d?.cooldown && d.cooldownEndsAt) {
+        const el = document.getElementById('hpw-cd-timer');
+        if (el) {
+          const diff = Math.max(0, Math.floor((new Date(d.cooldownEndsAt).getTime() - Date.now()) / 1000));
+          el.textContent = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
+        }
+      }
+    };
+    tick();
+    homePriorityCountdownTimer = setInterval(tick, 1000);
   }
+}
+
+function _hpwPriorityHTML(d) {
+  if (d?.active) {
+    return `<div class="hpw-row hpw-active">
+      <div class="hpw-left">
+        <span class="hpw-dot hpw-dot-active"></span>
+        <div class="hpw-text">
+          <div class="hpw-label">PRIORITY</div>
+          <div class="hpw-title">Active</div>
+          ${d.issuedBy ? `<div class="hpw-sub">Hosted by ${esc(d.issuedBy)}</div>` : ''}
+          ${d.customMessage ? `<div class="hpw-msg">${esc(d.customMessage)}</div>` : ''}
+        </div>
+      </div>
+      <div class="hpw-right">
+        <div class="hpw-countdown" id="hpw-p-timer">--:--</div>
+        <div class="hpw-countdown-label">${d.expiresAt ? 'remaining' : 'elapsed'}</div>
+      </div>
+    </div>`;
+  }
+  return `<div class="hpw-row hpw-inactive">
+    <div class="hpw-left">
+      <span class="hpw-dot hpw-dot-inactive"></span>
+      <div class="hpw-text">
+        <div class="hpw-label">PRIORITY</div>
+        <div class="hpw-title hpw-title-inactive">Inactive</div>
+        <div class="hpw-sub">Server open</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function _hpwCooldownHTML(d) {
+  if (d?.cooldown) {
+    return `<div class="hpw-row hpw-cooldown">
+      <div class="hpw-left">
+        <span class="hpw-dot hpw-dot-cooldown"></span>
+        <div class="hpw-text">
+          <div class="hpw-label">COOLDOWN</div>
+          <div class="hpw-title hpw-title-cd">Active</div>
+          ${d.cooldownIssuedBy ? `<div class="hpw-sub">Last host: ${esc(d.cooldownIssuedBy)}</div>` : ''}
+        </div>
+      </div>
+      ${d.cooldownEndsAt ? `<div class="hpw-right">
+        <div class="hpw-countdown hpw-countdown-cd" id="hpw-cd-timer">--:--</div>
+        <div class="hpw-countdown-label">remaining</div>
+      </div>` : ''}
+    </div>`;
+  }
+  return `<div class="hpw-row hpw-no-cd">
+    <div class="hpw-left">
+      <span class="hpw-dot" style="background:var(--text-sub)"></span>
+      <div class="hpw-text">
+        <div class="hpw-label">COOLDOWN</div>
+        <div class="hpw-title hpw-title-inactive">None</div>
+        <div class="hpw-sub">No cooldown in effect</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 async function loadHomeOfficers() {
@@ -1068,10 +1087,23 @@ async function loadEconomy() {
       : '<div class="empty-state" style="padding:16px 0">Inventory is empty.</div>';
 
     const cur2 = lbRes.currency || cur;
-    document.getElementById('leaderboard-list').innerHTML = (lbRes.entries || []).map(e => {
-      const rc = e.rank === 1 ? 'gold' : e.rank === 2 ? 'silver' : e.rank === 3 ? 'bronze' : '';
-      return `<div class="lb-row"><span class="lb-rank ${rc}">${e.rank}</span><span class="lb-name">${e.name}</span><span class="lb-amount">${fmt(e.total, cur2)}</span></div>`;
-    }).join('') || '<div class="empty-state" style="padding:12px 0">No data yet.</div>';
+    const lbEntries = lbRes.entries || [];
+    document.getElementById('leaderboard-list').innerHTML = lbEntries.length
+      ? lbEntries.map(e => {
+          const medals = ['🥇', '🥈', '🥉'];
+          const rcClass = e.rank <= 3 ? ` lb-row-${['gold','silver','bronze'][e.rank-1]}` : '';
+          return `<div class="lb-row${rcClass}">
+            <div class="lb-rank-wrap">
+              ${e.rank <= 3 ? `<span class="lb-medal">${medals[e.rank-1]}</span>` : `<span class="lb-rank">${e.rank}</span>`}
+            </div>
+            <div class="lb-info">
+              <div class="lb-name">${esc(e.name)}</div>
+              <div class="lb-breakdown">${fmt(e.cash, cur2)} cash &middot; ${fmt(e.bank, cur2)} bank</div>
+            </div>
+            <div class="lb-total">${fmt(e.total, cur2)}</div>
+          </div>`;
+        }).join('')
+      : '<div class="empty-state" style="padding:12px 0">No data yet.</div>';
   } catch {
     document.getElementById('economy-balance').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Failed to load economy data.</p>';
   }
@@ -1623,17 +1655,45 @@ function tenInfo(code) {
 
 async function loadLeo() {
   try {
-    const [officers, myStatus] = await Promise.all([
+    const [officers, myStatus, priority] = await Promise.all([
       api('/leo/officers'),
       api('/leo/mystatus'),
+      api('/priority').catch(() => null),
     ]);
     renderOfficerBoard(officers || []);
     applyMyStatusToUI(myStatus);
+    updateLeoCooldownBar(priority);
     startBoardRefresh();
     startDispatchStream();
     await loadLeoIntel();
   } catch {
     document.getElementById('leo-officers').innerHTML = '<div class="empty-state">Failed to load.</div>';
+  }
+}
+
+let leoCdTimer = null;
+
+function updateLeoCooldownBar(d) {
+  const bar = document.getElementById('leo-cooldown-bar');
+  if (!bar) return;
+  if (leoCdTimer) { clearInterval(leoCdTimer); leoCdTimer = null; }
+
+  if (!d?.cooldown) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+
+  const subEl = document.getElementById('leo-cd-sub');
+  if (subEl) subEl.textContent = d.cooldownIssuedBy ? `Last host: ${esc(d.cooldownIssuedBy)}` : 'Cooldown in effect';
+
+  if (d.cooldownEndsAt) {
+    const timerEl = document.getElementById('leo-cd-timer');
+    const tick = () => {
+      if (!timerEl) return;
+      const diff = Math.max(0, Math.floor((new Date(d.cooldownEndsAt).getTime() - Date.now()) / 1000));
+      timerEl.textContent = `${Math.floor(diff/60)}:${(diff%60).toString().padStart(2,'0')}`;
+      if (diff === 0) { clearInterval(leoCdTimer); leoCdTimer = null; bar.classList.add('hidden'); }
+    };
+    tick();
+    leoCdTimer = setInterval(tick, 1000);
   }
 }
 
