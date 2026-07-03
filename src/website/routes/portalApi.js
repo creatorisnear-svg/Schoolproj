@@ -814,12 +814,18 @@ export function createPortalApiRouter(client) {
   router.post('/leo/bolos/create', auth, requireLeo, async (req, res) => {
     try {
       const guildId = GUILD_ID();
-      const { characterName, reason, description, vehicles } = req.body;
-      if (!characterName?.trim()) return res.status(400).json({ error: 'Character name required' });
+      const { characterName, characterId, reason, description, vehicles } = req.body;
+      if (!characterName?.trim() && !characterId) return res.status(400).json({ error: 'Character name or ID required' });
       if (!reason?.trim()) return res.status(400).json({ error: 'Reason required' });
 
-      const character = await CADCharacter.findOne({ guildId, characterName: { $regex: characterName.trim(), $options: 'i' } });
-      if (!character) return res.status(404).json({ error: `No character found for "${characterName.trim()}"` });
+      let character;
+      if (characterId) {
+        character = await CADCharacter.findOne({ guildId, _id: characterId });
+      }
+      if (!character && characterName?.trim()) {
+        character = await CADCharacter.findOne({ guildId, characterName: { $regex: characterName.trim(), $options: 'i' } });
+      }
+      if (!character) return res.status(404).json({ error: 'Character not found' });
 
       const boloId = `BOLO-${Date.now()}`;
       const bolo = new BOLO({
@@ -832,7 +838,7 @@ export function createPortalApiRouter(client) {
         vehicles: Array.isArray(vehicles) ? vehicles : [],
         issuedBy: req.portalUser.userId,
         active: true,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
       await bolo.save();
       res.json({ success: true, bolo });

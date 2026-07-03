@@ -1745,7 +1745,7 @@ function renderBoloItem(b) {
 async function removeBolo(boloId) {
   if (!confirm('Remove this BOLO? It will be marked inactive.')) return;
   try {
-    await apiDel(`/leo/bolo/${boloId}`);
+    await apiDel(`/leo/bolos/${boloId}`);
     toast('BOLO removed.', 'info');
     await loadLeoIntel();
   } catch (err) { toast(err.message || 'Failed to remove BOLO', 'error'); }
@@ -2191,7 +2191,7 @@ async function submitCreateBolo() {
   if (!charId || !reason) { errEl.textContent = 'Character and reason are required.'; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
   try {
-    await apiPost('/leo/bolo', { characterId: charId, reason, description });
+    await apiPost('/leo/bolos/create', { characterId: charId, reason, description });
     toast('BOLO issued.', 'success');
     cancelBoloSearch();
     loaded['leo'] = false;

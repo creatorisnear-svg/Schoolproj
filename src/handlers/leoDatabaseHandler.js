@@ -1127,7 +1127,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     }
 
     const boloId = `BOLO-${Date.now()}`;
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     
     const bolo = new BOLO({
       guildId: interaction.guildId,
@@ -1147,7 +1147,7 @@ export async function handleLEOCreateBOLOModal(interaction) {
     let responseDesc = `**BOLO ID:** ${boloId}\n`;
     responseDesc += `**Character:** ${character.characterName}\n`;
     responseDesc += `**Reason:** ${reason}\n`;
-    responseDesc += `**Status:** ACTIVE (Expires in 1 hour)\n`;
+    responseDesc += `**Status:** ACTIVE (Expires in 24 hours)\n`;
     responseDesc += `**Issued By:** <@${interaction.user.id}>\n`;
     if (description) responseDesc += `**Details:** ${description}\n`;
     if (vehicles.length > 0) {
