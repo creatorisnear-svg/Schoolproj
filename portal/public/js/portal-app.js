@@ -362,6 +362,7 @@ function applyModeNav(mode) {
   } else if (isCiv) {
     const pane = document.getElementById('tab-overview');
     if (pane && !pane.classList.contains('active')) switchTab('overview');
+    else startTabRefresh('overview');
   }
 }
 
