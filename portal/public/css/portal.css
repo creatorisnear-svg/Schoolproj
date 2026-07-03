@@ -1,33 +1,33 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0a0a0c;
-  --surface: #111114;
-  --card: #18181d;
-  --elevated: #222228;
-  --border: #28282f;
-  --border-light: #38383f;
-  --text: #ededf2;
-  --text-muted: #7f7f96;
-  --text-sub: #454558;
-  --accent: #5865f2;
-  --accent-dim: rgba(88,101,242,0.12);
-  --accent-hover: #4752c4;
-  --success: #36c97a;
-  --success-dim: rgba(54,201,122,0.10);
-  --danger: #f25757;
-  --danger-dim: rgba(242,87,87,0.10);
-  --warning: #f0a020;
-  --warning-dim: rgba(240,160,32,0.10);
-  --purple: #9d7cfa;
-  --purple-dim: rgba(157,124,250,0.10);
+  --bg: #07090e;
+  --surface: #0b0f18;
+  --card: #101622;
+  --elevated: #18202e;
+  --border: #1c2d42;
+  --border-light: #2a4260;
+  --text: #dde8f5;
+  --text-muted: #5d7a9b;
+  --text-sub: #334160;
+  --accent: #3b82f6;
+  --accent-dim: rgba(59,130,246,0.13);
+  --accent-hover: #2563eb;
+  --success: #0dcda0;
+  --success-dim: rgba(13,205,160,0.10);
+  --danger: #ef4444;
+  --danger-dim: rgba(239,68,68,0.10);
+  --warning: #f59e0b;
+  --warning-dim: rgba(245,158,11,0.10);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.10);
   --sidebar-w: 240px;
   --bottom-nav-h: 62px;
   --top-bar-h: 56px;
-  --radius: 10px;
-  --radius-sm: 7px;
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.35);
-  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+  --radius: 8px;
+  --radius-sm: 5px;
+  --shadow-sm: 0 1px 6px rgba(0,0,0,0.5);
+  --shadow: 0 6px 28px rgba(0,0,0,0.7);
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -42,6 +42,10 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .bolo-v2-meta, .officer-time, .intel-refresh-status, .board-refresh-label {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
 .hidden { display: none !important; }
 
 /* ══════════════════════════════════════════════════════
@@ -53,7 +57,9 @@ html, body {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(76,120,245,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(59,130,246,0.10) 0%, transparent 65%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,45,66,0.3) 39px, rgba(30,45,66,0.3) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,45,66,0.3) 39px, rgba(30,45,66,0.3) 40px),
     var(--bg);
   padding: 20px;
 }
@@ -61,12 +67,13 @@ html, body {
 .login-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-top: 1px solid var(--border-light);
+  border-radius: 12px;
   padding: 48px 40px;
   text-align: center;
   max-width: 380px;
   width: 100%;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(59,130,246,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .login-logo {
@@ -121,7 +128,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: #5865f2;
+  background: var(--accent);
   color: #fff;
   text-decoration: none;
   padding: 13px 24px;
@@ -129,10 +136,10 @@ html, body {
   font-size: 14px;
   font-weight: 600;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 2px 12px rgba(88,101,242,0.3);
+  box-shadow: 0 2px 12px rgba(59,130,246,0.3);
   -webkit-tap-highlight-color: transparent;
 }
-.btn-discord:hover { background: #4752c4; box-shadow: 0 4px 18px rgba(88,101,242,0.4); }
+.btn-discord:hover { background: var(--accent-hover); box-shadow: 0 4px 18px rgba(59,130,246,0.45); }
 .btn-discord:active { transform: scale(0.98); }
 .btn-discord-icon { width: 18px; height: 18px; fill: #fff; flex-shrink: 0; }
 .login-footer { color: var(--text-sub); font-size: 11px; margin-top: 18px; }
@@ -273,7 +280,8 @@ html, body {
   white-space: nowrap;
 }
 .nav-item:hover { background: var(--card); color: var(--text); }
-.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-item.active { background: rgba(59,130,246,0.10); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 8px; }
+.nav-item:not(.active) { border-left: 2px solid transparent; }
 .nav-item.active .nav-icon svg { stroke: var(--accent); }
 
 .nav-icon {
@@ -455,12 +463,12 @@ html, body {
 }
 #global-priority-bar.gpb-hidden { display: none; }
 #global-priority-bar.gpb-active {
-  background: rgba(242,87,87,0.10);
-  border-bottom-color: rgba(242,87,87,0.22);
+  background: rgba(239,68,68,0.10);
+  border-bottom-color: rgba(239,68,68,0.25);
 }
 #global-priority-bar.gpb-cooldown {
-  background: rgba(251,191,36,0.08);
-  border-bottom-color: rgba(251,191,36,0.22);
+  background: rgba(245,158,11,0.08);
+  border-bottom-color: rgba(245,158,11,0.25);
 }
 .gpb-dot {
   width: 8px;
@@ -477,8 +485,8 @@ html, body {
   animation: pulseAmber 1.5s ease-in-out infinite;
 }
 @keyframes pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(242,87,87,0.4); }
-  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(242,87,87,0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(239,68,68,0); }
 }
 @keyframes pulseAmber {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(251,191,36,0.5); }
@@ -1008,9 +1016,9 @@ html, body {
   animation: toastIn 0.2s ease;
   pointer-events: all;
 }
-.toast.success { border-color: rgba(54,201,122,0.3); color: var(--success); background: rgba(18,24,20,0.98); }
-.toast.error { border-color: rgba(242,87,87,0.3); color: var(--danger); background: rgba(24,18,18,0.98); }
-.toast.info { border-color: rgba(76,120,245,0.3); color: var(--accent); background: rgba(18,20,28,0.98); }
+.toast.success { border-color: rgba(13,205,160,0.35); color: var(--success); background: rgba(8,20,18,0.98); }
+.toast.error { border-color: rgba(239,68,68,0.35); color: var(--danger); background: rgba(18,8,8,0.98); }
+.toast.info { border-color: rgba(59,130,246,0.35); color: var(--accent); background: rgba(8,12,24,0.98); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
 
 /* ══════════════════════════════════════════════════════
@@ -2955,35 +2963,86 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════
-   VISUAL REVAMP
+   VISUAL REVAMP — DOJRP CAD TACTICAL THEME
 ══════════════════════════════════════════════════════ */
 
-/* Subtle accent gradient at top of main scroll area */
+/* Main scroll area — deep navy gradient top */
 #main {
   background:
-    linear-gradient(180deg, rgba(88,101,242,0.04) 0%, transparent 180px),
+    linear-gradient(180deg, rgba(59,130,246,0.05) 0%, transparent 220px),
     var(--bg);
 }
 
-/* Section labels — accent bar + slightly brighter */
+/* Login / mode screen — grid background (already set on #login-screen) */
+#mode-screen {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 65%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,45,66,0.25) 39px, rgba(30,45,66,0.25) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,45,66,0.25) 39px, rgba(30,45,66,0.25) 40px),
+    var(--bg);
+}
+
+/* Sidebar — subtle left accent rule + header treatment */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.sidebar-header {
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.sidebar-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+  opacity: 0.4;
+}
+
+/* Nav section label — monospace, uppercase */
+.nav-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-sub);
+}
+
+/* Nav item active — stronger with left border accent */
+.nav-item.active {
+  font-weight: 600;
+}
+.nav-item:hover { background: rgba(59,130,246,0.06); }
+.quick-btn:hover .quick-btn-icon { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); }
+
+/* Bottom nav active icon — subtle glow */
+.bnav-item.active .bnav-icon svg {
+  filter: drop-shadow(0 0 5px rgba(59,130,246,0.6));
+}
+
+/* Section labels — accent bar + monospace treatment */
 .section-label {
   color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .section-label::before {
   content: '';
   display: inline-block;
-  width: 3px;
-  height: 11px;
-  border-radius: 2px;
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
   background: var(--accent);
-  opacity: 0.6;
+  opacity: 0.7;
   flex-shrink: 0;
 }
 
-/* Page header h2 — larger on desktop */
+/* Page header — bigger on desktop, monospace sub-weight */
 @media (min-width: 769px) {
   .page-header h2 {
     font-size: 22px;
@@ -2995,44 +3054,123 @@ html, body {
 /* Card base depth */
 .card { box-shadow: var(--shadow-sm); }
 
-/* Nav items — stronger active state */
-.nav-item.active {
-  background: rgba(88,101,242,0.15);
-  font-weight: 600;
-}
-.nav-item:hover { background: var(--elevated); }
-
-/* Bottom nav active icon subtle glow */
-.bnav-item.active .bnav-icon svg {
-  filter: drop-shadow(0 0 4px rgba(88,101,242,0.55));
-}
-
-/* Stat cards — accent top border on hover */
+/* Stat cards — accent top border on hover + glow */
 .stat-card {
   border-top: 2px solid transparent;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .stat-card:hover {
   border-top-color: var(--accent);
-  box-shadow: 0 6px 24px rgba(88,101,242,0.1);
+  box-shadow: 0 4px 24px rgba(59,130,246,0.12);
+  background: linear-gradient(135deg, var(--card), rgba(59,130,246,0.04));
 }
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+.stat-value { color: var(--text); }
 
-/* Balance cards — "Total" gets accent highlight */
+/* Balance cards — last "total" gets accent highlight */
 .balance-card:last-child {
-  border-color: rgba(88,101,242,0.3);
-  background: linear-gradient(135deg, var(--card), rgba(88,101,242,0.07));
+  border-color: rgba(59,130,246,0.3);
+  background: linear-gradient(135deg, var(--card), rgba(59,130,246,0.06));
+}
+.balance-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
 }
 
-/* Home priority widget — reinforce the two-section look */
-.home-priority-widget {
-  background: var(--surface);
+/* Cards — subtle top highlight, deeper shadow */
+.char-card, .stat-card, .balance-card, .ticket-item, .fine-item, .dispatch-call, .dcc, .officer-card, .bolo-item-v2, .leo-action-card, .priority-hero, .priority-detail, .my-status-panel {
+  box-shadow: var(--shadow-sm);
 }
-.hpw-active  { border-left: 3px solid var(--danger); }
-.hpw-cooldown{ border-left: 3px solid var(--warning); }
-.hpw-inactive{ border-left: 3px solid var(--border); }
-.hpw-no-cd  { border-left: 3px solid var(--border); }
+
+/* Ten-code buttons — sharper */
+.status-btn {
+  border-radius: 4px;
+  font-size: 11px;
+}
+.status-btn-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Officer board — monospace time */
+.officer-time { font-size: 9px; color: var(--text-sub); }
+.officer-detail-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+/* Call/BOLO cards — stronger left border */
+.dcc-alert { border-left-color: var(--danger); border-left-width: 3px; }
+.dcc-ok { border-left-color: var(--success); border-left-width: 3px; }
+
+/* Officer card for me */
+.officer-card.is-me {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(59,130,246,0.06), var(--card));
+}
+
+/* Mode card — matches login card */
+.mode-card {
+  border-radius: 12px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(59,130,246,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+  border-top: 1px solid var(--border-light);
+}
+.mode-btn {
+  border-radius: 10px;
+}
+.mode-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(59,130,246,0.07);
+}
+
+/* Home priority widget */
+.home-priority-widget { background: var(--surface); }
+.hpw-active   { border-left: 3px solid var(--danger); }
+.hpw-cooldown { border-left: 3px solid var(--warning); }
+.hpw-inactive { border-left: 3px solid var(--border); }
+.hpw-no-cd    { border-left: 3px solid var(--border); }
+.hpw-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; }
+
+/* Home officers header label monospace */
+.home-officers-title, .home-voice-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; }
+
+/* Intel section label */
+.intel-section-header .section-label { margin-bottom: 0; margin-top: 0; }
+
+/* Badge — officer status badge monospace */
+.officer-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; }
+
+/* BOLO/call type badge monospace */
+.bolo-v2-type, .dcc-status-badge, .char-status { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.06em; }
+
+/* Dispatch call ID */
+.dcc-id, .call-id, .dispatch-call-id, .ticket-id, .fine-id { color: var(--text-sub); letter-spacing: 0.04em; }
+
+/* Login h1 and page header — slight tracking */
+.login-card h1 { letter-spacing: -0.3px; }
+
+/* Priority state label monospace feel */
+.priority-state-label { font-size: 16px; letter-spacing: 0.12em; font-family: 'JetBrains Mono', monospace; }
+.priority-state-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; }
+
+/* Form inputs — slightly brighter focus ring */
+.form-input:focus, .form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.14);
+}
+
+/* Toast — sharper */
+.toast { border-radius: 6px; }
 
 /* Mobile: tighten section label on small screens */
 @media (max-width: 768px) {
-  .section-label::before { height: 9px; }
+  .section-label::before { height: 10px; }
+  .section-label { font-size: 8px; }
 }

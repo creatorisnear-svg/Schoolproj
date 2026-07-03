@@ -57,18 +57,18 @@ const TEN_COLORS = {
 };
 
 const TEN_ICONS = {
-  '10-8':  '🟢',
-  '10-6':  '🟡',
-  '10-97': '🟠',
-  '10-11': '🟠',
-  '10-50': '🟠',
-  '10-76': '🔵',
-  '10-78': '🔴',
-  '10-80': '🔴',
-  '10-15': '🔴',
-  '10-99': '🆘',
-  '10-7':  '⚫',
-  '10-10': '⚫',
+  '10-8':  '[AVL]',
+  '10-6':  '[BSY]',
+  '10-97': '[SCN]',
+  '10-11': '[TFC]',
+  '10-50': '[ACC]',
+  '10-76': '[ENR]',
+  '10-78': '[AID]',
+  '10-80': '[PRS]',
+  '10-15': '[CTY]',
+  '10-99': '[!!!]',
+  '10-7':  '[OOS]',
+  '10-10': '[OFF]',
 };
 
 async function rebuildStatusBoard(guildId, dispatchCfg) {
@@ -84,18 +84,18 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
     if (!officers.length) {
       embed = {
         color: 0x2e2e36,
-        title: '🚔  Officer Status Board',
+        title: 'OFFICER STATUS BOARD',
         description: '*No officers currently on duty.*',
         footer: { text: 'DOJRP CAD • Auto-updates on status change' },
         timestamp: new Date().toISOString(),
       };
     } else {
       const fields = officers.map(o => {
-        const icon = TEN_ICONS[o.tenCode] || '⚪';
+        const icon = TEN_ICONS[o.tenCode] || '[???]';
         const label = TEN_LABELS[o.tenCode] || o.tenCode;
         let value = `${icon} **${o.tenCode}** - ${label}`;
-        if (o.location) value += `\n📍 ${o.location}`;
-        if (o.subject) value += `\n📋 ${o.subject}`;
+        if (o.location) value += `\nLOC: ${o.location}`;
+        if (o.subject) value += `\nNOTE: ${o.subject}`;
         const mins = Math.floor((Date.now() - new Date(o.updatedAt).getTime()) / 60000);
         value += `\n*Updated ${mins < 1 ? 'just now' : `${mins}m ago`}*`;
         return { name: o.username, value: `<@${o.userId}>\n` + value, inline: true };
@@ -108,7 +108,7 @@ async function rebuildStatusBoard(guildId, dispatchCfg) {
 
       embed = {
         color: TEN_COLORS[dominantCode] ?? 0x4f7ef7,
-        title: '🚔  Officer Status Board',
+        title: 'OFFICER STATUS BOARD',
         description: `**${activeOfficers.length}** officer${activeOfficers.length !== 1 ? 's' : ''} active  •  **${officers.length}** total on shift`,
         fields,
         footer: { text: 'DOJRP CAD • Auto-updates on status change' },
@@ -342,7 +342,7 @@ export function createApiRouter() {
         return axios.post(`${DISCORD_BASE}/channels/${dispatchCfg.dispatchChannelId}/messages`, {
           embeds: [{
             color: 0xff4444,
-            title: `🚨 911 Call - ${callId}`,
+            title: `[ 911 ] CALL ${callId}`,
             description: `Submitted via **DOJRP CAD** by **${req.portalUser.displayName || req.portalUser.username}**`,
             fields,
             footer: { text: 'DOJRP CAD • Respond with /duty' },
