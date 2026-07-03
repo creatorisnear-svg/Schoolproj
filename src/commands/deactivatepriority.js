@@ -128,10 +128,11 @@ function buildPriorityEmbed(priority) {
     description += `\n\n${priority.customMessage}`;
   }
 
+  const onCooldown = !!priority.cooldownEndsAt && new Date(priority.cooldownEndsAt) > new Date();
   return {
     title: 'Priority Tracker',
     description,
-    color: priority.priorityActive ? 0xFF0000 : 0x2d2d2d,
+    color: priority.priorityActive ? 0xFF0000 : onCooldown ? 0xFFA500 : 0x2d2d2d,
     footer: { text: 'RPM' },
   };
 }

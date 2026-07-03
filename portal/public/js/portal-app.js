@@ -403,7 +403,7 @@ function switchTab(tab) {
 
   document.getElementById('main').scrollTop = 0;
 
-  if (tab === 'priority') { loadPriority(); schedulePriorityRefresh(); }
+  if (tab === 'priority') { loadPriority(); }
 
   if (!loaded[tab]) {
     loaded[tab] = true;
@@ -2236,11 +2236,64 @@ function updateGlobalPriorityBar(d) {
 }
 
 let globalPriorityPollTimer = null;
+let _priorityWasActive = null;
+let _priorityWasCooldown = null;
+
+function _priorityNotifyTransition(d) {
+  if (!d) return;
+  const wasActive = _priorityWasActive;
+  const wasCooldown = _priorityWasCooldown;
+  const isFirstRun = wasActive === null;
+  _priorityWasActive = !!d.active;
+  _priorityWasCooldown = !!d.cooldown;
+  if (isFirstRun) return;
+
+  if (d.active && !wasActive) {
+    fireBrowserNotification('Priority Activated', d.issuedBy ? `Hosted by ${d.issuedBy}` : 'A priority event is now active.', { tag: 'priority-active' });
+    toast('Priority is now ACTIVE', 'info');
+  } else if (!d.active && wasActive) {
+    toast('Priority has ended', 'info');
+  }
+
+  if (d.cooldown && !wasCooldown) {
+    fireBrowserNotification('Priority Cooldown Started', d.cooldownMinutes ? `${d.cooldownMinutes}m cooldown before priority can be activated again.` : 'Priority is on cooldown.', { tag: 'priority-cooldown' });
+    toast('Priority cooldown started', 'info');
+  } else if (!d.cooldown && wasCooldown && !d.active) {
+    toast('Priority cooldown has ended', 'success');
+  }
+}
+
+async function requestPortalNotifPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  try { return (await Notification.requestPermission()) === 'granted'; } catch { return false; }
+}
+
+function fireBrowserNotification(title, body, opts = {}) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(title, { body, icon: '/favicon.ico', ...opts });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch {}
+}
+
 function startGlobalPriorityPoll() {
   if (globalPriorityPollTimer) clearInterval(globalPriorityPollTimer);
-  const poll = () => api('/priority').catch(() => null).then(d => { if (d) updateGlobalPriorityBar(d); });
+  requestPortalNotifPermission();
+  const poll = () => api('/priority').catch(() => null).then(d => {
+    if (!d) return;
+    updateGlobalPriorityBar(d);
+    _priorityNotifyTransition(d);
+
+    const overviewPane = document.getElementById('tab-overview');
+    if (overviewPane?.classList.contains('active')) renderHomePriorityWidget(d);
+
+    const priorityPane = document.getElementById('tab-priority');
+    if (priorityPane?.classList.contains('active')) loadPriority();
+  });
   poll();
-  globalPriorityPollTimer = setInterval(poll, 30000);
+  globalPriorityPollTimer = setInterval(poll, 5000);
 }
 
 let priorityCooldownTimer = null;
@@ -2265,15 +2318,7 @@ function startCooldownTimer(endsAt) {
   priorityCooldownTimer = setInterval(tick, 1000);
 }
 
-let priorityAutoRefresh = null;
-function schedulePriorityRefresh() {
-  if (priorityAutoRefresh) clearInterval(priorityAutoRefresh);
-  priorityAutoRefresh = setInterval(() => {
-    const pane = document.getElementById('tab-priority');
-    if (pane?.classList.contains('active')) loadPriority();
-    else clearInterval(priorityAutoRefresh);
-  }, 30000);
-}
+/* Priority tab auto-refresh now handled by the 5s startGlobalPriorityPoll() loop. */
 
 /* ══════════════════════════════════════════════════════
    LEO ACTIONS - BOLO & TICKET
