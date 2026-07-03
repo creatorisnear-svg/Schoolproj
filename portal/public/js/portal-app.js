@@ -4,6 +4,17 @@
 let me = null;
 
 /* ══════════════════════════════════════════════════════
+   SKELETON LOADERS
+══════════════════════════════════════════════════════ */
+function skelCard(lines = [65, 100, 45]) {
+  return `<div class="skel-card">${lines.map(w => `<div class="skel skel-line" style="width:${w}%"></div>`).join('')}</div>`;
+}
+function showSkeletons(el, n = 3, lines) {
+  if (!el) return;
+  el.innerHTML = Array.from({length: n}, () => skelCard(lines)).join('');
+}
+
+/* ══════════════════════════════════════════════════════
    NOTIFICATIONS (LEO only)
 ══════════════════════════════════════════════════════ */
 const notif = {
@@ -285,6 +296,28 @@ function showModeScreen() {
   document.getElementById('mode-screen').classList.remove('hidden');
 }
 
+function openModePrompt(requiredMode, msg) {
+  document.getElementById('mode-prompt-overlay')?.remove();
+  const label = requiredMode === 'leo' ? 'Law Enforcement' : 'Civilian';
+  const el = document.createElement('div');
+  el.id = 'mode-prompt-overlay';
+  el.className = 'mode-prompt-overlay';
+  el.innerHTML = `<div class="mode-prompt-modal">
+    <div class="mode-prompt-icon">${requiredMode === 'leo'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+    }</div>
+    <div class="mode-prompt-title">Mode Switch Required</div>
+    <div class="mode-prompt-body">${msg}</div>
+    <div class="mode-prompt-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('mode-prompt-overlay').remove()">Stay</button>
+      <button class="btn btn-primary" onclick="setPortalMode('${requiredMode}');document.getElementById('mode-prompt-overlay').remove()">Switch to ${label}</button>
+    </div>
+  </div>`;
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+  document.body.appendChild(el);
+}
+
 const CIV_ONLY_TABS = ['cad', 'dispatch', 'fines', 'tickets'];
 const LEO_ONLY_TABS = ['leo'];
 
@@ -338,6 +371,20 @@ function applyModeNav(mode) {
 const secondaryTabs = new Set(['fines','tickets','calendar','rolerequest','leo','priority']);
 
 function switchTab(tab) {
+  // Mode guard: prevent cross-mode tab access
+  if (me) {
+    const _mode = localStorage.getItem('portalMode') || 'civilian';
+    const _isLeo = _mode === 'leo' && !!me.isLeo;
+    if (CIV_ONLY_TABS.includes(tab) && _isLeo) {
+      openModePrompt('civilian', 'This feature is only available in Civilian mode. Switch modes to access your characters, 911 dispatch, fines, and tickets.');
+      return;
+    }
+    if (LEO_ONLY_TABS.includes(tab) && !_isLeo) {
+      if (me.isLeo) openModePrompt('leo', 'Switch to LEO mode to access the officer dashboard, status board, and patrol tools.');
+      else toast('LEO access is required for this feature.', 'error');
+      return;
+    }
+  }
   const leavingLeo = document.getElementById('tab-leo')?.classList.contains('active');
   if (leavingLeo && tab !== 'leo') stopBoardRefresh();
 
@@ -663,7 +710,7 @@ async function loadHomeOfficers() {
 async function loadVoiceChannels() {
   const list = document.getElementById('home-voice-list');
   if (!list) return;
-  list.innerHTML = '<div class="home-voice-loading">Loading...</div>';
+  list.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:4px">' + Array.from({length:3}, () => '<div class="skel skel-line skel-line-xl" style="width:100%;border-radius:8px"></div>').join('') + '</div>';
   try {
     const channels = await api('/voice/channels');
     if (!channels?.length) {
@@ -702,6 +749,7 @@ async function moveToVoiceChannel(channelId, channelName) {
 ══════════════════════════════════════════════════════ */
 async function loadCad() {
   const list = document.getElementById('cad-list');
+  showSkeletons(list, 2, [55, 100, 40, 70, 30]);
   try {
     const chars = await api('/cad');
     if (!chars?.length) {
@@ -811,6 +859,7 @@ async function deleteChar(charId) {
    DISPATCH / 911
 ══════════════════════════════════════════════════════ */
 async function loadDispatch() {
+  showSkeletons(document.getElementById('dispatch-active'), 2, [40, 100, 60, 30]);
   try {
     const calls = await api('/dispatch/mine');
     const active = (calls || []).filter(c => c.status === 'active');
@@ -899,6 +948,7 @@ async function submit911(e) {
 async function loadTrafficFines() {
   const list = document.getElementById('fines-list');
   const summary = document.getElementById('fines-summary');
+  showSkeletons(list, 3, [45, 100, 70, 30]);
   try {
     const [tickets, ecoRes] = await Promise.all([api('/traffic-tickets'), api('/economy')]);
     const cur = ecoRes?.currency || '$';
@@ -961,6 +1011,8 @@ async function payFine(ticketId, amount, cur) {
 ══════════════════════════════════════════════════════ */
 async function loadEconomy() {
   const isLeoMode = localStorage.getItem('portalMode') === 'leo';
+  const _balEl = document.getElementById('economy-balance');
+  if (_balEl) showSkeletons(_balEl, 3, [50, 80]);
 
   const ecoActionsRow = document.getElementById('eco-actions-row') || document.querySelector('.eco-actions-row');
   const ecoMsgEl = document.getElementById('eco-action-msg');
@@ -1152,6 +1204,7 @@ async function useItem(itemName) {
    TICKETS
 ══════════════════════════════════════════════════════ */
 async function loadTickets() {
+  showSkeletons(document.getElementById('tickets-open'), 3);
   try {
     const tickets = await api('/tickets');
     const open = (tickets || []).filter(t => t.status === 'open');
@@ -1189,6 +1242,7 @@ function renderTicket(t) {
 ══════════════════════════════════════════════════════ */
 async function loadCalendar() {
   const list = document.getElementById('calendar-list');
+  showSkeletons(list, 3, [60, 100, 40]);
   try {
     const events = await api('/calendar');
     if (!events?.length) {
@@ -1225,6 +1279,7 @@ async function loadCalendar() {
    ROLE REQUESTS
 ══════════════════════════════════════════════════════ */
 async function loadRoleRequest() {
+  showSkeletons(document.getElementById('rr-form-area'), 3, [70, 100]);
   try {
     const [typesRes, histRes] = await Promise.all([api('/rolerequest/types'), api('/rolerequest/mine')]);
     const area = document.getElementById('rr-form-area');
