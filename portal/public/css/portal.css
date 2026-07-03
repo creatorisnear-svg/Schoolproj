@@ -703,11 +703,15 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 .balance-amount { font-size: 20px; font-weight: 800; letter-spacing: -0.8px; }
 .balance-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
+/* Economy layout — two columns on desktop, single column on mobile */
 .economy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.economy-col { display: flex; flex-direction: column; gap: 8px; }
+.economy-col  { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow: hidden; }
 
+/* Shop search */
 .shop-search {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: var(--elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -716,17 +720,19 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   font-family: inherit;
   font-size: 13px;
   outline: none;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   transition: border-color 0.12s;
   -webkit-appearance: none;
 }
 .shop-search:focus { border-color: var(--accent); }
 .shop-search::placeholder { color: var(--text-sub); }
 
-.shop-list { display: flex; flex-direction: column; gap: 5px; max-height: 380px; overflow-y: auto; padding-right: 2px; }
+/* Shop list — scrollable on desktop, full-height on mobile */
+.shop-list { display: flex; flex-direction: column; gap: 5px; max-height: 420px; overflow-y: auto; overflow-x: hidden; }
 .shop-list::-webkit-scrollbar { width: 3px; }
 .shop-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+/* Shop item — flex row, name side can shrink */
 .shop-item {
   background: var(--card);
   border: 1px solid var(--border);
@@ -735,16 +741,24 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   transition: border-color 0.12s;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .shop-item:hover { border-color: var(--border-light); }
-.shop-item-name { font-size: 13px; font-weight: 600; }
-.shop-item-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+/* Left side — must shrink to give room to price+button */
+.shop-item-left { flex: 1; min-width: 0; overflow: hidden; }
+.shop-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shop-item-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Right side — fixed, never shrinks */
 .shop-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.shop-item-price { font-size: 13px; font-weight: 700; color: var(--success); }
+.shop-item-price { font-size: 13px; font-weight: 700; color: var(--success); white-space: nowrap; flex-shrink: 0; }
 
-.inventory-list { display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; }
+/* Inventory */
+.inventory-list { display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; overflow-x: hidden; }
 
 .inv-item {
   background: var(--card);
@@ -755,32 +769,39 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+  min-width: 0;
+  box-sizing: border-box;
 }
-.inv-qty { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.inv-qty { font-size: 12px; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
 
-.lb-list { display: flex; flex-direction: column; gap: 6px; }
+/* Leaderboard — fully contained, no horizontal bleed */
+.lb-list { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
 .lb-row {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 11px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 13px;
   transition: border-color 0.12s, background 0.12s;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .lb-row:hover { border-color: var(--border-light); background: var(--elevated); }
 .lb-row-gold   { border-left: 3px solid #f5c542; background: rgba(245,197,66,0.04); }
 .lb-row-silver { border-left: 3px solid #a8a8a8; background: rgba(168,168,168,0.04); }
 .lb-row-bronze { border-left: 3px solid #cd7f32; background: rgba(205,127,50,0.04); }
-.lb-rank-wrap  { width: 36px; text-align: center; flex-shrink: 0; }
-.lb-rank-badge { font-size: 11px; font-weight: 800; padding: 2px 5px; border-radius: 5px; border: 1px solid; letter-spacing: -0.3px; display: inline-block; }
-.lb-rank       { font-size: 12px; font-weight: 700; color: var(--text-sub); }
+.lb-rank-wrap  { width: 32px; text-align: center; flex-shrink: 0; }
+.lb-rank-badge { font-size: 10px; font-weight: 800; padding: 2px 4px; border-radius: 4px; border: 1px solid; letter-spacing: -0.3px; display: inline-block; font-family: 'JetBrains Mono', monospace; }
+.lb-rank       { font-size: 11px; font-weight: 700; color: var(--text-sub); font-family: 'JetBrains Mono', monospace; }
 .lb-info       { flex: 1; min-width: 0; overflow: hidden; }
 .lb-name       { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-breakdown  { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lb-total      { font-size: 13px; font-weight: 700; color: var(--success); flex-shrink: 0; white-space: nowrap; padding-left: 8px; }
+.lb-breakdown  { font-size: 10px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-total      { font-size: 13px; font-weight: 700; color: var(--success); flex-shrink: 0; white-space: nowrap; min-width: 0; padding-left: 4px; font-family: 'JetBrains Mono', monospace; }
 
 /* ══════════════════════════════════════════════════════
    ROLE REQUESTS
@@ -2254,26 +2275,39 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
    ECONOMY ACTION ROW
 ══════════════════════════════════════════════════════ */
 .eco-actions-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
   margin-bottom: 6px;
   margin-top: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Work button spans full width below the two input blocks */
+.eco-actions-row > .btn {
+  grid-column: 1 / -1;
 }
 
 .eco-action-block {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex: 1;
-  min-width: 150px;
+  min-width: 0;
+  width: 100%;
 }
 
 .eco-action-block .form-input {
   flex: 1;
-  padding: 7px 10px;
-  font-size: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.eco-action-block .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .eco-action-msg {
@@ -2289,22 +2323,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 .eco-msg-error   { background: var(--danger-dim);  color: var(--danger);  border-color: rgba(242,87,87,0.25); }
 .eco-msg-info    { background: var(--elevated);     color: var(--text-muted); border-color: var(--border); }
 
-/* ══════════════════════════════════════════════════════
-   INVENTORY ITEM WITH ACTIONS
-══════════════════════════════════════════════════════ */
-.inv-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-bottom: 5px;
-  font-size: 12px;
-}
-
+/* inv-name / inv-qty / inv-actions — companions to .inv-item above */
 .inv-name { flex: 1; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inv-qty  { color: var(--text-sub); font-size: 11px; flex-shrink: 0; }
 .inv-actions { display: flex; gap: 4px; flex-shrink: 0; }
@@ -2320,33 +2339,81 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   #main {
     padding-top: var(--top-bar-h);
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
   }
 
-  .main-inner { padding: 16px; }
+  .main-inner {
+    padding: 14px;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
 
+  /* ── Stats ── */
   .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .stat-card { padding: 14px; }
-  .stat-value { font-size: 22px; }
+  .stat-card { padding: 12px; }
+  .stat-value { font-size: 20px; }
 
-  .balance-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .balance-amount { font-size: 16px; }
+  /* ── Balance cards ── */
+  .balance-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
+  .balance-card { padding: 12px 8px; }
+  .balance-amount { font-size: 15px; letter-spacing: -0.5px; }
+  .balance-label { font-size: 9px; margin-bottom: 5px; }
+  .balance-sub { font-size: 10px; }
 
-  .economy-grid { grid-template-columns: 1fr; }
+  /* ── Economy layout ── */
+  .economy-grid { grid-template-columns: 1fr; gap: 14px; }
+  .economy-col { min-width: 0; overflow: hidden; width: 100%; }
+
+  /* Actions row — stack on very narrow screens */
+  .eco-actions-row { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .eco-action-block .form-input { font-size: 13px; padding: 9px 10px; }
+
+  /* Shop — remove height cap so items don't need scrolling on mobile */
+  .shop-list { max-height: none; overflow-y: visible; }
+  .shop-item { padding: 10px 12px; }
+  .shop-item-price { font-size: 12px; }
+
+  /* Inventory — remove height cap too */
+  .inventory-list { max-height: none; overflow-y: visible; }
+
+  /* Leaderboard rows — tighter on mobile */
+  .lb-row { padding: 10px 10px; gap: 8px; }
+  .lb-rank-wrap { width: 28px; }
+  .lb-name { font-size: 12px; }
+  .lb-breakdown { font-size: 10px; }
+  .lb-total { font-size: 12px; }
+
+  /* ── Grids ── */
   .rr-grid { grid-template-columns: 1fr; }
   .leo-grid { grid-template-columns: 1fr; }
 
+  /* ── Modals ── */
   .modal-overlay { align-items: flex-end; }
   .modal { border-radius: 16px 16px 0 0; max-height: 90vh; }
 
-  .page-header h2 { font-size: 18px; }
+  /* ── Page headers ── */
+  .page-header { margin-bottom: 14px; }
+  .page-header h2 { font-size: 17px; }
+
+  /* ── Quick actions ── */
   .quick-actions { display: flex; flex-direction: column; }
 
+  /* ── Char details ── */
   .char-details-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
 
+  /* ── Toasts ── */
   #toast-container { top: calc(var(--top-bar-h) + 8px); right: 12px; left: 12px; }
   .toast { max-width: 100%; }
 
+  /* ── Forms ── */
   .form-grid-2 { grid-template-columns: 1fr; }
+
+  /* ── Buttons — bigger tap targets ── */
+  .btn { min-height: 38px; }
+  .btn-sm { min-height: 34px; font-size: 12px; }
+  .btn-xs { min-height: 28px; font-size: 11px; padding: 4px 10px; }
+  .btn-lg { min-height: 48px; font-size: 15px; }
 }
 
 @media (min-width: 769px) {
@@ -2355,11 +2422,21 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   .modal-handle { display: none; }
 }
 
+/* ── Very small screens (< 400px) ── */
 @media (max-width: 400px) {
-  .balance-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .main-inner { padding: 12px; }
+
+  .balance-grid { gap: 5px; }
   .balance-card { padding: 10px 6px; }
   .balance-amount { font-size: 13px; }
   .balance-sub { font-size: 9px; }
+  .balance-label { font-size: 8px; }
+
+  /* Actions row stacks single column on very tiny screens */
+  .eco-actions-row { grid-template-columns: 1fr; }
+  .eco-actions-row > .btn { grid-column: 1; }
+
+  .shop-item-price { font-size: 11px; }
 
   #topbar-mode-switch span { display: none; }
   #topbar-mode-switch { padding: 5px 7px; }
@@ -2372,6 +2449,10 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 
   .priority-row { flex-direction: column; gap: 2px; align-items: flex-start; }
   .priority-row-val { text-align: left; }
+
+  .lb-row { padding: 9px 8px; }
+  .lb-name { font-size: 11px; }
+  .lb-total { font-size: 11px; }
 }
 
 @media (min-width: 1200px) {

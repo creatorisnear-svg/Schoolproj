@@ -1115,7 +1115,7 @@ function renderShop(items, currency) {
   if (!items.length) { shopList.innerHTML = '<div class="empty-state" style="padding:20px 0">No items in the shop.</div>'; return; }
   shopList.innerHTML = items.map(item => `
     <div class="shop-item" data-name="${esc(item.name).toLowerCase()}">
-      <div>
+      <div class="shop-item-left">
         <div class="shop-item-name">${item.name}</div>
         ${item.description ? `<div class="shop-item-desc">${item.description}</div>` : ''}
       </div>
