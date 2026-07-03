@@ -1210,19 +1210,78 @@ async function doWithdraw() {
   } catch (err) { showEcoMsg(err.message, 'error'); }
 }
 
-async function doWork() {
-  const btn = document.getElementById('btn-work');
-  if (btn) btn.disabled = true;
+async function claimIncome() {
+  const btn = document.getElementById('btn-claim-income');
+  if (btn) { btn.disabled = true; btn.textContent = 'Claiming...'; }
   try {
-    const r = await apiPost('/economy/work', {});
-    showEcoMsg(`Worked and earned ${r.earned.toLocaleString()}. Cash: ${r.cash.toLocaleString()}`, 'success');
+    const r = await apiPost('/economy/income/claim', {});
+    const cur = r.currency || '$';
+    showEcoMsg(`Claimed ${cur}${r.earned.toLocaleString()} income from ${r.roles} role${r.roles !== 1 ? 's' : ''}.`, 'success');
     loaded['economy'] = false; loadEconomy();
   } catch (err) {
     showEcoMsg(err.message, 'error');
   } finally {
-    if (btn) btn.disabled = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Claim Income`; }
   }
 }
+
+let _paySearchTimer = null;
+let _payTargetId = null;
+let _payTargetName = null;
+
+function searchPayPlayer(q) {
+  _payTargetId = null;
+  _payTargetName = null;
+  clearTimeout(_paySearchTimer);
+  const results = document.getElementById('pay-player-results');
+  if (!q || q.length < 2) { results.classList.add('hidden'); results.innerHTML = ''; return; }
+  _paySearchTimer = setTimeout(async () => {
+    try {
+      const members = await api(`/economy/members/search?q=${encodeURIComponent(q)}`);
+      if (!members.length) {
+        results.innerHTML = '<div class="pay-player-no-results">No players found</div>';
+        results.classList.remove('hidden');
+        return;
+      }
+      results.innerHTML = members.map(m => `
+        <div class="pay-player-item" onclick="selectPayPlayer('${m.id}', ${JSON.stringify(m.name)})">
+          ${m.avatar ? `<img src="${m.avatar}" class="pay-player-avatar" onerror="this.style.display='none'">` : '<div class="pay-player-avatar-placeholder"></div>'}
+          <span class="pay-player-name">${esc(m.name)}</span>
+        </div>`).join('');
+      results.classList.remove('hidden');
+    } catch { results.classList.add('hidden'); }
+  }, 300);
+}
+
+function selectPayPlayer(id, name) {
+  _payTargetId = id;
+  _payTargetName = name;
+  document.getElementById('pay-player-input').value = name;
+  document.getElementById('pay-player-results').classList.add('hidden');
+  document.getElementById('pay-amount-input').focus();
+}
+
+async function payPlayer() {
+  if (!_payTargetId) return showEcoMsg('Search and select a player first.', 'error');
+  const amount = document.getElementById('pay-amount-input').value.trim();
+  if (!amount || parseInt(amount) <= 0) return showEcoMsg('Enter a valid amount.', 'error');
+  try {
+    const r = await apiPost('/economy/pay', { targetId: _payTargetId, amount });
+    const cur = r.currency || '$';
+    document.getElementById('pay-amount-input').value = '';
+    document.getElementById('pay-player-input').value = '';
+    _payTargetId = null; _payTargetName = null;
+    showEcoMsg(`Paid ${cur}${parseInt(amount).toLocaleString()} to ${esc(_payTargetName)}.`, 'success');
+    loaded['economy'] = false; loadEconomy();
+  } catch (err) { showEcoMsg(err.message, 'error'); }
+}
+
+// Close pay dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#eco-pay-row')) {
+    document.getElementById('pay-player-results')?.classList.add('hidden');
+  }
+});
 
 async function sellItem(itemName, qty) {
   try {

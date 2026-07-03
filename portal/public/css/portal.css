@@ -2340,44 +2340,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 
 /* btn-xs already defined in the button system above */
 
-/* ══════════════════════════════════════════════════════
-   ECONOMY ACTION ROW
-══════════════════════════════════════════════════════ */
-.eco-actions-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 6px;
-  margin-top: 14px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Work button spans full width below the two input blocks */
-.eco-actions-row > .btn {
-  grid-column: 1 / -1;
-}
-
-.eco-action-block {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  min-width: 0;
-  width: 100%;
-}
-
-.eco-action-block .form-input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.eco-action-block .btn {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
+/* eco-actions-row and eco-action-block defined in the revamp block at the bottom */
 
 .eco-action-msg {
   font-size: 12px;
@@ -2434,8 +2397,8 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   .economy-grid { grid-template-columns: 1fr; gap: 14px; }
   .economy-col { min-width: 0; overflow: hidden; width: 100%; }
 
-  /* Actions row — stack on very narrow screens */
-  .eco-actions-row { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  /* Actions row — 3 cols on tablet, stacks on smaller (handled by 500px breakpoint) */
+  .eco-actions-row { margin-top: 10px; }
   .eco-action-block .form-input { font-size: 13px; padding: 9px 10px; }
 
   /* Shop — remove height cap so items don't need scrolling on mobile */
@@ -2497,9 +2460,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   .balance-sub { font-size: 9px; }
   .balance-label { font-size: 8px; }
 
-  /* Actions row stacks single column on very tiny screens */
-  .eco-actions-row { grid-template-columns: 1fr; }
-  .eco-actions-row > .btn { grid-column: 1; }
+  /* Very tiny screens — handled by the 500px breakpoint in the revamp block */
 
   .shop-item-price { font-size: 11px; }
 
@@ -3319,6 +3280,135 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
 @media (max-width: 768px) {
   .section-label::before { height: 10px; }
   .section-label { font-size: 8px; }
+}
+
+/* ══════════════════════════════════════════════════════
+   ECONOMY — ACTION ROWS
+══════════════════════════════════════════════════════ */
+.eco-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: end;
+}
+
+.eco-action-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.eco-action-block .form-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.eco-action-block .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Pay Player row */
+.eco-pay-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+  position: relative;
+}
+
+.eco-pay-search-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.eco-pay-amount {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+/* Pay Player dropdown */
+.pay-player-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.pay-player-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pay-player-item:hover { background: rgba(255,255,255,0.05); }
+
+.pay-player-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.pay-player-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.pay-player-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pay-player-no-results {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-sub);
+  text-align: center;
+}
+
+/* Mobile — stack economy action rows */
+@media (max-width: 500px) {
+  .eco-actions-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+  .eco-actions-row > #btn-claim-income {
+    grid-column: 1 / -1;
+  }
+
+  .eco-pay-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+  }
+  .eco-pay-search-wrap {
+    grid-column: 1 / -1;
+  }
+  .eco-pay-amount {
+    width: auto;
+    flex: 1;
+  }
 }
 
 /* ══════════════════════════════════════════════════════

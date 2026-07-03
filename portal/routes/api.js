@@ -585,34 +585,114 @@ export function createApiRouter() {
     } catch { res.status(500).json({ error: 'Internal error' }); }
   });
 
-  const workCooldowns = new Map();
-  router.post('/economy/work', portalAuth, async (req, res) => {
+  /* POST /economy/income/claim — collect role income for all qualifying roles */
+  router.post('/economy/income/claim', portalAuth, async (req, res) => {
     try {
       const guildId = GUILD_ID();
       if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
-      const cooldownKey = `${guildId}:${req.portalUser.userId}`;
-      const config = await EconomyConfig.findOne({ guildId });
-      if (config && !config.work?.enabled) return res.status(400).json({ error: 'Work is disabled on this server.' });
-      const cdMinutes = config?.work?.cooldown ?? 60;
-      const lastWork = workCooldowns.get(cooldownKey);
-      if (lastWork) {
-        const elapsed = Date.now() - lastWork;
-        const remaining = cdMinutes * 60 * 1000 - elapsed;
-        if (remaining > 0) {
-          const mins = Math.ceil(remaining / 60000);
-          return res.status(429).json({ error: `On cooldown. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.` });
-        }
-      }
-      const min = config?.work?.minPayout ?? 100;
-      const max = config?.work?.maxPayout ?? 500;
-      const earned = Math.floor(Math.random() * (max - min + 1)) + min;
-      let balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      const userId = req.portalUser.userId;
+
+      const [config, balance, memberRes] = await Promise.all([
+        EconomyConfig.findOne({ guildId }),
+        EconomyBalance.findOne({ guildId, userId }),
+        axios.get(`${DISCORD_BASE}/guilds/${guildId}/members/${userId}`, { headers: botHeaders() }).catch(() => null),
+      ]);
+
       if (!balance) return res.status(400).json({ error: 'No economy account. Use /balance in Discord first.' });
-      balance.cash += earned;
+      if (!config?.roleIncome?.length) return res.status(400).json({ error: 'No role income is configured on this server.' });
+
+      const memberRoles = memberRes?.data?.roles || [];
+      const now = Date.now();
+      let totalEarned = 0;
+      const claimedRoles = [];
+      const skippedRoles = [];
+
+      for (const entry of config.roleIncome) {
+        if (!memberRoles.includes(entry.roleId)) continue;
+        const cooldownHours = entry.cooldown ?? 24;
+        const cooldownMs = cooldownHours * 60 * 60 * 1000;
+        const lastClaim = balance.incomeCooldowns?.get(entry.roleId);
+        if (lastClaim && (now - lastClaim.getTime()) < cooldownMs) {
+          const remainMs = cooldownMs - (now - lastClaim.getTime());
+          const remainHrs = Math.ceil(remainMs / 3600000);
+          skippedRoles.push({ roleId: entry.roleId, nextIn: remainHrs });
+          continue;
+        }
+        totalEarned += entry.amount;
+        balance.incomeCooldowns.set(entry.roleId, new Date(now));
+        claimedRoles.push({ roleId: entry.roleId, amount: entry.amount });
+      }
+
+      if (claimedRoles.length === 0) {
+        if (skippedRoles.length > 0) {
+          const soonest = Math.min(...skippedRoles.map(r => r.nextIn));
+          return res.status(429).json({ error: `Income already claimed. Next claim available in ${soonest} hour${soonest !== 1 ? 's' : ''}.` });
+        }
+        return res.status(400).json({ error: 'You do not have any roles with configured income.' });
+      }
+
+      balance.cash += totalEarned;
+      balance.markModified('incomeCooldowns');
       await balance.save();
-      workCooldowns.set(cooldownKey, Date.now());
-      res.json({ success: true, earned, cash: balance.cash, bank: balance.bank });
-    } catch { res.status(500).json({ error: 'Internal error' }); }
+
+      const cur = config.currencySymbol || '$';
+      res.json({ success: true, earned: totalEarned, cash: balance.cash, bank: balance.bank, currency: cur, roles: claimedRoles.length });
+    } catch (err) { console.error('[income/claim]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  /* POST /economy/pay — send cash to another player by Discord user ID */
+  router.post('/economy/pay', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const fromId = req.portalUser.userId;
+      const { targetId, amount: rawAmount } = req.body;
+      if (!targetId) return res.status(400).json({ error: 'Target player is required.' });
+      if (targetId === fromId) return res.status(400).json({ error: 'You cannot pay yourself.' });
+      const amount = parseInt(rawAmount);
+      if (!amount || amount <= 0) return res.status(400).json({ error: 'Enter a valid amount.' });
+
+      const [fromBal, toBal, config] = await Promise.all([
+        EconomyBalance.findOne({ guildId, userId: fromId }),
+        EconomyBalance.findOne({ guildId, userId: targetId }),
+        EconomyConfig.findOne({ guildId }),
+      ]);
+
+      if (!fromBal) return res.status(400).json({ error: 'No economy account.' });
+      if (!toBal) return res.status(400).json({ error: 'That player does not have an economy account.' });
+      if (fromBal.cash < amount) return res.status(400).json({ error: `Insufficient cash. You have ${(config?.currencySymbol||'$')}${fromBal.cash.toLocaleString()}.` });
+
+      fromBal.cash -= amount;
+      toBal.cash += amount;
+      await Promise.all([fromBal.save(), toBal.save()]);
+
+      res.json({ success: true, cash: fromBal.cash, bank: fromBal.bank, currency: config?.currencySymbol || '$', amount });
+    } catch (err) { console.error('[economy/pay]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+
+  /* GET /economy/members/search?q= — search guild members by name for Pay Player */
+  router.get('/economy/members/search', portalAuth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const q = (req.query.q || '').toLowerCase().trim();
+      if (q.length < 2) return res.json([]);
+
+      const mRes = await axios.get(`${DISCORD_BASE}/guilds/${guildId}/members?limit=1000`, { headers: botHeaders() });
+      const members = (mRes.data || [])
+        .filter(m => !m.user.bot)
+        .map(m => ({
+          id: m.user.id,
+          name: m.nick || m.user.global_name || m.user.username,
+          avatar: m.user.avatar
+            ? `https://cdn.discordapp.com/avatars/${m.user.id}/${m.user.avatar}.webp?size=32`
+            : null,
+        }))
+        .filter(m => m.name.toLowerCase().includes(q))
+        .slice(0, 8);
+
+      res.json(members);
+    } catch { res.json([]); }
   });
 
   router.post('/economy/sell', portalAuth, async (req, res) => {
