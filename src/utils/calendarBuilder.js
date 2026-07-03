@@ -46,15 +46,19 @@ export function buildCalendarEmbed(calendar) {
       description += `No events\n\n`;
     } else {
       dayEvents.forEach(event => {
-        const title = event.description || event.person || 'Event';
         let timeStr = '';
         if (event.timestamp) {
           timeStr = `<t:${event.timestamp}:t>`;
         } else if (event.time) {
           timeStr = `${event.time}${event.timezone ? ' ' + event.timezone : ''}`;
         }
-        description += `• **${title}**${timeStr ? ' - ' + timeStr : ''}\n`;
-        if (event.person && event.description) {
+
+        // Time is the bold heading; description sits below as plain text
+        description += `• **${timeStr || 'TBD'}**\n`;
+        if (event.description) {
+          description += `  ${event.description}\n`;
+        }
+        if (event.person) {
           description += `  Host: ${event.person}\n`;
         }
         const gamertags = [];
