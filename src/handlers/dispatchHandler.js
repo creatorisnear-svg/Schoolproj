@@ -4463,8 +4463,12 @@ export async function handleCloseCallButton(interaction) {
 // CALL REPEAT TIMER (existing, unchanged below)
 // ────────────────────────────────────────────────────────────────────────────
 const lastReminderAt = new Map();
+const reminderCounts = new Map();
 const REPEAT_DELAY_MS = 2 * 60 * 1000;
 const REMINDER_INTERVAL_MS = 2 * 60 * 1000;
+// Only repeat an unanswered 911 call reminder twice, then go silent on it
+// until someone responds - officers found endless reminders annoying.
+const MAX_REMINDERS = 2;
 const repeatIntervals = new Map();
 
 async function checkUnrespondedCalls(guild, client) {
@@ -4482,12 +4486,16 @@ async function checkUnrespondedCalls(guild, client) {
     });
 
     for (const call of unrespondedCalls) {
+      const priorCount = reminderCounts.get(call.callId) || 0;
+      if (priorCount >= MAX_REMINDERS) continue;
+
       const lastReminder = lastReminderAt.get(call.callId) || 0;
       if (Date.now() - lastReminder < REMINDER_INTERVAL_MS) continue;
       lastReminderAt.set(call.callId, Date.now());
+      reminderCounts.set(call.callId, priorCount + 1);
 
       const callNum = call.callId?.split('-').pop() || 'unknown';
-      console.log(`[Dispatch] Repeating unresponded 911 call #${callNum} for ${guild.name}`);
+      console.log(`[Dispatch] Repeating unresponded 911 call #${callNum} for ${guild.name} (reminder ${priorCount + 1}/${MAX_REMINDERS})`);
 
       const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
         await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
