@@ -2412,9 +2412,8 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   .economy-grid { grid-template-columns: 1fr; gap: 14px; }
   .economy-col { min-width: 0; overflow: hidden; width: 100%; }
 
-  /* Actions row — 3 cols on tablet, stacks on smaller (handled by 500px breakpoint) */
+  /* Actions row — stacks on smaller (handled by 500px breakpoint) */
   .eco-actions-row { margin-top: 10px; }
-  .eco-action-block .form-input { font-size: 13px; padding: 9px 10px; }
 
   /* Shop — remove height cap so items don't need scrolling on mobile */
   .shop-list { max-height: none; overflow-y: visible; }
@@ -3301,41 +3300,19 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
    ECONOMY — ACTION ROWS
 ══════════════════════════════════════════════════════ */
 .eco-actions-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
   margin-bottom: 8px;
   width: 100%;
   box-sizing: border-box;
-  align-items: end;
 }
 
-.eco-action-block {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.eco-action-block .form-input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.eco-action-block .btn {
-  width: 100%;
+.eco-actions-row .btn {
+  flex: 1 1 auto;
   justify-content: center;
-}
-
-/* Pay Player row */
-.eco-pay-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
-  margin-bottom: 12px;
-  align-items: center;
-  position: relative;
+  min-width: 120px;
 }
 
 .eco-pay-search-wrap {
@@ -3343,9 +3320,13 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   min-width: 0;
 }
 
-.eco-pay-amount {
-  width: 110px;
-  flex-shrink: 0;
+.bank-amount-row {
+  display: flex;
+  gap: 8px;
+}
+
+.bank-amount-row .form-input {
+  flex: 1;
 }
 
 /* Pay Player dropdown */
@@ -3403,26 +3384,10 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   text-align: center;
 }
 
-/* Mobile — stack economy action rows */
+/* Mobile — stack economy action buttons */
 @media (max-width: 500px) {
-  .eco-actions-row {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-  }
-  .eco-actions-row > #btn-claim-income {
-    grid-column: 1 / -1;
-  }
-
-  .eco-pay-row {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-  }
-  .eco-pay-search-wrap {
-    grid-column: 1 / -1;
-  }
-  .eco-pay-amount {
-    width: auto;
-    flex: 1;
+  .eco-actions-row .btn {
+    min-width: calc(50% - 4px);
   }
 }
 

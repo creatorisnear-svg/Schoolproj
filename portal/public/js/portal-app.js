@@ -1072,14 +1072,13 @@ async function loadEconomy() {
     shopCurrency = cur;
 
     document.getElementById('economy-balance').innerHTML = [
-      { label: 'Cash', value: fmt(ecoRes.cash, cur), sub: 'on hand' },
-      { label: 'Bank', value: fmt(ecoRes.bank, cur), sub: 'saved' },
-      { label: 'Total', value: fmt(ecoRes.cash + ecoRes.bank, cur), sub: 'wealth' },
+      { label: 'Cash', value: fmt(ecoRes.cash, cur) },
+      { label: 'Bank', value: fmt(ecoRes.bank, cur) },
+      { label: 'Total', value: fmt(ecoRes.cash + ecoRes.bank, cur) },
     ].map(c => `
       <div class="balance-card">
         <div class="balance-label">${c.label}</div>
         <div class="balance-amount">${c.value}</div>
-        <div class="balance-sub">${c.sub}</div>
       </div>
     `).join('');
 
@@ -1208,26 +1207,38 @@ function showEcoMsg(text, type = 'info') {
   el._t = setTimeout(() => el.classList.add('hidden'), 4000);
 }
 
-async function doDeposit() {
-  const amount = document.getElementById('deposit-input').value.trim();
-  if (!amount) return showEcoMsg('Enter an amount to deposit.', 'error');
-  try {
-    const r = await apiPost('/economy/deposit', { amount });
-    document.getElementById('deposit-input').value = '';
-    showEcoMsg(`Deposited. Cash: ${r.cash.toLocaleString()} | Bank: ${r.bank.toLocaleString()}`, 'success');
-    loaded['economy'] = false; loadEconomy();
-  } catch (err) { showEcoMsg(err.message, 'error'); }
+let _bankModalMode = 'deposit';
+
+function openBankModal(mode) {
+  _bankModalMode = mode;
+  const title = mode === 'deposit' ? 'Deposit' : 'Withdraw';
+  document.getElementById('bank-modal-title').textContent = title;
+  document.getElementById('bank-modal-confirm').textContent = title;
+  document.getElementById('bank-amount-input').value = '';
+  document.getElementById('form-bank-error').classList.add('hidden');
+  openModal('modal-bank');
+  setTimeout(() => document.getElementById('bank-amount-input')?.focus(), 50);
 }
 
-async function doWithdraw() {
-  const amount = document.getElementById('withdraw-input').value.trim();
-  if (!amount) return showEcoMsg('Enter an amount to withdraw.', 'error');
+function setBankAmountAll() {
+  document.getElementById('bank-amount-input').value = 'all';
+}
+
+async function confirmBankAction() {
+  const amount = document.getElementById('bank-amount-input').value.trim();
+  const errEl = document.getElementById('form-bank-error');
+  errEl.classList.add('hidden');
+  if (!amount) { errEl.textContent = 'Enter an amount.'; errEl.classList.remove('hidden'); return; }
   try {
-    const r = await apiPost('/economy/withdraw', { amount });
-    document.getElementById('withdraw-input').value = '';
-    showEcoMsg(`Withdrawn. Cash: ${r.cash.toLocaleString()} | Bank: ${r.bank.toLocaleString()}`, 'success');
+    const r = await apiPost(`/economy/${_bankModalMode}`, { amount });
+    closeModal('modal-bank');
+    const verb = _bankModalMode === 'deposit' ? 'Deposited' : 'Withdrawn';
+    showEcoMsg(`${verb}. Cash: ${r.cash.toLocaleString()} | Bank: ${r.bank.toLocaleString()}`, 'success');
     loaded['economy'] = false; loadEconomy();
-  } catch (err) { showEcoMsg(err.message, 'error'); }
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
 }
 
 async function claimIncome() {
@@ -1282,23 +1293,30 @@ function selectPayPlayer(id, name) {
 }
 
 async function payPlayer() {
-  if (!_payTargetId) return showEcoMsg('Search and select a player first.', 'error');
+  const errEl = document.getElementById('form-pay-error');
+  errEl.classList.add('hidden');
+  if (!_payTargetId) { errEl.textContent = 'Search and select a player first.'; errEl.classList.remove('hidden'); return; }
   const amount = document.getElementById('pay-amount-input').value.trim();
-  if (!amount || parseInt(amount) <= 0) return showEcoMsg('Enter a valid amount.', 'error');
+  if (!amount || parseInt(amount) <= 0) { errEl.textContent = 'Enter a valid amount.'; errEl.classList.remove('hidden'); return; }
   try {
     const r = await apiPost('/economy/pay', { targetId: _payTargetId, amount });
     const cur = r.currency || '$';
+    const paidName = _payTargetName;
     document.getElementById('pay-amount-input').value = '';
     document.getElementById('pay-player-input').value = '';
     _payTargetId = null; _payTargetName = null;
-    showEcoMsg(`Paid ${cur}${parseInt(amount).toLocaleString()} to ${esc(_payTargetName)}.`, 'success');
+    closeModal('modal-pay');
+    showEcoMsg(`Paid ${cur}${parseInt(amount).toLocaleString()} to ${esc(paidName)}.`, 'success');
     loaded['economy'] = false; loadEconomy();
-  } catch (err) { showEcoMsg(err.message, 'error'); }
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
 }
 
 // Close pay dropdown when clicking outside
 document.addEventListener('click', e => {
-  if (!e.target.closest('#eco-pay-row')) {
+  if (!e.target.closest('#modal-pay')) {
     document.getElementById('pay-player-results')?.classList.add('hidden');
   }
 });

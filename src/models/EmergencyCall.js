@@ -21,6 +21,7 @@ const emergencyCallSchema = new Schema({
   closedBy: String,
   messageId: String,
   channelId: String,
+  dispatchAnnounced: { type: Boolean, default: false },
 });
 
 export default models.EmergencyCall || model('EmergencyCall', emergencyCallSchema);

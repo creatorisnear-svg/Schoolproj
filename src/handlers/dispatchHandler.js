@@ -4589,8 +4589,10 @@ export async function initDispatchForGuild(guild, client) {
 
     startCallRepeatTimer(guild, client);
     startTrafficStopCheckTimer(guild);
-    startStatusReminderTimer(guild);
-    startHourlyStatusReset(guild);
+    /* Periodic "please update your status" / hourly status reset TTS prompts were
+       disabled per staff feedback - they were interrupting patrol too often. */
+    const { start911Poller } = await import('../utils/voiceListener.js');
+    start911Poller(guild.id);
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }

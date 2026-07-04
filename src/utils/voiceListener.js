@@ -113,6 +113,62 @@ function _stopPanicPoller(guildId) {
   }
 }
 
+/** Per-guild 911 poller intervals - announce portal-submitted 911 calls over AI voice */
+const call911Pollers = new Map();
+
+/**
+ * Poll MongoDB every 5s for active 911 calls that haven't been voice-announced yet.
+ * The portal already posts the text embed via REST when the call is submitted -
+ * this poller ONLY handles the AI voice announcement, since that requires the
+ * live voice connection that only exists in the bot process.
+ */
+async function _run911Poll(guildId) {
+  try {
+    const { default: EmergencyCall } = await import('../models/EmergencyCall.js');
+    const { default: DispatchConfig } = await import('../models/DispatchConfig.js');
+
+    const calls = await EmergencyCall.find({ guildId, status: 'active', dispatchAnnounced: false });
+    if (!calls.length) return;
+
+    const dispatchCfg = await DispatchConfig.findOne({ guildId });
+    const aiReady = dispatchCfg?.enabled && dispatchCfg?.aiEnabled && !!process.env.OPENAI_API_KEY;
+
+    for (const call of calls) {
+      // Mark announced first to prevent double-firing if TTS takes time
+      await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
+      if (!aiReady) continue;
+
+      console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
+      try {
+        const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
+        const ttsText = `Attention all units. 9-1-1 emergency. ${call.issue} at ${call.location}. All available units respond.`;
+        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+        await playDispatchVoice(guildId, ttsBuffer, { urgent: true });
+      } catch (ttsErr) {
+        console.error('[Dispatch 911 Poller] TTS generation failed:', ttsErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch 911 Poller] Poll error:', err.message);
+  }
+}
+
+export function start911Poller(guildId) {
+  if (call911Pollers.has(guildId)) return; // already running
+  const interval = setInterval(() => _run911Poll(guildId), 5000);
+  call911Pollers.set(guildId, interval);
+  console.log(`[Dispatch 911 Poller] Started for guild ${guildId}`);
+}
+
+export function stop911Poller(guildId) {
+  const interval = call911Pollers.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    call911Pollers.delete(guildId);
+    console.log(`[Dispatch 911 Poller] Stopped for guild ${guildId}`);
+  }
+}
+
 /**
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
@@ -615,6 +671,7 @@ export function leaveDispatchChannel(guildId) {
   }
   clearRadioLog(guildId);
   _stopPanicPoller(guildId);
+  stop911Poller(guildId);
   dispatchState.delete(guildId);
   reconnectAttempts.delete(guildId);
   for (const key of [...logThrottleCounts.keys()]) {

@@ -237,36 +237,21 @@
 
         <!-- Bank actions row -->
         <div class="eco-actions-row" id="eco-actions-row">
-          <div class="eco-action-block">
-            <input id="deposit-input" class="form-input" type="number" inputmode="numeric" placeholder="Amount...">
-            <button class="btn btn-secondary btn-sm" onclick="doDeposit()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-              Deposit
-            </button>
-          </div>
-          <div class="eco-action-block">
-            <input id="withdraw-input" class="form-input" type="number" inputmode="numeric" placeholder="Amount...">
-            <button class="btn btn-secondary btn-sm" onclick="doWithdraw()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 12 3 16 7"/><line x1="12" y1="3" x2="12" y2="12"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-              Withdraw
-            </button>
-          </div>
+          <button class="btn btn-secondary btn-sm" onclick="openBankModal('deposit')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+            Deposit
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openBankModal('withdraw')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 12 3 16 7"/><line x1="12" y1="3" x2="12" y2="12"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+            Withdraw
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-pay')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Pay
+          </button>
           <button id="btn-claim-income" class="btn btn-success btn-sm" onclick="claimIncome()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Claim Income
-          </button>
-        </div>
-
-        <!-- Pay Player row -->
-        <div class="eco-pay-row" id="eco-pay-row">
-          <div class="eco-pay-search-wrap">
-            <input id="pay-player-input" class="form-input" type="text" placeholder="Search player name..." autocomplete="off" oninput="searchPayPlayer(this.value)">
-            <div id="pay-player-results" class="pay-player-results hidden"></div>
-          </div>
-          <input id="pay-amount-input" class="form-input eco-pay-amount" type="number" inputmode="numeric" placeholder="Amount...">
-          <button class="btn btn-primary btn-sm" onclick="payPlayer()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Pay
           </button>
         </div>
 
@@ -733,7 +718,55 @@
   </div>
 </div>
 
-<!-- ══════════ MODAL: Buy Item ══════════ -->
+<!-- ══════════ MODAL: Deposit / Withdraw ══════════ -->
+<div id="modal-bank" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="bank-modal-title">Deposit</h3>
+      <button class="modal-close" onclick="closeModal('modal-bank')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <div class="bank-amount-row">
+        <input id="bank-amount-input" class="form-input" type="text" inputmode="numeric" placeholder="Enter amount...">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBankAmountAll()">All</button>
+      </div>
+    </div>
+    <div id="form-bank-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bank')">Cancel</button>
+      <button id="bank-modal-confirm" class="btn btn-primary" onclick="confirmBankAction()">Deposit</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-pay" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Pay Player</h3>
+      <button class="modal-close" onclick="closeModal('modal-pay')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Player</label>
+      <div class="eco-pay-search-wrap">
+        <input id="pay-player-input" class="form-input" type="text" placeholder="Search player name..." autocomplete="off" oninput="searchPayPlayer(this.value)">
+        <div id="pay-player-results" class="pay-player-results hidden"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input id="pay-amount-input" class="form-input" type="number" inputmode="numeric" placeholder="Amount...">
+    </div>
+    <div id="form-pay-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-pay')">Cancel</button>
+      <button class="btn btn-primary" onclick="payPlayer()">Pay</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-buy" class="modal-overlay hidden">
   <div class="modal" style="max-width:400px">
     <div class="modal-handle"></div>
