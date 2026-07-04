@@ -1833,13 +1833,14 @@ function renderAppySettings(data) {
     '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Edit Application</div>' +
     '<div id="appy-edit-type-list" style="display:flex;flex-direction:column;gap:4px;">' + editTypeList + '</div>' +
     '<div id="appy-edit-form" style="display:none;border-top:1px solid var(--border);padding-top:14px;margin-top:10px;flex-direction:column;gap:10px;">' +
-    '<div style="font-size:12px;font-weight:600;color:var(--text);">Editing Application</div>' +
+    '<div style="font-size:13px;font-weight:600;color:var(--accent);">Editing: <span id="appy-edit-title-label"></span></div>' +
     '<input id="appy-edit-name" type="text" class="config-input" placeholder="Application name">' +
     '<input id="appy-edit-desc" type="text" class="config-input" placeholder="Short description (optional)">' +
-    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
-    '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Review Channel (where submissions for this application go)</div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text);">Review Channel</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Where submissions for THIS application type are posted for staff review.</div>' +
     '<select id="appy-edit-review-ch" class="config-select" style="min-width:200px;"><option value="">Use global review channel</option>' + channelOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional — assigned when accepted)</div>' +
+    '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
     '<div id="appy-edit-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
     allRoles.map(function(r) {
@@ -1908,6 +1909,8 @@ function loadAppyEditForm(typeId) {
     document.getElementById('appy-edit-desc').value = t.description || '';
     document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
     document.getElementById('appy-edit-review-ch').value = t.reviewChannelId || '';
+    var titleLabel = document.getElementById('appy-edit-title-label');
+    if (titleLabel) titleLabel.textContent = t.name || '';
     document.querySelectorAll('.appy-edit-ping-role-check').forEach(function(cb) {
       cb.checked = (t.reviewPingRoleIds || []).indexOf(cb.value) !== -1;
     });
