@@ -303,11 +303,21 @@ export async function handleDMReply(message, client) {
   let config;
   try {
     config = await AppyConfig.findOne({ guildId: session.guildId });
-    if (!config?.reviewChannelId) return;
-  } catch { return; }
+    if (!config?.reviewChannelId) {
+      console.error(`[Appys] No reviewChannelId set for guild ${session.guildId} - submission ${submissionId} not posted for review`);
+      return;
+    }
+  } catch (err) {
+    console.error(`[Appys] Failed to fetch AppyConfig for guild ${session.guildId}:`, err.message);
+    return;
+  }
 
-  const guild = client.guilds.cache.get(session.guildId);
-  if (!guild) return;
+  const guild = client.guilds.cache.get(session.guildId)
+    || await client.guilds.fetch(session.guildId).catch(() => null);
+  if (!guild) {
+    console.error(`[Appys] Guild ${session.guildId} not found/fetchable - submission ${submissionId} not posted for review`);
+    return;
+  }
   // Must fall back to fetch() - if the review channel wasn't already in the
   // client's cache (e.g. right after a bot restart), cache.get() silently
   // returns undefined and the whole submission would be dropped here with
@@ -319,14 +329,18 @@ export async function handleDMReply(message, client) {
     return;
   }
 
-  const answersText = session.answers.map((a, i) =>
+  let answersText = session.answers.map((a, i) =>
     `**Q${i + 1}: ${a.question}**\n${a.answer}`
   ).join('\n\n');
+  const headerText = `### Applicant\n<@${message.author.id}> (${message.author.username})\n\n### Responses\n`;
+  if (headerText.length + answersText.length > 4000) {
+    answersText = answersText.slice(0, 4000 - headerText.length - 20) + '\n-# ...truncated';
+  }
 
   const reviewEmbed = new EmbedBuilder()
     .setColor('#2d2d2d')
     .setTitle(`New Application - ${panel.name}`)
-    .setDescription(`### Applicant\n<@${message.author.id}> (${message.author.username})\n\n### Responses\n${answersText}`)
+    .setDescription(headerText + answersText)
     .setFooter({ text: 'RPM' });
 
   const acceptBtn = new ButtonBuilder().setCustomId(`appy_accept_${submissionId}`).setLabel('Accept').setStyle(ButtonStyle.Success);
