@@ -1020,6 +1020,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'appy_open') {
         const { handleAppyOpen } = await import('./handlers/appyHandler.js');
         await handleAppyOpen(interaction, client);
+      } else if (interaction.customId.startsWith('appy_cancel_pending_')) {
+        const { handleAppyCancelPending } = await import('./handlers/appyHandler.js');
+        await handleAppyCancelPending(interaction, client);
       } else if (interaction.customId.startsWith('appy_accept_')) {
         const { handleAppyAccept } = await import('./handlers/appyHandler.js');
         await handleAppyAccept(interaction, client);

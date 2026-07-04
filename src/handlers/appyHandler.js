@@ -177,7 +177,19 @@ export async function handleAppyTypeSelect(interaction, client) {
   }
 
   const existing = await AppySubmission.findOne({ guildId, typeId, userId: interaction.user.id, status: 'pending' }).catch(() => null);
-  if (existing) return interaction.reply({ embeds: [_errEmbed(`You already have a pending application for **${panel.name}**.`)], flags: 64 });
+  if (existing) {
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId(`appy_cancel_pending_${existing.submissionId}`)
+      .setLabel('Cancel Current Application')
+      .setStyle(ButtonStyle.Danger);
+    const row = new ActionRowBuilder().addComponents(cancelBtn);
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Pending Application')
+      .setDescription(`You already have a pending application for **${panel.name}**.\n\n-# Cancel it to submit a new one. This cannot be undone.`)
+      .setFooter({ text: 'RPM' });
+    return interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+  }
 
   if (!panel.questions || panel.questions.length === 0) {
     return interaction.reply({ embeds: [_errEmbed('This application has no questions configured yet.')], flags: 64 });
@@ -319,6 +331,36 @@ export async function handleDMReply(message, client) {
   } catch (err) {
     console.error('[Appys] Failed to post review message:', err.message);
   }
+}
+
+export async function handleAppyCancelPending(interaction, client) {
+  const submissionId = interaction.customId.replace('appy_cancel_pending_', '');
+  let submission;
+  try {
+    submission = await AppySubmission.findOne({ submissionId });
+  } catch {
+    return interaction.update({ embeds: [_errEmbed('An error occurred.')], components: [] });
+  }
+
+  if (!submission) {
+    return interaction.update({ embeds: [_errEmbed('Application not found — it may have already been reviewed or cancelled.')], components: [] });
+  }
+  if (submission.userId !== interaction.user.id) {
+    return interaction.reply({ embeds: [_errEmbed('You cannot cancel someone else\'s application.')], flags: 64 });
+  }
+  if (submission.status !== 'pending') {
+    return interaction.update({ embeds: [_errEmbed('This application has already been reviewed and cannot be cancelled.')], components: [] });
+  }
+
+  await AppySubmission.deleteOne({ submissionId }).catch(() => {});
+  _clearSession(interaction.user.id);
+
+  const embed = new EmbedBuilder()
+    .setColor('#2d2d2d')
+    .setTitle('Application Cancelled')
+    .setDescription('Your pending application has been cancelled. You can now submit a new one.')
+    .setFooter({ text: 'RPM' });
+  await interaction.update({ embeds: [embed], components: [] });
 }
 
 export async function handleAppyAccept(interaction, client) {
