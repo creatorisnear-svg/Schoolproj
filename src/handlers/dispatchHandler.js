@@ -4487,6 +4487,12 @@ const REMINDER_INTERVAL_MS = 2 * 60 * 1000;
 // until someone responds - officers found endless reminders annoying.
 const MAX_REMINDERS = 2;
 const repeatIntervals = new Map();
+// Guards against back-to-back reminder TTS overlapping/stacking when several
+// calls become due for a reminder in the same check cycle - all calls that
+// are due get folded into ONE combined voice announcement instead of one
+// TTS clip per call, and that combined clip is itself rate-limited per guild.
+const lastGlobalReminderTTSAt = new Map();
+const GLOBAL_REMINDER_TTS_COOLDOWN_MS = 60 * 1000;
 
 async function checkUnrespondedCalls(guild, client) {
   try {
@@ -4502,6 +4508,8 @@ async function checkUnrespondedCalls(guild, client) {
       timestamp: { $lte: cutoff },
     });
 
+    const dueCalls = [];
+
     for (const call of unrespondedCalls) {
       const priorCount = reminderCounts.get(call.callId) || 0;
       if (priorCount >= MAX_REMINDERS) continue;
@@ -4510,42 +4518,60 @@ async function checkUnrespondedCalls(guild, client) {
       if (Date.now() - lastReminder < REMINDER_INTERVAL_MS) continue;
       lastReminderAt.set(call.callId, Date.now());
       reminderCounts.set(call.callId, priorCount + 1);
+      dueCalls.push({ call, reminderNum: priorCount + 1 });
+    }
 
-      const callNum = call.callId?.split('-').pop() || 'unknown';
-      console.log(`[Dispatch] Repeating unresponded 911 call #${callNum} for ${guild.name} (reminder ${priorCount + 1}/${MAX_REMINDERS})`);
-
+    if (dueCalls.length) {
       const dispatchChannel = guild.channels.cache.get(config.dispatchChannelId) ||
         await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-      if (dispatchChannel?.isTextBased()) {
-        const embed = new EmbedBuilder()
-          .setColor('#2d2d2d')
-          .setTitle('911 Call Reminder - No Units Responding')
-          .setDescription(
-            `**Call #${callNum}** has had no response for over 2 minutes.\n\n` +
-            (call.issue ? `**Issue:** ${call.issue}\n` : '') +
-            (call.location ? `**Location:** ${call.location}\n` : '') +
-            (call.suspectsDescription ? `**Suspects:** ${call.suspectsDescription}\n` : '') +
-            `\n**Any available unit, please respond.**`
-          )
-          .setFooter({ text: 'RPM' })
-          .setTimestamp();
-        await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+
+      for (const { call, reminderNum } of dueCalls) {
+        const callNum = call.callId?.split('-').pop() || 'unknown';
+        console.log(`[Dispatch] Repeating unresponded 911 call #${callNum} for ${guild.name} (reminder ${reminderNum}/${MAX_REMINDERS})`);
+
+        if (dispatchChannel?.isTextBased()) {
+          const embed = new EmbedBuilder()
+            .setColor('#2d2d2d')
+            .setTitle('911 Call Reminder - No Units Responding')
+            .setDescription(
+              `**Call #${callNum}** has had no response for over 2 minutes.\n\n` +
+              (call.issue ? `**Issue:** ${call.issue}\n` : '') +
+              (call.location ? `**Location:** ${call.location}\n` : '') +
+              (call.suspectsDescription ? `**Suspects:** ${call.suspectsDescription}\n` : '') +
+              `\n**Any available unit, please respond.**`
+            )
+            .setFooter({ text: 'RPM' })
+            .setTimestamp();
+          await dispatchChannel.send({ embeds: [embed] }).catch(() => {});
+        }
       }
 
       if (config.aiEnabled && hasAIKey()) {
-        try {
-          const { playDispatchVoice, getDispatchState } = await import('../utils/voiceListener.js');
-          const state = getDispatchState?.(guild.id);
-          if (state?.connection) {
-            let ttsText = `Attention all units, reminder, we still have an active nine one one call with no responding units. `;
-            if (call.issue) ttsText += `${call.issue}. `;
-            if (call.location) ttsText += `Location: ${call.location}. `;
-            ttsText += `Any available unit, please respond.`;
-            const ttsBuffer = await generateDispatchTTS(ttsText);
-            playDispatchVoice(guild.id, ttsBuffer);
+        const lastGlobalTTS = lastGlobalReminderTTSAt.get(guild.id) || 0;
+        if (Date.now() - lastGlobalTTS < GLOBAL_REMINDER_TTS_COOLDOWN_MS) {
+          console.log(`[Dispatch] Skipping reminder TTS for ${guild.name} - global cooldown active (another reminder just played)`);
+        } else {
+          try {
+            const { playDispatchVoice, getDispatchState } = await import('../utils/voiceListener.js');
+            const state = getDispatchState?.(guild.id);
+            if (state?.connection) {
+              let ttsText;
+              if (dueCalls.length === 1) {
+                const { call } = dueCalls[0];
+                ttsText = `Attention all units, reminder, we still have an active nine one one call with no responding units. `;
+                if (call.issue) ttsText += `${call.issue}. `;
+                if (call.location) ttsText += `Location: ${call.location}. `;
+                ttsText += `Any available unit, please respond.`;
+              } else {
+                ttsText = `Attention all units, reminder, we have ${dueCalls.length} active nine one one calls with no responding units. Any available units, please respond.`;
+              }
+              lastGlobalReminderTTSAt.set(guild.id, Date.now());
+              const ttsBuffer = await generateDispatchTTS(ttsText);
+              playDispatchVoice(guild.id, ttsBuffer);
+            }
+          } catch (err) {
+            console.error(`[Dispatch] Failed to play combined 911 reminder TTS for ${guild.name}:`, err.message);
           }
-        } catch (err) {
-          console.error(`[Dispatch] Failed to repeat 911 call #${callNum} TTS:`, err.message);
         }
       }
     }
