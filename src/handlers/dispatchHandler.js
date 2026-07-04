@@ -156,7 +156,7 @@ function getAIClient() {
   throw new Error('No AI API key configured. Set GROQ_API_KEY (free) or OPENAI_API_KEY.');
 }
 
-function hasAIKey() {
+export function hasAIKey() {
   if (!groqKeysLoaded) loadGroqKeys();
   return !!(groqKeys.length > 0 || process.env.OPENAI_API_KEY);
 }

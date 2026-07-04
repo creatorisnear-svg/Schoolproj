@@ -131,12 +131,20 @@ async function _run911Poll(guildId) {
     if (!calls.length) return;
 
     const dispatchCfg = await DispatchConfig.findOne({ guildId });
-    const aiReady = dispatchCfg?.enabled && dispatchCfg?.aiEnabled && !!process.env.OPENAI_API_KEY;
+    // NOTE: must use hasAIKey() (Groq-first, falls back to OpenAI) here, not a raw
+    // OPENAI_API_KEY check - this bot runs on Groq, so OPENAI_API_KEY is normally
+    // unset and a raw check made aiReady permanently false, silently skipping every
+    // portal 911 voice announcement while still marking the call as "announced".
+    const { hasAIKey } = await import('../handlers/dispatchHandler.js');
+    const aiReady = dispatchCfg?.enabled && dispatchCfg?.aiEnabled && hasAIKey();
 
     for (const call of calls) {
       // Mark announced first to prevent double-firing if TTS takes time
       await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
-      if (!aiReady) continue;
+      if (!aiReady) {
+        console.log(`[Dispatch 911 Poller] Skipping voice announcement for call ${call.callId} (guild ${guildId}) - dispatchCfg.enabled=${!!dispatchCfg?.enabled} aiEnabled=${!!dispatchCfg?.aiEnabled} hasAIKey=${hasAIKey()}`);
+        continue;
+      }
 
       console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
       try {
