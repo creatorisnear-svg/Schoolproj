@@ -8,11 +8,22 @@ import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js'
 async function announceCooldownTTS(guildId, text) {
   try {
     const cfg = await DispatchConfig.findOne({ guildId });
-    if (!cfg?.aiEnabled) return;
+    // Match join-audio behavior: only require dispatch to be enabled/configured,
+    // not the conversational AI toggle - this is a static announcement, not an
+    // AI-generated response, so it should still play even with aiEnabled off.
+    if (!cfg?.enabled || !cfg?.patrolChannelIds?.length) {
+      console.log(`[PriorityCooldown] Skipping TTS - dispatch not enabled/configured for guild ${guildId}`);
+      return;
+    }
     const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
     const { playDispatchVoice } = await import('../utils/voiceListener.js');
     const buf = await generateDispatchTTSPublic(text);
-    if (buf) playDispatchVoice(guildId, buf);
+    if (!buf) {
+      console.warn(`[PriorityCooldown] TTS generation returned no buffer for guild ${guildId}`);
+      return;
+    }
+    playDispatchVoice(guildId, buf);
+    console.log(`[PriorityCooldown] Announced TTS for guild ${guildId}`);
   } catch (e) {
     console.error('[PriorityCooldown] TTS error:', e.message);
   }
