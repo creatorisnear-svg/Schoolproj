@@ -11,7 +11,8 @@ async function _postAppyLog(client, guildId, { action, applicantId, applicantUse
     if (!cfg?.logChannelId) return;
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return;
-    const logChannel = guild.channels.cache.get(cfg.logChannelId);
+    const logChannel = guild.channels.cache.get(cfg.logChannelId) ||
+      await guild.channels.fetch(cfg.logChannelId).catch(() => null);
     if (!logChannel) return;
     const isAccept = action === 'accepted';
     const embed = new EmbedBuilder()
@@ -285,8 +286,16 @@ export async function handleDMReply(message, client) {
 
   const guild = client.guilds.cache.get(session.guildId);
   if (!guild) return;
-  const reviewChannel = guild.channels.cache.get(config.reviewChannelId);
-  if (!reviewChannel) return;
+  // Must fall back to fetch() - if the review channel wasn't already in the
+  // client's cache (e.g. right after a bot restart), cache.get() silently
+  // returns undefined and the whole submission would be dropped here with
+  // no error, even though the applicant already got their "Submitted" DM.
+  const reviewChannel = guild.channels.cache.get(config.reviewChannelId) ||
+    await guild.channels.fetch(config.reviewChannelId).catch(() => null);
+  if (!reviewChannel) {
+    console.error(`[Appys] Review channel ${config.reviewChannelId} not found/fetchable for guild ${session.guildId} - submission ${submissionId} not posted for review`);
+    return;
+  }
 
   const answersText = session.answers.map((a, i) =>
     `**Q${i + 1}: ${a.question}**\n${a.answer}`
