@@ -1052,9 +1052,15 @@ function startTTS(text, config) {
 async function playTTS(ttsPromise, guildId, { urgent = false } = {}) {
   if (!ttsPromise) return;
   try {
-    const { playDispatchVoice } = await import('../utils/voiceListener.js');
+    const { playDispatchVoice, playRadioWaveLeadIn } = await import('../utils/voiceListener.js');
+    // Kick off the radio wave lead-in immediately - it overlaps with TTS
+    // generation (still in flight from startTTS) instead of only starting
+    // once the full clip is ready, which used to add its playback time on
+    // top of transcription+LLM+TTS latency. Skipped for urgent clips
+    // (panic/pursuit), which already play raw without any wave prefix.
+    if (!urgent) playRadioWaveLeadIn(guildId);
     const buf = await ttsPromise;
-    if (buf) playDispatchVoice(guildId, buf, { urgent });
+    if (buf) playDispatchVoice(guildId, buf, { urgent, skipRadioWave: true });
   } catch {}
 }
 // ───────────────────────────────────────────────────────────────────────────

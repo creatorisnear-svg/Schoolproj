@@ -699,6 +699,20 @@ export function leaveDispatchChannel(guildId) {
  *   urgent - clears any stale queued audio and stops the current clip so this
  *            plays immediately (use for 10-99 panic and 10-80 pursuit alerts).
  */
+
+/**
+ * Fire-and-forget: start playing the radio wave lead-in sound right away,
+ * without waiting for the real TTS speech to finish generating. Callers
+ * queue the actual speech buffer afterward with skipRadioWave:true so the
+ * wave's ~playback time overlaps with TTS generation instead of adding to
+ * it - this is what most of the perceived "response delay" was, since the
+ * wave previously only started AFTER the full TTS clip had been generated.
+ */
+export function playRadioWaveLeadIn(guildId) {
+  if (!RADIO_WAVE_BUFFER) return;
+  playDispatchVoice(guildId, RADIO_WAVE_BUFFER, { skipRadioWave: true }).catch(() => {});
+}
+
 export async function playDispatchVoice(guildId, audioBuffer, { urgent = false, skipRadioWave = false } = {}) {
   const state = dispatchState.get(guildId);
   if (!state) {
