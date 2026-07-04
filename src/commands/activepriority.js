@@ -39,6 +39,11 @@ export async function execute(interaction) {
 
     priority.priorityActive = true;
     priority.priorityIssuedBy = interaction.user.tag;
+    priority.activatedAt = new Date();
+    // Manually-activated priority has no auto-expiry - clear any stale expiresAt
+    // left over from a previous auto-expiring priority request, otherwise the
+    // portal shows a "0:00 remaining" countdown for a scene with no expiry.
+    priority.expiresAt = null;
     await priority.save();
 
     await updatePriorityMessage(interaction, priority);

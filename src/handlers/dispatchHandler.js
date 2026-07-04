@@ -3801,6 +3801,9 @@ export async function triggerPanicAlert(guild, config, userId, officerName, voic
         priority.priorityActive = true;
         priority.priorityIssuedBy = `${officerName} (Auto - 10-99)`;
         priority.activatedAt = new Date();
+        // Auto-activated (10-99) priority has no fixed expiry - clear any stale
+        // expiresAt from a prior auto-expiring priority request.
+        priority.expiresAt = null;
         await priority.save();
 
         const { buildPriorityEmbed } = await import('./priorityTrackerHandler.js');

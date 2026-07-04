@@ -2680,6 +2680,7 @@ code, kbd, .mono, .call-id, .ticket-id, .fine-id, .dispatch-call-id, .dcc-id, .b
   background: var(--card);
   flex: 1 1 200px;
   min-width: 0;
+  width: 100%;
 }
 .home-officer-dot {
   width: 8px;
