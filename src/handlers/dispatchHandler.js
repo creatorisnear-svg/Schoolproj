@@ -2007,10 +2007,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         const alphaWords = rawWords.map(w => w.toLowerCase().replace(/[^a-z]/g, ''));
 
         // Search up to word 7 (not just 4) - officers sometimes say their unit number first.
-        // Also include common Whisper mishearings of "dispatch": "this patch", "despatch", "depatch"
+        // Case-insensitive (alphaWords is already lowercased) and tolerant of Whisper
+        // mishearings/variations: "dispatched", "dispatchers", "this patch", "despatch", "depatch", etc.
         const dispatchIdx = alphaWords.findIndex((w, i) => i <= 7 && (
-          w === 'dispatch' || w === 'dispatcher' || w === 'dispatching' ||
-          w.endsWith('dispatch') ||
+          w.startsWith('dispatch') || w.endsWith('dispatch') ||
           w === 'despatch' || w === 'depatch' || w === 'thispatch' ||
           w === 'command' || w === 'control' || w === 'central'
         ));
