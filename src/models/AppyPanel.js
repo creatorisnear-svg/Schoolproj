@@ -7,6 +7,7 @@ const appyPanelSchema = new mongoose.Schema({
   description:  { type: String, default: '' },
   questions:    { type: [String], default: [] },
   acceptRoleId:       { type: String,   default: null },
+  reviewChannelId:    { type: String,   default: null },
   reviewPingRoleIds:  { type: [String], default: [] },
   createdAt:    { type: Date, default: Date.now },
 });

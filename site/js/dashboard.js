@@ -1794,6 +1794,8 @@ function renderAppySettings(data) {
     '<input id="appy-desc" type="text" class="config-input" placeholder="Short description shown in the select menu (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Channel (where submissions for this application go)</div>' +
+    '<select id="appy-review-ch" class="config-select" style="min-width:200px;"><option value="">Use global review channel</option>' + channelOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
     '<div id="appy-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
     allRoles.map(function(r) {
@@ -1818,6 +1820,7 @@ function renderAppySettings(data) {
           (t.description ? '<div class="config-sublabel">' + esc(t.description) + '</div>' : '') +
           '<div class="config-sublabel">' + t.questions.length + ' question' + (t.questions.length === 1 ? '' : 's') +
           (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') +
+          (t.reviewChannelName ? ' | Review: #' + esc(t.reviewChannelName) : ' | Review: global') +
           (t.reviewPingRoleNames && t.reviewPingRoleNames.length ? ' | Ping roles: ' + t.reviewPingRoleNames.map(function(n) { return '@' + esc(n); }).join(', ') : '') + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
@@ -1835,6 +1838,8 @@ function renderAppySettings(data) {
     '<input id="appy-edit-desc" type="text" class="config-input" placeholder="Short description (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
     '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Channel (where submissions for this application go)</div>' +
+    '<select id="appy-edit-review-ch" class="config-select" style="min-width:200px;"><option value="">Use global review channel</option>' + channelOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
     '<div id="appy-edit-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
     allRoles.map(function(r) {
@@ -1902,6 +1907,7 @@ function loadAppyEditForm(typeId) {
     document.getElementById('appy-edit-name').value = t.name || '';
     document.getElementById('appy-edit-desc').value = t.description || '';
     document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
+    document.getElementById('appy-edit-review-ch').value = t.reviewChannelId || '';
     document.querySelectorAll('.appy-edit-ping-role-check').forEach(function(cb) {
       cb.checked = (t.reviewPingRoleIds || []).indexOf(cb.value) !== -1;
     });
@@ -1926,6 +1932,7 @@ function saveAppyType(isEdit) {
   var name = (document.getElementById(prefix + 'name').value || '').trim();
   var desc = (document.getElementById(prefix + 'desc').value || '').trim();
   var roleId = document.getElementById(prefix + 'role').value || null;
+  var reviewChId = document.getElementById(prefix + 'review-ch').value || null;
   var pingCheckClass = isEdit ? '.appy-edit-ping-role-check' : '.appy-ping-role-check';
   var pingRoleIds = Array.from(document.querySelectorAll(pingCheckClass + ':checked')).map(function(cb) { return cb.value; }).filter(Boolean);
   var typeId = isEdit ? (document.getElementById('appy-edit-id').value || '') : '';
@@ -1936,7 +1943,7 @@ function saveAppyType(isEdit) {
   var url = isEdit ? '/guild/' + currentGuild.id + '/appys/type/' + typeId : '/guild/' + currentGuild.id + '/appys/type';
   var method = isEdit ? 'PUT' : 'POST';
   _pendingScrollRestore = getDashScrollPos();
-  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId, reviewPingRoleIds: pingRoleIds }) }).then(function(r) {
+  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId, reviewChannelId: reviewChId, reviewPingRoleIds: pingRoleIds }) }).then(function(r) {
     if (r && r.success) { toast(isEdit ? 'Application updated' : 'Application created'); renderSettings('appys'); }
     else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });

@@ -303,12 +303,14 @@ export async function handleDMReply(message, client) {
   let config;
   try {
     config = await AppyConfig.findOne({ guildId: session.guildId });
-    if (!config?.reviewChannelId) {
-      console.error(`[Appys] No reviewChannelId set for guild ${session.guildId} - submission ${submissionId} not posted for review`);
-      return;
-    }
   } catch (err) {
     console.error(`[Appys] Failed to fetch AppyConfig for guild ${session.guildId}:`, err.message);
+    return;
+  }
+
+  const resolvedReviewChannelId = panel.reviewChannelId || config?.reviewChannelId;
+  if (!resolvedReviewChannelId) {
+    console.error(`[Appys] No reviewChannelId set for type ${session.typeId} or guild ${session.guildId} - submission ${submissionId} not posted for review`);
     return;
   }
 
@@ -322,10 +324,10 @@ export async function handleDMReply(message, client) {
   // client's cache (e.g. right after a bot restart), cache.get() silently
   // returns undefined and the whole submission would be dropped here with
   // no error, even though the applicant already got their "Submitted" DM.
-  const reviewChannel = guild.channels.cache.get(config.reviewChannelId) ||
-    await guild.channels.fetch(config.reviewChannelId).catch(() => null);
+  const reviewChannel = guild.channels.cache.get(resolvedReviewChannelId) ||
+    await guild.channels.fetch(resolvedReviewChannelId).catch(() => null);
   if (!reviewChannel) {
-    console.error(`[Appys] Review channel ${config.reviewChannelId} not found/fetchable for guild ${session.guildId} - submission ${submissionId} not posted for review`);
+    console.error(`[Appys] Review channel ${resolvedReviewChannelId} not found/fetchable for guild ${session.guildId} - submission ${submissionId} not posted for review`);
     return;
   }
 
@@ -357,7 +359,7 @@ export async function handleDMReply(message, client) {
       allowedMentions: pingIds.length ? { roles: pingIds } : { roles: [] },
     });
     submission.reviewMessageId = reviewMsg.id;
-    submission.reviewChannelId = config.reviewChannelId;
+    submission.reviewChannelId = resolvedReviewChannelId;
     await submission.save();
   } catch (err) {
     console.error('[Appys] Failed to post review message:', err.message);
