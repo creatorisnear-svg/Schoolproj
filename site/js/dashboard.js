@@ -1794,9 +1794,14 @@ function renderAppySettings(data) {
     '<input id="appy-desc" type="text" class="config-input" placeholder="Short description shown in the select menu (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged when a submission arrives; only these roles can accept or deny)</div>' +
-    '<select id="appy-ping-role" class="config-select" multiple size="5">' + roleOpts + '</select>' +
-    '<span class="config-sublabel">Hold Ctrl / Cmd to select multiple roles.</span>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
+    '<div id="appy-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
+    allRoles.map(function(r) {
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;">' +
+        '<input type="checkbox" class="appy-ping-role-check" value="' + esc(r.value) + '"> ' + esc(r.label) + '</label>';
+    }).join('') +
+    (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
+    '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-questions-list\')">+ Add Question</button>' +
@@ -1830,9 +1835,14 @@ function renderAppySettings(data) {
     '<input id="appy-edit-desc" type="text" class="config-input" placeholder="Short description (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
     '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged when a submission arrives; only these roles can accept or deny)</div>' +
-    '<select id="appy-edit-ping-role" class="config-select" multiple size="5">' + roleOpts + '</select>' +
-    '<span class="config-sublabel">Hold Ctrl / Cmd to select multiple roles.</span>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
+    '<div id="appy-edit-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
+    allRoles.map(function(r) {
+      return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;">' +
+        '<input type="checkbox" class="appy-edit-ping-role-check" value="' + esc(r.value) + '"> ' + esc(r.label) + '</label>';
+    }).join('') +
+    (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
+    '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-edit-questions-list\')">+ Add Question</button>' +
@@ -1892,9 +1902,8 @@ function loadAppyEditForm(typeId) {
     document.getElementById('appy-edit-name').value = t.name || '';
     document.getElementById('appy-edit-desc').value = t.description || '';
     document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
-    var pingSelect = document.getElementById('appy-edit-ping-role');
-    Array.from(pingSelect.options).forEach(function(o) {
-      o.selected = (t.reviewPingRoleIds || []).indexOf(o.value) !== -1;
+    document.querySelectorAll('.appy-edit-ping-role-check').forEach(function(cb) {
+      cb.checked = (t.reviewPingRoleIds || []).indexOf(cb.value) !== -1;
     });
     document.getElementById('appy-edit-id').value = typeId;
     var list = document.getElementById('appy-edit-questions-list');
@@ -1917,7 +1926,8 @@ function saveAppyType(isEdit) {
   var name = (document.getElementById(prefix + 'name').value || '').trim();
   var desc = (document.getElementById(prefix + 'desc').value || '').trim();
   var roleId = document.getElementById(prefix + 'role').value || null;
-  var pingRoleIds = Array.from(document.getElementById(prefix + 'ping-role').selectedOptions).map(function(o) { return o.value; }).filter(Boolean);
+  var pingCheckClass = isEdit ? '.appy-edit-ping-role-check' : '.appy-ping-role-check';
+  var pingRoleIds = Array.from(document.querySelectorAll(pingCheckClass + ':checked')).map(function(cb) { return cb.value; }).filter(Boolean);
   var typeId = isEdit ? (document.getElementById('appy-edit-id').value || '') : '';
   var qClass = isEdit ? '.appy-edit-question-input' : '.appy-question-input';
   var questions = Array.from(document.querySelectorAll(qClass)).map(function(i) { return i.value.trim(); }).filter(Boolean);
