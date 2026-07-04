@@ -3120,6 +3120,19 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           playDispatchVoice(guild.id, ttsBuffer);
         } catch {}
       }
+    } else if (parsed.code === '10-4') {
+      // 10-4 is just a verbal "copy/acknowledged" - not a real duty status.
+      // Don't overwrite the officer's actual status (10-8, 10-76, etc.) in the
+      // DB/portal with it; only speak an acknowledgment when addressed directly.
+      if (hadTrigger && !dispatchResponse && config.aiEnabled && hasAIKey()) {
+        try {
+          const { playDispatchVoice } = await import('../utils/voiceListener.js');
+          const ttsBuffer = await generateDispatchTTS(`Copy ${ttsName}.`);
+          playDispatchVoice(guild.id, ttsBuffer);
+        } catch (err) {
+          console.error('[Dispatch TTS] 10-4 ack error:', err.message);
+        }
+      }
     } else if (parsed.code) {
       const existing = await OfficerStatus.findOne({ guildId: guild.id, userId });
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
