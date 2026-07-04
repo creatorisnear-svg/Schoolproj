@@ -1620,7 +1620,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const historyMessages = radioLog.flatMap(entry => [
     { role: 'user', content: `${entry.officer}: "${entry.said}"` },
     { role: 'assistant', content: entry.response },
-  ]).slice(-8);
+  ]).slice(-4);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -1632,10 +1632,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    // Use the best available model - dispatch quality matters more than a few hundred ms latency.
-    // llama-3.3-70b-versatile is dramatically better at following nuanced radio style instructions.
-    const model = provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
-    const maxTokens = 100;
+    // llama-3.1-8b-instant is Groq's fastest model - dispatch replies are short,
+    // clipped radio chatter so the smaller/faster model keeps up fine and cuts
+    // response latency significantly vs the 70b model. OpenAI fallback unchanged.
+    const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
+    const maxTokens = 60;
     try {
       const response = await client.chat.completions.create({
         model,
