@@ -2,6 +2,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelec
 import AppyConfig from '../models/AppyConfig.js';
 import AppyPanel from '../models/AppyPanel.js';
 import AppySubmission from '../models/AppySubmission.js';
+import AppyDraft from '../models/AppyDraft.js';
 import Config from '../models/Config.js';
 
 async function _postAppyLog(client, guildId, { action, applicantId, applicantUsername, panelName, staffUser }) {
@@ -32,10 +33,76 @@ function _clearSession(userId) {
   const session = _activeSessions.get(userId);
   if (session?.timeout) clearTimeout(session.timeout);
   _activeSessions.delete(userId);
+  AppyDraft.deleteOne({ userId }).catch(() => {});
 }
 
 export function hasActiveAppySession(userId) {
   return _activeSessions.has(userId);
+}
+
+function _saveDraft(userId, session) {
+  AppyDraft.findOneAndUpdate(
+    { userId },
+    {
+      userId,
+      guildId: session.guildId,
+      typeId: session.typeId,
+      panelName: session.panelName,
+      questionIndex: session.questionIndex,
+      answers: session.answers,
+      updatedAt: new Date(),
+    },
+    { upsert: true }
+  ).catch(err => console.error('[Appys] Failed to save draft:', err.message));
+}
+
+// Restore in-progress applications from MongoDB on bot startup so that a
+// restart (Koyeb redeploy, dev server bounce, etc.) mid-application doesn't
+// silently drop the applicant's answers and orphan their session.
+export async function restoreAppyDrafts(client) {
+  let drafts;
+  try {
+    drafts = await AppyDraft.find({});
+  } catch (err) {
+    console.error('[Appys] Failed to restore drafts:', err.message);
+    return;
+  }
+
+  for (const draft of drafts) {
+    const userId = draft.userId;
+
+    // Stale draft with no matching questions left (panel edited/deleted) - drop it.
+    const panel = await AppyPanel.findOne({ typeId: draft.typeId }).catch(() => null);
+    if (!panel || draft.questionIndex >= panel.questions.length) {
+      await AppyDraft.deleteOne({ userId }).catch(() => {});
+      continue;
+    }
+
+    const makeTimeout = (panelName) => setTimeout(async () => {
+      _activeSessions.delete(userId);
+      await AppyDraft.deleteOne({ userId }).catch(() => {});
+      const timeoutEmbed = new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Application Timed Out')
+        .setDescription(`Your application for **${panelName}** was cancelled due to inactivity.\n-# You can restart the application at any time.`)
+        .setFooter({ text: 'RPM' });
+      client.users.fetch(userId).then(u => u.send({ embeds: [timeoutEmbed] }).catch(() => {})).catch(() => {});
+    }, 30 * 60 * 1000);
+
+    _activeSessions.set(userId, {
+      typeId: draft.typeId,
+      guildId: draft.guildId,
+      questionIndex: draft.questionIndex,
+      answers: draft.answers.map(a => ({ question: a.question, answer: a.answer })),
+      panelName: draft.panelName,
+      timeout: makeTimeout(draft.panelName),
+      makeTimeout,
+    });
+  }
+
+  if (drafts.length > 0) {
+    console.log(`[Appys] Restored ${drafts.length} in-progress application session(s) from database.`);
+  }
 }
 
 function _errEmbed(msg) {
@@ -130,7 +197,7 @@ export async function handleAppyTypeSelect(interaction, client) {
     interaction.user.send({ embeds: [timeoutEmbed] }).catch(() => {});
   }, 30 * 60 * 1000);
 
-  _activeSessions.set(userId, {
+  const newSession = {
     typeId,
     guildId,
     questionIndex: 0,
@@ -138,7 +205,9 @@ export async function handleAppyTypeSelect(interaction, client) {
     panelName: panel.name,
     timeout: makeTimeout(panel.name),
     makeTimeout,
-  });
+  };
+  _activeSessions.set(userId, newSession);
+  _saveDraft(userId, newSession);
 
   await interaction.reply({ embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Check your DMs to complete your application.').setFooter({ text: 'RPM' })], flags: 64 });
 }
@@ -160,6 +229,7 @@ export async function handleDMReply(message, client) {
     // Reset the 30-min timer for the next question
     clearTimeout(session.timeout);
     session.timeout = session.makeTimeout(session.panelName);
+    _saveDraft(message.author.id, session);
 
     const nextEmbed = new EmbedBuilder()
       .setColor('#2d2d2d')

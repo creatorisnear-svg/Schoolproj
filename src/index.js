@@ -730,6 +730,13 @@ client.once('clientReady', async () => {
   console.log(`[BOT] Logged in as ${client.user.tag}`);
   console.log('[SYNC] Clearing old command cache...');
   console.log(`[BOT] Bot ID: ${client.user.id}`);
+
+  try {
+    const { restoreAppyDrafts } = await import('./handlers/appyHandler.js');
+    await restoreAppyDrafts(client);
+  } catch (err) {
+    console.error('[Appys] Failed to restore drafts on startup:', err.message);
+  }
   
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
