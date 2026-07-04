@@ -419,7 +419,7 @@ export async function moveToChannel(channel) {
         console.log('[Dispatch] No join audio cached - generating now...');
         try {
           const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
-          const buf = await generateDispatchTTSPublic('Dispatch online. To talk to me, say dispatch.');
+          const buf = await generateDispatchTTSPublic('Dispatch active. To talk to me, your sentence must begin with dispatch.');
           state.joinAudioBuffer = buf;
           if (state.connection === connection) {
             playDispatchVoice(guildId, buf);

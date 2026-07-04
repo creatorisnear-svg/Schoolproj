@@ -4572,7 +4572,7 @@ export async function initDispatchForGuild(guild, client) {
 
     let joinAudioBuffer = null;
     try {
-      joinAudioBuffer = await generateDispatchTTS('Dispatch online. To talk to me, say dispatch.');
+      joinAudioBuffer = await generateDispatchTTS('Dispatch active. To talk to me, your sentence must begin with dispatch.');
       console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
     } catch (err) {
       console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
