@@ -309,6 +309,7 @@ export async function handleDMReply(message, client) {
   }
 
   const resolvedReviewChannelId = panel.reviewChannelId || config?.reviewChannelId;
+  console.log(`[Appys] Review routing — panel.reviewChannelId: ${panel.reviewChannelId}, config.reviewChannelId: ${config?.reviewChannelId}, resolved: ${resolvedReviewChannelId}`);
   if (!resolvedReviewChannelId) {
     console.error(`[Appys] No reviewChannelId set for type ${session.typeId} or guild ${session.guildId} - submission ${submissionId} not posted for review`);
     return;
