@@ -162,7 +162,17 @@ export async function handleAppyTypeSelect(interaction, client) {
   const guildId = interaction.guildId;
 
   if (_activeSessions.has(interaction.user.id)) {
-    return interaction.reply({ embeds: [_errEmbed('You already have an active application in progress. Check your DMs.')], flags: 64 });
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('appy_cancel_session')
+      .setLabel('Cancel Current Application')
+      .setStyle(ButtonStyle.Danger);
+    const row = new ActionRowBuilder().addComponents(cancelBtn);
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Application In Progress')
+      .setDescription('You already have an active application in progress. Check your DMs to continue.\n\n-# Cancel it to start a different one. This cannot be undone.')
+      .setFooter({ text: 'RPM' });
+    return interaction.reply({ embeds: [embed], components: [row], flags: 64 });
   }
 
   let panel, config;
@@ -331,6 +341,24 @@ export async function handleDMReply(message, client) {
   } catch (err) {
     console.error('[Appys] Failed to post review message:', err.message);
   }
+}
+
+export async function handleAppyCancelSession(interaction, client) {
+  if (!_activeSessions.has(interaction.user.id)) {
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('No Active Application')
+      .setDescription('You have no active application in progress.')
+      .setFooter({ text: 'RPM' });
+    return interaction.update({ embeds: [embed], components: [] });
+  }
+  _clearSession(interaction.user.id);
+  const embed = new EmbedBuilder()
+    .setColor('#2d2d2d')
+    .setTitle('Application Cancelled')
+    .setDescription('Your application has been cancelled. You can now start a new one.')
+    .setFooter({ text: 'RPM' });
+  await interaction.update({ embeds: [embed], components: [] });
 }
 
 export async function handleAppyCancelPending(interaction, client) {
