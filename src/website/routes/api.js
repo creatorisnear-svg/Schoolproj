@@ -935,6 +935,8 @@ export function createApiRouter(client) {
             questions: t.questions || [],
             acceptRoleId: t.acceptRoleId || null,
             acceptRoleName: t.acceptRoleId ? (guild.roles.cache.get(t.acceptRoleId)?.name || 'Unknown Role') : null,
+            reviewPingRoleId: t.reviewPingRoleId || null,
+            reviewPingRoleName: t.reviewPingRoleId ? (guild.roles.cache.get(t.reviewPingRoleId)?.name || 'Unknown Role') : null,
           }));
           result.roles = roles;
           result.channels = channels;
@@ -1685,7 +1687,7 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { name, description, questions, acceptRoleId } = req.body;
+    const { name, description, questions, acceptRoleId, reviewPingRoleId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
     if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
     try {
@@ -1698,6 +1700,7 @@ export function createApiRouter(client) {
         description: (description || '').trim(),
         questions: questions.map(q => q.trim()).filter(Boolean),
         acceptRoleId: acceptRoleId || null,
+        reviewPingRoleId: reviewPingRoleId || null,
       });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1710,7 +1713,7 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
-    const { name, description, questions, acceptRoleId } = req.body;
+    const { name, description, questions, acceptRoleId, reviewPingRoleId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
     if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
     try {
@@ -1722,6 +1725,7 @@ export function createApiRouter(client) {
           description: (description || '').trim(),
           questions: questions.map(q => q.trim()).filter(Boolean),
           acceptRoleId: acceptRoleId || null,
+          reviewPingRoleId: reviewPingRoleId || null,
         }
       );
       res.json({ success: true });

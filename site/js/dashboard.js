@@ -1794,6 +1794,8 @@ function renderAppySettings(data) {
     '<input id="appy-desc" type="text" class="config-input" placeholder="Short description shown in the select menu (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Role (optional - pinged when a submission arrives; only this role can accept or deny)</div>' +
+    '<select id="appy-ping-role" class="config-select"><option value="">No ping role</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-questions-list\')">+ Add Question</button>' +
@@ -1809,7 +1811,8 @@ function renderAppySettings(data) {
           '<span class="config-label" style="font-size:13px;">' + esc(t.name) + '</span>' +
           (t.description ? '<div class="config-sublabel">' + esc(t.description) + '</div>' : '') +
           '<div class="config-sublabel">' + t.questions.length + ' question' + (t.questions.length === 1 ? '' : 's') +
-          (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') + '</div>' +
+          (t.acceptRoleName ? ' | Accept role: @' + esc(t.acceptRoleName) : '') +
+          (t.reviewPingRoleName ? ' | Ping role: @' + esc(t.reviewPingRoleName) : '') + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
           '<button class="btn btn-secondary btn-sm" onclick="loadAppyEditForm(\'' + esc(t.typeId) + '\')">Edit</button>' +
@@ -1826,6 +1829,8 @@ function renderAppySettings(data) {
     '<input id="appy-edit-desc" type="text" class="config-input" placeholder="Short description (optional)">' +
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
     '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Role (optional - pinged when a submission arrives; only this role can accept or deny)</div>' +
+    '<select id="appy-edit-ping-role" class="config-select"><option value="">No ping role</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-edit-questions-list\')">+ Add Question</button>' +
@@ -1885,6 +1890,7 @@ function loadAppyEditForm(typeId) {
     document.getElementById('appy-edit-name').value = t.name || '';
     document.getElementById('appy-edit-desc').value = t.description || '';
     document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
+    document.getElementById('appy-edit-ping-role').value = t.reviewPingRoleId || '';
     document.getElementById('appy-edit-id').value = typeId;
     var list = document.getElementById('appy-edit-questions-list');
     list.innerHTML = '';
@@ -1906,6 +1912,7 @@ function saveAppyType(isEdit) {
   var name = (document.getElementById(prefix + 'name').value || '').trim();
   var desc = (document.getElementById(prefix + 'desc').value || '').trim();
   var roleId = document.getElementById(prefix + 'role').value || null;
+  var pingRoleId = document.getElementById(prefix + 'ping-role').value || null;
   var typeId = isEdit ? (document.getElementById('appy-edit-id').value || '') : '';
   var qClass = isEdit ? '.appy-edit-question-input' : '.appy-question-input';
   var questions = Array.from(document.querySelectorAll(qClass)).map(function(i) { return i.value.trim(); }).filter(Boolean);
@@ -1914,7 +1921,7 @@ function saveAppyType(isEdit) {
   var url = isEdit ? '/guild/' + currentGuild.id + '/appys/type/' + typeId : '/guild/' + currentGuild.id + '/appys/type';
   var method = isEdit ? 'PUT' : 'POST';
   _pendingScrollRestore = getDashScrollPos();
-  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId }) }).then(function(r) {
+  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId, reviewPingRoleId: pingRoleId }) }).then(function(r) {
     if (r && r.success) { toast(isEdit ? 'Application updated' : 'Application created'); renderSettings('appys'); }
     else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });

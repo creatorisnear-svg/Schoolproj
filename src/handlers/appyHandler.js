@@ -334,7 +334,13 @@ export async function handleDMReply(message, client) {
   const row = new ActionRowBuilder().addComponents(acceptBtn, denyBtn);
 
   try {
-    const reviewMsg = await reviewChannel.send({ embeds: [reviewEmbed], components: [row] });
+    const pingContent = panel.reviewPingRoleId ? `<@&${panel.reviewPingRoleId}>` : undefined;
+    const reviewMsg = await reviewChannel.send({
+      content: pingContent,
+      embeds: [reviewEmbed],
+      components: [row],
+      allowedMentions: panel.reviewPingRoleId ? { roles: [panel.reviewPingRoleId] } : { roles: [] },
+    });
     submission.reviewMessageId = reviewMsg.id;
     submission.reviewChannelId = config.reviewChannelId;
     await submission.save();
@@ -396,15 +402,22 @@ export async function handleAppyAccept(interaction, client) {
   let submission;
   try {
     submission = await AppySubmission.findOne({ submissionId });
-    if (!submission) return interaction.reply({ content: 'Submission not found.', flags: 64 });
-    if (submission.status !== 'pending') return interaction.reply({ content: 'This application has already been reviewed.', flags: 64 });
-  } catch { return interaction.reply({ content: 'An error occurred.', flags: 64 }); }
-
-  submission.status = 'accepted';
-  await submission.save();
+    if (!submission) return interaction.reply({ embeds: [_errEmbed('Submission not found.')], flags: 64 });
+    if (submission.status !== 'pending') return interaction.reply({ embeds: [_errEmbed('This application has already been reviewed.')], flags: 64 });
+  } catch { return interaction.reply({ embeds: [_errEmbed('An error occurred.')], flags: 64 }); }
 
   const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
   const guild = client.guilds.cache.get(submission.guildId);
+
+  if (panel?.reviewPingRoleId) {
+    const member = await guild?.members.fetch(interaction.user.id).catch(() => null);
+    if (!member?.roles.cache.has(panel.reviewPingRoleId)) {
+      return interaction.reply({ embeds: [_errEmbed('You do not have permission to review this application.')], flags: 64 });
+    }
+  }
+
+  submission.status = 'accepted';
+  await submission.save();
 
   if (panel?.acceptRoleId && guild) {
     try {
@@ -448,14 +461,22 @@ export async function handleAppyDeny(interaction, client) {
   let submission;
   try {
     submission = await AppySubmission.findOne({ submissionId });
-    if (!submission) return interaction.reply({ content: 'Submission not found.', flags: 64 });
-    if (submission.status !== 'pending') return interaction.reply({ content: 'This application has already been reviewed.', flags: 64 });
-  } catch { return interaction.reply({ content: 'An error occurred.', flags: 64 }); }
+    if (!submission) return interaction.reply({ embeds: [_errEmbed('Submission not found.')], flags: 64 });
+    if (submission.status !== 'pending') return interaction.reply({ embeds: [_errEmbed('This application has already been reviewed.')], flags: 64 });
+  } catch { return interaction.reply({ embeds: [_errEmbed('An error occurred.')], flags: 64 }); }
+
+  const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
+  const guild = client.guilds.cache.get(submission.guildId);
+
+  if (panel?.reviewPingRoleId) {
+    const member = await guild?.members.fetch(interaction.user.id).catch(() => null);
+    if (!member?.roles.cache.has(panel.reviewPingRoleId)) {
+      return interaction.reply({ embeds: [_errEmbed('You do not have permission to review this application.')], flags: 64 });
+    }
+  }
 
   submission.status = 'denied';
   await submission.save();
-
-  const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
 
   try {
     const user = await client.users.fetch(submission.userId).catch(() => null);
