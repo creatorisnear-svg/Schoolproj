@@ -111,7 +111,7 @@ export async function handleAppyTypeSelect(interaction, client) {
     .setColor('#2d2d2d')
     .setTitle(panel.name)
     .setDescription(`### Application Started\n\n**Question 1 of ${panel.questions.length}**\n${panel.questions[0]}`)
-    .setFooter({ text: 'RPM | Reply to this message with your answer. You have 30 minutes per question.' });
+    .setFooter({ text: 'RPM | Just send your answer as a message below. You have 30 minutes per question.' });
 
   try {
     await interaction.user.send({ embeds: [firstEmbed] });
@@ -165,7 +165,7 @@ export async function handleDMReply(message, client) {
       .setColor('#2d2d2d')
       .setTitle(panel.name)
       .setDescription(`**Question ${session.questionIndex + 1} of ${panel.questions.length}**\n${panel.questions[session.questionIndex]}`)
-      .setFooter({ text: 'RPM | Reply with your answer. You have 30 minutes per question.' });
+      .setFooter({ text: 'RPM | Just send your answer as a message below. You have 30 minutes per question.' });
     await message.author.send({ embeds: [nextEmbed] }).catch(() => {});
     return;
   }
