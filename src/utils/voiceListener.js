@@ -149,7 +149,7 @@ async function _run911Poll(guildId) {
       console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
       try {
         const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
-        const ttsText = `Attention all units. 9-1-1 emergency. ${call.issue} at ${call.location}. All available units respond.`;
+        const ttsText = `Attention all units. Nine one one emergency call. ${call.issue} at ${call.location}. All available units respond.`;
         const ttsBuffer = await generateDispatchTTSPublic(ttsText);
         await playDispatchVoice(guildId, ttsBuffer, { urgent: true });
       } catch (ttsErr) {

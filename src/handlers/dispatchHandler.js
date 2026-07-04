@@ -2276,7 +2276,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
         if (!call) {
           console.log('[Dispatch] No active 911 calls to attach to');
-          const ttsNoCall = `Negative ${ttsName}, there are no active 911 calls at this time.`;
+          const ttsNoCall = `Negative ${ttsName}, there are no active nine one one calls at this time.`;
           addToRadioLog(guild.id, cleanNameForTTS(officerName), fullVoiceContext || transcript, ttsNoCall);
           if (config.aiEnabled && hasAIKey()) {
             const { playDispatchVoice } = await import('../utils/voiceListener.js');
@@ -4537,7 +4537,7 @@ async function checkUnrespondedCalls(guild, client) {
           const { playDispatchVoice, getDispatchState } = await import('../utils/voiceListener.js');
           const state = getDispatchState?.(guild.id);
           if (state?.connection) {
-            let ttsText = `Attention all units, reminder, we still have an active 911 call with no responding units. `;
+            let ttsText = `Attention all units, reminder, we still have an active nine one one call with no responding units. `;
             if (call.issue) ttsText += `${call.issue}. `;
             if (call.location) ttsText += `Location: ${call.location}. `;
             ttsText += `Any available unit, please respond.`;
