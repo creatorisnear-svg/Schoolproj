@@ -7,7 +7,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 
 ## User Preferences
 - All bot responses must use Discord embeds
-- Minimalist UI: all embeds use `#2d2d2d` color, footer `RPM`, no emojis anywhere
+- Minimalist UI: all embeds use `#2d2d2d` color (except Priority Tracker: red while active, orange while on cooldown), footer `RPM`, no emojis anywhere
 - Discord markdown formatting (`### headers`, `-# subtext`, `` `code blocks` ``) preferred
 - MongoDB for all persistent data storage
 - Staff and Admins have full access to all commands; general members restricted to roleplay/verification commands only
@@ -15,22 +15,46 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 
 ---
 
+## CRITICAL — Read Before Editing Anything
+
+1. **Two dashboards exist — always edit `site/`, not `src/website/public/`.**
+
+   | File | Served by | Who sees it |
+   |------|-----------|-------------|
+   | `site/js/dashboard.js` + `site/css/style.css` | Cloudflare Pages | All users at roleplaymanager.xyz — **edit this one** |
+   | `src/website/public/js/dashboard.js` + `.../style.css` | Koyeb Express | Legacy/secondary, rarely needed |
+
+   Same rule for the dev panel: `roleplaymanager.xyz/dev` is served from **`site/dev/index.html`** (Cloudflare Pages), NOT `src/website/views/devpanel.html` (Koyeb-only). The dev panel calls the Koyeb API (`API_BASE` in that file) with `Authorization: Bearer <DEV_PASSWORD>`.
+
+2. **Replit is dev-only.** Changes must be pushed to GitHub to reach production — Cloudflare Pages auto-deploys in ~30s, Koyeb takes ~2min. The bot may not connect to MongoDB/Discord properly inside Replit itself.
+
+3. **Every Mongoose model must use the guard pattern**, or ESM dynamic re-imports throw "Cannot overwrite model once compiled" in production:
+   ```js
+   export default mongoose.models.ModelName || mongoose.model('ModelName', schema);
+   ```
+
+4. **Never remove the Replit UDP bypass** in `src/utils/voiceListener.js`. Discord voice servers never reply to UDP from Replit (inbound blocked), so `@discordjs/voice`'s `performIPDiscovery()` hangs forever. The bypass intercepts `net.stateChange` at code 2 and emits a synthetic 74-byte fake IP discovery response. Without it, voice connections hang at `connecting` forever on Replit. (Outbound TTS UDP works fine — only inbound is blocked.)
+
+5. **MongoDB may disconnect on Replit.** Any timed interval that queries MongoDB should guard with `if (mongoose.connection.readyState !== 1) return;` to avoid log spam / errors when the connection drops (see the Civilian Jobs expiry interval in `src/index.js`).
+
+6. **`@discordjs/voice` must stay ≥ `0.19.2`** for DAVE (Discord Audio/Video E2E Encryption) support — older versions get rejected with close code 4017. `@snazzah/davey` is a required peer dependency.
+
+---
+
 ## Deployment Architecture
 
-### Where Things Run
 ```
 GitHub repo (single codebase)
-  ├── Koyeb Instance 1 → Bot + API server (npm start)
-  │     PORT=8000, all src/ code, Express API at /api/*
+  ├── Koyeb Instance → Bot + API server (npm start → src/index.js), PORT=8000
+  │     Portal also mounted here at /portal
   └── Cloudflare Pages → Static site (site/ directory)
         Auto-deploys on GitHub push, custom domain roleplaymanager.xyz
 ```
 
 - **Bot + API**: Koyeb, `npm start` → `src/index.js`, Express on port 8000
 - **Static site**: Cloudflare Pages, `site/` directory, no build step, auto-deploys
-- **Database**: MongoDB Atlas, shared between both Koyeb instances
-- **Portal**: Runs on same Koyeb instance as bot, mounted at `/portal`
-- **Replit**: Development environment only - bot may not connect to MongoDB/Discord properly here
+- **Portal**: same Koyeb instance as the bot, mounted at `/portal`
+- **Database**: MongoDB Atlas, shared across everything
 
 ### Required Environment Variables (set on Koyeb)
 ```
@@ -54,389 +78,94 @@ TOPGG_WEBHOOK_SECRET   - Secret set in top.gg dashboard to verify incoming vote 
 
 ---
 
-## CRITICAL: Two Separate Dashboard Files + Dev Panel Location
-
-**This is the most important thing for any AI working on this project.**
-
-There are TWO completely separate dashboard implementations:
-
-| File | Served by | Who sees it | Edit for |
-|------|-----------|-------------|----------|
-| `site/js/dashboard.js` + `site/css/style.css` | Cloudflare Pages | All users at roleplaymanager.xyz | **User-facing changes** |
-| `src/website/public/js/dashboard.js` + `src/website/public/css/style.css` | Koyeb Express | Direct API server access only | Rarely needed |
-
-**Always edit `site/` for anything the user sees in their browser.**
-The Koyeb dashboard (`src/website/public/`) is a secondary/legacy version. `site/` is the live production dashboard.
-
-### Dev Panel — also in `site/`, NOT Koyeb
-
-The developer panel at `roleplaymanager.xyz/dev` is **`site/dev/index.html`**, served by **Cloudflare Pages**.
-- `src/website/views/devpanel.html` exists but is served by Koyeb at the Koyeb subdomain — users do NOT access it through roleplaymanager.xyz.
-- **Always edit `site/dev/index.html`** for anything visible at roleplaymanager.xyz/dev.
-- Cloudflare Pages auto-deploys on GitHub push (~30 seconds). Koyeb deploys take longer (~2 minutes).
-- Replit is dev-only: changes must be pushed to GitHub to reach the live site on either host.
-- The `site/dev/index.html` dev panel calls the Koyeb API at `API_BASE = https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app` with `Authorization: Bearer <DEV_PASSWORD>`.
-- Verified Members API: `GET /dev/verified/:guildId` returns `{ userId, discordName, psnxbox, ipAddress, verifiedAt }`.
-
----
-
 ## Bot Architecture
 
-### Entry Point
-`src/index.js` - connects to MongoDB, logs into Discord, starts Express server, loads all handlers, registers slash commands.
-
-### Command Handlers (`src/handlers/`)
-- `economyHandler.js` - Economy system, civilian jobs, store, income
-- `economyActions.js` - Economy action execution (work, crime, gamble, etc.)
-- `dispatchHandler.js` - AI voice dispatch interactions
-- `verifyHandler.js`, `strikeHandler.js`, `ticketHandler.js`, etc.
-
-### Models (`src/models/`)
-All Mongoose models. Every model MUST use the guard pattern:
-```js
-export default mongoose.models.ModelName || mongoose.model('ModelName', schema);
-```
-Known models: `Announcement`, `AuthorizedUser`, `AutoJoin`, `AutoRole`, `BOLO`, `CADCharacter`, `CADConfig`, `Changelog`, `CivilianJobConfig`, `Config`, `DispatchConfig`, `EconomyBalance`, `EconomyConfig`, `EconomyInventory`, `EconomyStore`, `EmergencyCall`, `FeatureFlag`, `JobAssignment`, `MemberMovementConfig`, `OfficerStatus`, `PendingVerification`, `PremiumKey`, `PreviewVideo`, `Priority`, `PriorityRequest`, `ReactionRole`, `RoleplayCalendar`, `RoleplayCommands`, `RoleRequestConfig`, `RoleRequest`, `Staff`, `StatusHeartbeat`, `Sticky`, `Strike`, `StripeConfig`, `TicketConfig`, `Ticket`, `TrafficTicket`, `Verification`, `Welcome`
-
-### Utilities (`src/utils/`)
-- `premiumCheck.js` - `checkFeatureAccess(guildId, featureKey)`, `isPremiumGuild(guildId)`, `clearPremiumCache()`, `clearFeatureFlagCache()`. Results cached 5 minutes.
-- `embedBuilder.js` - `successEmbed`, `errorEmbed`, standard embed helpers
-- `permissions.js` - `checkStaffPermission`
-- `voiceListener.js` - AI dispatch voice pipeline + **CRITICAL Replit UDP bypass** (see below)
-
-### Slash Commands (`src/commands/`)
-All commands registered globally. Key commands:
-- `/economysetup` - Economy admin panel (dropdown with all economy config options)
-- `/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase` - Roleplay command menus
-- `/dispatchsetup` - AI dispatch configuration (admin only)
-- `/dev` - Developer control panel (protected by DEV_PASSWORD)
-- `/activatepremium` - Activate premium key for a server
-- Member economy: `/balance`, `/work`, `/crime`, `/rob`, `/gamble`, `/shop`, `/buy`, `/sell`, `/inventory`, `/give`, `/giveitems`, `/deposit`, `/withdraw`, `/leaderboard`, `/income`, `/use`
+- **Entry point**: `src/index.js` — connects to MongoDB, logs into Discord, starts Express server, loads all handlers, registers slash commands.
+- **Handlers** (`src/handlers/`): `economyHandler.js`, `economyActions.js`, `dispatchHandler.js`, `verifyHandler.js`, `strikeHandler.js`, `ticketHandler.js`, `appyHandler.js`, etc.
+- **Models** (`src/models/`): `Announcement`, `AuthorizedUser`, `AutoJoin`, `AutoRole`, `BOLO`, `CADCharacter`, `CADConfig`, `Changelog`, `CivilianJobConfig`, `Config`, `DispatchConfig`, `EconomyBalance`, `EconomyConfig`, `EconomyInventory`, `EconomyStore`, `EmergencyCall`, `FeatureFlag`, `JobAssignment`, `MemberMovementConfig`, `OfficerStatus`, `PendingVerification`, `PremiumKey`, `PreviewVideo`, `Priority`, `PriorityRequest`, `ReactionRole`, `RoleplayCalendar`, `RoleplayCommands`, `RoleRequestConfig`, `RoleRequest`, `Staff`, `StatusHeartbeat`, `Sticky`, `Strike`, `StripeConfig`, `TicketConfig`, `Ticket`, `TrafficTicket`, `Verification`, `Welcome`, `AppyConfig`, `AppyPanel`, `AppySubmission`
+- **Utilities** (`src/utils/`): `premiumCheck.js` (`checkFeatureAccess`, `isPremiumGuild`, `clearPremiumCache`, `clearFeatureFlagCache`, cached 5 min), `embedBuilder.js` (`successEmbed`/`errorEmbed`), `permissions.js` (`checkStaffPermission`), `voiceListener.js` (AI dispatch voice pipeline + UDP bypass, see Critical section)
+- **Slash commands** (`src/commands/`), registered globally: `/economysetup`, `/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`, `/dispatchsetup`, `/dev`, `/activatepremium`, plus member economy commands (`/balance`, `/work`, `/crime`, `/rob`, `/gamble`, `/shop`, `/buy`, `/sell`, `/inventory`, `/give`, `/giveitems`, `/deposit`, `/withdraw`, `/leaderboard`, `/income`, `/use`)
 
 ---
 
 ## Feature Details
 
-### Permission System
-- Discord `Administrator` flag = full access
-- Staff database (`Staff` model) = staff access
-- General members = roleplay/verification commands only
-
-### Feature Flag System
-- MongoDB `FeatureFlag` model stores which features are premium-gated
-- `GET /api/public/features` - public map of `{ featureKey: isPremium }`
-- `PATCH /dev/features/:feature` - toggle premium status (dev password protected)
-- Default: `dispatch` is premium; everything else free unless set in DB
-- Dashboard fetches flags on load and shows Premium badges + blocks enabling premium features without a key
-
-### Premium System
-- Keys stored in `PremiumKey` model, lock to one guild
-- Free limits: 100 characters, 200 vehicles, 100 firearms, 20 BOLOs
-- AI Voice Dispatch requires premium
-- `/activatepremium <key>` in Discord, or via Stripe checkout on website
-- Checks cached 5 minutes; `clearPremiumCache(guildId)` to bust immediately
-
-### Logging System
-- `/setlogchannel` sets a guild log channel (`Config` model)
-- Most moderation actions post to the log channel
-
-### AI Voice Dispatch
-- Officers speak in patrol voice channels; bot transcribes with Whisper, generates dispatcher reply with GPT-4o-mini
-- 10-codes parsed: 10-4, 10-8, 10-11, 10-80, 10-99 (panic), etc.
-- CAD voice queries: "dispatch, run plate [X]" or "dispatch, run name [X]"
-- Status board: live embed showing officer statuses + active 911 calls
-- 911 call repeat announcements every 2 minutes for unresponded calls
-- Configured per-guild via `/dispatchsetup`; requires `OPENAI_API_KEY`
-- Models: `DispatchConfig`, `OfficerStatus`
-
-### CRITICAL: Replit UDP Bypass (voiceListener.js)
-Discord's voice servers never reply to UDP from Replit (inbound UDP blocked). `@discordjs/voice` calls `performIPDiscovery()` which hangs forever. Fix: intercept `net.stateChange` at code 2 and emit a synthetic 74-byte fake IP discovery response on the dgram socket. **Never remove this bypass** - without it voice hangs at `connecting` forever. TTS outbound UDP works fine (only inbound blocked).
-
-### Economy System
-Full currency economy. `EconomyConfig` stores per-guild settings. Key mechanics:
-- Cash + bank balance (`EconomyBalance`)
-- Work/crime with configurable success rates and payouts
-- Robbery between members
-- Gambling (blackjack, roulette, slots, dice, russian roulette, cockfight)
-- Role income (periodic payouts for role holders)
-- Chat money (earn small amounts by chatting)
-- Store + inventory (`EconomyStore`, `EconomyInventory`)
-- ~140 GTA V built-in vehicles in shop (`src/data/gtaVehicles.js`) - merged at display time, no DB seeding
-
-### Civilian Jobs
-- `CivilianJobConfig` - stores guild jobs list + job board channel
-- `JobAssignment` - tracks active role assignments with `expiresAt`
-- Job board panel posted to Discord channel via button interactions
-- Role auto-removed after `durationHours` expires (interval in `src/index.js`)
-- **Bug fix (June 2026):** expiry interval now checks `mongoose.connection.readyState === 1` before querying to prevent log spam when MongoDB is disconnecting
-
-### Voice Mover (Member Self-Move)
-- `MemberMovementConfig` - stores `enabled`, `panelChannelId`, `allowedChannelIds`
-- Members click a panel button to see available voice channels and move themselves
-- Panel posted via Discord bot; configured via dashboard
-- API: `GET/POST /api/guild/:id/settings/moveme`, `POST /api/guild/:id/settings/moveme/panel/send`
-
-### Applications (Appys) — Premium Feature
-- **Models**: `AppyConfig` (per-guild config + panel visual settings), `AppyPanel` (individual application types, stored as typeId), `AppySubmission` (per-submission record)
-- **Flow**: Staff creates application types (name, description, questions[], optional acceptRoleId) via dashboard. Staff sends a panel embed to a channel (optionally via webhook). Members click "Click here for applications" → ephemeral StringSelectMenu lists all types → member picks one → bot DMs questions one-by-one → submission posted to review channel with Accept/Deny buttons → staff accepts/denies → user DM'd + role assigned if configured.
-- **Premium gated**: `appys` in `DEFAULT_PREMIUM_FEATURES` in api.js; feature toggle blocked if not premium; dashboard shows Premium badge.
-- **DM timeout**: 10 minutes of inactivity cancels the session (in-memory Map).
-- **Re-apply block**: checked against pending AppySubmission before starting DM flow.
-- **Panel image**: staff pastes a direct image URL (shown via `embed.setImage`).
-- **Webhook send**: if `useWebhook + webhookUrl` set on AppyConfig, panel is POSTed to Discord webhook with `?wait=true` instead of bot sending directly.
-- **Button routing**: `appy_open` → `handleAppyOpen`; `appy_type_select` select menu → `handleAppyTypeSelect`; `appy_accept_*` / `appy_deny_*` → `handleAppyAccept` / `handleAppyDeny` (all in `src/handlers/appyHandler.js`)
-- **DM routing**: `messageCreate` in `src/index.js` handles DMs (no guild) by calling `handleDMReply` from appyHandler.
-- **API**: `GET/POST /api/guild/:id/settings/appys`, `POST /api/guild/:id/appys/type`, `PUT /api/guild/:id/appys/type/:typeId`, `DELETE /api/guild/:id/appys/type/:typeId`, `POST /api/guild/:id/appys/panel/send`
-- **Dashboard**: sidebar Community → Applications; `renderAppySettings(data)` + `openAppyCreateForm`, `saveAppyType`, `editAppyType`, `deleteAppyType`, `sendAppyPanel` helpers.
-
-### Verification System
-Customizable RP tags, questions, welcome messages, role assignment. Panel posted to a channel; members click to open a verification modal.
-
-### Strike System
-Multi-level (1-4) with configurable actions: role assignment, kick, timeout, ban.
-
-### Ticket Support
-Custom ticket types (up to 5 free, unlimited premium). Each type = button on panel. Modal opens on button click, creates a private channel. Types reload from MongoDB on each submit (prevents session expiry bugs).
-
-### Anti-Promoting
-Detects non-whitelisted Discord invite links, removes them. Whitelisted links stored per-guild. Staff bypass available.
-
-### Reaction Roles
-Up to 5 emoji-role pairs per message, configurable for any message.
-
-### Sticky Messages
-Auto-reposts configured message after every new message in the channel with `__**Stickied Message:**__` prefix.
+- **Permissions**: Discord `Administrator` = full access; `Staff` model = staff access; general members = roleplay/verification commands only.
+- **Feature flags**: `FeatureFlag` model marks premium-gated features. `GET /api/public/features` (public), `PATCH /dev/features/:feature` (dev-password protected). Default: only `dispatch` and `appys` are premium.
+- **Premium**: `PremiumKey` model, locked to one guild. Free limits: 100 characters, 200 vehicles, 100 firearms, 20 BOLOs. `/activatepremium <key>` or Stripe checkout. Cached 5 min; `clearPremiumCache(guildId)` busts immediately.
+- **Logging**: `/setlogchannel` sets a guild log channel (`Config` model); most moderation actions post there.
+- **AI Voice Dispatch**: Officers speak in patrol voice channels → Whisper transcription → GPT-4o-mini dispatcher reply. Parses 10-codes (10-4, 10-8, 10-11, 10-80, 10-99 panic). Voice CAD queries ("dispatch, run plate/name [X]"). Live status board embed + 911 repeat announcements every 2 min. Configured via `/dispatchsetup`; requires `OPENAI_API_KEY`. Models: `DispatchConfig`, `OfficerStatus`.
+- **Economy**: `EconomyConfig` per guild. Cash/bank (`EconomyBalance`), work/crime/rob, gambling (blackjack, roulette, slots, dice, russian roulette, cockfight), role income, chat money, store + inventory (`EconomyStore`, `EconomyInventory`). ~140 built-in GTA V vehicles (`src/data/gtaVehicles.js`), merged at display time (not seeded to DB).
+- **Civilian Jobs**: `CivilianJobConfig` (jobs list + job board channel), `JobAssignment` (active assignments with `expiresAt`). Job board panel via buttons; role auto-removed after `durationHours` via interval in `src/index.js`.
+- **Voice Mover**: `MemberMovementConfig` (`enabled`, `panelChannelId`, `allowedChannelIds`). Members click a panel button to self-move between allowed voice channels.
+- **Applications (Appys)** — premium: `AppyConfig`/`AppyPanel`/`AppySubmission` models. Staff define application types (name, description, questions[], optional acceptRoleId) and send a panel (bot or webhook). Members pick a type from a select menu → bot DMs questions one-by-one (10 min inactivity timeout, blocks re-apply while pending) → submission posted with Accept/Deny buttons → user DM'd + role assigned on accept. Routing lives in `src/handlers/appyHandler.js`; DMs routed via `messageCreate` in `src/index.js`.
+- **Verification**: customizable RP tags, questions, welcome message, role assignment via a panel + modal.
+- **Strikes**: 4 levels, configurable punishments (role, kick, timeout, ban).
+- **Tickets**: custom types (5 free / unlimited premium), button panel → modal → private channel. Types reload from MongoDB per submission to avoid session-expiry bugs.
+- **Anti-Promoting**: removes non-whitelisted Discord invite links; per-guild whitelist; staff bypass.
+- **Reaction Roles**: up to 5 emoji-role pairs per message.
+- **Sticky Messages**: reposts a configured message after every new message, prefixed `__**Stickied Message:**__`.
 
 ---
 
-## Website & Dashboard (Cloudflare Pages)
+## Website & Dashboard (Cloudflare Pages, `site/`)
 
-### File Structure (`site/`)
 ```
 site/
-  index.html           - Landing page
-  dashboard.html       - Dashboard SPA
-  js/
-    dashboard.js       - ALL dashboard logic (1700+ lines)
-  css/
-    style.css          - Dashboard + landing styles
-  img/
-    logo.png           - Bot logo
+  index.html      - Landing page
+  dashboard.html  - Dashboard SPA
+  dev/index.html  - Dev panel (see Critical section)
+  js/dashboard.js - ALL dashboard logic
+  css/style.css   - Dashboard + landing styles
+  img/logo.png
 ```
 
-### Authentication Flow
-1. User clicks Login → redirects to Discord OAuth2
-2. Discord redirects to `https://{DOMAIN}/auth/site/callback`
-3. Koyeb API creates JWT, redirects to `roleplaymanager.xyz/dashboard/#token=<token>`
-4. `dashboard.js` extracts token from hash, stores in `localStorage` as `dash_token`
-5. All API calls use `Authorization: Bearer <dash_token>` header
-
-### Session Persistence (survives refresh + re-auth)
-`dashboard.js` uses `localStorage` (NOT sessionStorage) to save `rpm_guild_id` and `rpm_section`. On page load, `init()` checks for a saved guild ID and jumps straight back to the last-viewed settings page instead of showing the server selector. Using localStorage means the guild selection survives full page reloads, tab closes, and OAuth re-auth redirects. Functions: `saveSession(guildId, section)`, `clearSession()`, `getSavedGuildId()`, `getSavedSection()`.
-
-### Loading Screens
-- `fullPageLoader(msg)` - animated spinner with pulsing logo, used on init and server select
-- `settingsSkeletonLoader()` - shimmer skeleton rows while settings API loads
-- CSS classes in `site/css/style.css`: `.rpm-loader`, `.rpm-spinner`, `.rpm-loader-dots`, `.skeleton`, `.skeleton-section`, `.sk-line`, `.sk-box`
-
-### Dashboard Sections
-**Overview page:** Enable/disable feature toggles for all modules, Configure Modules grid (click any card to open settings).
-
-**Sidebar groups:**
-- Roleplay: Roleplay Commands, Priority Tracker, RP Calendar
-- Moderation: Verification, Strike System, Anti-Promoting
-- Community: Ticket Support, Welcome System, Role Request, **Voice Mover**
-- Economy: Economy, **Civilian Jobs**
-- Advanced: AI Voice Dispatch, General Settings
-
-**Settings pages (all via `renderSettings(mod)`):**
-- `general` - log channel, general config
-- `roleplay` - 911, CAD, Twitter, anon channels
-- `verification` - gate channel, roles, questions; "Send Panel" button
-- `strikes` - levels 1-4, punishments, channels
-- `tickets` - ticket types CRUD + panel send (type picker)
-- `welcome` - channel + DM embed config
-- `antipromo` - whitelisted links CRUD
-- `rolerequest` - requestable roles CRUD (with approver roles)
-- `priority` - priority event channel, cooldown
-- `calendar` - scheduled events CRUD + "Post Calendar" button
-- `economy` - grouped settings (general/work/crime/rob/gambling/chatmoney) + Role Income CRUD + Store Items CRUD
-- `moveme` - enabled toggle + panel channel + allowed voice channels list + "Send Panel" button
-- `civjobs` - job board channel + jobs CRUD (name, role required, shift duration required)
-- `dispatch` - AI config + patrol/traffic/LEO channel management
-
-### Key Dashboard Functions (`site/js/dashboard.js`)
-- `api(path, opts)` - all API calls with Bearer auth, base URL = Koyeb API
-- `renderSettings(mod)` - fetches `GET /api/guild/:id/settings/:mod`, renders the appropriate section
-- `renderMovemeSettings(data)` - renders Voice Mover settings + channel picker + panel button
-- `renderCivJobsSettings(data)` - renders Civilian Jobs settings + jobs list CRUD
-- `renderEconomySettings(data)` - grouped economy fields + Role Income CRUD + Store Items CRUD
-- `renderRoleRequestSettings(data)` - requestable roles list CRUD
-- `renderDispatchExtras(data)` - patrol/traffic/LEO channel management UI
-- `showSaveBar(mod)` - shows fixed bottom save/discard bar
-- `saveSettings(mod)` - POSTs `pendingChanges` to API
-- `toggleFeature(el)` - enables/disables a module, handles premium blocking
-
-### API Base URL
-`https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app` (hardcoded in `site/js/dashboard.js` as `API_BASE`)
+- **Auth flow**: Discord OAuth2 → `/auth/site/callback` (Koyeb) → JWT via redirect to `roleplaymanager.xyz/dashboard/#token=<token>` → `dashboard.js` stores it in `localStorage.dash_token` → all API calls send `Authorization: Bearer <dash_token>`.
+- **Session persistence**: `dashboard.js` saves `rpm_guild_id`/`rpm_section` in `localStorage` (survives reloads, tab closes, OAuth re-auth). Functions: `saveSession`, `clearSession`, `getSavedGuildId`, `getSavedSection`. `renderServerSelect()` clears session on server switch.
+- **Loading UI**: `fullPageLoader(msg)` (spinner on init/server select), `settingsSkeletonLoader()` (shimmer while settings load).
+- **Sidebar groups**: Roleplay (Roleplay Commands, Priority Tracker, RP Calendar), Moderation (Verification, Strikes, Anti-Promoting), Community (Tickets, Welcome, Role Request, Voice Mover, Applications), Economy (Economy, Civilian Jobs), Advanced (AI Voice Dispatch, General Settings).
+- **Settings pages** all render via `renderSettings(mod)` → `GET /api/guild/:id/settings/:mod`. Modules: `general`, `roleplay`, `verification`, `strikes`, `tickets`, `welcome`, `antipromo`, `rolerequest`, `priority`, `calendar`, `economy`, `moveme`, `civjobs`, `dispatch`, `appys`, `staff`.
+- **Key functions**: `api(path, opts)`, `renderSettings(mod)`, module-specific renderers (`renderMovemeSettings`, `renderCivJobsSettings`, `renderEconomySettings`, `renderRoleRequestSettings`, `renderDispatchExtras`, `renderAppySettings`), `showSaveBar(mod)` / `saveSettings(mod)` (pending-changes save bar), `toggleFeature(el)` (handles premium blocking).
+- **API base URL**: hardcoded in `site/js/dashboard.js` as `API_BASE` = `https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app`.
 
 ---
 
 ## Koyeb API Server (`src/website/routes/`)
 
-### Auth (`auth.js`)
-- `GET /auth/site/callback` - OAuth2 callback for static site, returns JWT via redirect
-- `GET /dashboard/callback` - OAuth2 callback for Koyeb-served dashboard (legacy)
-- Token verification via Discord `/users/@me`
-
-### API (`api.js`)
-All routes prefixed `/api/`. Auth: `getToken(req)` checks `dash_token` cookie OR `Authorization: Bearer` header.
-
-**Guild info:**
-- `GET /api/me` - current user + admin guilds where bot is present
-- `GET /api/guild/:id` - guild info + config + premium status
-
-**Settings (all modules):**
-- `GET /api/guild/:id/settings/:mod` - get module config + fields for dashboard rendering
-  - Modules: `general`, `roleplay`, `verification`, `strikes`, `tickets`, `welcome`, `antipromo`, `rolerequest`, `priority`, `calendar`, `economy`, `dispatch`, `moveme`, `civjobs`, `staff`
-- `POST /api/guild/:id/settings/:mod` - save module settings (whitelists allowed fields per module)
-
-**Feature toggles:**
-- `POST /api/guild/:id/feature/:feature` - enable/disable a module (blocks premium features if no key)
-- `GET /api/public/features` - public feature flag map (no auth)
-
-**Module-specific CRUD:**
-- `POST /api/guild/:id/settings/tickets/types` + `DELETE .../types/:typeId`
-- `POST /api/guild/:id/settings/tickets/panel/send`
-- `POST /api/guild/:id/settings/tickets/panel/send` with `{ typeIds }`
-- `POST /api/guild/:id/settings/verification/panel/send`
-- `POST /api/guild/:id/settings/moveme/panel/send`
-- `POST /api/guild/:id/settings/calendar/events` + `DELETE .../events/:eventId`
-- `POST /api/guild/:id/settings/calendar/post`
-- `POST /api/guild/:id/settings/antipromo/links` + `DELETE .../links`
-- `POST /api/guild/:id/rolerequest/roles` + `DELETE .../roles/:roleId`
-- `GET /api/guild/:id/economy/store` + `POST` + `DELETE .../store/:itemId`
-- `POST /api/guild/:id/economy/roleincome` + `DELETE .../roleincome/:roleId`
-- `POST /api/guild/:id/civjobs/job` - add job (`name`, `description`, `roleId` required, `durationHours` required)
-- `DELETE /api/guild/:id/civjobs/job/:jobId`
-- `POST /api/guild/:id/staff/add` + `DELETE .../staff/:id`
-
-**Dev endpoints (DEV_PASSWORD protected):**
-- `GET /dev/features`, `PATCH /dev/features/:feature`
-- `/dev` panel for bot management
+- **Auth** (`auth.js`): `GET /auth/site/callback` (static site OAuth2 → JWT), `GET /dashboard/callback` (legacy Koyeb-served dashboard). Verifies tokens via Discord `/users/@me`.
+- **API** (`api.js`), all prefixed `/api/`. Auth via `getToken(req)` — `dash_token` cookie or `Authorization: Bearer`.
+  - `GET /api/me`, `GET /api/guild/:id`
+  - `GET/POST /api/guild/:id/settings/:mod` (see module list above)
+  - `POST /api/guild/:id/feature/:feature`, `GET /api/public/features`
+  - Module CRUD: tickets types/panel, verification panel, moveme panel, calendar events/post, antipromo links, rolerequest roles, economy store/roleincome, civjobs job (requires `name`, `roleId`, `durationHours`), staff add, appys type/panel (see Appys feature above)
+  - Dev endpoints (DEV_PASSWORD protected): `GET/PATCH /dev/features*`, `/dev` panel
 
 ---
 
-## Portal (Civ/LEO Web App)
+## Portal (Civ/LEO Web App, `portal/`)
 
-### Architecture
-- Express SPA mounted at `/portal` on the same Koyeb instance as the bot
-- Entry: `portal/server.js` (imports `src/index.js` for shared bot client)
-- Auth: Discord OAuth2 → HMAC-signed `portal_session` cookie (`portal/routes/auth.js`)
-- Callback: `/portal/auth/callback`
-- All API routes: `/api/portal/*` (require `portalAuth` middleware)
-
-### Frontend Files
-- `portal/views/portal.html` - single HTML shell
-- `portal/public/js/portal-app.js` - 1800+ line SPA
-- `portal/public/css/portal.css` - 2500+ line stylesheet
-
-### Portal CSS Design Language
-Dark theme: `--surface`, `--card`, `--elevated` backgrounds; `--accent` (#5865f2 Discord blue); `--danger` red; `--warning` amber. Cards: `var(--radius)` (10px), `var(--border)` borders. No emojis.
-
-### Modes
-- **Civilian mode** - default for all users
-- **LEO mode** - locked to users with LEO Discord role (`isLeo: true`)
-- Mode stored in `localStorage.portalMode`
-
-### Key Portal API Routes (`/api/portal/`)
-- `GET /me` - current user info
-- `GET /characters`, `POST /characters`, `DELETE /characters/:id` - CAD character management
-- `GET /vehicles`, `POST /vehicles` - CAD vehicle management
-- `GET /officers/overview` - read-only officer status strip (civs)
-- `GET /voice/channels` - list guild voice channels
-- `POST /voice/move` - self-move to voice channel (requires user already in voice)
-- `GET /civjobs` - available jobs
-- `POST /civjobs/checkin/:jobId` + `POST /civjobs/checkout` - job shift management
-- `POST /emergency` - 911 call submission (civ)
-- `GET /priority` - current priority status
-- Panic button → upserts `OfficerStatus` with `tenCode: '10-99', panicAnnounced: false`
-
-### Panic Button Flow
-Portal sets `OfficerStatus.panicAnnounced = false`. Bot's `voiceListener.js` runs `_startPanicPoller` every 5 seconds (started on bot ready for any guild with dispatch configured). Poller finds unannounced panics and fires TTS + embed in dispatch channel. Optional: portal calls `BOT_INTERNAL_URL/internal/panic` for direct trigger.
+- Express SPA mounted at `/portal` on the same Koyeb instance as the bot. Entry: `portal/server.js` (imports `src/index.js` for the shared bot client).
+- **Auth**: Discord OAuth2 → HMAC-signed `portal_session` cookie (`portal/routes/auth.js`), callback at `/portal/auth/callback`. All API routes under `/api/portal/*` require `portalAuth` middleware.
+- **Frontend**: `portal/views/portal.html` (shell), `portal/public/js/portal-app.js` (SPA logic), `portal/public/css/portal.css` (dark theme: `--surface`/`--card`/`--elevated`, `--accent` #5865f2, `--danger` red, `--warning` amber, `var(--radius)` 10px, no emojis).
+- **Modes**: Civilian (default) vs LEO (requires LEO Discord role, `isLeo: true`); stored in `localStorage.portalMode`.
+- **Key API routes** (`/api/portal/`): `GET /me`, `GET/POST/DELETE /characters`, `GET/POST /vehicles`, `GET /officers/overview`, `GET /voice/channels`, `POST /voice/move`, `GET /civjobs`, `POST /civjobs/checkin/:jobId` + `checkout`, `POST /emergency`, `GET /priority`.
+- **Priority status**: civilians and LEOs both poll `GET /priority` every 5s via `startGlobalPriorityPoll()` in `portal-app.js`, which updates the global bar, the Overview widget, and the Priority tab immediately on change, and fires a browser push notification (`fireBrowserNotification`) the moment priority goes active or enters cooldown.
+- **Panic button flow**: portal upserts `OfficerStatus` with `tenCode: '10-99', panicAnnounced: false`. Bot's `voiceListener.js` runs `_startPanicPoller` every 5s for any guild with dispatch configured, finds unannounced panics, and fires TTS + embed in the dispatch channel. Optional direct trigger via `BOT_INTERNAL_URL/internal/panic`.
 
 ---
 
-## Stripe / Payments
+## Stripe / Payments (`src/website/routes/checkout.js`)
 
-### Checkout Flow (`src/website/routes/checkout.js`)
-- Monthly subscription: `mode: 'subscription'` - auto-creates Stripe customer, do NOT include `customer_creation`
-- Lifetime: `mode: 'payment'` + `customer_creation: 'always'`
-- Webhook handlers: `checkout.session.completed` → creates `PremiumKey` in DB
-- `customer.subscription.deleted` + `invoice.payment_failed` → marks expired, clears premium cache
-- `STRIPE_WEBHOOK_SECRET` required for key creation webhook; lifecycle events work without it
-
----
-
-## Known Issues & Critical Notes
-
-### MongoDB Buffering Errors on Replit
-Replit may not maintain a stable MongoDB Atlas connection. Any timed interval that queries MongoDB should check `mongoose.connection.readyState === 1` first to skip gracefully:
-```js
-if (mongoose.connection.readyState !== 1) return;
-```
-Applied to: CivilianJobs expiry interval in `src/index.js`.
-
-### Mongoose Model Guard (all models)
-Every model file must use:
-```js
-export default mongoose.models.ModelName || mongoose.model('ModelName', schema);
-```
-Without this, ESM dynamic re-imports cause "Cannot overwrite model once compiled" errors in production.
-
-### @discordjs/voice Version Lock
-Must be `0.19.2+` for DAVE (Discord Audio Video Encryption). Older versions get close code 4017 rejection. `@snazzah/davey` is a required peer dependency.
-
-### Replit UDP Bypass (DO NOT REMOVE)
-In `src/utils/voiceListener.js`: synthetic 74-byte IP discovery response emitted on `net.stateChange` at code 2. Without it, voice connection hangs at `connecting` forever on Replit.
-
-### Dashboard Save Bar (moveme)
-Voice Mover channel changes update `pendingChanges.allowedChannelIds` in the `_movemeState` object. The save bar POST sends `allowedChannelIds` to `POST /api/guild/:id/settings/moveme` which whitelists it.
-
----
-
-## Dashboard Changes (June 2026)
-
-### Voice Mover Dashboard (`site/js/dashboard.js`)
-- Added to FEATURES array, SIDEBAR_GROUPS (Community), FEATURE_CATEGORIES, CONFIGURE_CARDS
-- `renderMovemeSettings(data)` - toggle + panel channel (from `renderSettingsFields`) + allowed voice channels list + "Send Panel to Discord" button
-- `addMovemeChannel()`, `removeMovemeChannel(id)` - DOM-only updates with `pendingChanges.allowedChannelIds`
-- `sendMovemePanel(e)` → `POST /api/guild/:id/settings/moveme/panel/send`
-
-### Civilian Jobs Dashboard (`site/js/dashboard.js`)
-- Added to SIDEBAR_GROUPS (Economy), CONFIGURE_CARDS (no feature toggle - no enabled field on model)
-- `renderCivJobsSettings(data)` - job board channel (from `renderSettingsFields`) + jobs list
-- API field names: `j.name`, `j.jobId`, `j.durationHours`, `j.roleName` (NOT title/payPerHour/id)
-- Add job: `POST /api/guild/:id/civjobs/job` with `{ name, description, roleId, durationHours }` - role AND duration are required
-- Delete job: `DELETE /api/guild/:id/civjobs/job/:jobId`
-
-### Session Persistence + Loading (`site/js/dashboard.js`)
-- `sessionStorage` saves last `rpm_guild_id` + `rpm_section`
-- `init()` restores directly to last server+section on refresh
-- `fullPageLoader(msg)` - animated spinner replaces bare "Loading..." text
-- `settingsSkeletonLoader()` - shimmer skeleton replaces bare "Loading..." in settings pane
-- `renderServerSelect()` calls `clearSession()` on server switch
-
-### Economy Dashboard
-- Store Items CRUD + Role Income CRUD fully in web dashboard
-- API: `GET/POST/DELETE /api/guild/:id/economy/store`, `POST/DELETE /api/guild/:id/economy/roleincome/:roleId`
-- Both functions exist in `site/js/dashboard.js` and `src/website/public/js/dashboard.js`
+- Monthly subscription: `mode: 'subscription'` (auto-creates Stripe customer — do NOT pass `customer_creation`).
+- Lifetime: `mode: 'payment'` + `customer_creation: 'always'`.
+- Webhooks: `checkout.session.completed` → creates `PremiumKey`; `customer.subscription.deleted` + `invoice.payment_failed` → marks expired + clears premium cache.
+- `STRIPE_WEBHOOK_SECRET` required for key-creation webhook; lifecycle events work without it.
 
 ---
 
 ## External Dependencies
 - **discord.js v14** - Discord API client
-- **@discordjs/voice 0.19.2** - Voice (DAVE encryption, must be 0.19.2+)
+- **@discordjs/voice 0.19.2+** - Voice (DAVE encryption)
 - **@snazzah/davey** - DAVE E2E encryption (peer dep of @discordjs/voice)
 - **opusscript** - Pure-JS Opus codec for audio receiving
 - **prism-media** - Opus → PCM decoding
