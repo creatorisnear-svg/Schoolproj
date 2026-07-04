@@ -334,12 +334,13 @@ export async function handleDMReply(message, client) {
   const row = new ActionRowBuilder().addComponents(acceptBtn, denyBtn);
 
   try {
-    const pingContent = panel.reviewPingRoleId ? `<@&${panel.reviewPingRoleId}>` : undefined;
+    const pingIds = panel.reviewPingRoleIds?.length ? panel.reviewPingRoleIds : [];
+    const pingContent = pingIds.length ? pingIds.map(id => `<@&${id}>`).join(' ') : undefined;
     const reviewMsg = await reviewChannel.send({
       content: pingContent,
       embeds: [reviewEmbed],
       components: [row],
-      allowedMentions: panel.reviewPingRoleId ? { roles: [panel.reviewPingRoleId] } : { roles: [] },
+      allowedMentions: pingIds.length ? { roles: pingIds } : { roles: [] },
     });
     submission.reviewMessageId = reviewMsg.id;
     submission.reviewChannelId = config.reviewChannelId;
@@ -409,9 +410,9 @@ export async function handleAppyAccept(interaction, client) {
   const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
   const guild = client.guilds.cache.get(submission.guildId);
 
-  if (panel?.reviewPingRoleId) {
+  if (panel?.reviewPingRoleIds?.length) {
     const member = await guild?.members.fetch(interaction.user.id).catch(() => null);
-    if (!member?.roles.cache.has(panel.reviewPingRoleId)) {
+    if (!panel.reviewPingRoleIds.some(id => member?.roles.cache.has(id))) {
       return interaction.reply({ embeds: [_errEmbed('You do not have permission to review this application.')], flags: 64 });
     }
   }
@@ -468,9 +469,9 @@ export async function handleAppyDeny(interaction, client) {
   const panel = await AppyPanel.findOne({ typeId: submission.typeId }).catch(() => null);
   const guild = client.guilds.cache.get(submission.guildId);
 
-  if (panel?.reviewPingRoleId) {
+  if (panel?.reviewPingRoleIds?.length) {
     const member = await guild?.members.fetch(interaction.user.id).catch(() => null);
-    if (!member?.roles.cache.has(panel.reviewPingRoleId)) {
+    if (!panel.reviewPingRoleIds.some(id => member?.roles.cache.has(id))) {
       return interaction.reply({ embeds: [_errEmbed('You do not have permission to review this application.')], flags: 64 });
     }
   }
