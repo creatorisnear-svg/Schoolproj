@@ -1861,9 +1861,20 @@ function addAppyQuestion(val, listId) {
   var idx = list.children.length;
   var qClass = listId === 'appy-edit-questions-list' ? 'appy-edit-question-input' : 'appy-question-input';
   var row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-  row.innerHTML = '<input type="text" class="config-input ' + qClass + '" placeholder="Question ' + (idx + 1) + '" style="flex:1;" value="' + esc(val || '') + '">' +
-    '<button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">Remove</button>';
+  row.style.cssText = 'display:flex;gap:6px;align-items:flex-start;';
+  var ta = document.createElement('textarea');
+  ta.className = 'config-input ' + qClass;
+  ta.placeholder = 'Question ' + (idx + 1);
+  ta.rows = 2;
+  ta.style.cssText = 'flex:1;resize:vertical;min-height:40px;';
+  ta.value = val || '';
+  var btn = document.createElement('button');
+  btn.className = 'btn btn-danger btn-sm';
+  btn.style.cssText = 'flex-shrink:0;margin-top:2px;';
+  btn.textContent = 'Remove';
+  btn.setAttribute('onclick', 'this.parentElement.remove()');
+  row.appendChild(ta);
+  row.appendChild(btn);
   list.appendChild(row);
 }
 
