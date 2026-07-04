@@ -51,11 +51,16 @@ export async function fetchGuildMember(userId) {
   const guildId = process.env.PORTAL_GUILD_ID;
   const token = process.env.DISCORD_TOKEN;
   if (!guildId || !token) return null;
-  const res = await axios.get(
-    `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
-    { headers: { Authorization: `Bot ${token}` } }
-  );
-  return res.data;
+  try {
+    const res = await axios.get(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+      { headers: { Authorization: `Bot ${token}` } }
+    );
+    return res.data;
+  } catch (err) {
+    if (err.response?.status === 404) return null;
+    throw err;
+  }
 }
 
 export function portalAuth(req, res, next) {

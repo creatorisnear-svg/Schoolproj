@@ -160,21 +160,34 @@ async function getLeoStatus(roleIds, guildId) {
   return [...leoRoles, ...staffRoles].some(id => roleIds.includes(id));
 }
 
+/*
+ * Returns { ok: true, roles } on success.
+ * Returns { ok: false, notMember: true } only when Discord has CONFIRMED (404) the
+ * user is no longer a guild member.
+ * Returns { ok: false, notMember: false } on any other (transient) failure, e.g.
+ * Discord API rate limiting or a network blip - callers must NOT treat this as
+ * "not verified"/"not a member", or real members get bounced to the login screen.
+ */
 async function refreshMemberRoles(userId) {
   try {
     const member = await fetchGuildMember(userId);
-    return member?.roles || [];
-  } catch {
-    return null;
+    if (member === null) return { ok: false, notMember: true };
+    return { ok: true, roles: member.roles || [] };
+  } catch (err) {
+    console.warn('[PORTAL] transient error refreshing member roles:', err.message);
+    return { ok: false, notMember: false };
   }
 }
 
 async function requireLeo(req, res, next) {
   const guildId = GUILD_ID();
   if (!guildId) return res.status(403).json({ error: 'Not configured' });
-  const freshRoles = await refreshMemberRoles(req.portalUser.userId);
-  if (!freshRoles) return res.status(403).json({ error: 'Could not verify roles' });
-  const allowed = await getLeoStatus(freshRoles, guildId);
+  const result = await refreshMemberRoles(req.portalUser.userId);
+  if (!result.ok) {
+    if (result.notMember) return res.status(401).json({ error: 'not_member' });
+    return res.status(503).json({ error: 'Could not verify your Discord status right now. Please try again.' });
+  }
+  const allowed = await getLeoStatus(result.roles, guildId);
   if (!allowed) return res.status(403).json({ error: 'LEO access required' });
   next();
 }
@@ -188,8 +201,12 @@ export function createApiRouter() {
       const guildId = GUILD_ID();
       const { userId, username, displayName, avatar } = req.portalUser;
 
-      const freshRoles = await refreshMemberRoles(userId);
-      if (freshRoles === null) return res.status(401).json({ error: 'not_member' });
+      const roleResult = await refreshMemberRoles(userId);
+      if (!roleResult.ok) {
+        if (roleResult.notMember) return res.status(401).json({ error: 'not_member' });
+        return res.status(503).json({ error: 'Could not verify your Discord status right now. Please try again.' });
+      }
+      const freshRoles = roleResult.roles;
 
       const isLeo = guildId ? await getLeoStatus(freshRoles, guildId) : false;
 
@@ -996,9 +1013,9 @@ export function createApiRouter() {
       const isResponder = call.respondingLeoId === userId;
       const isAttached = (call.attachedLeoIds || []).includes(userId);
 
-      const freshRoles = await refreshMemberRoles(userId);
+      const roleResult = await refreshMemberRoles(userId);
       const cadConfig = await CADConfig.findOne({ guildId });
-      const isStaff = cadConfig?.staffRoleIds?.some(id => (freshRoles || []).includes(id));
+      const isStaff = cadConfig?.staffRoleIds?.some(id => (roleResult.roles || []).includes(id));
 
       if (!isResponder && !isAttached && !isStaff)
         return res.status(403).json({ error: 'Only the responding or attached officer (or staff) can dismiss this call' });

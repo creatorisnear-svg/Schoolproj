@@ -179,14 +179,27 @@ const loaded = {};
 (async () => {
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
-  try {
-    const res = await fetch('/api/portal/me', { credentials: 'include' });
-    if (!res.ok) throw new Error('not_authed');
-    me = await res.json();
-    showApp();
-  } catch {
-    showLogin(error);
+
+  async function tryBoot(retried = false) {
+    try {
+      const res = await fetch('/api/portal/me', { credentials: 'include' });
+      if (res.status === 401) { showLogin(error); return; }
+      if (!res.ok) {
+        /* Transient failure (e.g. Discord API hiccup) - do NOT show "not a member".
+           Retry once before giving up, so a brief blip doesn't bounce a real member out. */
+        if (!retried) { await new Promise(r => setTimeout(r, 1500)); return tryBoot(true); }
+        showLogin('discord_unavailable');
+        return;
+      }
+      me = await res.json();
+      showApp();
+    } catch {
+      if (!retried) { await new Promise(r => setTimeout(r, 1500)); return tryBoot(true); }
+      showLogin('discord_unavailable');
+    }
   }
+
+  await tryBoot();
 })();
 
 function showLogin(error) {
@@ -196,6 +209,7 @@ function showLogin(error) {
     bot_not_in_server: 'The bot is not in this server.',
     auth_failed: 'Authentication failed. Please try again.',
     invalid_state: 'Security check failed. Please try again.',
+    discord_unavailable: 'Could not connect to Discord right now. Please refresh the page and try again.',
   };
   if (error && errMap[error]) {
     const el = document.getElementById('login-error');
