@@ -1795,7 +1795,7 @@ function renderAppySettings(data) {
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged when a submission arrives; only these roles can accept or deny)</div>' +
-    '<select id="appy-ping-role" class="config-select" multiple size="5" style="height:auto;">' + roleOpts + '</select>' +
+    '<select id="appy-ping-role" class="config-select" multiple size="5">' + roleOpts + '</select>' +
     '<span class="config-sublabel">Hold Ctrl / Cmd to select multiple roles.</span>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
@@ -1831,7 +1831,7 @@ function renderAppySettings(data) {
     '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional)</div>' +
     '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged when a submission arrives; only these roles can accept or deny)</div>' +
-    '<select id="appy-edit-ping-role" class="config-select" multiple size="5" style="height:auto;">' + roleOpts + '</select>' +
+    '<select id="appy-edit-ping-role" class="config-select" multiple size="5">' + roleOpts + '</select>' +
     '<span class="config-sublabel">Hold Ctrl / Cmd to select multiple roles.</span>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +

@@ -519,6 +519,7 @@ select.config-select, select.config-action {
 }
 select.config-select:hover, select.config-action:hover { border-color: var(--border-hover); }
 select.config-select:focus, select.config-action:focus { border-color: var(--text-muted); }
+select.config-select[multiple] { appearance: auto; -webkit-appearance: auto; background-image: none; padding-right: 10px; max-width: 100%; height: auto; }
 
 input.config-input, textarea.config-textarea {
   background: var(--bg-input); border: 1px solid var(--border);
