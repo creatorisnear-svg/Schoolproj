@@ -4665,16 +4665,13 @@ export async function announce911Call(guild, call, dispatchCfg) {
       { messageId: sentMessage.id, channelId }
     );
 
-    if (dispatchCfg?.aiEnabled && hasAIKey()) {
-      try {
-        const { playDispatchVoice } = await import('../utils/voiceListener.js');
-        const ttsText = `Attention all units. 9-1-1 emergency. ${call.issue} at ${call.location}. All available units respond.`;
-        const ttsBuffer = await generateDispatchTTS(ttsText);
-        playDispatchVoice(guild.id, ttsBuffer, { urgent: true });
-      } catch (err) {
-        console.error('[Dispatch 911] TTS error:', err.message);
-      }
-    }
+    // Voice TTS announcement is handled exclusively by the 911 poller
+    // (src/utils/voiceListener.js start911Poller/_run911Poll), which polls
+    // for calls with dispatchAnnounced: false. Doing it here too caused
+    // double announcements (race with the poller) and, since this path
+    // didn't wait for the voice connection to be Ready, could silently
+    // drop the audio if the bot's connection wasn't already live at the
+    // exact moment the call came in.
 
     await rebuildStatusBoard(guild, dispatchCfg);
   } catch (err) {

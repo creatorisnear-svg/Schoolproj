@@ -40,6 +40,14 @@ export function hasActiveAppySession(userId) {
   return _activeSessions.has(userId);
 }
 
+/** Cancel an in-progress application session. Returns the panel name (or null). */
+export async function cancelAppySession(userId) {
+  const session = _activeSessions.get(userId);
+  const panelName = session?.panelName || null;
+  _clearSession(userId);
+  return panelName;
+}
+
 function _saveDraft(userId, session) {
   AppyDraft.findOneAndUpdate(
     { userId },

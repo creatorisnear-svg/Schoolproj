@@ -421,22 +421,18 @@ export async function handle911ReportModal(interaction) {
     try {
       const DispatchConfig = await import('../models/DispatchConfig.js').then(m => m.default);
       const dispatchConfig = await DispatchConfig.findOne({ guildId: interaction.guildId, enabled: true });
-      if (dispatchConfig?.aiEnabled) {
-        const { getDispatchState, playDispatchVoice } = await import('../utils/voiceListener.js');
-        const state = getDispatchState(interaction.guildId);
-        if (state?.connection) {
-          const { generateDispatchTTSPublic } = await import('./dispatchHandler.js');
-          const ttsText = `Attention all units, we have a 911 call. ${issue}${location ? `, location ${location}` : ''}. Any available unit please respond.`;
-          const ttsBuffer = await generateDispatchTTSPublic(ttsText);
-          playDispatchVoice(interaction.guildId, ttsBuffer);
-        }
-      }
+      // Voice TTS announcement is handled exclusively by the 911 poller
+      // (src/utils/voiceListener.js start911Poller/_run911Poll), which picks
+      // up this call automatically since dispatchAnnounced defaults to false.
+      // Announcing it here too - gated on a live voice `connection` existing
+      // at this exact instant - caused the announcement to be silently
+      // dropped whenever the bot's connection wasn't already up.
       if (dispatchConfig) {
         const { rebuildStatusBoard } = await import('./dispatchHandler.js');
         rebuildStatusBoard(interaction.guild, dispatchConfig).catch(() => {});
       }
     } catch (err) {
-      console.error('[Dispatch] 911 voice announcement error:', err.message);
+      console.error('[Dispatch] 911 status board update error:', err.message);
     }
 
     return interaction.editReply({
