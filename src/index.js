@@ -917,6 +917,10 @@ client.on('interactionCreate', async interaction => {
         const { handleEconomyAutocomplete } = await import('./handlers/economyHandler.js');
         return await handleEconomyAutocomplete(interaction);
       }
+      if (interaction.commandName === 'paybusiness') {
+        const cmd = await import('./commands/paybusiness.js');
+        return await cmd.autocomplete(interaction);
+      }
       return;
     }
 
@@ -956,6 +960,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'appy_type_select') {
         const { handleAppyTypeSelect } = await import('./handlers/appyHandler.js');
         await handleAppyTypeSelect(interaction, client);
+      } else if (interaction.customId === 'business_select') {
+        const { handleBusinessSelect } = await import('./handlers/economyActions.js');
+        await handleBusinessSelect(interaction);
       } else if (interaction.customId === 'civjob_select') {
         const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
         await handleCivilianJobApply(interaction);
@@ -1009,6 +1016,12 @@ client.on('interactionCreate', async interaction => {
         }
         const { handleShopCategoryButton } = await import('./handlers/economyActions.js');
         await handleShopCategoryButton(interaction);
+      } else if (interaction.customId.startsWith('business_deposit_')) {
+        const { handleBusinessDeposit } = await import('./handlers/economyActions.js');
+        await handleBusinessDeposit(interaction);
+      } else if (interaction.customId.startsWith('business_withdraw_')) {
+        const { handleBusinessWithdraw } = await import('./handlers/economyActions.js');
+        await handleBusinessWithdraw(interaction);
       } else if (
         interaction.customId === 'collect_income' ||
         interaction.customId.startsWith('economy') ||
@@ -1039,6 +1052,15 @@ client.on('interactionCreate', async interaction => {
       console.log(`[MODAL] ${interaction.user.tag} submitted ${interaction.customId} in ${interaction.guild?.name}`);
       if (interaction.customId === 'verify_modal') {
         await handleVerifyModalSubmit(interaction);
+      } else if (interaction.customId.startsWith('business_password_')) {
+        const { handleBusinessPasswordModal } = await import('./handlers/economyActions.js');
+        await handleBusinessPasswordModal(interaction);
+      } else if (interaction.customId.startsWith('business_do_deposit_')) {
+        const { handleBusinessDepositModal } = await import('./handlers/economyActions.js');
+        await handleBusinessDepositModal(interaction);
+      } else if (interaction.customId.startsWith('business_do_withdraw_')) {
+        const { handleBusinessWithdrawModal } = await import('./handlers/economyActions.js');
+        await handleBusinessWithdrawModal(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
         await handleEconomyModal(interaction);

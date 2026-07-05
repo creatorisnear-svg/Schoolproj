@@ -2260,6 +2260,54 @@ function renderEconomySettings(data) {
     '</div>' +
     '</div>';
 
+  /* ── Business Accounts ── */
+  var bizList = data.businessAccounts || [];
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Business Accounts</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">' + bizList.length + ' account(s)</span></div>';
+  if (bizList.length === 0) {
+    html += '<div class="config-row"><span class="config-sublabel">No business accounts yet. Create one below.</span></div>';
+  } else {
+    bizList.forEach(function(b) {
+      html += '<div class="config-row" style="justify-content:space-between;align-items:flex-start;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(b.name) + '</span>' +
+        '<div class="config-sublabel">Balance: ' + esc(String(b.balance)) +
+        (b.incomeAmount ? ' | Passive: +' + esc(String(b.incomeAmount)) + ' every ' + esc(String(b.incomeCooldownHours)) + 'h' : '') +
+        '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-secondary btn-sm" onclick="showBizEditForm(\'' + esc(b.accountId) + '\')">Edit</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteBizAccount(\'' + esc(b.accountId) + '\')">Remove</button>' +
+        '</div></div>';
+    });
+  }
+  html += '<div id="biz-edit-form" style="display:none;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--card);flex-direction:column;gap:8px;margin-top:8px;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--accent);">Editing: <span id="biz-edit-label"></span></div>' +
+    '<input id="biz-edit-name" type="text" class="config-input" placeholder="Business name">' +
+    '<input id="biz-edit-password" type="password" class="config-input" placeholder="New password (leave blank to keep current)">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<input id="biz-edit-income" type="number" class="config-input" placeholder="Passive income amount (0 = none)" min="0" style="flex:1;min-width:160px;">' +
+    '<input id="biz-edit-cooldown" type="number" class="config-input" placeholder="Hours between income" min="1" max="720" style="width:100px;">' +
+    '</div>' +
+    '<input type="hidden" id="biz-edit-id">' +
+    '<div style="display:flex;gap:8px;">' +
+    '<button class="btn btn-primary btn-sm" onclick="saveBizAccount()">Save</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'biz-edit-form\').style.display=\'none\'">Cancel</button>' +
+    '</div></div>' +
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--card);display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text);">Create Business Account</div>' +
+    '<input id="biz-name" type="text" class="config-input" placeholder="Business name (e.g. Maze Bank)">' +
+    '<input id="biz-password" type="password" class="config-input" placeholder="Access password">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+    '<input id="biz-income" type="number" class="config-input" placeholder="Passive income amount (optional)" min="0" style="flex:1;min-width:160px;">' +
+    '<input id="biz-cooldown" type="number" class="config-input" placeholder="Hours (default 24)" min="1" max="720" value="24" style="width:100px;">' +
+    '</div>' +
+    '<span class="config-sublabel">Passive income is automatically credited each cycle when anyone accesses the account via /business.</span>' +
+    '<button class="btn btn-success btn-sm" style="align-self:flex-start;" onclick="createBizAccount()">Create Account</button>' +
+    '</div>' +
+    '</div>';
+
   /* ── Member Money Management ── */
   html += '<div class="config-section" style="margin-top:4px;">' +
     '<div class="config-section-header"><h3>Member Money Management</h3>' +
@@ -2280,6 +2328,62 @@ function renderEconomySettings(data) {
     '</div>';
 
   return html;
+}
+
+function createBizAccount() {
+  var name = (document.getElementById('biz-name').value || '').trim();
+  var password = (document.getElementById('biz-password').value || '').trim();
+  var income = parseInt(document.getElementById('biz-income').value) || 0;
+  var cooldown = parseInt(document.getElementById('biz-cooldown').value) || 24;
+  if (!name) { toast('Enter a business name', 'error'); return; }
+  if (!password) { toast('Enter a password', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/economy/business', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, password: password, incomeAmount: income, incomeCooldownHours: cooldown }),
+  }).then(function(r) {
+    if (r && r.success) { toast('Business account created'); renderSettings('economy'); }
+    else { toast((r && r.error) || 'Failed to create', 'error'); }
+  });
+}
+
+function showBizEditForm(accountId) {
+  api('/guild/' + currentGuild.id + '/settings/economy').then(function(data) {
+    var b = (data.businessAccounts || []).find(function(x) { return x.accountId === accountId; });
+    if (!b) { toast('Account not found', 'error'); return; }
+    document.getElementById('biz-edit-name').value = b.name || '';
+    document.getElementById('biz-edit-password').value = '';
+    document.getElementById('biz-edit-income').value = b.incomeAmount || 0;
+    document.getElementById('biz-edit-cooldown').value = b.incomeCooldownHours || 24;
+    document.getElementById('biz-edit-id').value = accountId;
+    var lbl = document.getElementById('biz-edit-label');
+    if (lbl) lbl.textContent = b.name;
+    var form = document.getElementById('biz-edit-form');
+    form.style.display = 'flex';
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+function saveBizAccount() {
+  var accountId = document.getElementById('biz-edit-id').value;
+  var name = (document.getElementById('biz-edit-name').value || '').trim();
+  var password = (document.getElementById('biz-edit-password').value || '').trim();
+  var income = parseInt(document.getElementById('biz-edit-income').value) || 0;
+  var cooldown = parseInt(document.getElementById('biz-edit-cooldown').value) || 24;
+  if (!name) { toast('Enter a business name', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/economy/business/' + accountId, {
+    method: 'PUT',
+    body: JSON.stringify({ name: name, password: password || undefined, incomeAmount: income, incomeCooldownHours: cooldown }),
+  }).then(function(r) {
+    if (r && r.success) { toast('Business account updated'); renderSettings('economy'); }
+    else { toast((r && r.error) || 'Failed to update', 'error'); }
+  });
+}
+
+function deleteBizAccount(accountId) {
+  api('/guild/' + currentGuild.id + '/economy/business/' + accountId, { method: 'DELETE' }).then(function(r) {
+    if (r && r.success) { toast('Business account removed'); renderSettings('economy'); }
+    else { toast((r && r.error) || 'Failed to remove', 'error'); }
+  });
 }
 
 var _mmSelectedUser = null;

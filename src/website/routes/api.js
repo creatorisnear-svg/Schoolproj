@@ -850,6 +850,17 @@ export function createApiRouter(client) {
             amount: r.amount,
             cooldown: r.cooldown,
           }));
+          try {
+            const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+            const businesses = await BusinessAccount.find({ guildId: guild.id }).lean();
+            result.businessAccounts = businesses.map(b => ({
+              accountId: b.accountId,
+              name: b.name,
+              balance: b.balance,
+              incomeAmount: b.incomeAmount || 0,
+              incomeCooldownHours: b.incomeCooldownHours || 24,
+            }));
+          } catch { result.businessAccounts = []; }
           result.roles = roles;
           // Store items
           try {
@@ -2363,6 +2374,73 @@ export function createApiRouter(client) {
       }
       ec.markModified('roleIncome');
       await ec.save();
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  /* ── Business Accounts CRUD ── */
+  router.post('/guild/:id/economy/business', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { name, password, incomeAmount, incomeCooldownHours } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Business name is required' });
+    if (!password?.trim()) return res.status(400).json({ error: 'Password is required' });
+    try {
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const { v4: uuidv4 } = await import('uuid');
+      const { createHash } = await import('crypto');
+      const existing = await BusinessAccount.findOne({ guildId: req.params.id, name: name.trim() });
+      if (existing) return res.status(400).json({ error: 'A business with that name already exists' });
+      await BusinessAccount.create({
+        guildId: req.params.id,
+        accountId: uuidv4(),
+        name: name.trim(),
+        passwordHash: createHash('sha256').update(password.trim()).digest('hex'),
+        balance: 0,
+        incomeAmount: Math.max(0, parseInt(incomeAmount) || 0),
+        incomeCooldownHours: Math.max(1, Math.min(720, parseInt(incomeCooldownHours) || 24)),
+      });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.put('/guild/:id/economy/business/:accountId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { name, password, incomeAmount, incomeCooldownHours } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Business name is required' });
+    try {
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const { createHash } = await import('crypto');
+      const update = {
+        name: name.trim(),
+        incomeAmount: Math.max(0, parseInt(incomeAmount) || 0),
+        incomeCooldownHours: Math.max(1, Math.min(720, parseInt(incomeCooldownHours) || 24)),
+      };
+      if (password?.trim()) update.passwordHash = createHash('sha256').update(password.trim()).digest('hex');
+      await BusinessAccount.findOneAndUpdate({ accountId: req.params.accountId, guildId: req.params.id }, update);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/guild/:id/economy/business/:accountId', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      await BusinessAccount.deleteOne({ accountId: req.params.accountId, guildId: req.params.id });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });

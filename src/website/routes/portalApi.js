@@ -1265,5 +1265,44 @@ export function createPortalApiRouter(client) {
     }
   });
 
+  // ── Business Accounts ─────────────────────────────────────────────────────
+  router.get('/economy/businesses', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.json([]);
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const accounts = await BusinessAccount.find({ guildId }, 'accountId name').lean();
+      res.json(accounts.map(a => ({ accountId: a.accountId, name: a.name })));
+    } catch (err) {
+      console.error('[PORTAL /economy/businesses]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
+  router.post('/economy/businesses/:accountId/pay', auth, async (req, res) => {
+    try {
+      const guildId = GUILD_ID();
+      if (!guildId) return res.status(400).json({ error: 'Portal not configured' });
+      const { amount } = req.body;
+      const amt = parseInt(amount);
+      if (isNaN(amt) || amt < 1) return res.status(400).json({ error: 'Enter a valid amount' });
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const account = await BusinessAccount.findOne({ accountId: req.params.accountId, guildId });
+      if (!account) return res.status(404).json({ error: 'Business account not found' });
+      const config = await EconomyConfig.findOne({ guildId });
+      const sym = config?.currencySymbol || '$';
+      const balance = await EconomyBalance.findOne({ guildId, userId: req.portalUser.userId });
+      if (!balance) return res.status(400).json({ error: 'No economy account. Use /balance in Discord first.' });
+      if (balance.cash < amt) return res.status(400).json({ error: `Not enough cash. You have ${sym}${balance.cash.toLocaleString()}.` });
+      balance.cash -= amt;
+      account.balance += amt;
+      await Promise.all([balance.save(), account.save()]);
+      res.json({ success: true, newCash: balance.cash, currency: sym });
+    } catch (err) {
+      console.error('[PORTAL /economy/businesses/pay]', err);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  });
+
   return router;
 }

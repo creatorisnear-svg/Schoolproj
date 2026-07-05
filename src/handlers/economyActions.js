@@ -1,11 +1,14 @@
 import {
   EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle,
+  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
+import { createHash } from 'crypto';
 import EconomyConfig from '../models/EconomyConfig.js';
 import EconomyBalance from '../models/EconomyBalance.js';
 import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
+import BusinessAccount from '../models/BusinessAccount.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { GTA_VEHICLES } from '../data/gtaVehicles.js';
 
@@ -798,4 +801,190 @@ export async function handleShopBrowseSelect(interaction) {
     .setDescription(description)
     .setFooter({ text: footerNote });
   return interaction.update({ embeds: [embed], components: [], content: '' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS ACCOUNTS
+// ─────────────────────────────────────────────────────────────────────────────
+function hashPassword(pw) {
+  return createHash('sha256').update(pw).digest('hex');
+}
+
+async function applyBusinessIncome(account) {
+  if (!account.incomeAmount || !account.incomeCooldownHours) return;
+  const now = Date.now();
+  if (!account.lastIncomeAt) {
+    account.lastIncomeAt = new Date();
+    await account.save();
+    return;
+  }
+  const cdMs = account.incomeCooldownHours * 60 * 60 * 1000;
+  const periods = Math.floor((now - account.lastIncomeAt.getTime()) / cdMs);
+  if (periods <= 0) return;
+  account.balance = Math.max(0, account.balance + periods * account.incomeAmount);
+  account.lastIncomeAt = new Date(account.lastIncomeAt.getTime() + periods * cdMs);
+  await account.save();
+}
+
+function buildBusinessEmbed(account, sym) {
+  const incomeDesc = account.incomeAmount
+    ? `\n-# Passive income: ${sym}${fmt(account.incomeAmount)} every ${account.incomeCooldownHours}h`
+    : '';
+  return new EmbedBuilder()
+    .setColor('#2d2d2d')
+    .setTitle(account.name)
+    .setDescription(`### Balance\n${sym}${fmt(account.balance)}${incomeDesc}`)
+    .setFooter({ text: 'RPM' });
+}
+
+function buildBusinessButtons(accountId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`business_deposit_${accountId}`).setLabel('Deposit').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`business_withdraw_${accountId}`).setLabel('Withdraw').setStyle(ButtonStyle.Danger),
+  );
+}
+
+export async function runBusiness(interaction) {
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const accounts = await BusinessAccount.find({ guildId: interaction.guildId }).lean();
+  if (!accounts.length) {
+    return interaction.reply({ embeds: [errorEmbed('No business accounts have been configured for this server.')], flags: 64 });
+  }
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('business_select')
+    .setPlaceholder('Select a business account...')
+    .addOptions(accounts.map(a => ({ label: a.name, value: a.accountId })));
+  const row = new ActionRowBuilder().addComponents(menu);
+  return interaction.reply({
+    embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Business Accounts').setDescription('Select a business account to access.').setFooter({ text: 'RPM' })],
+    components: [row],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessSelect(interaction) {
+  const accountId = interaction.values[0];
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.update({ embeds: [errorEmbed('Account not found.')], components: [] });
+  const modal = new ModalBuilder()
+    .setCustomId(`business_password_${accountId}`)
+    .setTitle(`Access: ${account.name}`)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('password').setLabel('Password').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Enter the account password')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessPasswordModal(interaction) {
+  const accountId = interaction.customId.replace('business_password_', '');
+  const account = await BusinessAccount.findOne({ accountId });
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const entered = interaction.fields.getTextInputValue('password');
+  if (hashPassword(entered) !== account.passwordHash) {
+    return interaction.reply({ embeds: [errorEmbed('Incorrect password.')], flags: 64 });
+  }
+  await applyBusinessIncome(account);
+  const config = await getConfig(interaction.guildId);
+  const sym = config?.currencySymbol || '$';
+  return interaction.reply({
+    embeds: [buildBusinessEmbed(account, sym)],
+    components: [buildBusinessButtons(accountId)],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessDeposit(interaction) {
+  const accountId = interaction.customId.replace('business_deposit_', '');
+  const modal = new ModalBuilder()
+    .setCustomId(`business_do_deposit_${accountId}`)
+    .setTitle('Deposit to Business')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('amount').setLabel('Amount').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 500')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessWithdraw(interaction) {
+  const accountId = interaction.customId.replace('business_withdraw_', '');
+  const modal = new ModalBuilder()
+    .setCustomId(`business_do_withdraw_${accountId}`)
+    .setTitle('Withdraw from Business')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('amount').setLabel('Amount').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. 500')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessDepositModal(interaction) {
+  const accountId = interaction.customId.replace('business_do_deposit_', '');
+  const raw = interaction.fields.getTextInputValue('amount');
+  const amount = parseInt(raw);
+  if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid amount.')], flags: 64 });
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const sym = config.currencySymbol;
+  const bal = await getBalance(interaction.guildId, interaction.user.id, config.startingBalance);
+  if (bal.cash < amount) return interaction.reply({ embeds: [errorEmbed(`You only have ${sym}${fmt(bal.cash)} in cash.`)], flags: 64 });
+  const account = await BusinessAccount.findOne({ accountId });
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  bal.cash -= amount;
+  account.balance += amount;
+  await Promise.all([bal.save(), account.save()]);
+  return interaction.reply({
+    embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Deposit Complete')
+      .setDescription(`Deposited ${sym}${fmt(amount)} into **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
+      .setFooter({ text: 'RPM' })],
+    components: [buildBusinessButtons(accountId)],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessWithdrawModal(interaction) {
+  const accountId = interaction.customId.replace('business_do_withdraw_', '');
+  const raw = interaction.fields.getTextInputValue('amount');
+  const amount = parseInt(raw);
+  if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid amount.')], flags: 64 });
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const sym = config.currencySymbol;
+  const account = await BusinessAccount.findOne({ accountId });
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  if (account.balance < amount) return interaction.reply({ embeds: [errorEmbed(`The business only has ${sym}${fmt(account.balance)}.`)], flags: 64 });
+  const bal = await getBalance(interaction.guildId, interaction.user.id, config.startingBalance);
+  account.balance -= amount;
+  bal.cash = Math.min(bal.cash + amount, config.maxBalance);
+  await Promise.all([bal.save(), account.save()]);
+  return interaction.reply({
+    embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Withdrawal Complete')
+      .setDescription(`Withdrew ${sym}${fmt(amount)} from **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
+      .setFooter({ text: 'RPM' })],
+    components: [buildBusinessButtons(accountId)],
+    flags: 64,
+  });
+}
+
+export async function runPayBusiness(interaction) {
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const sym = config.currencySymbol;
+  const name = interaction.options.getString('name');
+  const amount = interaction.options.getInteger('amount');
+  const account = await BusinessAccount.findOne({ guildId: interaction.guildId, name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+  if (!account) return interaction.reply({ embeds: [errorEmbed(`No business account named **${name}** found.`)], flags: 64 });
+  const bal = await getBalance(interaction.guildId, interaction.user.id, config.startingBalance);
+  if (bal.cash < amount) return interaction.reply({ embeds: [errorEmbed(`You only have ${sym}${fmt(bal.cash)} in cash.`)], flags: 64 });
+  bal.cash -= amount;
+  account.balance += amount;
+  await Promise.all([bal.save(), account.save()]);
+  return interaction.reply({
+    embeds: [successEmbed('Payment Sent', `You paid ${sym}${fmt(amount)} to **${account.name}**.\n**Your Cash:** ${sym}${fmt(bal.cash)}`)],
+    flags: 64,
+  });
 }
