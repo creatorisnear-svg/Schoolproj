@@ -9,6 +9,7 @@ import EconomyBalance from '../models/EconomyBalance.js';
 import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
 import BusinessAccount from '../models/BusinessAccount.js';
+import BusinessTransaction from '../models/BusinessTransaction.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { GTA_VEHICLES } from '../data/gtaVehicles.js';
 
@@ -810,6 +811,20 @@ function hashPassword(pw) {
   return createHash('sha256').update(pw).digest('hex');
 }
 
+async function logTx(account, type, amount, user, note) {
+  try {
+    await BusinessTransaction.create({
+      guildId: account.guildId,
+      accountId: account.accountId,
+      type,
+      amount,
+      userId: user?.id || null,
+      username: user?.username || null,
+      note: note || null,
+    });
+  } catch { /* non-fatal */ }
+}
+
 async function applyBusinessIncome(account) {
   if (!account.incomeAmount || !account.incomeCooldownHours) return;
   const now = Date.now();
@@ -821,9 +836,11 @@ async function applyBusinessIncome(account) {
   const cdMs = account.incomeCooldownHours * 60 * 60 * 1000;
   const periods = Math.floor((now - account.lastIncomeAt.getTime()) / cdMs);
   if (periods <= 0) return;
-  account.balance = Math.max(0, account.balance + periods * account.incomeAmount);
+  const earned = periods * account.incomeAmount;
+  account.balance = Math.max(0, account.balance + earned);
   account.lastIncomeAt = new Date(account.lastIncomeAt.getTime() + periods * cdMs);
   await account.save();
+  await logTx(account, 'income', earned, null, `${periods} cycle(s) of passive income`);
 }
 
 function buildBusinessEmbed(account, sym) {
@@ -936,7 +953,7 @@ export async function handleBusinessDepositModal(interaction) {
   if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
   bal.cash -= amount;
   account.balance += amount;
-  await Promise.all([bal.save(), account.save()]);
+  await Promise.all([bal.save(), account.save(), logTx(account, 'deposit', amount, interaction.user)]);
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Deposit Complete')
       .setDescription(`Deposited ${sym}${fmt(amount)} into **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
@@ -960,7 +977,7 @@ export async function handleBusinessWithdrawModal(interaction) {
   const bal = await getBalance(interaction.guildId, interaction.user.id, config.startingBalance);
   account.balance -= amount;
   bal.cash = Math.min(bal.cash + amount, config.maxBalance);
-  await Promise.all([bal.save(), account.save()]);
+  await Promise.all([bal.save(), account.save(), logTx(account, 'withdraw', amount, interaction.user)]);
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Withdrawal Complete')
       .setDescription(`Withdrew ${sym}${fmt(amount)} from **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
@@ -982,7 +999,7 @@ export async function runPayBusiness(interaction) {
   if (bal.cash < amount) return interaction.reply({ embeds: [errorEmbed(`You only have ${sym}${fmt(bal.cash)} in cash.`)], flags: 64 });
   bal.cash -= amount;
   account.balance += amount;
-  await Promise.all([bal.save(), account.save()]);
+  await Promise.all([bal.save(), account.save(), logTx(account, 'pay', amount, interaction.user)]);
   return interaction.reply({
     embeds: [successEmbed('Payment Sent', `You paid ${sym}${fmt(amount)} to **${account.name}**.\n**Your Cash:** ${sym}${fmt(bal.cash)}`)],
     flags: 64,

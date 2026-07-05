@@ -2277,11 +2277,19 @@ function renderEconomySettings(data) {
         '</div>' +
         '</div>' +
         '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-secondary btn-sm" onclick="loadBizLedger(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')">Ledger</button>' +
         '<button class="btn btn-secondary btn-sm" onclick="showBizEditForm(\'' + esc(b.accountId) + '\')">Edit</button>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteBizAccount(\'' + esc(b.accountId) + '\')">Remove</button>' +
         '</div></div>';
     });
   }
+  html += '<div id="biz-ledger-panel" style="display:none;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--card);flex-direction:column;gap:8px;margin-top:8px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--accent);">Ledger: <span id="biz-ledger-title"></span></div>' +
+    '<button class="btn btn-secondary btn-sm" onclick="document.getElementById(\'biz-ledger-panel\').style.display=\'none\'">Close</button>' +
+    '</div>' +
+    '<div id="biz-ledger-body" style="font-size:12px;color:var(--text-dim);">Loading...</div>' +
+    '</div>';
   html += '<div id="biz-edit-form" style="display:none;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--card);flex-direction:column;gap:8px;margin-top:8px;">' +
     '<div style="font-size:13px;font-weight:600;color:var(--accent);">Editing: <span id="biz-edit-label"></span></div>' +
     '<input id="biz-edit-name" type="text" class="config-input" placeholder="Business name">' +
@@ -2328,6 +2336,44 @@ function renderEconomySettings(data) {
     '</div>';
 
   return html;
+}
+
+function loadBizLedger(accountId, name) {
+  var panel = document.getElementById('biz-ledger-panel');
+  var title = document.getElementById('biz-ledger-title');
+  var body = document.getElementById('biz-ledger-body');
+  if (title) title.textContent = name;
+  if (body) body.innerHTML = 'Loading...';
+  if (panel) panel.style.display = 'flex';
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  api('/guild/' + currentGuild.id + '/economy/business/' + accountId + '/transactions?limit=50').then(function(txns) {
+    if (!body) return;
+    if (!txns || txns.length === 0) {
+      body.innerHTML = '<span style="color:var(--text-dim);">No transactions yet.</span>';
+      return;
+    }
+    var typeLabel = { deposit: 'Deposit', withdraw: 'Withdraw', pay: 'Payment', income: 'Passive Income' };
+    var typeColor = { deposit: '#57f287', withdraw: '#ed4245', pay: '#5865f2', income: '#faa61a' };
+    var rows = txns.map(function(t) {
+      var sign = (t.type === 'withdraw') ? '-' : '+';
+      var color = typeColor[t.type] || 'var(--text)';
+      var who = t.username ? esc(t.username) : (t.note ? esc(t.note) : '');
+      var dt = new Date(t.createdAt);
+      var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="display:flex;flex-direction:column;gap:2px;">' +
+        '<span style="color:' + color + ';font-weight:600;">' + esc(typeLabel[t.type] || t.type) + '</span>' +
+        (who ? '<span style="color:var(--text-dim);font-size:11px;">' + who + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">' +
+        '<span style="color:' + color + ';font-weight:700;">' + sign + t.amount.toLocaleString() + '</span>' +
+        '<span style="color:var(--text-dim);font-size:10px;">' + dateStr + '</span>' +
+        '</div></div>';
+    });
+    body.innerHTML = rows.join('');
+  }).catch(function() {
+    if (body) body.innerHTML = '<span style="color:#ed4245;">Failed to load ledger.</span>';
+  });
 }
 
 function createBizAccount() {

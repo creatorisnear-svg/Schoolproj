@@ -2431,6 +2431,29 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  router.get('/guild/:id/economy/business/:accountId/transactions', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: BusinessTransaction } = await import('../../models/BusinessTransaction.js');
+      const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+      const txns = await BusinessTransaction.find({ guildId: req.params.id, accountId: req.params.accountId })
+        .sort({ createdAt: -1 }).limit(limit).lean();
+      res.json(txns.map(t => ({
+        type: t.type,
+        amount: t.amount,
+        userId: t.userId,
+        username: t.username,
+        note: t.note,
+        createdAt: t.createdAt,
+      })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   router.delete('/guild/:id/economy/business/:accountId', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
