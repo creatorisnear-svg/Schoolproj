@@ -2997,79 +2997,24 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     }
 
     const voiceAction = parsed.codeInfo?.action;
-    if (voiceAction === 'traffic_stop' && config.trafficStopChannelIds?.length > 0) {
+    if (voiceAction === 'traffic_stop') {
       try {
-        // Pick the traffic stop channel with the fewest non-bot members (load balance)
-        let bestChannelId = null;
-        let bestCount = Infinity;
-        for (const id of config.trafficStopChannelIds) {
-          if (id === member.voice?.channelId) continue;
-          const ch = guild.channels.cache.get(id) ||
-            await guild.channels.fetch(id).catch(() => null);
-          if (!ch) continue;
-          const count = ch.members.filter(m => !m.user.bot).size;
-          if (count < bestCount) { bestCount = count; bestChannelId = id; }
+        await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, null);
+
+        if (config.aiEnabled && hasAIKey()) {
+          try {
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            const ttsText = `Copy ${ttsName}, showing you ten eleven.`;
+            const ttsBuffer = await generateDispatchTTS(ttsText);
+            playDispatchVoice(guild.id, ttsBuffer);
+          } catch (err) {
+            console.error('[Dispatch TTS] Traffic stop ack error:', err.message);
+          }
         }
 
-        if (bestChannelId && member.voice?.channelId) {
-          // Ask via voice before moving - wait for a spoken yes or no
-          const requestKey = getPendingStopMoveKey(guild.id, userId);
-          pendingStopMoveRequests.set(requestKey, {
-            guildId: guild.id,
-            officerId: userId,
-            officerName,
-            targetName: null,
-            targetId: null,
-            channelId: bestChannelId,
-            transcript,
-            createdAt: Date.now(),
-            expiresAt: Date.now() + 5 * 60 * 1000,
-            dispatchChannelId: null,
-            messageId: null,
-          });
-          setTimeout(() => pendingStopMoveRequests.delete(requestKey), 5 * 60 * 1000);
-
-          await updateOfficerStatus(guild.id, userId, officerName, '10-11', parsed, null, null);
-
-          const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-            await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-
-          if (dispatchCh?.isTextBased()) {
-            const stopEmbed = new EmbedBuilder()
-              .setColor('#2d2d2d')
-              .setTitle('Traffic Stop Move Request')
-              .setDescription(
-                `**Officer:** <@${userId}>\n` +
-                `**Suggested Channel:** <#${bestChannelId}>\n\n` +
-                `Awaiting a voice response from <@${userId}>. Say **yes** to move to the stop channel, or **no** to stay where you are.`
-              )
-              .addFields({ name: 'Officer Said', value: `*"${transcript.trim()}"*`, inline: false })
-              .setFooter({ text: 'RPM' })
-              .setTimestamp();
-
-            const msg = await dispatchCh.send({ embeds: [stopEmbed], components: [] }).catch(() => null);
-            const pending = pendingStopMoveRequests.get(requestKey);
-            if (pending && msg) {
-              pending.dispatchChannelId = dispatchCh.id;
-              pending.messageId = msg.id;
-            }
-          }
-
-          if (config.aiEnabled && hasAIKey()) {
-            try {
-              const { playDispatchVoice } = await import('../utils/voiceListener.js');
-              const ttsText = `Copy ${ttsName}, showing you ten eleven. Would you like me to move you to the traffic stop channel?`;
-              const ttsBuffer = await generateDispatchTTS(ttsText);
-              playDispatchVoice(guild.id, ttsBuffer);
-            } catch (err) {
-              console.error('[Dispatch TTS] Traffic stop voice question error:', err.message);
-            }
-          }
-
-          await rebuildStatusBoard(guild, config);
-        }
+        await rebuildStatusBoard(guild, config);
       } catch (err) {
-        console.error('[Dispatch] Voice channel move error:', err.message);
+        console.error('[Dispatch] Traffic stop status error:', err.message);
       }
     } else if (voiceAction === 'available') {
       // Officer called 10-8 verbally - clear their stop status
@@ -3144,9 +3089,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       await updateOfficerStatus(guild.id, userId, officerName, parsed.code, parsed, existing?.lastPatrolChannelId || null);
 
       // 10-99 - trigger full panic alert (embed + TTS + status board)
-      // Guard: skip if a panic alert was already sent for this guild in the last 90 seconds
-      // to prevent duplicate alerts when multiple officers say "officer down" about the same incident.
-      if (parsed.code === '10-99') {
+      // Only fires when the officer explicitly addresses dispatch AND says "10-99" literally.
+      // Phrase-aliases (officer down, shots fired, etc.) update status silently but do NOT
+      // trigger the full panic alert — only "dispatch 10-99" does.
+      const has1099Literal = /\b10[-\s]?99\b|\bten\s*ninety[-\s]?nine\b/i.test(transcript);
+      if (parsed.code === '10-99' && hadTrigger && has1099Literal) {
         const _lastPanic = _panicCooldowns.get(guild.id) || 0;
         if (Date.now() - _lastPanic < 90_000) {
           console.log(`[Dispatch] 10-99 suppressed - panic already active in ${guild.name} (cooldown ${Math.round((Date.now() - _lastPanic) / 1000)}s ago)`);
