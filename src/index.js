@@ -963,6 +963,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'business_select') {
         const { handleBusinessSelect } = await import('./handlers/economyActions.js');
         await handleBusinessSelect(interaction);
+      } else if (interaction.customId.startsWith('business_paymember_select_')) {
+        const { handleBusinessPayMemberSelect } = await import('./handlers/economyActions.js');
+        await handleBusinessPayMemberSelect(interaction);
       } else if (interaction.customId === 'civjob_select') {
         const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
         await handleCivilianJobApply(interaction);
@@ -1022,6 +1025,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_withdraw_')) {
         const { handleBusinessWithdraw } = await import('./handlers/economyActions.js');
         await handleBusinessWithdraw(interaction);
+      } else if (interaction.customId.startsWith('business_paymember_')) {
+        const { handleBusinessPayMemberButton } = await import('./handlers/economyActions.js');
+        await handleBusinessPayMemberButton(interaction);
       } else if (
         interaction.customId === 'collect_income' ||
         interaction.customId.startsWith('economy') ||
@@ -1061,6 +1067,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_do_withdraw_')) {
         const { handleBusinessWithdrawModal } = await import('./handlers/economyActions.js');
         await handleBusinessWithdrawModal(interaction);
+      } else if (interaction.customId.startsWith('business_paymember_amount_')) {
+        const { handleBusinessPayMemberAmountModal } = await import('./handlers/economyActions.js');
+        await handleBusinessPayMemberAmountModal(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
         await handleEconomyModal(interaction);

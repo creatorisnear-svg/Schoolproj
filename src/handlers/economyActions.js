@@ -2,6 +2,7 @@ import {
   EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle,
   StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  UserSelectMenuBuilder,
 } from 'discord.js';
 import { createHash } from 'crypto';
 import EconomyConfig from '../models/EconomyConfig.js';
@@ -858,7 +859,85 @@ function buildBusinessButtons(accountId) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`business_deposit_${accountId}`).setLabel('Deposit').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`business_withdraw_${accountId}`).setLabel('Withdraw').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`business_paymember_${accountId}`).setLabel('Pay Member').setStyle(ButtonStyle.Primary),
   );
+}
+
+export async function handleBusinessPayMemberButton(interaction) {
+  const accountId = interaction.customId.replace('business_paymember_', '');
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const config = await getConfig(interaction.guildId);
+  const sym = config?.currencySymbol || '$';
+  const menu = new UserSelectMenuBuilder()
+    .setCustomId(`business_paymember_select_${accountId}`)
+    .setPlaceholder('Search for a member to pay...')
+    .setMinValues(1)
+    .setMaxValues(1);
+  const row = new ActionRowBuilder().addComponents(menu);
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`Pay Member — ${account.name}`)
+      .setDescription(`### Balance\n${sym}${fmt(account.balance)}\nSelect a member below to send them money from this business account.`)
+      .setFooter({ text: 'RPM' })],
+    components: [row],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessPayMemberSelect(interaction) {
+  const accountId = interaction.customId.replace('business_paymember_select_', '');
+  const targetUser = interaction.users.first();
+  if (!targetUser) return interaction.reply({ embeds: [errorEmbed('No user selected.')], flags: 64 });
+  if (targetUser.bot) return interaction.reply({ embeds: [errorEmbed('You cannot pay a bot.')], flags: 64 });
+  const modal = new ModalBuilder()
+    .setCustomId(`business_paymember_amount_${accountId}_${targetUser.id}`)
+    .setTitle(`Pay ${targetUser.username}`)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('amount')
+          .setLabel('Amount to send')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder('e.g. 500')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessPayMemberAmountModal(interaction) {
+  const parts = interaction.customId.replace('business_paymember_amount_', '').split('_');
+  const targetUserId = parts.pop();
+  const accountId = parts.join('_');
+  const raw = interaction.fields.getTextInputValue('amount');
+  const amount = parseInt(raw);
+  if (isNaN(amount) || amount < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid amount.')], flags: 64 });
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const sym = config.currencySymbol;
+  const account = await BusinessAccount.findOne({ accountId });
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  if (account.balance < amount) return interaction.reply({ embeds: [errorEmbed(`The business only has ${sym}${fmt(account.balance)}.`)], flags: 64 });
+  const targetBal = await getBalance(interaction.guildId, targetUserId, config.startingBalance);
+  account.balance -= amount;
+  targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
+  let targetTag = targetUserId;
+  try {
+    const member = await interaction.guild.members.fetch(targetUserId);
+    targetTag = member.user.username;
+  } catch { /* use ID fallback */ }
+  await Promise.all([account.save(), targetBal.save(), logTx(account, 'pay', amount, { id: targetUserId, username: targetTag }, `Paid to ${targetTag}`)]);
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Payment Sent')
+      .setDescription(`Paid ${sym}${fmt(amount)} to **${targetTag}** from **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}`)
+      .setFooter({ text: 'RPM' })],
+    components: [buildBusinessButtons(accountId)],
+    flags: 64,
+  });
 }
 
 export async function runBusiness(interaction) {
