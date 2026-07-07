@@ -942,19 +942,20 @@ client.on('interactionCreate', async interaction => {
       return;
     }
 
+    // ── Maintenance mode: block ALL interactions for non-admins ─────────────
+    if (isMaintenanceMode()) {
+      const isAdmin = interaction.member?.permissions?.has('Administrator');
+      if (!isAdmin) {
+        const maintenanceEmbed = new EmbedBuilder()
+          .setColor('#f04747')
+          .setDescription('**Bot Maintenance**\nThe bot is currently undergoing maintenance. Please try again shortly.')
+          .setFooter({ text: 'RPM' });
+        return interaction.reply({ embeds: [maintenanceEmbed], flags: 64 }).catch(() => {});
+      }
+    }
+
     if (interaction.isChatInputCommand()) {
       console.log(`[COMMAND] ${interaction.user.tag} (${interaction.user.id}) used /${interaction.commandName} in ${interaction.guild?.name || 'DM'}`);
-
-      if (isMaintenanceMode()) {
-        const isAdmin = interaction.member?.permissions?.has('Administrator');
-        if (!isAdmin) {
-          const maintenanceEmbed = new EmbedBuilder()
-            .setColor('#f04747')
-            .setDescription('**Bot Maintenance**\nThe bot is currently undergoing maintenance. Please try again shortly.')
-            .setFooter({ text: 'RPM' });
-          return interaction.reply({ embeds: [maintenanceEmbed], flags: 64 }).catch(() => {});
-        }
-      }
 
       const command = client.commands.get(interaction.commandName);
       if (command) {
@@ -1157,6 +1158,24 @@ connectDatabase().then(() => {
     console.log(`HTTP server running on port ${PORT}`);
     console.log(`Health check available at /health`);
   });
+
+  // Business account passive income poller — runs every 15 min
+  setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
+    try {
+      const { applyBusinessIncome } = await import('./handlers/economyActions.js');
+      const { default: BusinessAccount } = await import('./models/BusinessAccount.js');
+      const accounts = await BusinessAccount.find({
+        incomeAmount: { $gt: 0 },
+        incomeCooldownHours: { $gt: 0 },
+      });
+      for (const acc of accounts) {
+        await applyBusinessIncome(acc).catch(() => {});
+      }
+    } catch (err) {
+      console.error('[BusinessIncome] Poller error:', err.message);
+    }
+  }, 15 * 60 * 1000);
 
   // Expire civilian job role assignments (skip if MongoDB not ready)
   setInterval(async () => {

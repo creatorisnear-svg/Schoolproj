@@ -363,96 +363,122 @@ function renderDashboard() {
 
   var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
   var totalCount = FEATURES.length;
+  var hasLogChannel = !!config.logChannelId;
 
   var html = '<div class="dashboard-layout">' + renderSidebar('overview') +
     '<div class="dashboard-content">' +
     sidebarToggleBtn('Menu') +
     '<div class="mobile-back" onclick="closeSidebar();renderServerSelect()">&#8249; Switch Server</div>' +
-    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>Overview and module management</p></div>';
+    '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>' +
+    (enabledCount > 0
+      ? enabledCount + ' feature' + (enabledCount !== 1 ? 's' : '') + ' active'
+      : 'No features enabled yet — follow the guide below') +
+    '</p></div>';
 
+  // ── Stats row ──────────────────────────────────────────────────────────────
   html += '<div class="dash-grid" style="margin-bottom:16px;">' +
     '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0).toLocaleString() + '</div></div>' +
     '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="font-size:15px;color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Active Modules</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">Active Features</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
     '</div>';
 
-  /* ── Section 1: Enable / Disable ── */
-  var FEATURE_CATEGORIES = [
-    { title: 'Roleplay & Operations', keys: ['roleplay', 'priority', 'calendar'] },
-    { title: 'Moderation',            keys: ['strike', 'verification', 'antipromote', 'blacklist'] },
-    { title: 'Community',             keys: ['ticket', 'rolerequest', 'welcome', 'moveme', 'appys'] },
-    { title: 'Economy',               keys: ['economy', 'civjobs'] },
-    { title: 'Advanced',              keys: ['dispatch'] },
+  // ── Setup guide (shown when no log channel set) ───────────────────────────
+  if (!hasLogChannel) {
+    html +=
+      '<div class="setup-guide" style="margin-bottom:16px;">' +
+        '<div class="setup-guide-title">Getting Started</div>' +
+        '<div class="setup-guide-sub">Complete these steps to get the bot working on your server</div>' +
+        '<div class="setup-steps">' +
+          '<div class="setup-step">' +
+            '<div class="setup-step-num">1</div>' +
+            '<div class="setup-step-body">' +
+              '<div class="setup-step-title">Set a log channel</div>' +
+              '<div class="setup-step-desc">Pick a private text channel where the bot records everything — strikes, verifications, tickets. Staff-only channels work best.</div>' +
+            '</div>' +
+            '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'general\')">Set Channel &rsaquo;</button>' +
+          '</div>' +
+          '<div class="setup-step">' +
+            '<div class="setup-step-num">2</div>' +
+            '<div class="setup-step-body">' +
+              '<div class="setup-step-title">Add staff members</div>' +
+              '<div class="setup-step-desc">In Discord, run <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">/staff add @you</code> to add yourself, then add your admins.</div>' +
+            '</div>' +
+            '<button class="btn btn-secondary btn-sm" onclick="renderSettings(\'staff\')">Manage Staff &rsaquo;</button>' +
+          '</div>' +
+          '<div class="setup-step">' +
+            '<div class="setup-step-num">3</div>' +
+            '<div class="setup-step-body">' +
+              '<div class="setup-step-title">Enable and configure features</div>' +
+              '<div class="setup-step-desc">Toggle any feature on below, then click <strong>Configure</strong> to set up its channels and options.</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // ── Unified features section ──────────────────────────────────────────────
+  var FEATURE_SECTIONS = [
+    { title: 'Foundation', items: [
+      { id: 'general',      label: 'General Settings',   desc: 'Log channel — set this first, the bot needs it to work', featureKey: null },
+      { id: 'staff',        label: 'Staff Management',   desc: 'Who can run bot commands — add yourself and your admins', featureKey: null },
+    ]},
+    { title: 'Roleplay & Operations', items: [
+      { id: 'roleplay',     label: 'Roleplay Commands',  desc: '/me, /do, /try, 911 calls and CAD database',             featureKey: 'roleplayEnabled',      feature: 'roleplay' },
+      { id: 'priority',     label: 'Priority Tracker',   desc: 'Live board showing when a priority event is active',     featureKey: 'priorityEnabled',      feature: 'priority' },
+      { id: 'calendar',     label: 'RP Calendar',         desc: 'Schedule and display weekly roleplay sessions',          featureKey: 'calendarEnabled',      feature: 'calendar' },
+    ]},
+    { title: 'Moderation', items: [
+      { id: 'verification', label: 'Verification',        desc: 'Gate your server — members fill a form to get access',  featureKey: 'verifyEnabled',        feature: 'verification' },
+      { id: 'strikes',      label: 'Strike System',       desc: 'Warn rule-breakers, auto timeout / kick / ban',         featureKey: 'strikeEnabled',        feature: 'strike' },
+      { id: 'antipromo',    label: 'Anti-Promoting',      desc: 'Auto-delete Discord invite links from other servers',   featureKey: 'antiPromotingEnabled', feature: 'antipromote' },
+      { id: 'blacklist',    label: 'Blacklist',            desc: 'IP + gamertag protection across servers',               featureKey: 'blacklistEnabled',     feature: 'blacklist' },
+    ]},
+    { title: 'Community', items: [
+      { id: 'tickets',      label: 'Ticket Support',      desc: 'Members open private support channels with a button',   featureKey: 'ticketEnabled',        feature: 'ticket' },
+      { id: 'welcome',      label: 'Welcome System',      desc: 'Greet new members automatically with a message or DM', featureKey: 'welcomeEnabled',       feature: 'welcome' },
+      { id: 'rolerequest',  label: 'Role Requests',        desc: 'Members apply for specific roles — staff approve',      featureKey: 'roleRequestEnabled',   feature: 'rolerequest' },
+      { id: 'moveme',       label: 'Voice Mover',          desc: 'Panel for members to move between voice channels',      featureKey: 'movemeEnabled',        feature: 'moveme' },
+      { id: 'appys',        label: 'Applications',         desc: 'Staff application panels with DM Q&A flow',            featureKey: 'appysEnabled',         feature: 'appys' },
+      { id: 'sticky',       label: 'Sticky Messages',      desc: 'Auto-reposting pinned messages in channels',           featureKey: null },
+      { id: 'reactionroles',label: 'Reaction Roles',       desc: 'Members react to a message to receive a role',         featureKey: null },
+    ]},
+    { title: 'Economy', items: [
+      { id: 'economy',      label: 'Economy',              desc: 'Currency, work, crime, gambling, shops and businesses', featureKey: 'economyEnabled',       feature: 'economy' },
+      { id: 'civjobs',      label: 'Civilian Jobs',         desc: 'Job board with shift-based roles and hours tracking',  featureKey: 'civjobsEnabled',       feature: 'civjobs' },
+    ]},
+    { title: 'Advanced', items: [
+      { id: 'dispatch',     label: 'AI Voice Dispatch',    desc: 'Bot joins patrol voice channels and acts as an AI dispatcher', featureKey: 'dispatchEnabled', feature: 'dispatch' },
+    ]},
   ];
 
   html += '<div class="overview-section">' +
     '<div class="overview-section-header">' +
-    '<h2 class="overview-section-title">Enable / Disable Features</h2>' +
-    '<p class="overview-section-sub">Toggle which modules are active on your server</p>' +
+    '<h2 class="overview-section-title">Features</h2>' +
+    '<p class="overview-section-sub">Toggle on/off and configure each feature — all from one place</p>' +
     '</div><div class="feature-groups">';
 
-  FEATURE_CATEGORIES.forEach(function(cat) {
-    var catFeatures = FEATURES.filter(function(f) { return cat.keys.indexOf(f.feature) !== -1; });
-    if (!catFeatures.length) return;
-    html += '<div class="feature-category">' +
-      '<div class="feature-category-title">' + cat.title + '</div>';
-    catFeatures.forEach(function(f) {
-      var enabled = !!config[f.key];
-      var isPremium = isFlagPremium(f.feature);
+  FEATURE_SECTIONS.forEach(function(section) {
+    html += '<div class="feature-category"><div class="feature-category-title">' + section.title + '</div>';
+    section.items.forEach(function(m) {
+      var enabled = m.featureKey ? !!config[m.featureKey] : true;
+      var isPremium = m.feature ? isFlagPremium(m.feature) : false;
       html += '<div class="feature-row">' +
         '<div class="feature-row-info">' +
-        '<div class="feature-row-name">' + f.name + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
-        '<div class="feature-row-desc">' + f.desc + '</div>' +
+          '<div class="feature-row-name">' + m.label + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
+          '<div class="feature-row-desc">' + m.desc + '</div>' +
         '</div>' +
-        '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + f.feature + '" data-key="' + f.key + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + f.name + '"></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+          (m.featureKey
+            ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
+            : '') +
+          '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(\'' + m.id + '\')" title="Configure ' + m.label + '">Configure</button>' +
+        '</div>' +
         '</div>';
     });
     html += '</div>';
   });
+
   html += '</div></div>';
-
-  /* ── Section 2: Configure ── */
-  var CONFIGURE_CARDS = [
-    { id: 'general',      label: 'General Settings',  desc: 'Log channel, general config',    featureKey: null },
-    { id: 'roleplay',     label: 'Roleplay Commands',  desc: '911, CAD, Twitter, anon',        featureKey: 'roleplayEnabled' },
-    { id: 'verification', label: 'Verification',       desc: 'Gate, roles, questions, panel',  featureKey: 'verifyEnabled' },
-    { id: 'strikes',      label: 'Strike System',      desc: 'Levels, punishments',            featureKey: 'strikeEnabled' },
-    { id: 'tickets',      label: 'Ticket Support',     desc: 'Types, channels, panel',         featureKey: 'ticketEnabled' },
-    { id: 'welcome',      label: 'Welcome System',     desc: 'Join messages, DMs',             featureKey: 'welcomeEnabled' },
-    { id: 'antipromo',    label: 'Anti-Promoting',     desc: 'Invite link filtering',          featureKey: 'antiPromotingEnabled' },
-    { id: 'rolerequest',  label: 'Role Request',        desc: 'Self-serve role requests',       featureKey: 'roleRequestEnabled' },
-    { id: 'priority',     label: 'Priority Tracker',   desc: 'Priority event tracking',        featureKey: 'priorityEnabled' },
-    { id: 'calendar',     label: 'RP Calendar',         desc: 'Weekly events schedule',         featureKey: 'calendarEnabled' },
-    { id: 'economy',      label: 'Economy',             desc: 'Currency, jobs, store',          featureKey: 'economyEnabled' },
-    { id: 'civjobs',      label: 'Civilian Jobs',       desc: 'Job board, roles, shift hours',  featureKey: null },
-    { id: 'moveme',        label: 'Voice Mover',        desc: 'Self-move panel for members',    featureKey: 'movemeEnabled' },
-    { id: 'appys',         label: 'Applications',       desc: 'Application panels + DM Q&A (Premium)', featureKey: 'appysEnabled' },
-    { id: 'sticky',        label: 'Sticky Messages',   desc: 'Auto-reposting pinned messages', featureKey: null },
-    { id: 'reactionroles', label: 'Reaction Roles',    desc: 'React to get a role',            featureKey: null },
-    { id: 'dispatch',      label: 'AI Voice Dispatch', desc: 'Voice + AI (Premium)',           featureKey: 'dispatchEnabled' },
-    { id: 'staff',         label: 'Staff Management',  desc: 'Assign staff roles and users',   featureKey: null },
-    { id: 'blacklist',     label: 'Blacklist',          desc: 'IP + gamertag blacklist (Premium)', featureKey: 'blacklistEnabled' },
-  ];
-
-  html += '<div class="overview-section" style="margin-top:16px;">' +
-    '<div class="overview-section-header">' +
-    '<h2 class="overview-section-title">Configure Modules</h2>' +
-    '<p class="overview-section-sub">Set up channels, roles, and options - click any card to open settings</p>' +
-    '</div><div class="configure-module-grid">';
-
-  CONFIGURE_CARDS.forEach(function(m) {
-    var enabled = m.featureKey ? !!config[m.featureKey] : true;
-    html += '<div class="configure-module-card" onclick="renderSettings(\'' + m.id + '\')">' +
-      '<div class="configure-module-header">' +
-      (m.featureKey ? '<span class="configure-status-dot ' + (enabled ? 'on' : 'off') + '"></span>' : '') +
-      '<div class="configure-module-name">' + m.label + '</div>' +
-      '</div>' +
-      '<div class="configure-module-desc">' + m.desc + '</div>' +
-      '<div class="configure-module-cta">Configure ›</div>' +
-      '</div>';
-  });
-  html += '</div></div>';
-
   html += renderPremiumSection(g);
   html += '</div></div>';
   app.innerHTML = html;

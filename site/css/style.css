@@ -227,6 +227,9 @@ nav .nav-links a:hover { color: var(--text); }
 }
 .btn-discord:hover { background: #4752c4; color: #fff; }
 
+/* Announcement bar — clears the fixed nav (60px) */
+#announcements-bar { margin-top: 60px; }
+
 /* ── Hero ── */
 .hero {
   padding: 140px 0 80px; text-align: center; position: relative; overflow: hidden;
@@ -754,6 +757,7 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   /* Announcement bar */
   .announcement-bar-item { padding: 12px 16px !important; font-size: 13px !important; }
 
+
   /* Index page inline grids */
   .index-premium-grid { grid-template-columns: 1fr !important; }
   .index-commands-grid { grid-template-columns: 1fr !important; }
@@ -810,6 +814,33 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
 @media (max-width: 600px) {
   .configure-module-grid { grid-template-columns: repeat(2, 1fr); }
   .feature-groups { padding: 4px 12px 12px; }
+}
+
+/* ── Setup Guide ── */
+.setup-guide {
+  background: linear-gradient(135deg, rgba(88,101,242,0.08), rgba(88,101,242,0.03));
+  border: 1px solid rgba(88,101,242,0.25); border-radius: var(--radius); padding: 16px 18px;
+}
+.setup-guide-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.setup-guide-sub   { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+.setup-steps { display: flex; flex-direction: column; gap: 8px; }
+.setup-step {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 10px 14px;
+}
+.setup-step-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(88,101,242,0.18); border: 1px solid rgba(88,101,242,0.35);
+  color: #7983f5; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.setup-step-body { flex: 1; min-width: 0; }
+.setup-step-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.setup-step-desc  { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.feature-configure-btn { font-size: 11px !important; padding: 4px 10px !important; }
+@media (max-width: 540px) {
+  .setup-step { flex-wrap: wrap; }
+  .setup-step > .btn { margin-left: auto; }
 }
 
 /* ── Back to Top ── */

@@ -826,7 +826,7 @@ async function logTx(account, type, amount, user, note) {
   } catch { /* non-fatal */ }
 }
 
-async function applyBusinessIncome(account) {
+export async function applyBusinessIncome(account) {
   if (!account.incomeAmount || !account.incomeCooldownHours) return;
   const now = Date.now();
   if (!account.lastIncomeAt) {
