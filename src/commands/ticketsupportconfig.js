@@ -49,7 +49,7 @@ export async function execute(interaction) {
       );
 
     await interaction.reply({
-      content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:',
+      content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:\n\n-# Tip: use `/config tickets` for all setup options in one place.',
       components: [menu],
       flags: 64,
     });

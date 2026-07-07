@@ -44,7 +44,7 @@ export async function execute(interaction) {
       );
 
     return interaction.reply({
-      content: 'Select a channel where priority tracker messages will be sent:',
+      content: 'Select a channel where priority tracker messages will be sent:\n\n-# Tip: use `/config priority` for all setup options in one place.',
       components: [menu],
       flags: 64,
     });

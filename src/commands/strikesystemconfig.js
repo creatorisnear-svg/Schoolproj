@@ -64,7 +64,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:',
+    content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:\n\n-# Tip: use `/config strikes` for all setup options in one place.',
     components: [menu],
     flags: 64,
   });

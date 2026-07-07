@@ -47,7 +47,7 @@ export async function execute(interaction) {
       );
 
     return interaction.reply({
-      content: 'Select a channel where the roleplay calendar will be posted:',
+      content: 'Select a channel where the roleplay calendar will be posted:\n\n-# Tip: use `/config calendar` for all setup options in one place.',
       components: [menu],
       flags: 64,
     });

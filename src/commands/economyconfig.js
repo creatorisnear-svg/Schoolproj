@@ -14,5 +14,6 @@ export async function execute(interaction) {
       flags: 64,
     });
   }
+  // /config economy is the canonical way to reach this menu going forward.
   return interaction.reply(getEconomySetupMenu());
 }

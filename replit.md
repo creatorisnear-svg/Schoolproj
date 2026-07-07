@@ -81,10 +81,18 @@ TOPGG_WEBHOOK_SECRET   - Secret set in top.gg dashboard to verify incoming vote 
 ## Bot Architecture
 
 - **Entry point**: `src/index.js` — connects to MongoDB, logs into Discord, starts Express server, loads all handlers, registers slash commands.
-- **Handlers** (`src/handlers/`): `economyHandler.js`, `economyActions.js`, `dispatchHandler.js`, `verifyHandler.js`, `strikeHandler.js`, `ticketHandler.js`, `appyHandler.js`, etc.
+- **Handlers** (`src/handlers/`): `economyHandler.js`, `economyActions.js`, `dispatchHandler.js`, `verifyHandler.js`, `strikeHandler.js`, `ticketHandler.js`, `appyHandler.js`, `setupWizardHandler.js` (handles `setup_config_select` interactions from `/setup`), etc.
 - **Models** (`src/models/`): `Announcement`, `AuthorizedUser`, `AutoJoin`, `AutoRole`, `BOLO`, `CADCharacter`, `CADConfig`, `Changelog`, `CivilianJobConfig`, `Config`, `DispatchConfig`, `EconomyBalance`, `EconomyConfig`, `EconomyInventory`, `EconomyStore`, `EmergencyCall`, `FeatureFlag`, `JobAssignment`, `MemberMovementConfig`, `OfficerStatus`, `PendingVerification`, `PremiumKey`, `PreviewVideo`, `Priority`, `PriorityRequest`, `ReactionRole`, `RoleplayCalendar`, `RoleplayCommands`, `RoleRequestConfig`, `RoleRequest`, `Staff`, `StatusHeartbeat`, `Sticky`, `Strike`, `StripeConfig`, `TicketConfig`, `Ticket`, `TrafficTicket`, `Verification`, `Welcome`, `AppyConfig`, `AppyPanel`, `AppySubmission`
 - **Utilities** (`src/utils/`): `premiumCheck.js` (`checkFeatureAccess`, `isPremiumGuild`, `clearPremiumCache`, `clearFeatureFlagCache`, cached 5 min), `embedBuilder.js` (`successEmbed`/`errorEmbed`), `permissions.js` (`checkStaffPermission`), `voiceListener.js` (AI dispatch voice pipeline + UDP bypass, see Critical section)
-- **Slash commands** (`src/commands/`), registered globally: `/economysetup`, `/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`, `/dispatchsetup`, `/dev`, `/activatepremium`, plus member economy commands (`/balance`, `/work`, `/crime`, `/rob`, `/gamble`, `/shop`, `/buy`, `/sell`, `/inventory`, `/give`, `/giveitems`, `/deposit`, `/withdraw`, `/leaderboard`, `/income`, `/use`)
+- **Slash commands** (`src/commands/`), registered globally:
+  - **Setup & Config (new)**: `/setup` (server status dashboard + jump-to-feature wizard), `/config <module>` (unified config replacing all individual xxxconfig commands — subcommands: `general`, `features`, `verify`, `tickets`, `economy`, `strikes`, `welcome`, `antipromo`, `roles`, `priority`, `calendar`, `moveme`, `roleplay`, `appys`, `dispatch`)
+  - **Legacy config** (still work, show a hint pointing to `/config`): `/verifysystemconfig`, `/ticketsupportconfig`, `/strikesystemconfig`, `/welcomesystemconfig`, `/antipromotingconfig`, `/movemeconfig`, `/rolerequestadd`, `/dispatchconfig`, `/economyconfig`, `/roleplaycommandconfig`, `/prioritytrackerconfig`, `/roleplaycalenderconfig`, `/appyconfig`
+  - **Databases**: `/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`
+  - **Staff & Permissions**: `/staff`, `/setlogchannel`, `/enablecommands`, `/reloadconfig`
+  - **Economy** (member commands): `/balance`, `/work`, `/crime`, `/rob`, `/gamble`, `/shop`, `/buy`, `/sell`, `/inventory`, `/give`, `/giveitems`, `/deposit`, `/withdraw`, `/leaderboard`, `/income`, `/use`
+  - **RP**: `/setrp`, `/unsetrp`, `/activepriority`, `/deactivatepriority`, `/priorityrequest`, `/rolerequest`
+  - **Premium**: `/activatepremium`, `/activatetrial`, `/premium`
+  - **Misc**: `/help`, `/clear`, `/embed`, `/strike`, `/removestrike`, `/blacklist`, `/removeblacklist`, `/sticky`, `/stickylist`, `/invite`, `/manageroles`, `/dev`
 
 ---
 

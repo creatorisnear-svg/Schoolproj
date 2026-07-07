@@ -52,7 +52,7 @@ export async function execute(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Anti-Promoting Setup')
-      .setDescription('Manage whitelisted invite links and staff bypass settings.')
+      .setDescription('Manage whitelisted invite links and staff bypass settings.\n\n-# Tip: use `/config antipromo` for all setup options in one place.')
       .setFooter({ text: 'RPM' });
 
     return interaction.reply({

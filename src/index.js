@@ -26,6 +26,7 @@ import Welcome from './models/Welcome.js';
 import Verification from './models/Verification.js';
 import { handleVerifyModal, handleVerifyApprove, handleVerifyReject } from './handlers/verifyHandler.js';
 import { handleSelectMenu } from './handlers/selectMenuHandler.js';
+import { handleSetupConfigSelect } from './handlers/setupWizardHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
 import { isMaintenanceMode } from './utils/maintenanceMode.js';
 
@@ -951,7 +952,9 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'blacklist_config_menu') {
+      if (interaction.customId === 'setup_config_select') {
+        await handleSetupConfigSelect(interaction);
+      } else if (interaction.customId === 'blacklist_config_menu') {
         const { handleBlacklistConfigMenu } = await import('./handlers/blacklistHandler.js');
         await handleBlacklistConfigMenu(interaction, client);
       } else if (interaction.customId === 'blacklist_panel_channel_select') {

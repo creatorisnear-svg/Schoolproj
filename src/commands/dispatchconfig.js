@@ -50,7 +50,7 @@ export async function execute(interaction) {
       new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('Dispatch Setup')
-        .setDescription(`Configure the AI voice dispatch system. Officers speak in monitored voice channels - the bot transcribes, responds, and updates the status board.${warning}`)
+        .setDescription(`Configure the AI voice dispatch system. Officers speak in monitored voice channels - the bot transcribes, responds, and updates the status board.${warning}\n\n-# Tip: use \`/config dispatch\` for all setup options in one place.`)
         .setFooter({ text: 'RPM' }),
     ],
     components: [menu],

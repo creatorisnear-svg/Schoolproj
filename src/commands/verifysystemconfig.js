@@ -69,7 +69,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Verification System Setup**\n\nSet the verify channel, verified role, unverified role, and which categories verified members can see.\n\n**Verified Members** will see: All channels in selected categories + welcome channel\n**Unverified Members** will see: Verify channel + welcome channel',
+    content: '**Verification System Setup**\n\nSet the verify channel, verified role, unverified role, and which categories verified members can see.\n\n**Verified Members** will see: All channels in selected categories + welcome channel\n**Unverified Members** will see: Verify channel + welcome channel\n\n-# Tip: use `/config verify` for all setup options in one place.',
     components: [menu],
     flags: 64,
   });

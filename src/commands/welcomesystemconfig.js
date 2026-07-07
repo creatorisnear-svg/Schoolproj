@@ -64,7 +64,7 @@ export async function execute(interaction) {
     );
 
   return interaction.reply({
-    content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:',
+    content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:\n\n-# Tip: use `/config welcome` for all setup options in one place.',
     components: [menu],
     flags: 64,
   });

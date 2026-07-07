@@ -62,7 +62,7 @@ export async function execute(interaction) {
   );
 
   return interaction.reply({
-    content: `**Voice Mover Setup**\n\n${panelStatus}\nAllowed channels: ${chCount > 0 ? chCount + ' configured' : 'all channels (no filter set)'}\n\nSelect an option below to configure:`,
+    content: `**Voice Mover Setup**\n\n${panelStatus}\nAllowed channels: ${chCount > 0 ? chCount + ' configured' : 'all channels (no filter set)'}\n\nSelect an option below to configure:\n\n-# Tip: use \`/config moveme\` for all setup options in one place.`,
     components: [menu],
     flags: 64,
   });

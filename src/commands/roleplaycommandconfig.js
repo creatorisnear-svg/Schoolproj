@@ -48,7 +48,7 @@ export async function execute(interaction) {
       );
 
     await interaction.reply({
-      content: '**Roleplay Commands Setup**\n\nSelect a command to configure:',
+      content: '**Roleplay Commands Setup**\n\nSelect a command to configure:\n\n-# Tip: use `/config roleplay` for all setup options in one place.',
       components: [menu],
       flags: 64,
     });

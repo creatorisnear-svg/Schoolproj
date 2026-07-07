@@ -49,7 +49,7 @@ export async function execute(interaction) {
       );
 
     await interaction.reply({
-      content: '**Role Request System Setup**\n\nSelect an option below to configure role requests:',
+      content: '**Role Request System Setup**\n\nSelect an option below to configure role requests:\n\n-# Tip: use `/config roles` for all setup options in one place.',
       components: [menu],
       flags: 64,
     });

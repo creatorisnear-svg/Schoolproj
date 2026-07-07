@@ -68,7 +68,7 @@ export async function execute(interaction) {
     `### Panel Channel\n${panelChannelId ? `<#${panelChannelId}>` : '-# Not set'}`,
     `### Review Channel\n${reviewChannelId ? `<#${reviewChannelId}>` : '-# Not set — applications have nowhere to go'}`,
     `### Application Types (${typeCount})\n${typeList}`,
-    `-# Configure via the dashboard at \`roleplaymanager.xyz\``,
+    `-# Configure via the dashboard at \`roleplaymanager.xyz\` · or use \`/config appys\` for a quick overview`,
   ];
 
   const embed = new EmbedBuilder()
