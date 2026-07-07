@@ -2965,15 +2965,22 @@ function showSaveBar(mod) {
 
 function discardChanges(mod) {
   pendingChanges = {};
-  // Reset each changed field to the original server value — no page re-render needed
+  // Modules with complex client-side tag state need a full re-render to restore correctly
+  if (mod === 'dispatch' || mod === 'moveme') {
+    renderSettings(mod);
+    return;
+  }
+  // All other modules: restore in-place from the stored server snapshot
   var content = document.getElementById('settings-content');
   if (content && _currentSettingsData) {
     content.querySelectorAll('[data-key]').forEach(function(el) {
       var key = el.getAttribute('data-key');
       var orig = _currentSettingsData[key];
-      if (orig === undefined || orig === null) return;
-      if (el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        el.value = orig;
+      if (el.classList.contains('toggle')) {
+        // Toggle div — restore active state
+        if (orig) { el.classList.add('active'); } else { el.classList.remove('active'); }
+      } else if (el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.value = (orig != null) ? orig : '';
       }
     });
   }
@@ -2983,21 +2990,46 @@ function discardChanges(mod) {
 function saveSettings(mod) {
   if (Object.keys(pendingChanges).length === 0) return;
   var saveBtn = document.querySelector('.save-bar .btn-success');
+  var discardBtn = document.querySelector('.save-bar .btn-secondary');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+  if (discardBtn) { discardBtn.disabled = true; }
+  // Snapshot now so concurrent edits/discards mid-flight don't corrupt the merge
+  var snapshot = Object.assign({}, pendingChanges);
   api('/guild/' + currentGuild.id + '/settings/' + mod, {
     method: 'POST',
-    body: JSON.stringify(pendingChanges)
+    body: JSON.stringify(snapshot)
   }).then(function(result) {
     if (result && result.success) {
       toast('Settings saved');
-      // Merge saved values into stored snapshot so future discards are correct
+      // Merge the sent snapshot (not live pendingChanges) into the stored server snapshot
       if (_currentSettingsData) {
-        Object.keys(pendingChanges).forEach(function(k) {
-          _currentSettingsData[k] = pendingChanges[k];
+        Object.keys(snapshot).forEach(function(k) {
+          _currentSettingsData[k] = snapshot[k];
         });
       }
       pendingChanges = {};
-      window._dispatchState = {};
+      // Rebuild module-specific client state from the just-saved snapshot
+      if (mod === 'dispatch' && _currentSettingsData) {
+        // The API returns currentPatrolChannels/currentTrafficChannels/leoRoles but saves use
+        // patrolChannelIds/trafficStopChannelIds/leoRoleIds — keep alias keys in sync after merge
+        if (snapshot.patrolChannelIds !== undefined)
+          _currentSettingsData.currentPatrolChannels = snapshot.patrolChannelIds;
+        if (snapshot.trafficStopChannelIds !== undefined)
+          _currentSettingsData.currentTrafficChannels = snapshot.trafficStopChannelIds;
+        if (snapshot.leoRoleIds !== undefined)
+          _currentSettingsData.leoRoles = snapshot.leoRoleIds;
+        window._dispatchState = {
+          patrolChannelIds: (_currentSettingsData.currentPatrolChannels || []).slice(),
+          trafficStopChannelIds: (_currentSettingsData.currentTrafficChannels || []).slice(),
+          leoRoleIds: (_currentSettingsData.leoRoles || []).slice()
+        };
+      } else if (mod === 'moveme' && _currentSettingsData) {
+        window._movemeState = {
+          allowedChannelIds: (_currentSettingsData.allowedChannelIds || []).slice()
+        };
+      } else {
+        window._dispatchState = {};
+      }
       showSaveBar(mod); // hides bar; no page re-render
       // Refresh guild data silently in background
       api('/guild/' + currentGuild.id).then(function(refreshed) {
@@ -3005,6 +3037,7 @@ function saveSettings(mod) {
       });
     } else {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+      if (discardBtn) { discardBtn.disabled = false; }
     }
   });
 }

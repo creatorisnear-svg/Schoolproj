@@ -1,11 +1,13 @@
 {
-  "version": "1.0.2",
-  "title": "UI improvements",
+  "version": "1.0.3",
+  "title": "Dashboard save fix & /config help",
   "changes": [
-    "Fixed oversized footer logo on homepage — constrained to 28px with inline style and !important CSS override",
-    "Uptime history bars taller and rounded at the top for better readability",
-    "Uptime history legend now has a separator line and cleaner spacing",
-    "Uptime bar hover now uses brightness instead of opacity for a crisper effect",
-    "Tooltip styling improved with darker background and stronger shadow"
+    "Fixed dashboard save — settings save in-place without page reload or black screen",
+    "Fixed discard — correctly restores all field types (inputs, selects, toggles) to original server values",
+    "Fixed discard on dispatch/moveme pages — fully restores channel tag state with a clean re-render",
+    "Fixed save race condition — pendingChanges is snapshotted before the API call to prevent mid-flight corruption",
+    "Fixed dispatch state after save — alias keys (currentPatrolChannels etc.) kept in sync so subsequent edits work correctly",
+    "Enabling a feature from the Features page now auto-navigates to its Configure page",
+    "Added /config help — quick-reference list of all config subcommands in Discord"
   ]
 }

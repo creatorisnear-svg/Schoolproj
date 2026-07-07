@@ -519,7 +519,8 @@ async function handleHelp(interaction) {
           '**Run any of these to set up that feature — it enables automatically.**\n\n' +
           '**🔧 Start here**\n' +
           '`/config general` — Set your log channel *(do this first)*\n' +
-          '`/staff add @you` — Add yourself as staff *(required before general)*\n\n' +
+          '`/staff add @you` — Add yourself as staff *(required before general)*\n' +
+          '`/config features` — Enable or disable individual features\n\n' +
           '**🎮 Roleplay & Operations**\n' +
           '`/config roleplay` — /me, /do, /try, 911 calls & CAD\n' +
           '`/config priority` — Live priority event tracker\n' +
