@@ -1,0 +1,9 @@
+{
+  "version": "1.0.1",
+  "title": "Automated changelog system",
+  "changes": [
+    "Added automatic changelog Discord webhook notifications on create/update",
+    "Added CLI script (scripts/add-changelog.js) for quick changelog entry",
+    "Changelog entries now auto-post to Discord on every Koyeb deploy"
+  ]
+}

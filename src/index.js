@@ -1152,12 +1152,37 @@ async function refreshAllVerifyPanels(discordClient) {
   }
 }
 
-connectDatabase().then(() => {
+connectDatabase().then(async () => {
   client.login(process.env.DISCORD_TOKEN).catch(() => {});
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`HTTP server running on port ${PORT}`);
     console.log(`Health check available at /health`);
   });
+
+  // Auto-changelog on deploy: reads changelog-next.json, creates the entry if new
+  try {
+    const nextPath = resolve('changelog-next.json');
+    if (fs.existsSync(nextPath)) {
+      const next = JSON.parse(fs.readFileSync(nextPath, 'utf8'));
+      if (next && next.version && next.title) {
+        const { default: Changelog } = await import('./models/Changelog.js');
+        const exists = await Changelog.findOne({ version: next.version });
+        if (!exists) {
+          const entry = await Changelog.create({
+            version: next.version,
+            title: next.title,
+            changes: next.changes || [],
+            createdBy: 'auto-deploy',
+          });
+          console.log(`[Changelog] Auto-created v${entry.version}: ${entry.title}`);
+          const { sendChangelogWebhook } = await import('./utils/changelogWebhook.js');
+          sendChangelogWebhook(entry).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Changelog] Auto-deploy hook error:', err.message);
+  }
 
   // Business account passive income poller — runs every 15 min
   setInterval(async () => {
