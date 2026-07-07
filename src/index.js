@@ -1177,6 +1177,20 @@ connectDatabase().then(() => {
     }
   }, 15 * 60 * 1000);
 
+  // Uptime logger — records bot status every 5 minutes
+  setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
+    try {
+      const { default: UptimeLog } = await import('./models/UptimeLog.js');
+      await UptimeLog.create({
+        online: client.isReady(),
+        ping:   client.isReady() ? client.ws.ping : -1,
+      });
+    } catch (err) {
+      console.error('[Uptime] Logger error:', err.message);
+    }
+  }, 5 * 60 * 1000);
+
   // Expire civilian job role assignments (skip if MongoDB not ready)
   setInterval(async () => {
     if (mongoose.connection.readyState !== 1) return;

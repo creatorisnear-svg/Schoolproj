@@ -108,6 +108,51 @@ export function createApiRouter(client) {
     });
   });
 
+  router.get('/public/uptime', async (req, res) => {
+    try {
+      const { default: UptimeLog } = await import('../../models/UptimeLog.js');
+      const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); // 60 days
+      const logs = await UptimeLog.find({ timestamp: { $gte: since } })
+        .select('timestamp online ping').lean();
+
+      // Aggregate into daily buckets (UTC date string as key)
+      const days = {};
+      for (const log of logs) {
+        const d = log.timestamp.toISOString().slice(0, 10);
+        if (!days[d]) days[d] = { total: 0, online: 0, pings: [] };
+        days[d].total++;
+        if (log.online) {
+          days[d].online++;
+          if (log.ping > 0) days[d].pings.push(log.ping);
+        }
+      }
+
+      // Build sorted array of the last 60 days (fill gaps with null)
+      const result = [];
+      for (let i = 59; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const day = days[d];
+        if (!day) {
+          result.push({ date: d, uptime: null, avgPing: null });
+        } else {
+          const uptime = day.total ? Math.round((day.online / day.total) * 1000) / 10 : null;
+          const avgPing = day.pings.length ? Math.round(day.pings.reduce((a, b) => a + b, 0) / day.pings.length) : null;
+          result.push({ date: d, uptime, avgPing });
+        }
+      }
+
+      // Overall uptime across all days that have data
+      const withData = result.filter(d => d.uptime !== null);
+      const overall = withData.length
+        ? Math.round(withData.reduce((s, d) => s + d.uptime, 0) / withData.length * 10) / 10
+        : null;
+
+      res.json({ days: result, overall });
+    } catch (err) {
+      res.json({ days: [], overall: null });
+    }
+  });
+
   router.get('/public/announcements', async (req, res) => {
     try {
       const items = await Announcement.find({ active: true }).sort({ createdAt: -1 }).limit(5);

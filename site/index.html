@@ -471,6 +471,42 @@
     </div>
   </section>
 
+  <!-- ── UPTIME HISTORY ── -->
+  <section class="lp-section lp-section-alt" id="uptime">
+    <div class="container">
+      <div class="lp-section-header" style="margin-bottom:36px;">
+        <div class="lp-section-eyebrow">Status</div>
+        <h2 class="lp-section-title">Uptime history</h2>
+        <p class="lp-section-sub">60-day availability. Each bar is one day — hover for details.</p>
+      </div>
+      <div class="lp-uptime-card" id="uptime-card">
+        <div class="lp-uptime-top">
+          <div class="lp-uptime-status" id="uptime-status-badge">
+            <span class="lp-status-dot" id="uptime-dot"></span>
+            <span id="uptime-status-label">Checking status...</span>
+          </div>
+          <div class="lp-uptime-overall" id="uptime-overall"></div>
+        </div>
+        <div class="lp-uptime-bars" id="uptime-bars" role="list" aria-label="60-day uptime history">
+          <!-- bars injected by JS -->
+          <div class="lp-uptime-loading" id="uptime-loading">Loading history...</div>
+        </div>
+        <div class="lp-uptime-footer">
+          <span>60 days ago</span>
+          <span>Today</span>
+        </div>
+        <div class="lp-uptime-legend">
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#34d399;"></div>99%+ uptime</div>
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#fbbf24;"></div>95–99%</div>
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#f97316;"></div>80–95%</div>
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#f87171;"></div>Below 80%</div>
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#2a2d35;"></div>No data</div>
+        </div>
+        <div class="lp-uptime-tooltip" id="uptime-tooltip" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── VIDEOS (dynamic) ── -->
   <section id="videos-section" style="display:none; padding: 80px 0; background: var(--bg-secondary);">
     <div class="container">
@@ -714,6 +750,95 @@
         t.style.display = '';
       });
     });
+
+    // ── Uptime history ──
+    (function() {
+      var tooltip = document.getElementById('uptime-tooltip');
+      var barsEl  = document.getElementById('uptime-bars');
+      var loadEl  = document.getElementById('uptime-loading');
+      var overall = document.getElementById('uptime-overall');
+      var dot     = document.getElementById('uptime-dot');
+      var label   = document.getElementById('uptime-status-label');
+
+      function barColor(uptime) {
+        if (uptime === null) return '#2a2d35';
+        if (uptime >= 99)   return '#34d399';
+        if (uptime >= 95)   return '#fbbf24';
+        if (uptime >= 80)   return '#f97316';
+        return '#f87171';
+      }
+
+      function formatDate(iso) {
+        var d = new Date(iso + 'T00:00:00Z');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      }
+
+      fetch(API_BASE + '/api/public/uptime').then(function(r) { return r.json(); }).then(function(data) {
+        if (loadEl) loadEl.remove();
+
+        // Overall badge
+        if (data.overall !== null && data.overall !== undefined) {
+          overall.textContent = data.overall + '% uptime';
+          overall.style.color = data.overall >= 99 ? 'var(--green)' : data.overall >= 95 ? 'var(--amber)' : 'var(--red)';
+        }
+
+        // Today's bar (last item) drives the status dot
+        var today = data.days && data.days[data.days.length - 1];
+        if (today && today.uptime !== null) {
+          if (today.uptime >= 99) {
+            dot.className = 'lp-status-dot lp-status-online';
+            label.textContent = 'Operational';
+          } else if (today.uptime >= 80) {
+            dot.style.background = 'var(--amber)';
+            label.textContent = 'Degraded performance';
+          } else {
+            dot.className = 'lp-status-dot lp-status-offline';
+            label.textContent = 'Partial outage';
+          }
+        } else {
+          dot.className = 'lp-status-dot lp-status-online';
+          label.textContent = 'Operational';
+        }
+
+        // Bars
+        if (!data.days || !data.days.length) {
+          barsEl.innerHTML = '<p style="color:var(--text-dim);font-size:13px;text-align:center;padding:16px 0;">No history yet. Check back in a few minutes.</p>';
+          return;
+        }
+
+        var frag = document.createDocumentFragment();
+        data.days.forEach(function(day) {
+          var bar = document.createElement('div');
+          bar.className = 'lp-uptime-bar';
+          bar.style.background = barColor(day.uptime);
+          bar.setAttribute('role', 'listitem');
+          bar.setAttribute('aria-label', formatDate(day.date) + (day.uptime !== null ? ' ' + day.uptime + '% uptime' : ' no data'));
+          bar.addEventListener('mouseenter', function(e) {
+            var rect = bar.getBoundingClientRect();
+            var cardRect = document.getElementById('uptime-card').getBoundingClientRect();
+            var msg = '<strong>' + formatDate(day.date) + '</strong>';
+            if (day.uptime !== null) {
+              msg += '<br>' + day.uptime + '% uptime';
+              if (day.avgPing !== null) msg += '<br>' + day.avgPing + 'ms avg ping';
+            } else {
+              msg += '<br>No data';
+            }
+            tooltip.innerHTML = msg;
+            tooltip.style.display = 'block';
+            var left = rect.left - cardRect.left + rect.width / 2;
+            tooltip.style.left = Math.max(0, Math.min(left, cardRect.width - 140)) + 'px';
+            tooltip.style.bottom = (cardRect.bottom - rect.top + 8) + 'px';
+          });
+          bar.addEventListener('mouseleave', function() {
+            tooltip.style.display = 'none';
+          });
+          frag.appendChild(bar);
+        });
+        barsEl.appendChild(frag);
+      }).catch(function() {
+        if (loadEl) loadEl.textContent = 'Could not load uptime history.';
+      });
+    })();
 
     // ── Announcements ──
     var typeColors = { info: '#5b9cf6', update: '#4ade80', warning: '#f59e0b' };
