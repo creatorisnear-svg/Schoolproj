@@ -57,13 +57,17 @@ async function sendWebhook(entry) {
     timestamp: new Date().toISOString(),
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ embeds: [embed] }),
-  });
-  if (res.ok) console.log('  Discord webhook sent.');
-  else console.error(`  Discord webhook failed: HTTP ${res.status}`);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+    if (res.ok) console.log('  Discord webhook sent.');
+    else console.error(`  Discord webhook failed: HTTP ${res.status}`);
+  } catch (err) {
+    console.error(`  Discord webhook error: ${err.message}`);
+  }
 }
 
 // ── Prompt helper ─────────────────────────────────────────────────────────────
