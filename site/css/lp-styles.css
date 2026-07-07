@@ -319,7 +319,7 @@
   display: flex; gap: 3px; align-items: flex-end; height: 56px; position: relative;
 }
 .lp-uptime-bar {
-  flex: 1; height: 100%; border-radius: 3px 3px 2px 2px; cursor: default;
+  flex: 1; height: 56px; border-radius: 3px 3px 2px 2px; cursor: default;
   transition: filter 0.15s, transform 0.15s; min-width: 3px;
 }
 .lp-uptime-bar:hover {
@@ -391,6 +391,9 @@
 }
 
 @media (max-width: 480px) {
+  .lp-uptime-card { padding: 20px 16px 16px; }
+  .lp-uptime-bars { gap: 2px; }
+  .lp-uptime-bar { min-width: 2px; }
   .lp-hero-h1 { font-size: 30px; letter-spacing: -1.5px; }
   .lp-hero-stats { flex-wrap: wrap; justify-content: center; gap: 8px 0; }
   .lp-hero-stat-divider { display: none; }
