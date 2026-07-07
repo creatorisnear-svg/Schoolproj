@@ -1,9 +1,11 @@
 {
-  "version": "1.0.1",
-  "title": "Automated changelog system",
+  "version": "1.0.2",
+  "title": "UI improvements",
   "changes": [
-    "Added automatic changelog Discord webhook notifications on create/update",
-    "Added CLI script (scripts/add-changelog.js) for quick changelog entry",
-    "Changelog entries now auto-post to Discord on every Koyeb deploy"
+    "Uptime history bars taller and rounded at the top for better readability",
+    "Uptime history legend now has a separator line and cleaner spacing",
+    "Uptime bar hover now uses brightness instead of opacity for a crisper effect",
+    "Tooltip styling improved with darker background and stronger shadow",
+    "Fixed oversized CTA logo on some viewports by adding object-fit and max-width constraints"
   ]
 }
