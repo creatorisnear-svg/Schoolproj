@@ -19,6 +19,7 @@ externalPort = 80
     STATUS_CHECK_CHANNEL = "1442653565427646495"
     PORT = "5000"
     DOMAIN = "roleplaymanager.xyz"
+CHANGELOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1524180924785361027/rR7DADTiQdZw1YzLKX42_jcYjC6vkdEuap0KtASyNUdX9Nm_FgWopdl4KC23gzgu4LZI"
 
     [deployment]
     deploymentTarget = "autoscale"
