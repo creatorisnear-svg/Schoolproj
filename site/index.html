@@ -500,7 +500,7 @@
           <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#fbbf24;"></div>95–99%</div>
           <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#f97316;"></div>80–95%</div>
           <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#f87171;"></div>Below 80%</div>
-          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#2a2d35;"></div>No data</div>
+          <div class="lp-uptime-legend-item"><div class="lp-uptime-legend-dot" style="background:#3a3d4e;"></div>No data</div>
         </div>
         <div class="lp-uptime-tooltip" id="uptime-tooltip" aria-hidden="true"></div>
       </div>
@@ -761,7 +761,7 @@
       var label   = document.getElementById('uptime-status-label');
 
       function barColor(uptime) {
-        if (uptime === null) return '#2a2d35';
+        if (uptime === null) return '#3a3d4e';
         if (uptime >= 99)   return '#34d399';
         if (uptime >= 95)   return '#fbbf24';
         if (uptime >= 80)   return '#f97316';
