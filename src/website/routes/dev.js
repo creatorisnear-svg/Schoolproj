@@ -11,6 +11,7 @@ import PremiumKey from '../../models/PremiumKey.js';
 import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
+import { sendChangelogWebhook } from '../../utils/changelogWebhook.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -198,12 +199,14 @@ export function createDevRouter(client) {
     const { version, title, changes } = req.body;
     if (!version || !title) return res.status(400).json({ error: 'Version and title required' });
     const item = await Changelog.create({ version, title, changes });
+    sendChangelogWebhook(item).catch(() => {});
     res.json(item);
   });
 
   router.patch('/changelogs/:id', devAuth, async (req, res) => {
     const item = await Changelog.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!item) return res.status(404).json({ error: 'Not found' });
+    sendChangelogWebhook(item, { isUpdate: true }).catch(() => {});
     res.json(item);
   });
 
