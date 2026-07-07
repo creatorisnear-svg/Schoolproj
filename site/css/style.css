@@ -227,12 +227,12 @@ nav .nav-links a:hover { color: var(--text); }
 }
 .btn-discord:hover { background: #4752c4; color: #fff; }
 
-/* Announcement bar — clears the fixed nav (60px) */
-#announcements-bar { margin-top: 60px; }
+/* Announcement bar — sits at the top of main, no extra offset needed */
+#announcements-bar { }
 
 /* ── Hero ── */
 .hero {
-  padding: 140px 0 80px; text-align: center; position: relative; overflow: hidden;
+  padding: 80px 0 80px; text-align: center; position: relative; overflow: hidden;
 }
 .hero::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -698,7 +698,7 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   .nav-hamburger { display: flex; }
 
   /* Hero */
-  .hero { padding: 100px 0 60px; }
+  .hero { padding: 40px 0 60px; }
   .hero h1 { font-size: 32px; letter-spacing: -1px; }
   .hero p { font-size: 14px; }
   .hero-stats { gap: 24px; }

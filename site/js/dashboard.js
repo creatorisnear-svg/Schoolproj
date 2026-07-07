@@ -10,7 +10,7 @@ var currentGuild = null;
 var guilds = [];
 var pendingChanges = {};
 var sidebarOpen = false;
-var featureFlags = { dispatch: true };
+var featureFlags = { dispatch: true, appys: true };
 var TOPGG_VOTE_URL = '';
 
 function getToken() { return localStorage.getItem('dash_token'); }
@@ -93,7 +93,7 @@ function showLogin(errorCode) {
 
 function loadFeatureFlags(callback) {
   fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
-    featureFlags = flags || { dispatch: true };
+    featureFlags = flags || { dispatch: true, appys: true };
     if (flags && flags._topggVoteUrl) TOPGG_VOTE_URL = flags._topggVoteUrl;
     callback();
   }).catch(function() {
@@ -263,7 +263,7 @@ function selectServer(guildId, section) {
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
   ]).then(function(results) {
     var data = results[0];
-    featureFlags = results[1] || {};
+    featureFlags = results[1] || { dispatch: true, appys: true };
     if (!data) { clearSession(); renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
@@ -583,6 +583,7 @@ function reactivateSubscription() {
 function renderPremiumSection(g) {
   var premiumItems = [];
   if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
+  if (isFlagPremium('appys')) premiumItems.push('Applications - staff application panels with DM Q&A flow');
   premiumItems.push('Blackjack & Roulette gambling games');
   premiumItems.push('Top-25 leaderboard (free: top 10)');
   premiumItems.push('Unlimited ticket types (free: 5)');
