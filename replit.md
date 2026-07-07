@@ -32,6 +32,40 @@ Run `npm install` to install all Node.js dependencies (done on import).
 
 ---
 
+## Auto-Changelog (Agent Responsibility)
+
+After every update session, the agent **must** update `changelog-next.json` in the repo root before the user pushes to GitHub. Do not skip this.
+
+**How it works:**
+- `changelog-next.json` holds the next release's version, title, and changes list
+- On Koyeb startup, `src/index.js` reads this file, checks if that version already exists in MongoDB, and if not → creates the `Changelog` entry and fires a Discord webhook automatically
+- The webhook URL is stored as `CHANGELOG_WEBHOOK_URL` env var (set in Replit shared env and must be set on Koyeb too)
+
+**Agent workflow — after every set of changes:**
+1. Bump the version in `changelog-next.json` (semver)
+2. Update `title` and `changes` array to describe what was done
+3. Commit and push — Koyeb deploy will auto-create the changelog entry and notify Discord
+
+**File format:**
+```json
+{
+  "version": "1.2.3",
+  "title": "Short description of the release",
+  "changes": [
+    "Added X",
+    "Fixed Y",
+    "Improved Z"
+  ]
+}
+```
+
+**Key files:**
+- `changelog-next.json` — the pending release descriptor (agent maintains this)
+- `src/utils/changelogWebhook.js` — Discord webhook sender utility
+- `src/index.js` — startup hook that reads the file and creates the entry (~line 1155)
+
+---
+
 ## CRITICAL — Read Before Editing Anything
 
 1. **Two dashboards exist — always edit `site/`, not `src/website/public/`.**
