@@ -509,6 +509,43 @@ async function handleFeatures(interaction) {
   return interaction.reply(featuresMenu());
 }
 
+async function handleHelp(interaction) {
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('⚙️ Config — Quick Reference')
+        .setDescription(
+          '**Run any of these to set up that feature — it enables automatically.**\n\n' +
+          '**🔧 Start here**\n' +
+          '`/config general` — Set your log channel *(do this first)*\n' +
+          '`/staff add @you` — Add yourself as staff *(required before general)*\n\n' +
+          '**🎮 Roleplay & Operations**\n' +
+          '`/config roleplay` — /me, /do, /try, 911 calls & CAD\n' +
+          '`/config priority` — Live priority event tracker\n' +
+          '`/config calendar` — Weekly RP session schedule\n\n' +
+          '**🛡️ Moderation**\n' +
+          '`/config verify` — Member verification gate\n' +
+          '`/config strikes` — Strike system with auto-punishments\n' +
+          '`/config antipromo` — Auto-delete Discord invite links\n\n' +
+          '**🌐 Community**\n' +
+          '`/config tickets` — Support ticket panels\n' +
+          '`/config welcome` — Welcome messages for new members\n' +
+          '`/config roles` — Role request panels\n' +
+          '`/config moveme` — Voice channel mover panel\n\n' +
+          '**💰 Economy**\n' +
+          '`/config economy` — Currency, work, crime, shops\n\n' +
+          '**⭐ Premium Only**\n' +
+          '`/config appys` — Application panels with DM Q&A\n' +
+          '`/config dispatch` — AI voice dispatch\n\n' +
+          '-# You can also configure everything at **roleplaymanager.xyz/dashboard**'
+        )
+        .setFooter({ text: 'RPM • /config help' }),
+    ],
+    flags: 64,
+  });
+}
+
 async function handleGeneral(interaction) {
   const staffCount = await Staff.countDocuments({ guildId: interaction.guildId });
   if (staffCount === 0) {
@@ -551,6 +588,7 @@ const subcommandHandlers = {
   roleplay: handleRoleplay,
   features: handleFeatures,
   general: handleGeneral,
+  help: handleHelp,
 };
 
 // ─── command definition ───────────────────────────────────────────────────────
@@ -572,7 +610,8 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('moveme').setDescription('Voice mover — panel for members to move between voice channels'))
   .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands — /me, /do, /try, 911 calls'))
   .addSubcommand(s => s.setName('appys').setDescription('Applications — staff application panels (Premium)'))
-  .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'));
+  .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'))
+  .addSubcommand(s => s.setName('help').setDescription('Show all available config commands and what they do'));
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

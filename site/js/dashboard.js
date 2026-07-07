@@ -9,6 +9,7 @@ var currentUser = null;
 var currentGuild = null;
 var guilds = [];
 var pendingChanges = {};
+var _currentSettingsData = null;
 var sidebarOpen = false;
 var featureFlags = { dispatch: true, appys: true };
 var TOPGG_VOTE_URL = '';
@@ -469,7 +470,7 @@ function renderDashboard() {
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
           (m.featureKey
-            ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
+            ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" data-mod="' + m.id + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
             : '') +
           '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(\'' + m.id + '\')" title="Configure ' + m.label + '">Configure</button>' +
         '</div>' +
@@ -806,7 +807,8 @@ function toggleFeature(el) {
   if (el.classList.contains('loading')) return;
   var feature = el.getAttribute('data-feature');
   var key = el.getAttribute('data-key');
-  var featureName = el.closest('.feature-item') ? (el.closest('.feature-item').querySelector('.feature-name') || {}).textContent : feature;
+  var modId = el.getAttribute('data-mod');
+  var featureName = el.closest('.feature-row') ? (el.closest('.feature-row').querySelector('.feature-row-name') || {}).textContent : feature;
   var newVal = !el.classList.contains('active');
   el.classList.add('loading');
   el.classList.toggle('active');
@@ -818,7 +820,13 @@ function toggleFeature(el) {
     if (result && result.success) {
       if (!currentGuild.config) currentGuild.config = {};
       currentGuild.config[key] = newVal;
-      toast(newVal ? 'Module enabled' : 'Module disabled');
+      if (newVal && modId) {
+        // Auto-navigate to the configure page so the user can finish setup
+        toast('Enabled — configure it now');
+        setTimeout(function() { renderSettings(modId); }, 700);
+      } else {
+        toast(newVal ? 'Feature enabled' : 'Feature disabled');
+      }
     } else {
       el.classList.toggle('active');
       if (result && result.error === 'premium_required') {
@@ -867,6 +875,7 @@ function renderSettings(mod) {
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
     if (!data) return;
     pendingChanges = {};
+    _currentSettingsData = data;
 
     var html = '<div class="dashboard-layout">' + renderSidebar(mod) +
       '<div class="dashboard-content" id="settings-content">' +
@@ -2949,30 +2958,52 @@ function showSaveBar(mod) {
   container.innerHTML =
     '<div class="save-bar">' +
     '<span style="color:var(--text-muted);font-size:12px;margin-right:auto;">Unsaved changes</span>' +
-    '<button class="btn btn-secondary btn-sm" onclick="renderSettings(\'' + mod + '\')">Discard</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="discardChanges(\'' + mod + '\')">Discard</button>' +
     '<button class="btn btn-success btn-sm" onclick="saveSettings(\'' + mod + '\')">Save Changes</button>' +
     '</div>';
+}
+
+function discardChanges(mod) {
+  pendingChanges = {};
+  // Reset each changed field to the original server value — no page re-render needed
+  var content = document.getElementById('settings-content');
+  if (content && _currentSettingsData) {
+    content.querySelectorAll('[data-key]').forEach(function(el) {
+      var key = el.getAttribute('data-key');
+      var orig = _currentSettingsData[key];
+      if (orig === undefined || orig === null) return;
+      if (el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.value = orig;
+      }
+    });
+  }
+  showSaveBar(mod);
 }
 
 function saveSettings(mod) {
   if (Object.keys(pendingChanges).length === 0) return;
   var saveBtn = document.querySelector('.save-bar .btn-success');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
-  _pendingScrollRestore = getDashScrollPos();
   api('/guild/' + currentGuild.id + '/settings/' + mod, {
     method: 'POST',
     body: JSON.stringify(pendingChanges)
   }).then(function(result) {
     if (result && result.success) {
-      toast('Settings saved successfully');
+      toast('Settings saved');
+      // Merge saved values into stored snapshot so future discards are correct
+      if (_currentSettingsData) {
+        Object.keys(pendingChanges).forEach(function(k) {
+          _currentSettingsData[k] = pendingChanges[k];
+        });
+      }
       pendingChanges = {};
       window._dispatchState = {};
+      showSaveBar(mod); // hides bar; no page re-render
+      // Refresh guild data silently in background
       api('/guild/' + currentGuild.id).then(function(refreshed) {
         if (refreshed) currentGuild = refreshed;
-        renderSettings(mod);
       });
     } else {
-      _pendingScrollRestore = null;
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
     }
   });
