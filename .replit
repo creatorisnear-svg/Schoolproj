@@ -1,31 +1,50 @@
 modules = ["nodejs-20", "web"]
-[agent]
+    [agent]
 expertMode = true
-stack = "BEST_EFFORT_FALLBACK"
+    stack = "BEST_EFFORT_FALLBACK"
+
+    [nix]
+    channel = "stable-25_05"
+
+    [[ports]]
+    localPort = 5000
+    externalPort = 80
+
+    [userenv]
+
+    [userenv.shared]
+    SUPPORT_SERVER_ID = "1441548471906734173"
+    STATUS_BOT_ID = "835223338275569676"
+    STATUS_CHECK_GUILD = "1441548471906734173"
+    STATUS_CHECK_CHANNEL = "1442653565427646495"
+    PORT = "5000"
+    DOMAIN = "roleplaymanager.xyz"
+
+    [deployment]
+    deploymentTarget = "autoscale"
+    run = ["npm", "start"]
 
 [workflows]
+runButton = "Project"
 
-[nix]
-channel = "stable-25_05"
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
 
-[[ports]]
-localPort = 3000
-externalPort = 80
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
 
-[[ports]]
-localPort = 5000
-externalPort = 80
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
 
-[userenv]
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start"
+waitForPort = 5000
 
-[userenv.shared]
-SUPPORT_SERVER_ID = "1441548471906734173"
-STATUS_BOT_ID = "835223338275569676"
-STATUS_CHECK_GUILD = "1441548471906734173"
-STATUS_CHECK_CHANNEL = "1442653565427646495"
-PORT = "5000"
-DOMAIN = "roleplaymanager.xyz"
-
-[deployment]
-deploymentTarget = "autoscale"
-run = ["npm", "start"]
+[workflows.workflow.metadata]
+outputType = "webview"
+    

@@ -15,6 +15,23 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 
 ---
 
+## Running on Replit
+
+**Replit is for dev/editing only** — production runs on Koyeb (bot + API) and Cloudflare Pages (static site). See Deployment Architecture below.
+
+### To run the bot locally on Replit
+1. Add two secrets in the Secrets tab (lock icon):
+   - `DISCORD_TOKEN` — your Discord bot token
+   - `MONGODB_URI` — your MongoDB Atlas connection string  
+   *(All other env vars are pre-set in `.replit` userenv.shared)*
+2. Click **Run** (or use the "Start application" workflow) — runs `npm start` → `src/index.js` on port 5000
+3. The web portal will be accessible in the preview pane; the bot connects to Discord and MongoDB
+
+### Dependencies
+Run `npm install` to install all Node.js dependencies (done on import).
+
+---
+
 ## CRITICAL — Read Before Editing Anything
 
 1. **Two dashboards exist — always edit `site/`, not `src/website/public/`.**
