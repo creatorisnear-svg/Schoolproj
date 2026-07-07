@@ -9,123 +9,117 @@ export async function execute(interaction) {
   await interaction.deferReply({ flags: 64 });
 
   const premium = await isPremiumGuild(interaction.guildId);
-  const pTag = premium ? '' : ' ★';
-
   const premiumNote = premium
     ? '-# Premium is active on this server.'
-    : `-# Commands marked **★** require Premium - run \`/premium\` to learn more.`;
+    : `-# Commands marked **★** require Premium — run \`/premium\` to learn more.`;
+
+  const pTag = premium ? '' : ' ★';
 
   const helpEmbed = new EmbedBuilder()
     .setColor(0x2B2D31)
-    .setTitle('RolePlayManager - Command Reference')
-    .setDescription(`All commands organized by category. Most config commands require Administrator permissions.\n\n${premiumNote}`)
+    .setTitle('RolePlayManager — Command Reference')
+    .setDescription(
+      `Use \`/setup\` to get started or check your server's setup status.\n` +
+      `Use \`/config <feature>\` to configure any feature directly.\n\n` +
+      premiumNote
+    )
     .addFields(
       {
-        name: 'Roleplay Systems',
+        name: 'Getting Started',
         value:
-          '`/roleplaycommandconfig` Initial RP config\n' +
-          '`/civiliandatabase` Civilian portal - 911, characters, vehicles, fines\n' +
-          '`/leodatabase` LEO portal - plate/name search, BOLOs, tickets, calls\n' +
-          '`/firedepartmentdatabase` Fire department records',
+          '`/setup` — Step-by-step setup guide for your server\n' +
+          '`/config general` — Set the log channel (required first)\n' +
+          '`/staff add/remove/list` — Manage who can use bot commands\n' +
+          '`/config features` — Enable or disable features',
+        inline: false,
+      },
+      {
+        name: 'Configuration — one command for everything',
+        value:
+          '`/config verify` — Verification system\n' +
+          '`/config tickets` — Ticket support\n' +
+          '`/config economy` — Economy & currency\n' +
+          '`/config strikes` — Strike system\n' +
+          '`/config welcome` — Welcome messages\n' +
+          '`/config antipromo` — Anti-promoting\n' +
+          '`/config roles` — Role requests\n' +
+          '`/config priority` — Priority tracker\n' +
+          '`/config calendar` — RP Calendar\n' +
+          '`/config moveme` — Voice mover\n' +
+          '`/config roleplay` — RP commands\n' +
+          `\`/config appys\` — Applications${pTag}\n` +
+          `\`/config dispatch\` — AI Voice Dispatch${pTag}`,
+        inline: false,
+      },
+      {
+        name: 'Roleplay — CAD & Databases',
+        value:
+          '`/civiliandatabase` — Civilian portal: 911, characters, vehicles, fines\n' +
+          '`/leodatabase` — LEO portal: plate/name search, BOLOs, tickets, calls\n' +
+          '`/firedepartmentdatabase` — Fire department records',
         inline: false,
       },
       {
         name: 'Staff & Moderation',
         value:
-          '`/staff add` · `remove` · `list`\n' +
-          '`/strike` Issue a strike  ·  `/removestrike` Remove a strike\n' +
-          '`/strikesystemconfig` Configure strike levels and actions\n' +
-          '`/clear` Bulk delete messages',
-        inline: true,
-      },
-      {
-        name: 'Verification',
-        value:
-          '`/verifysystemconfig` Configure the verify system\n' +
-          '`/verify` Begin the verification process',
-        inline: true,
+          '`/strike @user` — Issue a strike · `/removestrike @user` — Remove a strike\n' +
+          '`/blacklist @user` — Blacklist a member · `/removeblacklist` — Remove\n' +
+          '`/clear [amount]` — Bulk delete messages\n' +
+          '`/embed` — Send a custom embed\n' +
+          '`/sticky` · `/stickylist` — Sticky messages\n' +
+          '`/reactionrolemessage` — Set up reaction roles',
+        inline: false,
       },
       {
         name: 'Priority Tracker',
         value:
-          '`/prioritytrackerconfig` Configure tracker\n' +
-          '`/activepriority` Start a priority event\n' +
-          '`/deactivatepriority` End a priority event\n' +
-          '`/prioritycooldown` Set cooldown duration',
-        inline: true,
-      },
-      {
-        name: 'Economy - Config',
-        value:
-          '`/economyconfig` Configure all economy settings\n' +
-          '-# Currency symbol, work/crime/rob, gambling, chat money, income tax, role income, store, civilian jobs',
-        inline: false,
-      },
-      {
-        name: 'Economy - Members',
-        value:
-          '`/balance` Cash & bank  ·  `/deposit` · `/withdraw`\n' +
-          '`/give` Send cash  ·  `/income` Collect role income\n' +
-          '`/work` · `/crime` · `/rob` Earn money\n' +
-          '`/shop` · `/buy` · `/sell` · `/inventory` · `/use`\n' +
-          '`/gamble` Slots, Dice & more  ·  `/leaderboard`',
-        inline: true,
-      },
-      {
-        name: 'Tickets & Roles',
-        value:
-          `\`/ticketsupportconfig\` Configure tickets${pTag}\n` +
-          '`/rolerequestadd` Add requestable roles\n' +
-          '`/rolerequest` Request a role\n' +
-          '`/manageroles` Approve or deny requests',
+          '`/activepriority` — Start a priority event\n' +
+          '`/deactivatepriority` — End a priority event\n' +
+          '`/prioritycooldown` — Set cooldown duration\n' +
+          '`/priorityrequest` — Request a priority',
         inline: true,
       },
       {
         name: 'RP Calendar',
         value:
-          '`/roleplaycalenderconfig` Configure calendar\n' +
-          '`/setrp` Schedule an event\n' +
-          '`/unsetrp` Remove an event',
+          '`/setrp` — Schedule an RP event\n' +
+          '`/unsetrp` — Remove an event',
         inline: true,
       },
       {
-        name: 'Community',
+        name: 'Role Requests',
         value:
-          '`/reactionrolemessage` Reaction roles\n' +
-          '`/sticky` · `/stickylist` Sticky messages\n' +
-          '`/antipromotingconfig` Block invite links\n' +
-          '`/welcomesystemconfig` Welcome messages\n' +
-          '`/setlogchannel` Set log channel',
+          '`/rolerequest` — Request a role\n' +
+          '`/manageroles` — Approve or deny requests',
         inline: true,
       },
       {
-        name: 'Voice Mover',
+        name: 'Economy — Members',
         value:
-          '`/enablecommands` → Member Movement to enable\n' +
-          '`/movemeconfig` Post the channel-picker panel\n' +
-          '-# Members select a voice channel from the dropdown to be moved',
+          '`/balance` Cash & bank · `/deposit` · `/withdraw`\n' +
+          '`/give @user` — Send cash · `/income` — Collect role income\n' +
+          '`/work` · `/crime` · `/rob` — Earn money\n' +
+          '`/shop` · `/buy` · `/sell` · `/inventory` · `/use`\n' +
+          '`/gamble` — Slots, Dice & more · `/leaderboard`',
+        inline: false,
+      },
+      {
+        name: 'Utility',
+        value:
+          '`/invite` — Get the bot invite link\n' +
+          '`/activatepremium` — Activate a premium key\n' +
+          '`/premium` — View premium status & features\n' +
+          '`/reloadconfig` — Reload bot config',
         inline: true,
       },
       {
         name: `AI Dispatch${pTag}`,
         value:
-          '`/dispatchconfig` Configure AI voice dispatch\n' +
-          '`/dispatchannounce` Send a manual dispatch',
-        inline: true,
-      },
-      {
-        name: 'Utility',
-        value:
-          '`/enablecommands` Enable or disable modules\n' +
-          '`/embed` Send a custom embed\n' +
-          '`/invite` Get the bot invite link\n' +
-          '`/activatepremium` Activate a premium key\n' +
-          '`/premium` View premium status & features',
+          '`/dispatchannounce` — Send a manual dispatch announcement',
         inline: true,
       },
     )
-    .setFooter({ text: 'RPM  •  Type / in any channel to browse commands' })
-    .setTimestamp();
+    .setFooter({ text: 'RPM • /setup to get started • /config <feature> to configure anything' });
 
   return interaction.editReply({ embeds: [helpEmbed] });
 }

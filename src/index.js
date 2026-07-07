@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
@@ -416,39 +416,56 @@ client.on('guildCreate', async (guild) => {
 
   try {
     const embed = new EmbedBuilder()
-      .setColor(0xffffff)
-      .setTitle('Thanks for adding RolePlayManager!')
+      .setColor('#2d2d2d')
+      .setTitle('RolePlayManager is ready!')
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
-        `RolePlayManager is now in **${guild.name}**.\n\n` +
-        `Here's everything you can set up:\n\n` +
-        `**911 System** - \`/roleplaycommandconfig\`\n` +
-        `**Verification** - \`/verifysystemconfig\`\n` +
-        `**Ticket Support** - \`/ticketsupportconfig\`\n` +
-        `**Priority Tracker** - \`/prioritytrackerconfig\`\n` +
-        `**Welcome System** - \`/welcomesystemconfig\`\n` +
-        `**Strike System** - \`/strikesystemconfig\`\n` +
-        `**RP Calendar** - \`/roleplaycalenderconfig\`\n` +
-        `**AI Voice Dispatch** - \`/dispatchconfig\` *(Premium)*`
+        `Welcome to **${guild.name}**!\n\n` +
+        `RolePlayManager is a Discord bot built for GTA5 RP communities. It handles member verification, tickets, a 911 CAD system, economy, AI voice dispatch, strikes, and more — all customizable for your server.\n\n` +
+        `### How to get started\n` +
+        `**Type \`/setup\` in any channel.** It shows you exactly what to do, step by step. Takes less than 5 minutes.\n\n` +
+        `That's it. The bot guides you from there.\n\n` +
+        `### What you can set up\n` +
+        `- **Verification** — members fill out a form to join\n` +
+        `- **Tickets** — private support channels with a button\n` +
+        `- **911 / CAD** — civilian and LEO database, emergency calls\n` +
+        `- **Economy** — currency, work, crime, shops\n` +
+        `- **Strikes** — warn rule-breakers, auto-punish\n` +
+        `- **Welcome messages** — greet new members\n` +
+        `- **Priority tracker** — track active priority events\n` +
+        `- **AI Voice Dispatch** — AI listens to patrol channels *(Premium)*\n` +
+        `- **Applications** — staff application panels *(Premium)*\n` +
+        `- And more — run \`/help\` for the full list`
       )
       .addFields(
         {
-          name: 'Web Dashboard',
-          value: 'The easiest way to set everything up is through our website dashboard. Enable features, configure channels, manage roles - all without touching Discord commands.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
+          name: 'Prefer clicking over typing?',
+          value: 'Configure everything through the web dashboard — no commands needed.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
         },
         {
-          name: 'Need Help?',
-          value: 'Join our support server: **[discord.gg/cSdhfGPeV2](https://discord.gg/cSdhfGPeV2)**\nOr email us: **creatorisnear@gmail.com**',
+          name: 'Need help?',
+          value: '**[Support Server](https://discord.gg/cSdhfGPeV2)** — discord.gg/cSdhfGPeV2\n**Email** — creatorisnear@gmail.com',
         }
       )
-      .setFooter({ text: 'RPM • roleplaymanager.xyz' });
+      .setFooter({ text: 'RPM • roleplaymanager.xyz • /setup to get started' });
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Open Dashboard')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://roleplaymanager.xyz/dashboard'),
+      new ButtonBuilder()
+        .setLabel('Support Server')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://discord.gg/cSdhfGPeV2')
+    );
 
     const systemChannel = guild.systemChannel;
     if (systemChannel?.permissionsFor(guild.members.me)?.has('SendMessages')) {
-      await systemChannel.send({ embeds: [embed] });
+      await systemChannel.send({ embeds: [embed], components: [buttons] });
     } else {
       const owner = await guild.fetchOwner();
-      await owner.send({ embeds: [embed] }).catch(() => {});
+      await owner.send({ embeds: [embed], components: [buttons] }).catch(() => {});
     }
   } catch (err) {
     console.error('[guildCreate] Failed to send welcome message:', err.message);

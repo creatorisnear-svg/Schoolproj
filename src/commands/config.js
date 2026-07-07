@@ -1,7 +1,7 @@
 /**
  * /config — Unified configuration command.
  * Replaces all individual xxxconfig commands.
- * Each subcommand auto-enables its feature (no more "run /enablecommands first" gates).
+ * Each subcommand auto-enables its feature — no "run /enablecommands first" gates.
  */
 import {
   SlashCommandBuilder,
@@ -42,7 +42,7 @@ function menuEmbed(title, description) {
     .setFooter({ text: 'RPM' });
 }
 
-/** Upsert a model with enabled:true so we never block with "enable first" errors. */
+/** Auto-enable a feature so admins never see a "you need to enable it first" error. */
 async function ensureEnabled(Model, guildId) {
   return Model.findOneAndUpdate(
     { guildId },
@@ -51,26 +51,35 @@ async function ensureEnabled(Model, guildId) {
   );
 }
 
-// ─── menu builders (mirrors selectMenuHandler / command files) ─────────────
+// ─── menu builders ────────────────────────────────────────────────────────────
 
 function verifyMenu() {
   return {
-    embeds: [menuEmbed('Verification Setup', 'Configure how members verify and what happens once they do.\nAt minimum set the Verify Channel and Verified Role.')],
+    embeds: [menuEmbed(
+      'Verification Setup',
+      '**What this does:** Members click a button and fill out a short form. You (or the bot) approves them and they get access to your server.\n\n' +
+      '**Set these up in order:**\n' +
+      '`1.` Verify Channel — the channel where members click the button to start\n' +
+      '`2.` Verified Role — the role members get once approved (e.g. "Member")\n' +
+      '`3.` Unverified Role — the role members have before they verify (e.g. "Unverified")\n' +
+      '`4.` Verified Channels — categories or channels members can see after verification\n\n' +
+      '-# The rest (custom question, RP tag, staff approval) are optional extras.'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('verify_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Verify Channel', description: 'Required — where members submit verification', value: 'select_verify_channel' },
-            { label: 'Verified Role', description: 'Required — role granted on approval', value: 'select_verified_role' },
-            { label: 'Unverified Role', description: 'Required — role before verification', value: 'select_unverified_role' },
-            { label: 'Verified Channels', description: 'Required — channels unlocked after verify', value: 'select_verified_channels' },
-            { label: 'Custom Question', description: 'Optional — question shown to applicants', value: 'set_custom_question' },
-            { label: 'Remove Custom Question', description: 'Optional — clear the custom question', value: 'delete_custom_question' },
-            { label: 'Toggle Staff Approval', description: 'Optional — require staff to approve', value: 'toggle_approval_required' },
-            { label: 'RP Tag', description: 'Optional — tag added to verified nicknames', value: 'set_rp_tag' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'verify_setup_done' },
+            { label: '1. Verify Channel', description: 'The channel where members go to apply', value: 'select_verify_channel' },
+            { label: '2. Verified Role', description: 'Role given to members when approved', value: 'select_verified_role' },
+            { label: '3. Unverified Role', description: 'Role members have before they verify', value: 'select_unverified_role' },
+            { label: '4. Verified Channels', description: 'Channels members can see after verifying', value: 'select_verified_channels' },
+            { label: 'Custom Question (Optional)', description: 'Ask members one extra question', value: 'set_custom_question' },
+            { label: 'Remove Custom Question (Optional)', description: 'Delete the extra question', value: 'delete_custom_question' },
+            { label: 'Toggle Staff Approval (Optional)', description: 'Require staff to manually approve each member', value: 'toggle_approval_required' },
+            { label: 'RP Tag (Optional)', description: 'A tag added to verified members nicknames', value: 'set_rp_tag' },
+            { label: 'Done', description: 'Close this menu', value: 'verify_setup_done' },
           ])
       ),
     ],
@@ -80,18 +89,26 @@ function verifyMenu() {
 
 function ticketsMenu() {
   return {
-    embeds: [menuEmbed('Ticket Support Setup', 'Set a panel channel, create ticket types, then send the panel.')],
+    embeds: [menuEmbed(
+      'Ticket Setup',
+      '**What this does:** Members click a button to open a private support channel with staff. Great for reports, appeals, and questions.\n\n' +
+      '**Set these up in order:**\n' +
+      '`1.` Select Panel Channel — the channel where the "Open a ticket" button lives\n' +
+      '`2.` Add Ticket Type — create one or more categories (e.g. "Report a Player", "Staff Application")\n' +
+      '`3.` Send Panel — posts the button panel to the channel you chose\n\n' +
+      '-# You can add up to 5 ticket types for free, unlimited with Premium.'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('ticketsupport_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Select Panel Channel', description: 'Channel where the ticket panel is posted', value: 'select_channel' },
-            { label: 'Add Ticket Type', description: 'Create a new ticket category', value: 'add_type' },
-            { label: 'View Ticket Types', description: 'See all configured ticket types', value: 'view_types' },
-            { label: 'Send Panel', description: 'Post the ticket panel to the channel', value: 'send_panel' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'setup_done' },
+            { label: '1. Select Panel Channel', description: 'Where the Open a Ticket button will be posted', value: 'select_channel' },
+            { label: '2. Add Ticket Type', description: 'Create a category like Report a Player', value: 'add_type' },
+            { label: 'View Ticket Types', description: 'See all your ticket categories', value: 'view_types' },
+            { label: '3. Send Panel', description: 'Post the ticket button to your channel', value: 'send_panel' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -101,16 +118,22 @@ function ticketsMenu() {
 
 function strikesMenu() {
   return {
-    embeds: [menuEmbed('Strike System Setup', 'Configure strike roles and the action taken at each level (kick, timeout, ban).')],
+    embeds: [menuEmbed(
+      'Strike System Setup',
+      '**What this does:** Staff can issue strikes to members who break rules. At each strike level (1, 2, 3, 4) the bot can automatically timeout, kick, or ban them.\n\n' +
+      '**Both options are optional — you can use strikes without automatic punishments.**\n\n' +
+      '`1.` Set Strike Level Roles — give members a visible role at each strike count (e.g. "1 Strike" role)\n' +
+      '`2.` Set Strike Actions — what happens automatically at each level (timeout / kick / ban)'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('strike_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Set Strike Level Roles', description: 'Assign a role at each strike level (optional)', value: 'strike_set_roles' },
-            { label: 'Set Strike Actions', description: 'Kick / timeout / ban per level', value: 'strike_set_actions' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'strike_setup_done' },
+            { label: 'Set Strike Level Roles (Optional)', description: 'Give a role at each strike count', value: 'strike_set_roles' },
+            { label: 'Set Strike Actions (Optional)', description: 'Auto timeout / kick / ban at each level', value: 'strike_set_actions' },
+            { label: 'Done', description: 'Close this menu', value: 'strike_setup_done' },
           ])
       ),
     ],
@@ -120,17 +143,24 @@ function strikesMenu() {
 
 function welcomeMenu() {
   return {
-    embeds: [menuEmbed('Welcome System Setup', 'Set a welcome channel, customize the greeting, and optionally DM new members.')],
+    embeds: [menuEmbed(
+      'Welcome System Setup',
+      '**What this does:** When a new member joins your server, the bot automatically sends a greeting message in a channel and/or a DM to the member.\n\n' +
+      '**Set these up (all optional, use what you need):**\n' +
+      '`1.` Welcome Channel — the channel where the welcome message is posted\n' +
+      '`2.` Welcome Message — what the message says (you can mention the user with `{user}`)\n' +
+      '`3.` Welcome DM — a private message sent directly to the new member'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('welcome_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Welcome Channel', description: 'Channel where welcome messages are posted', value: 'select_welcome_channel_setup' },
-            { label: 'Welcome Message', description: 'Message posted when a member joins', value: 'set_welcome_message_setup' },
-            { label: 'Welcome DM', description: 'DM sent directly to the new member', value: 'set_welcome_dm_setup' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'welcome_setup_done' },
+            { label: '1. Welcome Channel', description: 'Channel where the greeting is posted', value: 'select_welcome_channel_setup' },
+            { label: '2. Welcome Message', description: 'What the greeting message says', value: 'set_welcome_message_setup' },
+            { label: '3. Welcome DM (Optional)', description: 'A private message to new members', value: 'set_welcome_dm_setup' },
+            { label: 'Done', description: 'Close this menu', value: 'welcome_setup_done' },
           ])
       ),
     ],
@@ -140,19 +170,25 @@ function welcomeMenu() {
 
 function antipromoMenu() {
   return {
-    embeds: [menuEmbed('Anti-Promoting Setup', 'Control which Discord invite links are allowed in your server.')],
+    embeds: [menuEmbed(
+      'Anti-Promoting Setup',
+      '**What this does:** Automatically deletes Discord invite links that members post in your server. You can whitelist specific links (like your own server\'s invite) so they are never deleted.\n\n' +
+      '**Works automatically once enabled — no required setup.** Use the options below to fine-tune it.\n\n' +
+      '`1.` Add Whitelisted Link — allow a specific invite link to stay (e.g. your own server)\n' +
+      '`2.` Toggle Staff Bypass — choose if staff can post any invite without it being deleted'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('antipromotingsetup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Add Whitelisted Link', description: 'Allow a specific invite link', value: 'add_link' },
+            { label: 'Add Whitelisted Link', description: 'Allow a specific invite link to stay', value: 'add_link' },
             { label: 'Remove Whitelisted Link', description: 'Remove a link from the allowlist', value: 'remove_link' },
-            { label: 'View Whitelisted Links', description: 'See all approved links', value: 'view_links' },
-            { label: 'Toggle Staff Bypass', description: 'Let staff post any invite link', value: 'toggle_staff_bypass' },
+            { label: 'View Whitelisted Links', description: 'See all links that are allowed', value: 'view_links' },
+            { label: 'Toggle Staff Bypass', description: 'Let staff post any invite without deletion', value: 'toggle_staff_bypass' },
             { label: 'View Settings', description: 'See current configuration', value: 'view_settings' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'setup_done' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -163,23 +199,30 @@ function antipromoMenu() {
 function movemeMenu(config) {
   const chCount = (config?.allowedChannelIds || []).length;
   const panelStatus = config?.panelChannelId
-    ? `Panel channel: <#${config.panelChannelId}>${config.panelMessageId ? ' — panel active' : ' — not sent yet'}`
-    : 'No panel channel set';
+    ? `Panel is in <#${config.panelChannelId}>${config.panelMessageId ? '' : ' — not sent yet'}`
+    : 'Panel not sent yet';
 
   return {
-    embeds: [menuEmbed('Voice Mover Setup', `${panelStatus}\nAllowed channels: ${chCount > 0 ? `${chCount} configured` : 'all channels (no filter)'}`)],
+    embeds: [menuEmbed(
+      'Voice Mover Setup',
+      `**What this does:** Posts a panel with a dropdown in a text channel. Members select a voice channel from the list and the bot moves them into it — no need for staff to do it manually.\n\n` +
+      `**Current status:** ${panelStatus} · Allowed channels: ${chCount > 0 ? `${chCount} configured` : 'all voice channels'}\n\n` +
+      '**Set these up in order:**\n' +
+      '`1.` Add Allowed Channels — choose which voice channels appear in the dropdown (optional — skip to allow all)\n' +
+      '`2.` Send Panel — posts the panel to any text channel you choose'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('movemesetup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Add Allowed Channel', description: 'Restrict the panel to specific voice channels', value: 'add_channel' },
-            { label: 'Remove Allowed Channel', description: 'Remove a channel from the allowed list', value: 'remove_channel' },
-            { label: 'View Allowed Channels', description: 'See which channels are currently allowed', value: 'view_channels' },
-            { label: 'Clear Channel Filter', description: 'Allow all voice channels in the panel', value: 'clear_filter' },
+            { label: 'Add Allowed Channel', description: 'Add a voice channel to the dropdown list', value: 'add_channel' },
+            { label: 'Remove Allowed Channel', description: 'Remove a channel from the list', value: 'remove_channel' },
+            { label: 'View Allowed Channels', description: 'See which channels are in the list', value: 'view_channels' },
+            { label: 'Clear Channel Filter', description: 'Show all voice channels in the dropdown', value: 'clear_filter' },
             { label: 'Send Panel', description: 'Post the voice mover panel to a text channel', value: 'send_panel' },
-            { label: 'Finish Setup', description: 'Close this setup menu', value: 'setup_done' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -189,18 +232,24 @@ function movemeMenu(config) {
 
 function rolesMenu() {
   return {
-    embeds: [menuEmbed('Role Request Setup', 'Let members request roles via a Discord panel.')],
+    embeds: [menuEmbed(
+      'Role Request Setup',
+      '**What this does:** Members can request specific roles from a panel. Staff approve or deny each request. Great for department roles, whitelist roles, etc.\n\n' +
+      '**Set these up in order:**\n' +
+      '`1.` Add Role Request Type — create a requestable role (e.g. "Civilian Whitelist")\n' +
+      '`2.` Once you have types, the panel will appear automatically in the designated channel'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('rolerequest_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Add Role Request Type', description: 'Create a new requestable role', value: 'add_role' },
+            { label: 'Add Role Request Type', description: 'Create a role members can request', value: 'add_role' },
             { label: 'Delete Role Request Type', description: 'Remove a requestable role', value: 'delete_role' },
-            { label: 'View Role Request Types', description: 'See all configured roles', value: 'view_roles' },
-            { label: 'Manage Global Role Links', description: 'Link roles across servers', value: 'global_role_links' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'setup_done' },
+            { label: 'View Role Request Types', description: 'See all configured requestable roles', value: 'view_roles' },
+            { label: 'Manage Global Role Links', description: 'Link roles across multiple servers', value: 'global_role_links' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -210,17 +259,25 @@ function rolesMenu() {
 
 function roleplayMenu() {
   return {
-    embeds: [menuEmbed('Roleplay Commands Setup', 'Enable or disable /me, /do, /try, 911 calls, and other roleplay commands.')],
+    embeds: [menuEmbed(
+      'Roleplay Commands Setup',
+      '**What this does:** Enables roleplay-style commands your members can use in-character:\n' +
+      '- `/me` — describe an action (e.g. "/me waves hello")\n' +
+      '- `/do` — describe something happening in the scene\n' +
+      '- `/try` — attempt an action (bot randomly says if it succeeds)\n' +
+      '- `911` — members can send emergency calls that LEO and FD can respond to\n\n' +
+      '**Toggle each one on or off below:**'
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('roleplaycommands_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to toggle?')
           .addOptions([
             { label: 'Toggle 911 / CAD Commands', description: 'Enable or disable emergency calls', value: 'toggle_911' },
             { label: 'Toggle Twitter Commands', description: 'Enable or disable /twitter', value: 'toggle_twitter' },
             { label: 'Toggle Anonymous Commands', description: 'Enable or disable /anon', value: 'toggle_anon' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'setup_done' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -233,25 +290,33 @@ function dispatchMenuEmbed(warning = '') {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('AI Dispatch Setup')
-        .setDescription(`Configure the AI voice dispatch system. Officers speak in monitored voice channels — the bot transcribes, responds, and updates the status board.${warning}`)
+        .setTitle('AI Voice Dispatch Setup')
+        .setDescription(
+          '**What this does (Premium):** The bot joins voice channels where your LEO officers patrol. It listens, transcribes their speech with AI, and responds as a dispatcher — updating a live status board, handling 10-codes, and announcing 911 calls.\n\n' +
+          '**Set these up in order:**\n' +
+          '`1.` Set Dispatch Channel — text channel for dispatch logs\n' +
+          '`2.` Set Status Board Channel — text channel for the live officer status board\n' +
+          '`3.` Add Patrol Voice Channel — voice channel(s) to listen to\n' +
+          '`4.` Enable / Disable System — turn it on when ready' +
+          warning
+        )
         .setFooter({ text: 'RPM' }),
     ],
     components: [
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('dispatch_setup_menu')
-          .setPlaceholder('Select an option...')
+          .setPlaceholder('What do you want to set up?')
           .addOptions([
-            { label: 'Set Dispatch Channel', description: 'Text channel for dispatch logs', value: 'set_dispatch_channel' },
-            { label: 'Set Status Board Channel', description: 'Text channel for live officer status', value: 'set_status_channel' },
-            { label: 'Add Patrol Voice Channel', description: 'Voice channel the bot will listen to', value: 'add_patrol_channel' },
-            { label: 'Set Traffic Stop Channel', description: 'Voice channel for 10-11 moves', value: 'set_stop_channel' },
-            { label: 'Enable / Disable System', description: 'Turn dispatch on or off', value: 'toggle_system' },
-            { label: 'Toggle AI Responses', description: 'Enable or disable AI dispatcher replies', value: 'toggle_ai' },
+            { label: '1. Set Dispatch Channel', description: 'Text channel for dispatch logs and announcements', value: 'set_dispatch_channel' },
+            { label: '2. Set Status Board Channel', description: 'Text channel for the live officer status board', value: 'set_status_channel' },
+            { label: '3. Add Patrol Voice Channel', description: 'Voice channel the bot will listen and talk in', value: 'add_patrol_channel' },
+            { label: 'Set Traffic Stop Channel', description: 'Voice channel officers are moved to on 10-11', value: 'set_stop_channel' },
+            { label: '4. Enable / Disable System', description: 'Turn AI dispatch on or off', value: 'toggle_system' },
+            { label: 'Toggle AI Responses', description: 'Enable or disable AI-generated dispatcher replies', value: 'toggle_ai' },
             { label: 'Remove Patrol Channel', description: 'Stop monitoring a channel', value: 'remove_patrol_channel' },
             { label: 'View Settings', description: 'See current configuration', value: 'view_settings' },
-            { label: 'Finish Setup', description: 'Close the setup menu', value: 'setup_done' },
+            { label: 'Done', description: 'Close this menu', value: 'setup_done' },
           ])
       ),
     ],
@@ -264,8 +329,12 @@ function featuresMenu() {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('Feature Management')
-        .setDescription('Enable or disable bot features for your server.')
+        .setTitle('Enable / Disable Features')
+        .setDescription(
+          '**Enable** a feature to turn it on for your server.\n' +
+          '**Disable** a feature to turn it off — your settings are saved, you can re-enable it later.\n\n' +
+          '-# Tip: You can configure a feature directly with `/config <feature>` — it auto-enables it for you.'
+        )
         .setFooter({ text: 'RPM' }),
     ],
     components: [
@@ -279,20 +348,26 @@ function featuresMenu() {
 }
 
 function generalMenu(config) {
-  const logStatus = config?.logChannelId ? `Currently set to <#${config.logChannelId}>` : 'Not set yet';
+  const logStatus = config?.logChannelId
+    ? `Currently set to <#${config.logChannelId}>`
+    : 'Not set yet — pick a channel below';
   return {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('General Settings')
-        .setDescription(`Configure core bot settings for your server.\n\n**Log channel** — ${logStatus}`)
+        .setDescription(
+          '**Log channel** — this is where the bot records events like verifications, strikes, ticket opens, and more. Only staff should be able to see it.\n\n' +
+          `**${logStatus}**\n\n` +
+          'Pick a text channel below to set (or update) the log channel:'
+        )
         .setFooter({ text: 'RPM' }),
     ],
     components: [
       new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
           .setCustomId('setlogchannel_select')
-          .setPlaceholder('Select log channel...')
+          .setPlaceholder('Select a text channel for logs...')
           .setChannelTypes(ChannelType.GuildText)
       ),
     ],
@@ -303,16 +378,14 @@ function generalMenu(config) {
 // ─── subcommand handlers ──────────────────────────────────────────────────────
 
 async function handleVerify(interaction) {
-  const guildId = interaction.guildId;
-  await ensureEnabled(Verification, guildId);
+  await ensureEnabled(Verification, interaction.guildId);
   return interaction.reply(verifyMenu());
 }
 
 async function handleTickets(interaction) {
-  const guildId = interaction.guildId;
-  const access = await checkFeatureAccess(guildId, 'ticket');
+  const access = await checkFeatureAccess(interaction.guildId, 'ticket');
   if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Ticket Support')], flags: 64 });
-  await ensureEnabled(TicketConfig, guildId);
+  await ensureEnabled(TicketConfig, interaction.guildId);
   return interaction.reply(ticketsMenu());
 }
 
@@ -324,7 +397,7 @@ async function handleDispatch(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
   if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('AI Voice Dispatch')], flags: 64 });
   const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
-  const warning = hasApiKey ? '' : '\n\n-# No AI key configured. Set `GROQ_API_KEY` or `OPENAI_API_KEY` to enable transcription.';
+  const warning = hasApiKey ? '' : '\n\n-# No AI key set up yet. Ask your server host to set `GROQ_API_KEY` or `OPENAI_API_KEY`.';
   return interaction.reply(dispatchMenuEmbed(warning));
 }
 
@@ -350,17 +423,20 @@ async function handleRoles(interaction) {
 }
 
 async function handlePriority(interaction) {
-  const guildId = interaction.guildId;
-  await ensureEnabled(Priority, guildId);
-  const config = await Priority.findOne({ guildId });
-  const currentChannel = config?.channelId ? `\nCurrently posting to <#${config.channelId}>` : '';
+  await ensureEnabled(Priority, interaction.guildId);
+  const config = await Priority.findOne({ guildId: interaction.guildId });
+  const currentChannel = config?.channelId ? `\n\nCurrently posting to <#${config.channelId}>.` : '';
   return interaction.reply({
-    embeds: [menuEmbed('Priority Tracker Setup', `Select a text channel to post the priority tracker board.${currentChannel}`)],
+    embeds: [menuEmbed(
+      'Priority Tracker Setup',
+      `**What this does:** Posts a live embed in a channel that shows whether a priority event is active in your server. Staff can start/stop priority events with \`/activepriority\` and \`/deactivatepriority\`.\n\n` +
+      `**Just pick a channel below** — the bot handles the rest.${currentChannel}`
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
           .setCustomId('prioritytrackersetup_channel')
-          .setPlaceholder('Select priority tracker channel...')
+          .setPlaceholder('Pick the channel for the priority board...')
           .setChannelTypes(ChannelType.GuildText)
       ),
     ],
@@ -371,14 +447,18 @@ async function handlePriority(interaction) {
 async function handleCalendar(interaction) {
   const { default: RoleplayCalendar } = await import('../models/RoleplayCalendar.js');
   const config = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
-  const currentChannel = config?.channelId ? `\nCurrently posting to <#${config.channelId}>` : '';
+  const currentChannel = config?.channelId ? `\n\nCurrently posting to <#${config.channelId}>.` : '';
   return interaction.reply({
-    embeds: [menuEmbed('RP Calendar Setup', `Select a text channel where the roleplay calendar will be posted.${currentChannel}`)],
+    embeds: [menuEmbed(
+      'RP Calendar Setup',
+      `**What this does:** Posts a weekly roleplay schedule in a channel. Staff add events with \`/setrp\` and members can see when sessions are happening.\n\n` +
+      `**Just pick a channel below** — the bot handles the rest.${currentChannel}`
+    )],
     components: [
       new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
           .setCustomId('roleplaycalendarsetup_channel')
-          .setPlaceholder('Select calendar channel...')
+          .setPlaceholder('Pick the channel for the RP calendar...')
           .setChannelTypes(ChannelType.GuildText)
       ),
     ],
@@ -397,11 +477,15 @@ async function handleAppys(interaction) {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('Applications Config')
+        .setTitle('Applications (Premium)')
         .setDescription(
-          `**Review channel:** ${reviewCh}\n**Panel channel:** ${panelCh}\n**Active types:** ${typeCount}\n\n` +
-          `### Configure via Dashboard\nFull application setup (types, questions, accept roles, panels) is done through the **Dashboard → Applications** page at [roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard).\n\n` +
-          `-# The dashboard gives you full control over application types, questions, and panels.`
+          '**What this does:** Members can apply for staff positions or whitelist roles through a bot-guided Q&A in their DMs. Staff see submissions and can approve or deny.\n\n' +
+          `**Review channel:** ${reviewCh}\n` +
+          `**Panel channel:** ${panelCh}\n` +
+          `**Application types:** ${typeCount}\n\n` +
+          '### Configure on the Dashboard\n' +
+          'Create application types, set questions, and manage panels at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
+          '-# Dashboard → Applications — full setup available there.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -431,9 +515,15 @@ async function handleGeneral(interaction) {
     return interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setColor('#2d2d2d')
+          .setColor('#ed4245')
           .setTitle('Add Staff First')
-          .setDescription('You need at least one staff member before setting a log channel.\n\nRun `/staff add @user` to add your first staff member, then come back.')
+          .setDescription(
+            '**Before setting a log channel**, you need to add at least one staff member.\n\n' +
+            '**Do this right now:**\n' +
+            '`1.` Run `/staff add @YourName` to add yourself\n' +
+            '`2.` Then come back and run `/config general` again\n\n' +
+            '-# Staff are people who can use bot commands. Add yourself first.'
+          )
           .setFooter({ text: 'RPM' }),
       ],
       flags: 64,
@@ -443,7 +533,7 @@ async function handleGeneral(interaction) {
   return interaction.reply(generalMenu(config));
 }
 
-// ─── subcommand dispatch map ──────────────────────────────────────────────────
+// ─── subcommand dispatch ──────────────────────────────────────────────────────
 
 const subcommandHandlers = {
   verify: handleVerify,
@@ -468,26 +558,26 @@ const subcommandHandlers = {
 export const data = new SlashCommandBuilder()
   .setName('config')
   .setDescription('Configure any bot feature (Admin/Staff)')
-  .addSubcommand(s => s.setName('general').setDescription('Set the log channel and core bot settings'))
-  .addSubcommand(s => s.setName('features').setDescription('Enable or disable bot features'))
-  .addSubcommand(s => s.setName('verify').setDescription('Set up the member verification system'))
-  .addSubcommand(s => s.setName('tickets').setDescription('Set up the ticket support system'))
-  .addSubcommand(s => s.setName('economy').setDescription('Configure the economy and currency system'))
-  .addSubcommand(s => s.setName('strikes').setDescription('Configure strike levels and actions'))
-  .addSubcommand(s => s.setName('welcome').setDescription('Set up welcome messages for new members'))
-  .addSubcommand(s => s.setName('antipromo').setDescription('Block unwanted invite links'))
-  .addSubcommand(s => s.setName('roles').setDescription('Configure the role request system'))
-  .addSubcommand(s => s.setName('priority').setDescription('Set up the priority tracker'))
-  .addSubcommand(s => s.setName('calendar').setDescription('Set up the roleplay calendar'))
-  .addSubcommand(s => s.setName('moveme').setDescription('Configure the voice mover panel'))
-  .addSubcommand(s => s.setName('roleplay').setDescription('Toggle /me, /do, /try and other RP commands'))
-  .addSubcommand(s => s.setName('appys').setDescription('Configure the applications system (Premium)'))
-  .addSubcommand(s => s.setName('dispatch').setDescription('Configure the AI voice dispatch system (Premium)'));
+  .addSubcommand(s => s.setName('general').setDescription('Set the log channel — do this before anything else'))
+  .addSubcommand(s => s.setName('features').setDescription('Enable or disable features'))
+  .addSubcommand(s => s.setName('verify').setDescription('Verification — members fill a form to join your server'))
+  .addSubcommand(s => s.setName('tickets').setDescription('Tickets — members open support tickets with a button'))
+  .addSubcommand(s => s.setName('economy').setDescription('Economy — currency, work, crime, shops'))
+  .addSubcommand(s => s.setName('strikes').setDescription('Strikes — warn rule-breakers, auto-punish at each level'))
+  .addSubcommand(s => s.setName('welcome').setDescription('Welcome — greet new members automatically'))
+  .addSubcommand(s => s.setName('antipromo').setDescription('Anti-promoting — auto-delete invite links'))
+  .addSubcommand(s => s.setName('roles').setDescription('Role requests — members apply for specific roles'))
+  .addSubcommand(s => s.setName('priority').setDescription('Priority tracker — track active priority events'))
+  .addSubcommand(s => s.setName('calendar').setDescription('RP Calendar — schedule and display roleplay sessions'))
+  .addSubcommand(s => s.setName('moveme').setDescription('Voice mover — panel for members to move between voice channels'))
+  .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands — /me, /do, /try, 911 calls'))
+  .addSubcommand(s => s.setName('appys').setDescription('Applications — staff application panels (Premium)'))
+  .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'));
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.reply({
-      embeds: [errorEmbed('This command is restricted to staff and administrators.')],
+      embeds: [errorEmbed('Only staff and administrators can use this command.')],
       flags: 64,
     });
   }
@@ -503,7 +593,6 @@ export async function execute(interaction) {
     await handler(interaction);
   } catch (err) {
     console.error(`[/config ${sub}]`, err);
-    // If already replied, send a followUp; otherwise reply
     const respond = interaction.replied || interaction.deferred
       ? (opts) => interaction.followUp(opts)
       : (opts) => interaction.reply(opts);
