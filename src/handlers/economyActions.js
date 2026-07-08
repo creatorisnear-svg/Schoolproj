@@ -969,7 +969,7 @@ export async function handleBusinessPayMemberAmountModal(interaction) {
       .setTitle('Payment Sent')
       .setDescription(`Paid ${sym}${fmt(amount)} to **${targetTag}** from **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}`)
       .setFooter({ text: 'RPM' })],
-    components: [buildBusinessButtons(accountId)],
+    components: buildBusinessButtons(accountId),
     flags: 64,
   });
 }
@@ -1021,7 +1021,7 @@ export async function handleBusinessPasswordModal(interaction) {
   const sym = config?.currencySymbol || '$';
   return interaction.reply({
     embeds: [buildBusinessEmbed(account, sym)],
-    components: [buildBusinessButtons(accountId)],
+    components: buildBusinessButtons(accountId),
     flags: 64,
   });
 }
@@ -1071,7 +1071,7 @@ export async function handleBusinessDepositModal(interaction) {
     embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Deposit Complete')
       .setDescription(`Deposited ${sym}${fmt(amount)} into **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
       .setFooter({ text: 'RPM' })],
-    components: [buildBusinessButtons(accountId)],
+    components: buildBusinessButtons(accountId),
     flags: 64,
   });
 }
@@ -1095,7 +1095,7 @@ export async function handleBusinessWithdrawModal(interaction) {
     embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle('Withdrawal Complete')
       .setDescription(`Withdrew ${sym}${fmt(amount)} from **${account.name}**.\n### Business Balance\n${sym}${fmt(account.balance)}\n### Your Cash\n${sym}${fmt(bal.cash)}`)
       .setFooter({ text: 'RPM' })],
-    components: [buildBusinessButtons(accountId)],
+    components: buildBusinessButtons(accountId),
     flags: 64,
   });
 }
