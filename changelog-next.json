@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "title": "Business system expansion",
+  "version": "1.1.1",
+  "title": "Inventory viewer + business system expansion",
   "changes": [
     "Fixed BusinessTransaction enum missing 'shop' type (shop purchases were saving with an invalid type)",
     "Added 'adjust', 'transfer_out', 'transfer_in' transaction types to the enum",
@@ -10,6 +10,7 @@
     "New /businessadjust command (staff only) — add, remove, or set a business balance directly from Discord",
     "Added Ledger button to the /business Discord interface — shows last 15 transactions inline",
     "Dashboard: added Business Balance Management section — staff can add/remove/set balance from the web UI",
-    "Dashboard: Business Balance Management logs an 'adjust' transaction for full audit trail"
+    "Dashboard: Business Balance Management logs an 'adjust' transaction for full audit trail",
+    "/inventory now accepts an optional @user — view any member's inventory the same way /balance works"
   ]
 }
