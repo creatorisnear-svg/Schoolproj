@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const businessTransactionSchema = new mongoose.Schema({
   guildId:   { type: String, required: true, index: true },
   accountId: { type: String, required: true, index: true },
-  type:      { type: String, required: true, enum: ['deposit', 'withdraw', 'pay', 'income', 'shop', 'adjust', 'transfer_out', 'transfer_in'] },
+  type:      { type: String, required: true, enum: ['deposit', 'withdraw', 'pay', 'income', 'shop', 'adjust', 'transfer_out', 'transfer_in', 'loan_out', 'loan_repayment'] },
   userId:    { type: String, default: null },
   username:  { type: String, default: null },
   amount:    { type: Number, required: true },

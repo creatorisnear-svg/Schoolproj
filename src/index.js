@@ -682,6 +682,12 @@ client.on('messageCreate', async (message) => {
     } catch (err) {
       console.error('[Appys] DM handler error:', err.message);
     }
+    try {
+      const { handleLoanDMReply } = await import('./handlers/loanHandler.js');
+      await handleLoanDMReply(message, client);
+    } catch (err) {
+      console.error('[Loans] DM handler error:', err.message);
+    }
     return;
   }
 
@@ -754,6 +760,13 @@ client.once('clientReady', async () => {
     await restoreAppyDrafts(client);
   } catch (err) {
     console.error('[Appys] Failed to restore drafts on startup:', err.message);
+  }
+
+  try {
+    const { restoreLoanDrafts } = await import('./handlers/loanHandler.js');
+    await restoreLoanDrafts(client);
+  } catch (err) {
+    console.error('[Loans] Failed to restore drafts on startup:', err.message);
   }
   
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -971,6 +984,10 @@ client.on('interactionCreate', async interaction => {
         const cmd = await import(`./commands/${interaction.commandName}.js`);
         return await cmd.autocomplete(interaction);
       }
+      if (['businessloanconfig', 'businessloanpanel', 'loanpay', 'businessloans', 'loandefault', 'loanapplications'].includes(interaction.commandName)) {
+        const cmd = await import(`./commands/${interaction.commandName}.js`);
+        return await cmd.autocomplete(interaction);
+      }
       return;
     }
 
@@ -1125,6 +1142,21 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('appy_deny_')) {
         const { handleAppyDeny } = await import('./handlers/appyHandler.js');
         await handleAppyDeny(interaction, client);
+      } else if (interaction.customId.startsWith('loan_apply_')) {
+        const { handleLoanApply } = await import('./handlers/loanHandler.js');
+        await handleLoanApply(interaction);
+      } else if (interaction.customId.startsWith('loan_approve_') && !interaction.customId.startsWith('loan_approve_modal_')) {
+        const { handleLoanApprove } = await import('./handlers/loanHandler.js');
+        await handleLoanApprove(interaction);
+      } else if (interaction.customId.startsWith('loan_deny_') && !interaction.customId.startsWith('loan_deny_modal_')) {
+        const { handleLoanDeny } = await import('./handlers/loanHandler.js');
+        await handleLoanDeny(interaction);
+      } else if (interaction.customId === 'loan_cancel_session') {
+        const { handleLoanCancelSession } = await import('./handlers/loanHandler.js');
+        await handleLoanCancelSession(interaction);
+      } else if (interaction.customId.startsWith('loan_type_select_')) {
+        const { handleLoanTypeSelect } = await import('./handlers/loanHandler.js');
+        await handleLoanTypeSelect(interaction);
       } else {
         await handleSelectMenu(interaction);
       }
@@ -1156,6 +1188,12 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('biz_xfer_')) {
         const { handleBusinessTransferModal } = await import('./handlers/economyActions.js');
         await handleBusinessTransferModal(interaction);
+      } else if (interaction.customId.startsWith('loan_approve_modal_')) {
+        const { handleLoanApproveModal } = await import('./handlers/loanHandler.js');
+        await handleLoanApproveModal(interaction);
+      } else if (interaction.customId.startsWith('loan_deny_modal_')) {
+        const { handleLoanDenyModal } = await import('./handlers/loanHandler.js');
+        await handleLoanDenyModal(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
         await handleEconomyModal(interaction);
@@ -1266,6 +1304,17 @@ connectDatabase().then(async () => {
       console.error('[BusinessIncome] Poller error:', err.message);
     }
   }, 15 * 60 * 1000);
+
+  // Loan due-date reminder — runs every hour, DMs borrowers 24h before due
+  setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
+    try {
+      const { checkLoanReminders } = await import('./handlers/loanHandler.js');
+      await checkLoanReminders(client);
+    } catch (err) {
+      console.error('[LoanReminder] Poller error:', err.message);
+    }
+  }, 60 * 60 * 1000);
 
   // Uptime logger — records bot status every 5 minutes
   setInterval(async () => {
