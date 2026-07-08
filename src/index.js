@@ -967,6 +967,10 @@ client.on('interactionCreate', async interaction => {
         const cmd = await import('./commands/paybusiness.js');
         return await cmd.autocomplete(interaction);
       }
+      if (['businessinfo', 'businesstransfer', 'businessadjust'].includes(interaction.commandName)) {
+        const cmd = await import(`./commands/${interaction.commandName}.js`);
+        return await cmd.autocomplete(interaction);
+      }
       return;
     }
 
@@ -1095,6 +1099,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_paymember_')) {
         const { handleBusinessPayMemberButton } = await import('./handlers/economyActions.js');
         await handleBusinessPayMemberButton(interaction);
+      } else if (interaction.customId.startsWith('business_ledger_')) {
+        const { handleBusinessLedger } = await import('./handlers/economyActions.js');
+        await handleBusinessLedger(interaction);
       } else if (
         interaction.customId === 'collect_income' ||
         interaction.customId.startsWith('economy') ||
@@ -1146,6 +1153,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_give_qty_')) {
         const { handleBusinessGiveQtyModal } = await import('./handlers/economyActions.js');
         await handleBusinessGiveQtyModal(interaction);
+      } else if (interaction.customId.startsWith('biz_xfer_')) {
+        const { handleBusinessTransferModal } = await import('./handlers/economyActions.js');
+        await handleBusinessTransferModal(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
         await handleEconomyModal(interaction);

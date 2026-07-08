@@ -2358,6 +2358,24 @@ function renderEconomySettings(data) {
     '</div>' +
     '</div>';
 
+  /* ── Business Balance Management ── */
+  html += '<div class="config-section" style="margin-top:4px;">' +
+    '<div class="config-section-header"><h3>Business Balance Management</h3>' +
+    '<span style="font-size:11px;color:var(--text-dim);">Add, remove, or set a business account\'s balance</span></div>' +
+    '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;align-items:center;">' +
+    '<select id="biz-adj-select" class="config-select" style="flex:2;min-width:180px;">' +
+    '<option value="">Select a business...</option>' +
+    bizList.map(function(b) { return '<option value="' + esc(b.accountId) + '">' + esc(b.name) + '</option>'; }).join('') +
+    '</select>' +
+    '<input id="biz-adj-amount" type="number" class="config-input" placeholder="Amount" min="0" style="width:110px;">' +
+    '<button class="btn btn-success btn-sm" onclick="bizAdjust(\'add\')">Add</button>' +
+    '<button class="btn btn-danger btn-sm" onclick="bizAdjust(\'remove\')">Remove</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="bizAdjust(\'set\')">Set</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
   /* ── Member Money Management ── */
   html += '<div class="config-section" style="margin-top:4px;">' +
     '<div class="config-section-header"><h3>Member Money Management</h3>' +
@@ -2478,6 +2496,20 @@ function grantBizIncome(accountId, name) {
   api('/guild/' + currentGuild.id + '/economy/business/' + accountId + '/grant-income', { method: 'POST' }).then(function(r) {
     if (r && r.success) { toast('Income sent to ' + name + ' (cooldown unaffected)'); renderSettings('economy'); }
     else { toast((r && r.error) || 'Failed to send income', 'error'); }
+  });
+}
+
+function bizAdjust(action) {
+  var accountId = document.getElementById('biz-adj-select') && document.getElementById('biz-adj-select').value;
+  var amount = parseInt(document.getElementById('biz-adj-amount') && document.getElementById('biz-adj-amount').value);
+  if (!accountId) { toast('Select a business first', 'error'); return; }
+  if (isNaN(amount) || amount < 0) { toast('Enter a valid amount', 'error'); return; }
+  api('/guild/' + currentGuild.id + '/economy/business/' + accountId + '/adjust-balance', {
+    method: 'POST',
+    body: JSON.stringify({ action: action, amount: amount }),
+  }).then(function(r) {
+    if (r && r.success) { toast('Balance ' + action + ' applied. New balance: ' + (r.newBalance !== undefined ? r.newBalance.toLocaleString() : '')); renderSettings('economy'); }
+    else { toast((r && r.error) || 'Failed to adjust balance', 'error'); }
   });
 }
 

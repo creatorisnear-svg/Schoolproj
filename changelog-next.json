@@ -1,10 +1,15 @@
 {
-  "version": "1.0.8",
-  "title": "Business shop search, income controls, and dashboard fix",
+  "version": "1.1.0",
+  "title": "Business system expansion",
   "changes": [
-    "Business shop now opens a search modal (type to filter, like /buy) instead of a static 25-item dropdown",
-    "New businesses with passive income configured now start with that amount already in their balance",
-    "Dashboard: added 'Grant Income' button per business — manually credits one income cycle without resetting the automatic cooldown timer",
-    "Fixed dashboard Economy page not rendering the Business Accounts list or Store Items section (broken forEach loop caused by a prior corrupted edit)"
+    "Fixed BusinessTransaction enum missing 'shop' type (shop purchases were saving with an invalid type)",
+    "Added 'adjust', 'transfer_out', 'transfer_in' transaction types to the enum",
+    "New /businessleaderboard command — ranks all server businesses by balance",
+    "New /businessinfo command — public view of any business (balance, passive income, role, inventory count)",
+    "New /businesstransfer command — transfer funds between two businesses with source password auth",
+    "New /businessadjust command (staff only) — add, remove, or set a business balance directly from Discord",
+    "Added Ledger button to the /business Discord interface — shows last 15 transactions inline",
+    "Dashboard: added Business Balance Management section — staff can add/remove/set balance from the web UI",
+    "Dashboard: Business Balance Management logs an 'adjust' transaction for full audit trail"
   ]
 }

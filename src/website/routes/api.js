@@ -2597,6 +2597,45 @@ export function createApiRouter(client) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  router.post('/guild/:id/economy/business/:accountId/adjust-balance', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { action, amount } = req.body;
+    if (!['add', 'remove', 'set'].includes(action)) return res.status(400).json({ error: 'action must be add, remove, or set' });
+    const parsed = Number(amount);
+    if (isNaN(parsed) || parsed < 0) return res.status(400).json({ error: 'Invalid amount' });
+    try {
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const { default: BusinessTransaction } = await import('../../models/BusinessTransaction.js');
+      const account = await BusinessAccount.findOne({ accountId: req.params.accountId, guildId: req.params.id });
+      if (!account) return res.status(404).json({ error: 'Business not found' });
+      const before = account.balance;
+      if (action === 'add') {
+        account.balance += parsed;
+      } else if (action === 'remove') {
+        if (account.balance < parsed) return res.status(400).json({ error: `Balance is only ${account.balance}` });
+        account.balance -= parsed;
+      } else if (action === 'set') {
+        account.balance = parsed;
+      }
+      await account.save();
+      await BusinessTransaction.create({
+        guildId: req.params.id,
+        accountId: account.accountId,
+        type: 'adjust',
+        amount: Math.abs(account.balance - before) || parsed,
+        userId: null,
+        username: 'Dashboard',
+        note: `Staff ${action} via dashboard`,
+      });
+      res.json({ success: true, newBalance: account.balance });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   router.delete('/guild/:id/economy/roleincome/:roleId', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });

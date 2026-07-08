@@ -1,2 +1,4 @@
 - [Mongoose Model Guards](mongoose-model-guards.md) - all 37 models need `mongoose.models.X ||` guard; EmergencyCall.js uses named import pattern requiring `models` in import.
 - [Appys Feature Architecture](appys-architecture.md) - Applications system: AppyConfig+AppyPanel+AppySubmission models; DM Q&A flow; premium gated; panel sent via bot or webhook.
+- [Business System Overview](business-system.md) - BusinessAccount/Inventory/Transaction models; commands: /business /paybusiness /businessleaderboard /businessinfo /businesstransfer /businessadjust; handlers in economyActions.js; dashboard in site/js/dashboard.js; API routes in src/website/routes/api.js.
+- [economyActions.js Edit Risk](economy-actions-edit-risk.md) - File is large (~1675 lines); multi-step edits caused catastrophic duplication. Always use head/tail shell strategy to rebuild rather than chained Edit calls on this file.
