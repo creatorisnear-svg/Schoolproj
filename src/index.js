@@ -1015,6 +1015,15 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_paymember_select_')) {
         const { handleBusinessPayMemberSelect } = await import('./handlers/economyActions.js');
         await handleBusinessPayMemberSelect(interaction);
+      } else if (interaction.customId.startsWith('business_shop_sel_')) {
+        const { handleBusinessShopSelect } = await import('./handlers/economyActions.js');
+        await handleBusinessShopSelect(interaction);
+      } else if (interaction.customId.startsWith('business_give_item_')) {
+        const { handleBusinessGiveItemSelect } = await import('./handlers/economyActions.js');
+        await handleBusinessGiveItemSelect(interaction);
+      } else if (interaction.customId.startsWith('business_give_member_')) {
+        const { handleBusinessGiveMemberSelect } = await import('./handlers/economyActions.js');
+        await handleBusinessGiveMemberSelect(interaction);
       } else if (interaction.customId === 'civjob_select') {
         const { handleCivilianJobApply } = await import('./handlers/economyHandler.js');
         await handleCivilianJobApply(interaction);
@@ -1074,6 +1083,15 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_withdraw_')) {
         const { handleBusinessWithdraw } = await import('./handlers/economyActions.js');
         await handleBusinessWithdraw(interaction);
+      } else if (interaction.customId.startsWith('business_inventory_')) {
+        const { handleBusinessInventory } = await import('./handlers/economyActions.js');
+        await handleBusinessInventory(interaction);
+      } else if (interaction.customId.startsWith('business_shop_') && !interaction.customId.startsWith('business_shop_sel_')) {
+        const { handleBusinessShop } = await import('./handlers/economyActions.js');
+        await handleBusinessShop(interaction);
+      } else if (interaction.customId.startsWith('business_give_') && !interaction.customId.startsWith('business_give_item_') && !interaction.customId.startsWith('business_give_member_')) {
+        const { handleBusinessGiveItem } = await import('./handlers/economyActions.js');
+        await handleBusinessGiveItem(interaction);
       } else if (interaction.customId.startsWith('business_paymember_')) {
         const { handleBusinessPayMemberButton } = await import('./handlers/economyActions.js');
         await handleBusinessPayMemberButton(interaction);
@@ -1119,6 +1137,12 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_paymember_amount_')) {
         const { handleBusinessPayMemberAmountModal } = await import('./handlers/economyActions.js');
         await handleBusinessPayMemberAmountModal(interaction);
+      } else if (interaction.customId.startsWith('business_shop_qty_')) {
+        const { handleBusinessShopQtyModal } = await import('./handlers/economyActions.js');
+        await handleBusinessShopQtyModal(interaction);
+      } else if (interaction.customId.startsWith('business_give_qty_')) {
+        const { handleBusinessGiveQtyModal } = await import('./handlers/economyActions.js');
+        await handleBusinessGiveQtyModal(interaction);
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyModal } = await import('./handlers/economyHandler.js');
         await handleEconomyModal(interaction);

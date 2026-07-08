@@ -1118,3 +1118,266 @@ export async function runPayBusiness(interaction) {
     flags: 64,
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS INVENTORY — view what the business owns
+// ─────────────────────────────────────────────────────────────────────────────
+export async function handleBusinessInventory(interaction) {
+  const accountId = interaction.customId.replace('business_inventory_', '');
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId }).lean();
+  const items = inv?.items ?? [];
+  const desc = items.length
+    ? items.map(i => `**${i.itemName}** x${i.quantity}`).join('\n')
+    : '-# No items in inventory.';
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`${account.name} — Inventory`)
+      .setDescription(desc)
+      .setFooter({ text: 'RPM' })],
+    components: buildBusinessButtons(accountId),
+    flags: 64,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS SHOP — buy store items into the business inventory
+// ─────────────────────────────────────────────────────────────────────────────
+export async function handleBusinessShop(interaction) {
+  const accountId = interaction.customId.replace('business_shop_', '');
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const config = await getConfig(interaction.guildId);
+  const sym = config?.currencySymbol || '$';
+  const items = await EconomyStore.find({ guildId: interaction.guildId }).lean();
+  if (!items.length) {
+    return interaction.reply({
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle(`${account.name} — Shop`)
+        .setDescription('No items are available in the server store.').setFooter({ text: 'RPM' })],
+      components: buildBusinessButtons(accountId),
+      flags: 64,
+    });
+  }
+  const options = items.slice(0, 25).map(i => ({
+    label: i.name.slice(0, 100),
+    description: (`${sym}${fmt(i.price)}${i.description ? ' — ' + i.description : ''}`).slice(0, 100),
+    value: i.name.slice(0, 100),
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`business_shop_sel_${accountId}`)
+      .setPlaceholder('Select an item to buy...')
+      .addOptions(options)
+  );
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`${account.name} — Shop`)
+      .setDescription(`### Balance\n${sym}${fmt(account.balance)}\nSelect an item to purchase for this business.`)
+      .setFooter({ text: 'RPM' })],
+    components: [row],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessShopSelect(interaction) {
+  const accountId = interaction.customId.replace('business_shop_sel_', '');
+  const itemName = interaction.values[0];
+  // Look up by name to get the stable _id (24-char hex ObjectId) — keeps modal customId well under 100 chars
+  const escaped = itemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const storeItem = await EconomyStore.findOne({ guildId: interaction.guildId, name: new RegExp('^' + escaped + '$', 'i') });
+  if (!storeItem) return interaction.reply({ embeds: [errorEmbed(`**${itemName}** is no longer available in the store.`)], flags: 64 });
+  const modal = new ModalBuilder()
+    .setCustomId('business_shop_qty_' + accountId + '|' + storeItem._id)
+    .setTitle('Buy: ' + itemName.slice(0, 40))
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('quantity')
+          .setLabel('Quantity')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder('e.g. 1')
+          .setValue('1')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessShopQtyModal(interaction) {
+  const raw = interaction.customId.replace('business_shop_qty_', '');
+  const sepIdx = raw.indexOf('|');
+  const accountId = raw.slice(0, sepIdx);
+  const storeItemId = raw.slice(sepIdx + 1);
+  const qty = parseInt(interaction.fields.getTextInputValue('quantity'));
+  if (isNaN(qty) || qty < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid quantity.')], flags: 64 });
+  const config = await getConfigOrFail(interaction);
+  if (!config) return;
+  const sym = config.currencySymbol;
+  const storeItem = await EconomyStore.findById(storeItemId);
+  if (!storeItem) return interaction.reply({ embeds: [errorEmbed('That item is no longer available in the store.')], flags: 64 });
+  const total = storeItem.price * qty;
+  const account = await BusinessAccount.findOne({ accountId });
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  if (account.balance < total) return interaction.reply({ embeds: [errorEmbed(`**${account.name}** only has ${sym}${fmt(account.balance)}. This purchase costs ${sym}${fmt(total)}.`)], flags: 64 });
+  account.balance -= total;
+  await account.save();
+  let inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId })
+    || new BusinessInventory({ guildId: interaction.guildId, accountId, items: [] });
+  const ex = inv.items.find(i => i.itemName.toLowerCase() === storeItem.name.toLowerCase());
+  if (ex) ex.quantity += qty; else inv.items.push({ itemName: storeItem.name, quantity: qty });
+  inv.markModified('items');
+  await inv.save();
+  await logTx(account, 'shop', total, { id: interaction.user.id, username: interaction.user.username }, `Purchased ${storeItem.name} x${qty}`);
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Purchase Complete')
+      .setDescription(`Bought **${storeItem.name}** x${qty} for **${sym}${fmt(total)}**.\n### Business Balance\n${sym}${fmt(account.balance)}`)
+      .setFooter({ text: 'RPM' })],
+    components: buildBusinessButtons(accountId),
+    flags: 64,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS GIVE ITEM — transfer an item from business inventory to a member
+// ─────────────────────────────────────────────────────────────────────────────
+export async function handleBusinessGiveItem(interaction) {
+  const accountId = interaction.customId.replace('business_give_', '');
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId }).lean();
+  const items = inv?.items ?? [];
+  if (!items.length) {
+    return interaction.reply({
+      embeds: [errorEmbed(`**${account.name}** has no items in its inventory. Use **Shop** to purchase items first.`)],
+      flags: 64,
+    });
+  }
+  // Use array index as option value — keeps all downstream customIds safely under 100 chars
+  const options = items.slice(0, 25).map((i, idx) => ({
+    label: i.itemName.slice(0, 100),
+    description: `x${i.quantity} in stock`,
+    value: String(idx),
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`business_give_item_${accountId}`)
+      .setPlaceholder('Select an item to give...')
+      .addOptions(options)
+  );
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`${account.name} — Give Item`)
+      .setDescription('Select an item from the business inventory to give to a member.')
+      .setFooter({ text: 'RPM' })],
+    components: [row],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessGiveItemSelect(interaction) {
+  const accountId = interaction.customId.replace('business_give_item_', '');
+  const itemIdx = interaction.values[0]; // numeric index string
+  const inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId }).lean();
+  const itemName = inv?.items[parseInt(itemIdx)]?.itemName ?? 'Unknown item';
+  const menu = new UserSelectMenuBuilder()
+    .setCustomId('business_give_member_' + accountId + '|' + itemIdx)
+    .setPlaceholder('Search for a member...')
+    .setMinValues(1)
+    .setMaxValues(1);
+  const row = new ActionRowBuilder().addComponents(menu);
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle(`Give: ${itemName}`)
+      .setDescription('Select a member to receive this item.')
+      .setFooter({ text: 'RPM' })],
+    components: [row],
+    flags: 64,
+  });
+}
+
+export async function handleBusinessGiveMemberSelect(interaction) {
+  const raw = interaction.customId.replace('business_give_member_', '');
+  const sepIdx = raw.indexOf('|');
+  const accountId = raw.slice(0, sepIdx);
+  const itemIdx = raw.slice(sepIdx + 1);
+  const targetUser = interaction.users.first();
+  if (!targetUser) return interaction.reply({ embeds: [errorEmbed('No user selected.')], flags: 64 });
+  if (targetUser.bot) return interaction.reply({ embeds: [errorEmbed('You cannot give items to a bot.')], flags: 64 });
+  const inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId }).lean();
+  const itemName = inv?.items[parseInt(itemIdx)]?.itemName ?? 'item';
+  const modalTitle = ('Give ' + itemName.slice(0, 27) + ' to ' + targetUser.username.slice(0, 20)).slice(0, 45);
+  const modal = new ModalBuilder()
+    .setCustomId('business_give_qty_' + accountId + '|' + targetUser.id + '|' + itemIdx)
+    .setTitle(modalTitle)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('quantity')
+          .setLabel('Quantity')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder('e.g. 1')
+          .setValue('1')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessGiveQtyModal(interaction) {
+  const raw = interaction.customId.replace('business_give_qty_', '');
+  const parts = raw.split('|');
+  const accountId = parts[0];
+  const targetUserId = parts[1];
+  const itemIdx = parseInt(parts[2]);
+  const qty = parseInt(interaction.fields.getTextInputValue('quantity'));
+  if (isNaN(qty) || qty < 1) return interaction.reply({ embeds: [errorEmbed('Enter a valid quantity.')], flags: 64 });
+  const account = await BusinessAccount.findOne({ accountId }).lean();
+  if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
+  const inv = await BusinessInventory.findOne({ guildId: interaction.guildId, accountId });
+  const invItem = inv?.items[itemIdx];
+  if (!invItem) return interaction.reply({ embeds: [errorEmbed(`Item no longer available in **${account.name}**'s inventory.`)], flags: 64 });
+  if (invItem.quantity < qty) return interaction.reply({ embeds: [errorEmbed(`Only **${invItem.quantity}** of **${invItem.itemName}** in stock.`)], flags: 64 });
+  const resolvedName = invItem.itemName;
+  invItem.quantity -= qty;
+  if (invItem.quantity <= 0) inv.items.splice(itemIdx, 1);
+  inv.markModified('items');
+  await inv.save();
+  const guildId = interaction.guildId;
+  let targetInv = await EconomyInventory.findOne({ guildId, userId: targetUserId })
+    || new EconomyInventory({ guildId, userId: targetUserId, items: [] });
+  const targetItem = targetInv.items.find(i => i.itemName.toLowerCase() === resolvedName.toLowerCase());
+  if (targetItem) targetItem.quantity += qty; else targetInv.items.push({ itemName: resolvedName, quantity: qty });
+  targetInv.markModified('items');
+  await targetInv.save();
+  let targetTag = targetUserId;
+  try {
+    const member = await interaction.guild.members.fetch(targetUserId);
+    targetTag = member.user.username;
+  } catch { /* fallback to ID */ }
+  try {
+    const targetUser = await interaction.client.users.fetch(targetUserId);
+    await targetUser.send({
+      embeds: [new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Item Received')
+        .setDescription(`You received **${resolvedName}** x${qty} from **${account.name}**.`)
+        .setFooter({ text: `${interaction.guild.name} • RPM` })],
+    });
+  } catch { /* DMs closed — non-fatal */ }
+  return interaction.reply({
+    embeds: [new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Item Given')
+      .setDescription(`Gave **${resolvedName}** x${qty} to **${targetTag}** from **${account.name}**.`)
+      .setFooter({ text: 'RPM' })],
+    components: buildBusinessButtons(accountId),
+    flags: 64,
+  });
+}

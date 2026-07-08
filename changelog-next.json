@@ -1,20 +1,12 @@
 {
-  "version": "1.0.5",
-  "title": "Business roles, payment DMs, balance lookup & new /config commands",
+  "version": "1.0.6",
+  "title": "Business inventories — shop, inventory view, and give item",
   "changes": [
-    "Creating a business account now auto-creates a Discord role named 'Business | [name]'",
-    "Renaming a business account renames the Discord role to match",
-    "Deleting a business account deletes its Discord role",
-    "On startup, bot automatically creates roles for any existing business accounts that pre-date this feature",
-    "Dashboard economy page shows the Discord role badge next to each business account name",
-    "Business Pay Member now DMs the recipient: payment amount and business name",
-    "/give now DMs the recipient: payment amount and sender name",
-    "/balance now accepts an optional user option to check another member's balance",
-    "Added /config blacklist — configure blacklist panel channel (Premium)",
-    "Added /config civjobs — set job board channel for Civilian Jobs",
-    "Added /config sticky — shows active sticky count and Discord command usage",
-    "Added /config reactionroles — shows active reaction role messages and setup command",
-    "Added /config business — shows business account count and dashboard link",
-    "Updated /config help to list all new subcommands in their categories"
+    "Business accounts now have their own inventory",
+    "New Inventory button: view all items currently held by a business",
+    "New Shop button: buy items from the server's economy store using the business balance; items go directly into the business inventory",
+    "New Give Item button: transfer items from a business inventory to any server member's personal inventory",
+    "Members receive a DM when a business gives them an item",
+    "Business shop purchases are logged to the business transaction history"
   ]
 }
