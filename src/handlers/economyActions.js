@@ -513,12 +513,18 @@ export async function runInventory(interaction) {
   const config = await getConfigOrFail(interaction);
   if (!config) return;
   const guildId = interaction.guildId;
-  const userId = interaction.user.id;
-  const inv = await EconomyInventory.findOne({ guildId, userId });
-  if (!inv?.items?.length) return interaction.reply({ embeds: [errorEmbed('Your inventory is empty.')], flags: 64 });
+  const target = interaction.options?.getUser('user') || interaction.user;
+  const inv = await EconomyInventory.findOne({ guildId, userId: target.id });
+  const isSelf = target.id === interaction.user.id;
+  if (!inv?.items?.length) {
+    return interaction.reply({
+      embeds: [errorEmbed(isSelf ? 'Your inventory is empty.' : `**${target.username}**'s inventory is empty.`)],
+      flags: 64,
+    });
+  }
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-      .setTitle(`${interaction.user.username}'s Inventory`)
+      .setTitle(`${target.username}'s Inventory`)
       .setDescription(inv.items.map(i => `**${i.itemName}** x${i.quantity}`).join('\n'))
       .setFooter({ text: 'RPM' })],
     flags: 64,
