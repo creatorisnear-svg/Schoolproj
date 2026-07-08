@@ -926,6 +926,34 @@ client.once('clientReady', async () => {
   } catch (err) {
     console.error('[Dispatch] Startup initialization error:', err.message);
   }
+
+  // ── Business role migration ─────────────────────────────────────────────────
+  // Create "Business | [name]" roles for any existing accounts that pre-date the feature
+  try {
+    const { default: BusinessAccount } = await import('./models/BusinessAccount.js');
+    const untagged = await BusinessAccount.find({ guildId: { $in: [...client.guilds.cache.keys()] }, roleId: null }).lean();
+    if (untagged.length > 0) {
+      console.log(`[Business] Migrating ${untagged.length} account(s) without roles...`);
+      let created = 0;
+      for (const account of untagged) {
+        try {
+          const guild = client.guilds.cache.get(account.guildId);
+          if (!guild) continue;
+          const role = await guild.roles.create({
+            name: `Business | ${account.name}`,
+            reason: 'Business role migration — backfilling existing accounts',
+          });
+          await BusinessAccount.updateOne({ accountId: account.accountId }, { $set: { roleId: role.id } });
+          created++;
+        } catch (err) {
+          console.error(`[Business] Failed to create role for "${account.name}" (${account.accountId}):`, err.message);
+        }
+      }
+      console.log(`[Business] Migration complete — ${created}/${untagged.length} roles created`);
+    }
+  } catch (err) {
+    console.error('[Business] Role migration error:', err.message);
+  }
 });
 
 client.on('interactionCreate', async interaction => {

@@ -6,6 +6,6 @@
     "Renaming a business account renames the Discord role to match",
     "Deleting a business account deletes its Discord role",
     "Dashboard economy page shows the role badge next to each business account name",
-    "Added roleId field to BusinessAccount model"
+    "On startup, bot automatically creates roles for any existing business accounts that pre-date this feature"
   ]
 }
