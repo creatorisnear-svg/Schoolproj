@@ -189,6 +189,18 @@ export async function runGive(interaction, targetUser, amount) {
   bal.cash -= amount;
   targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
   await Promise.all([bal.save(), targetBal.save()]);
+
+  // DM the recipient
+  try {
+    await targetUser.send({
+      embeds: [new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('💰 Payment Received')
+        .setDescription(`**${interaction.user.username}** sent you **${sym}${fmt(amount)}** in **${interaction.guild.name}**.\n**New Cash Balance:** ${sym}${fmt(targetBal.cash)}`)
+        .setFooter({ text: `${interaction.guild.name} • RPM` })],
+    });
+  } catch { /* DMs closed or user not reachable — non-fatal */ }
+
   return interaction.reply({ embeds: [successEmbed('Money Given', `You gave ${sym}${fmt(amount)} to ${targetUser}.\n**Your Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
 }
 
@@ -930,6 +942,19 @@ export async function handleBusinessPayMemberAmountModal(interaction) {
     targetTag = member.user.username;
   } catch { /* use ID fallback */ }
   await Promise.all([account.save(), targetBal.save(), logTx(account, 'pay', amount, { id: targetUserId, username: targetTag }, `Paid to ${targetTag}`)]);
+
+  // DM the recipient
+  try {
+    const targetUser = await interaction.client.users.fetch(targetUserId);
+    await targetUser.send({
+      embeds: [new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('💼 Payment Received')
+        .setDescription(`You received **${sym}${fmt(amount)}** from **${account.name}**.\n**New Cash Balance:** ${sym}${fmt(targetBal.cash)}`)
+        .setFooter({ text: `${interaction.guild.name} • RPM` })],
+    });
+  } catch { /* DMs closed or user not reachable — non-fatal */ }
+
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
