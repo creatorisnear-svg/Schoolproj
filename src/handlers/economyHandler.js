@@ -1267,6 +1267,10 @@ export async function handleEconomyModal(interaction) {
     const targetBal = await getBalance(guildId, targetId, config.startingBalance);
     bal.cash -= amount; targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
     await Promise.all([bal.save(), targetBal.save()]);
+    const totalTarget = targetBal.cash + targetBal.bank;
+    if (totalTarget >= 1_000_000_000_000) {
+      console.warn(`[ECONOMY FLAG] Unrealistic personal balance after give — guild=${guildId} user=${targetId} total=${totalTarget}`);
+    }
     return interaction.reply({ embeds: [successEmbed('Money Given', `You gave ${sym}${fmt(amount)} to <@${targetId}>.\n**Your Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
   }
 

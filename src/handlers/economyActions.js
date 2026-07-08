@@ -191,6 +191,8 @@ export async function runGive(interaction, targetUser, amount) {
   targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
   await Promise.all([bal.save(), targetBal.save()]);
 
+  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `/give — ${interaction.user.tag} sent ${sym}${fmt(amount)} to ${targetUser.tag}`);
+
   // DM the recipient
   try {
     await targetUser.send({
@@ -846,6 +848,41 @@ async function logTx(account, type, amount, user, note) {
   } catch { /* non-fatal */ }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ABUSE / FRAUD FLAGGING — logs (and optionally alerts the economy log
+// channel) whenever staff pay themselves or a balance reaches an unrealistic
+// amount. Console logging always happens; the Discord alert is best-effort.
+// ─────────────────────────────────────────────────────────────────────────────
+const SUSPICIOUS_BALANCE_THRESHOLD = 1_000_000_000_000; // 1 trillion
+
+async function sendFlagAlert(interaction, config, title, description) {
+  console.warn(`[ECONOMY FLAG] ${title} — ${description.replace(/\n/g, ' ')}`);
+  if (!config?.logChannelId || !interaction?.guild) return;
+  try {
+    const ch = interaction.guild.channels.cache.get(config.logChannelId);
+    if (!ch?.isTextBased()) return;
+    await ch.send({
+      embeds: [new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle(`🚩 ${title}`)
+        .setDescription(description)
+        .setTimestamp()
+        .setFooter({ text: 'RPM • Fraud Watch' })],
+    });
+  } catch { /* non-fatal */ }
+}
+
+function flagIfUnrealisticBalance(interaction, config, total, context) {
+  if (total >= SUSPICIOUS_BALANCE_THRESHOLD) {
+    sendFlagAlert(
+      interaction,
+      config,
+      'Unrealistic Balance Detected',
+      `**User:** ${interaction.user.tag} (${interaction.user.id})\n**Context:** ${context}\n**New Total:** ${total.toLocaleString()} (threshold ${SUSPICIOUS_BALANCE_THRESHOLD.toLocaleString()})`
+    );
+  }
+}
+
 export async function applyBusinessIncome(account) {
   if (!account.incomeAmount || !account.incomeCooldownHours) return;
   const now = Date.now();
@@ -956,7 +993,19 @@ export async function handleBusinessPayMemberAmountModal(interaction) {
     const member = await interaction.guild.members.fetch(targetUserId);
     targetTag = member.user.username;
   } catch { /* use ID fallback */ }
-  await Promise.all([account.save(), targetBal.save(), logTx(account, 'pay', amount, { id: targetUserId, username: targetTag }, `Paid to ${targetTag}`)]);
+
+  const paidSelf = targetUserId === interaction.user.id;
+  if (paidSelf) {
+    sendFlagAlert(
+      interaction,
+      config,
+      'Staff Self-Payment',
+      `**Staff:** ${interaction.user.tag} (${interaction.user.id})\n**Business:** ${account.name}\n**Amount:** ${sym}${fmt(amount)}\n${interaction.user.tag} paid **themselves** from a business account they manage.`
+    );
+  }
+
+  await Promise.all([account.save(), targetBal.save(), logTx(account, 'pay', amount, { id: targetUserId, username: targetTag }, `Paid to ${targetTag}${paidSelf ? ' (SELF)' : ''}`)]);
+  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `business pay-member — ${account.name} → ${targetTag}`);
 
   // DM the recipient
   try {
@@ -1663,8 +1712,19 @@ export async function runBusinessAdjust(interaction) {
   }
 
   const actionLabel = { add: `+${sym}${fmt(amount)}`, remove: `-${sym}${fmt(amount)}`, set: `set to ${sym}${fmt(amount)}` }[action];
+
+  const memberRoleIds = interaction.member.roles.cache.map(r => r.id);
+  const isSelfBenefiting = account.roleId && memberRoleIds.includes(account.roleId) && action !== 'remove';
+  if (isSelfBenefiting) {
+    console.warn(
+      `[ECONOMY FLAG] Staff self-benefit — ${interaction.user.tag} (${interaction.user.id}) used /businessadjust to ${action} ` +
+      `${sym}${fmt(amount)} on "${account.name}", a business they belong to (guild ${interaction.guildId}).`
+    );
+  }
+
   await account.save();
   await logTx(account, 'adjust', Math.abs(account.balance - before) || amount, interaction.user, `Staff ${action} by ${interaction.user.username}`);
+  flagIfUnrealisticBalance(interaction, config, account.balance, `/businessadjust — ${interaction.user.tag} ${action} on "${account.name}"`);
 
   return interaction.reply({
     embeds: [new EmbedBuilder()
