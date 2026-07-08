@@ -160,6 +160,10 @@ export async function handleLoanApply(interaction) {
 // Type select  →  loan_type_select_{accountId}
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleLoanTypeSelect(interaction) {
+  // Ack immediately — DB lookups + a DM send below can easily exceed Discord's
+  // 3s interaction ack window, which otherwise shows "This interaction failed".
+  await interaction.deferUpdate();
+
   const accountId = interaction.customId.replace('loan_type_select_', '');
   const selected  = interaction.values[0]; // "personal_{accountId}" or "property_{accountId}"
   const loanType  = selected.startsWith('personal') ? 'personal' : 'property';
@@ -171,7 +175,7 @@ export async function handleLoanTypeSelect(interaction) {
   ]);
 
   if (!account || !loanConfig) {
-    return interaction.update({ embeds: [errEmbed('Loan service not found.')], components: [] });
+    return interaction.editReply({ embeds: [errEmbed('Loan service not found.')], components: [] });
   }
 
   const sym  = guildConfig?.currencySymbol || '$';
@@ -190,7 +194,7 @@ export async function handleLoanTypeSelect(interaction) {
         .setFooter({ text: `Question 1 of ${questions.length} · Type "cancel" to cancel` })],
     });
   } catch {
-    return interaction.update({ embeds: [errEmbed('I could not send you a DM. Please enable DMs from server members and try again.')], components: [] });
+    return interaction.editReply({ embeds: [errEmbed('I could not send you a DM. Please enable DMs from server members and try again.')], components: [] });
   }
 
   const session = {
@@ -217,7 +221,7 @@ export async function handleLoanTypeSelect(interaction) {
   _activeLoanSessions.set(interaction.user.id, session);
   await _saveLoanDraft(interaction.user.id, session);
 
-  return interaction.update({
+  return interaction.editReply({
     embeds: [okEmbed('✅ Application started! Check your DMs to continue.')],
     components: [],
   });
