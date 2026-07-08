@@ -106,10 +106,11 @@ export async function runBalance(interaction) {
   const config = await getConfigOrFail(interaction);
   if (!config) return;
   const sym = config.currencySymbol;
-  const bal = await getBalance(interaction.guildId, interaction.user.id, config.startingBalance);
+  const target = interaction.options.getUser('user') || interaction.user;
+  const bal = await getBalance(interaction.guildId, target.id, config.startingBalance);
   return interaction.reply({
     embeds: [new EmbedBuilder().setColor(0x2d2d2d)
-      .setTitle(`${interaction.user.username}'s Balance`)
+      .setTitle(`${target.username}'s Balance`)
       .setDescription(`**Cash:** ${sym}${fmt(bal.cash)}\n**Bank:** ${sym}${fmt(bal.bank)}\n**Total:** ${sym}${fmt(bal.cash + bal.bank)}`)
       .setFooter({ text: 'RPM' })],
     flags: 64,
