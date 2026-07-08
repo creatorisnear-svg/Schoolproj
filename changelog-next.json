@@ -1,16 +1,17 @@
 {
-  "version": "1.1.1",
-  "title": "Inventory viewer + business system expansion",
+  "version": "1.2.0",
+  "title": "Business loan system — banks, applications, and repayments",
   "changes": [
-    "Fixed BusinessTransaction enum missing 'shop' type (shop purchases were saving with an invalid type)",
-    "Added 'adjust', 'transfer_out', 'transfer_in' transaction types to the enum",
-    "New /businessleaderboard command — ranks all server businesses by balance",
-    "New /businessinfo command — public view of any business (balance, passive income, role, inventory count)",
-    "New /businesstransfer command — transfer funds between two businesses with source password auth",
-    "New /businessadjust command (staff only) — add, remove, or set a business balance directly from Discord",
-    "Added Ledger button to the /business Discord interface — shows last 15 transactions inline",
-    "Dashboard: added Business Balance Management section — staff can add/remove/set balance from the web UI",
-    "Dashboard: Business Balance Management logs an 'adjust' transaction for full audit trail",
-    "/inventory now accepts an optional @user — view any member's inventory the same way /balance works"
+    "New business loan system: any business can become a lender via /businessloanconfig + /businessloanpanel",
+    "Appy-style loan application panel — members click Apply, pick Personal or Property, answer a short DM Q&A",
+    "Applications are reviewed in a configurable channel with Approve/Deny buttons; approving prompts for an interest rate and issues the loan",
+    "Simple interest model: total owed = principal x (1 + rate/100 x days/365), max repayment term is 7 days",
+    "New /loanpay command — pay down an active loan (autocomplete lists your loans by lender + balance)",
+    "New /loans command — view your own active/paid/defaulted loans, or a staff view of another member's",
+    "New /businessloans command — a bank's full loan portfolio with status filters and outstanding totals",
+    "New /loanapplications command — fallback list of pending applications for a business",
+    "New /loandefault command (staff only) — mark a loan as defaulted",
+    "Hourly reminder DM sent to borrowers within 24h of their loan's due date (sent once per loan)",
+    "Added 'loan_out' and 'loan_repayment' types to the BusinessTransaction enum"
   ]
 }
