@@ -2462,15 +2462,17 @@ export function createApiRouter(client) {
         console.error('[BUSINESS] Failed to create role:', roleErr.message);
       }
 
+      const parsedIncome = Math.max(0, parseInt(incomeAmount) || 0);
       await BusinessAccount.create({
         guildId: req.params.id,
         accountId: uuidv4(),
         name: name.trim(),
         passwordHash: createHash('sha256').update(password.trim()).digest('hex'),
         roleId,
-        balance: 0,
-        incomeAmount: Math.max(0, parseInt(incomeAmount) || 0),
+        balance: parsedIncome,
+        incomeAmount: parsedIncome,
         incomeCooldownHours: Math.max(1, Math.min(720, parseInt(incomeCooldownHours) || 24)),
+        lastIncomeAt: parsedIncome > 0 ? new Date() : null,
       });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -2563,6 +2565,35 @@ export function createApiRouter(client) {
 
       await BusinessAccount.deleteOne({ accountId: req.params.accountId, guildId: req.params.id });
       res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/guild/:id/economy/business/:accountId/grant-income', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    try {
+      const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const { default: BusinessTransaction } = await import('../../models/BusinessTransaction.js');
+      const account = await BusinessAccount.findOne({ accountId: req.params.accountId, guildId: req.params.id });
+      if (!account) return res.status(404).json({ error: 'Business not found' });
+      if (!account.incomeAmount || account.incomeAmount <= 0) return res.status(400).json({ error: 'This business has no passive income configured' });
+      account.balance += account.incomeAmount;
+      // Intentionally do NOT update lastIncomeAt — cooldown is unaffected
+      await account.save();
+      await BusinessTransaction.create({
+        guildId: req.params.id,
+        accountId: account.accountId,
+        type: 'income',
+        amount: account.incomeAmount,
+        userId: null,
+        username: 'Dashboard (manual)',
+        note: 'Manual income grant by staff',
+      });
+      res.json({ success: true, newBalance: account.balance });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

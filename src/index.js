@@ -1137,6 +1137,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('business_paymember_amount_')) {
         const { handleBusinessPayMemberAmountModal } = await import('./handlers/economyActions.js');
         await handleBusinessPayMemberAmountModal(interaction);
+      } else if (interaction.customId.startsWith('business_shop_search_')) {
+        const { handleBusinessShopSearchModal } = await import('./handlers/economyActions.js');
+        await handleBusinessShopSearchModal(interaction);
       } else if (interaction.customId.startsWith('business_shop_qty_')) {
         const { handleBusinessShopQtyModal } = await import('./handlers/economyActions.js');
         await handleBusinessShopQtyModal(interaction);
