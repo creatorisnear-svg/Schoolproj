@@ -1,9 +1,10 @@
 {
-  "version": "1.0.7",
-  "title": "Fix business account buttons showing 'something went wrong'",
+  "version": "1.0.8",
+  "title": "Business shop search, income controls, and dashboard fix",
   "changes": [
-    "Fixed a bug where all business account buttons (Deposit, Withdraw, Pay Member, Inventory, Shop, Give Item) responded with 'something went wrong' after completing an action",
-    "Root cause: the action row array was incorrectly double-wrapped when attaching buttons to replies",
-    "All business interactions now correctly show the account panel with buttons after each action"
+    "Business shop now opens a search modal (type to filter, like /buy) instead of a static 25-item dropdown",
+    "New businesses with passive income configured now start with that amount already in their balance",
+    "Dashboard: added 'Grant Income' button per business — manually credits one income cycle without resetting the automatic cooldown timer",
+    "Fixed dashboard Economy page not rendering the Business Accounts list or Store Items section (broken forEach loop caused by a prior corrupted edit)"
   ]
 }

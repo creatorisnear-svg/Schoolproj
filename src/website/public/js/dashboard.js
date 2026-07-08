@@ -1368,7 +1368,27 @@ function renderEconomySettings(data) {
       '<span style="font-size:11px;color:var(--text-dim);">' + businesses.length + ' account(s)</span></div>';
     businesses.forEach(function(b) {
       var sym = (data.fields || []).find(function(f) { return f.key === 'currencySymbol'; });
-      var symVal = sym ? (sym.value || '
+      var symVal = sym ? (sym.value || String.fromCharCode(36)) : String.fromCharCode(36);
+      html += '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+        '<div class="config-left">' +
+        '<span class="config-label">' + esc(b.name) + '</span>' +
+        '<div class="config-sublabel">' +
+        'Balance: ' + symVal + esc(Number(b.balance).toLocaleString()) +
+        (b.incomeAmount ? ' &mdash; Passive income: ' + symVal + esc(Number(b.incomeAmount).toLocaleString()) + ' every ' + esc(String(b.incomeCooldownHours)) + 'h' : '') +
+        '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+        (b.incomeAmount
+          ? '<button class="btn btn-secondary btn-sm" onclick="grantBusinessIncome(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')" title="Credit one passive income cycle without resetting the cooldown timer">Grant Income</button>'
+          : '') +
+        '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  /* ── Store Management ── */
+  var storeItems = data.storeItems || [];
   html += '<div class="config-section" style="margin-top:4px;">' +
     '<div class="config-section-header"><h3>Store Items</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + storeItems.length + ' custom item(s)</span></div>';
@@ -2434,71 +2454,6 @@ function saveSettings(mod) {
 }
 
 init();
-;
-      html += '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
-        '<div class="config-left">' +
-        '<span class="config-label">' + esc(b.name) + '</span>' +
-        '<div class="config-sublabel">' +
-        'Balance: ' + symVal + esc(Number(b.balance).toLocaleString()) +
-        (b.incomeAmount ? ' &mdash; Passive income: ' + symVal + esc(Number(b.incomeAmount).toLocaleString()) + ' every ' + esc(String(b.incomeCooldownHours)) + 'h' : '') +
-        '</div>' +
-        '</div>' +
-        (b.incomeAmount
-          ? '<button class="btn btn-secondary btn-sm" onclick="grantBusinessIncome(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')">Grant Income</button>'
-          : '') +
-        '</div>';
-    });
-    html += '</div>';
-  }
-
-  /* ── Store Management ── */
-  var storeItems = data.storeItems || [];
-  html += '<div class="config-section" style="margin-top:4px;">' +
-    '<div class="config-section-header"><h3>Store Items</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">' + storeItems.length + ' custom item(s)</span></div>';
-  if (storeItems.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No custom store items yet. GTA V built-in vehicles are always available. Add custom items below.</span></div>';
-  } else {
-    storeItems.forEach(function(item) {
-      html += '<div class="config-row" style="justify-content:space-between;">' +
-        '<div class="config-left">' +
-        '<span class="config-label">' + esc(item.name) + ' - ' + esc(String(item.price)) + '</span>' +
-        '<div class="config-sublabel">' +
-        (item.description ? esc(item.description) : 'No description') +
-        (item.roleName ? ' | Grants: @' + esc(item.roleName) : '') +
-        (item.usable ? ' | Usable' : '') +
-        '</div>' +
-        '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(\'' + esc(item.id) + '\')">Remove</button>' +
-        '</div>';
-    });
-  }
-  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%;">' +
-    '<input id="store-name" type="text" class="config-input" placeholder="Item name" style="flex:2;min-width:120px;">' +
-    '<input id="store-price" type="number" class="config-input" placeholder="Price" min="0" style="width:100px;">' +
-    '</div>' +
-    '<input id="store-desc" type="text" class="config-input" placeholder="Description (optional)" style="width:100%;">' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-    '<select id="store-role" class="config-select" style="flex:1;min-width:140px;"><option value="">Grant role on buy (optional)</option>' +
-    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
-    '</select>' +
-    '<select id="store-required-role" class="config-select" style="flex:1;min-width:160px;"><option value="">Required role to buy (optional)</option>' +
-    riRoles.map(function(r) { return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>'; }).join('') +
-    '</select>' +
-    '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
-    '<input id="store-usable" type="checkbox"> Usable item</label>' +
-    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">' +
-    '<input id="store-sellable" type="checkbox" checked> Sellable</label>' +
-    '<button class="btn btn-success btn-sm" onclick="addStoreItem()">Add Item</button>' +
-    '</div>' +
-    '</div>' +
-    '</div>';
-
-  return html;
-}
 
 function deleteRoleIncome(roleId) {
   if (!currentGuild) return;
