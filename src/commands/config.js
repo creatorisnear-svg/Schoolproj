@@ -324,6 +324,32 @@ function dispatchMenuEmbed(warning = '') {
   };
 }
 
+function blacklistMenu() {
+  return {
+    embeds: [menuEmbed(
+      'Blacklist System Setup (Premium)',
+      '**What this does:** Blocks banned members at the verification wall using fuzzy name and gamertag matching. A live panel auto-updates in a channel whenever someone is blacklisted or removed.\n\n' +
+      '`1.` Set Panel Channel — the channel where the live blacklist panel is posted and kept up to date\n' +
+      '`2.` Post / Refresh Panel — send or update the panel\n\n' +
+      '-# Use `/blacklist @user` to add members and `/removeblacklist` to remove them.'
+    )],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('blacklist_config_menu')
+          .setPlaceholder('What do you want to set up?')
+          .addOptions([
+            { label: '1. Set Panel Channel', value: 'set_panel_channel', description: 'Channel where the live blacklist panel is posted' },
+            { label: '2. Post / Refresh Panel', value: 'post_panel', description: 'Send or update the blacklist panel' },
+            { label: 'View Blacklist', value: 'view_blacklist', description: 'See all currently blacklisted entries' },
+            { label: 'Done', value: 'setup_done', description: 'Close this menu' },
+          ])
+      ),
+    ],
+    flags: 64,
+  };
+}
+
 function featuresMenu() {
   return {
     embeds: [
@@ -509,6 +535,113 @@ async function handleFeatures(interaction) {
   return interaction.reply(featuresMenu());
 }
 
+async function handleBlacklist(interaction) {
+  const access = await checkFeatureAccess(interaction.guildId, 'blacklist');
+  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Blacklist System')], flags: 64 });
+  const { default: BlacklistConfig } = await import('../models/BlacklistConfig.js');
+  await ensureEnabled(BlacklistConfig, interaction.guildId);
+  return interaction.reply(blacklistMenu());
+}
+
+async function handleCivjobs(interaction) {
+  const { default: CivilianJobConfig } = await import('../models/CivilianJobConfig.js');
+  const config = await CivilianJobConfig.findOneAndUpdate(
+    { guildId: interaction.guildId },
+    { $set: { enabled: true } },
+    { upsert: true, new: true }
+  );
+  const jobCount = config?.jobs?.length ?? 0;
+  const channelStatus = config?.channelId
+    ? `Job board channel: <#${config.channelId}>`
+    : 'Job board channel: not set yet';
+  return interaction.reply({
+    embeds: [menuEmbed(
+      'Civilian Jobs Setup',
+      `**What this does:** Posts a job board in a channel. Members check in to civilian jobs and get a role for the duration of their shift — the role is removed automatically when the shift expires.\n\n` +
+      `**${channelStatus} · Jobs configured: ${jobCount}**\n\n` +
+      '`1.` Pick a job board channel below — the bot posts the panel there\n' +
+      '`2.` Add and manage jobs at **roleplaymanager.xyz/dashboard** → Civilian Jobs\n\n' +
+      '-# After setting the channel, add at least one job on the dashboard before the panel will post.'
+    )],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId('economy_civjobs_channel_select')
+          .setPlaceholder('Select the job board channel...')
+          .setChannelTypes(ChannelType.GuildText)
+      ),
+    ],
+    flags: 64,
+  });
+}
+
+async function handleSticky(interaction) {
+  const { default: Sticky } = await import('../models/Sticky.js');
+  const count = await Sticky.countDocuments({ guildId: interaction.guildId });
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Sticky Messages Setup')
+        .setDescription(
+          '**What this does:** After every new message in a channel, the bot reposts a pinned message so it always stays at the bottom. Great for rules, join links, or active announcements.\n\n' +
+          `**Active stickies: ${count}**\n\n` +
+          '**Discord commands:**\n' +
+          '`/sticky create` — add a sticky to a channel\n' +
+          '`/sticky delete` — remove a sticky from a channel\n' +
+          '`/stickylist` — view all active stickies\n\n' +
+          '-# Full management also available at **roleplaymanager.xyz/dashboard** → Sticky Messages.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
+}
+
+async function handleReactionRoles(interaction) {
+  const { default: ReactionRole } = await import('../models/ReactionRole.js');
+  const count = await ReactionRole.countDocuments({ guildId: interaction.guildId });
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Reaction Roles Setup')
+        .setDescription(
+          '**What this does:** Members react to a designated message with an emoji to automatically receive or remove a Discord role. Up to 5 emoji–role pairs per message.\n\n' +
+          `**Active reaction role messages: ${count}**\n\n` +
+          '**Discord command:**\n' +
+          '`/reactionrolemessage` — create a new reaction role message in any channel\n\n' +
+          '-# To remove reaction role messages, use **roleplaymanager.xyz/dashboard** → Reaction Roles.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
+}
+
+async function handleBusiness(interaction) {
+  const { default: BusinessAccount } = await import('../models/BusinessAccount.js');
+  const count = await BusinessAccount.countDocuments({ guildId: interaction.guildId });
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('Business Accounts Setup')
+        .setDescription(
+          '**What this does:** Creates shared business bank accounts in your server economy. Members deposit or withdraw money, pay employees, and earn passive income on a cooldown. Each business has its own balance and transaction history.\n\n' +
+          `**Active business accounts: ${count}**\n\n` +
+          '**Discord command:**\n' +
+          '`/business` — access a business account (deposit, withdraw, pay members)\n\n' +
+          '### Configure on the Dashboard\n' +
+          'Create accounts, set income rates, and manage everything at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
+          '-# Dashboard → Economy → Business Accounts.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
+}
+
 async function handleHelp(interaction) {
   return interaction.reply({
     embeds: [
@@ -528,14 +661,19 @@ async function handleHelp(interaction) {
           '**🛡️ Moderation**\n' +
           '`/config verify` — Member verification gate\n' +
           '`/config strikes` — Strike system with auto-punishments\n' +
-          '`/config antipromo` — Auto-delete Discord invite links\n\n' +
+          '`/config antipromo` — Auto-delete Discord invite links\n' +
+          '`/config blacklist` — Block banned members at verification *(Premium)*\n\n' +
           '**🌐 Community**\n' +
           '`/config tickets` — Support ticket panels\n' +
           '`/config welcome` — Welcome messages for new members\n' +
           '`/config roles` — Role request panels\n' +
-          '`/config moveme` — Voice channel mover panel\n\n' +
+          '`/config moveme` — Voice channel mover panel\n' +
+          '`/config sticky` — Auto-reposting sticky messages\n' +
+          '`/config reactionroles` — Emoji reaction role messages\n\n' +
           '**💰 Economy**\n' +
-          '`/config economy` — Currency, work, crime, shops\n\n' +
+          '`/config economy` — Currency, work, crime, shops\n' +
+          '`/config civjobs` — Civilian job board with shift roles\n' +
+          '`/config business` — Shared business bank accounts\n\n' +
           '**⭐ Premium Only**\n' +
           '`/config appys` — Application panels with DM Q&A\n' +
           '`/config dispatch` — AI voice dispatch\n\n' +
@@ -590,6 +728,11 @@ const subcommandHandlers = {
   features: handleFeatures,
   general: handleGeneral,
   help: handleHelp,
+  blacklist: handleBlacklist,
+  civjobs: handleCivjobs,
+  sticky: handleSticky,
+  reactionroles: handleReactionRoles,
+  business: handleBusiness,
 };
 
 // ─── command definition ───────────────────────────────────────────────────────
@@ -612,7 +755,12 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands — /me, /do, /try, 911 calls'))
   .addSubcommand(s => s.setName('appys').setDescription('Applications — staff application panels (Premium)'))
   .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'))
-  .addSubcommand(s => s.setName('help').setDescription('Show all available config commands and what they do'));
+  .addSubcommand(s => s.setName('help').setDescription('Show all available config commands and what they do'))
+  .addSubcommand(s => s.setName('blacklist').setDescription('Blacklist — block banned members at the verification wall (Premium)'))
+  .addSubcommand(s => s.setName('civjobs').setDescription('Civilian Jobs — job board with timed shift roles'))
+  .addSubcommand(s => s.setName('sticky').setDescription('Sticky Messages — auto-reposting messages that stay visible'))
+  .addSubcommand(s => s.setName('reactionroles').setDescription('Reaction Roles — members react to a message to get a role'))
+  .addSubcommand(s => s.setName('business').setDescription('Business Accounts — shared economy accounts in your server'));
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

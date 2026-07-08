@@ -1,13 +1,12 @@
 {
-  "version": "1.0.3",
-  "title": "Dashboard save fix & /config help",
+  "version": "1.0.4",
+  "title": "Synced all Discord commands with dashboard",
   "changes": [
-    "Fixed dashboard save — settings save in-place without page reload or black screen",
-    "Fixed discard — correctly restores all field types (inputs, selects, toggles) to original server values",
-    "Fixed discard on dispatch/moveme pages — fully restores channel tag state with a clean re-render",
-    "Fixed save race condition — pendingChanges is snapshotted before the API call to prevent mid-flight corruption",
-    "Fixed dispatch state after save — alias keys (currentPatrolChannels etc.) kept in sync so subsequent edits work correctly",
-    "Enabling a feature from the Features page now auto-navigates to its Configure page",
-    "Added /config help — quick-reference list of all config subcommands in Discord"
+    "Added /config blacklist — configure blacklist panel channel (Premium)",
+    "Added /config civjobs — set job board channel for Civilian Jobs",
+    "Added /config sticky — shows active stickies and /sticky command usage",
+    "Added /config reactionroles — shows active reaction role messages and setup command",
+    "Added /config business — shows business account count and dashboard link",
+    "Updated /config help to list all new subcommands in their categories"
   ]
 }
