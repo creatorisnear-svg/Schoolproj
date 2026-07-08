@@ -42,6 +42,7 @@ console.log('> RolePlayManager-discord-bot@1.0.0 start');
 console.log('> node src/index.js');
 console.log('');
 console.log('Instance is starting... Waiting for health checks to pass.');
+console.log('[BUILD] loan-diagnostics-v2 (deploy marker — if you do not see this after a redeploy, the running instance is on an older commit)');
 
 const client = new Client({
   intents: [
