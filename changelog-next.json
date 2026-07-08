@@ -1,12 +1,11 @@
 {
-  "version": "1.0.4",
-  "title": "Synced all Discord commands with dashboard",
+  "version": "1.0.5",
+  "title": "Business accounts now create Discord roles",
   "changes": [
-    "Added /config blacklist — configure blacklist panel channel (Premium)",
-    "Added /config civjobs — set job board channel for Civilian Jobs",
-    "Added /config sticky — shows active stickies and /sticky command usage",
-    "Added /config reactionroles — shows active reaction role messages and setup command",
-    "Added /config business — shows business account count and dashboard link",
-    "Updated /config help to list all new subcommands in their categories"
+    "Creating a business account now auto-creates a Discord role named 'Business | [name]'",
+    "Renaming a business account renames the Discord role to match",
+    "Deleting a business account deletes its Discord role",
+    "Dashboard economy page shows the role badge next to each business account name",
+    "Added roleId field to BusinessAccount model"
   ]
 }

@@ -904,6 +904,8 @@ export function createApiRouter(client) {
               balance: b.balance,
               incomeAmount: b.incomeAmount || 0,
               incomeCooldownHours: b.incomeCooldownHours || 24,
+              roleId: b.roleId || null,
+              roleName: b.roleId ? (guild.roles.cache.get(b.roleId)?.name || null) : null,
             }));
           } catch { result.businessAccounts = []; }
           result.roles = roles;
@@ -2440,11 +2442,28 @@ export function createApiRouter(client) {
       const { createHash } = await import('crypto');
       const existing = await BusinessAccount.findOne({ guildId: req.params.id, name: name.trim() });
       if (existing) return res.status(400).json({ error: 'A business with that name already exists' });
+
+      // Create the Discord role for this business
+      let roleId = null;
+      try {
+        const guild = client.guilds.cache.get(req.params.id);
+        if (guild) {
+          const role = await guild.roles.create({
+            name: `Business | ${name.trim()}`,
+            reason: `Business account created: ${name.trim()}`,
+          });
+          roleId = role.id;
+        }
+      } catch (roleErr) {
+        console.error('[BUSINESS] Failed to create role:', roleErr.message);
+      }
+
       await BusinessAccount.create({
         guildId: req.params.id,
         accountId: uuidv4(),
         name: name.trim(),
         passwordHash: createHash('sha256').update(password.trim()).digest('hex'),
+        roleId,
         balance: 0,
         incomeAmount: Math.max(0, parseInt(incomeAmount) || 0),
         incomeCooldownHours: Math.max(1, Math.min(720, parseInt(incomeCooldownHours) || 24)),
@@ -2465,12 +2484,27 @@ export function createApiRouter(client) {
     try {
       const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
       const { createHash } = await import('crypto');
+      const existing = await BusinessAccount.findOne({ accountId: req.params.accountId, guildId: req.params.id }).lean();
       const update = {
         name: name.trim(),
         incomeAmount: Math.max(0, parseInt(incomeAmount) || 0),
         incomeCooldownHours: Math.max(1, Math.min(720, parseInt(incomeCooldownHours) || 24)),
       };
       if (password?.trim()) update.passwordHash = createHash('sha256').update(password.trim()).digest('hex');
+
+      // Rename the Discord role if the business name changed
+      if (existing && existing.name !== name.trim()) {
+        try {
+          const guild = client.guilds.cache.get(req.params.id);
+          if (guild && existing.roleId) {
+            const role = guild.roles.cache.get(existing.roleId);
+            if (role) await role.setName(`Business | ${name.trim()}`, 'Business account renamed');
+          }
+        } catch (roleErr) {
+          console.error('[BUSINESS] Failed to rename role:', roleErr.message);
+        }
+      }
+
       await BusinessAccount.findOneAndUpdate({ accountId: req.params.accountId, guildId: req.params.id }, update);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -2508,6 +2542,21 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
       const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
+      const toDelete = await BusinessAccount.findOne({ accountId: req.params.accountId, guildId: req.params.id }).lean();
+
+      // Delete the associated Discord role
+      if (toDelete?.roleId) {
+        try {
+          const guild = client.guilds.cache.get(req.params.id);
+          if (guild) {
+            const role = guild.roles.cache.get(toDelete.roleId);
+            if (role) await role.delete('Business account removed');
+          }
+        } catch (roleErr) {
+          console.error('[BUSINESS] Failed to delete role:', roleErr.message);
+        }
+      }
+
       await BusinessAccount.deleteOne({ accountId: req.params.accountId, guildId: req.params.id });
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }

@@ -2305,9 +2305,14 @@ function renderEconomySettings(data) {
     html += '<div class="config-row"><span class="config-sublabel">No business accounts yet. Create one below.</span></div>';
   } else {
     bizList.forEach(function(b) {
+      var roleBadge = b.roleName
+        ? '<span style="font-size:11px;color:var(--text-dim);background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-left:6px;">' + esc(b.roleName) + '</span>'
+        : '<span style="font-size:11px;color:var(--text-dim);font-style:italic;margin-left:6px;">no role</span>';
       html += '<div class="config-row" style="justify-content:space-between;align-items:flex-start;">' +
         '<div class="config-left">' +
-        '<span class="config-label">' + esc(b.name) + '</span>' +
+        '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">' +
+        '<span class="config-label">' + esc(b.name) + '</span>' + roleBadge +
+        '</div>' +
         '<div class="config-sublabel">Balance: ' + esc(String(b.balance)) +
         (b.incomeAmount ? ' | Passive: +' + esc(String(b.incomeAmount)) + ' every ' + esc(String(b.incomeCooldownHours)) + 'h' : '') +
         '</div>' +

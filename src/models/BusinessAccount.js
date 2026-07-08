@@ -5,6 +5,7 @@ const businessAccountSchema = new mongoose.Schema({
   accountId:           { type: String, required: true, unique: true },
   name:                { type: String, required: true },
   passwordHash:        { type: String, required: true },
+  roleId:              { type: String, default: null },
   balance:             { type: Number, default: 0 },
   incomeAmount:        { type: Number, default: 0 },
   incomeCooldownHours: { type: Number, default: 24 },
