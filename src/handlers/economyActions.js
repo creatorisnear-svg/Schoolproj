@@ -1147,35 +1147,61 @@ export async function handleBusinessInventory(interaction) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleBusinessShop(interaction) {
   const accountId = interaction.customId.replace('business_shop_', '');
+  const modal = new ModalBuilder()
+    .setCustomId(`business_shop_search_${accountId}`)
+    .setTitle('Shop — Search Items')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('query')
+          .setLabel('Item name (leave blank to see all)')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setPlaceholder('e.g. Pistol, Car, Bread...')
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+export async function handleBusinessShopSearchModal(interaction) {
+  const accountId = interaction.customId.replace('business_shop_search_', '');
+  const query = (interaction.fields.getTextInputValue('query') || '').trim().toLowerCase();
   const account = await BusinessAccount.findOne({ accountId }).lean();
   if (!account) return interaction.reply({ embeds: [errorEmbed('Account not found.')], flags: 64 });
   const config = await getConfig(interaction.guildId);
-  const sym = config?.currencySymbol || '$';
-  const items = await EconomyStore.find({ guildId: interaction.guildId }).lean();
-  if (!items.length) {
+  const sym = config?.currencySymbol || String.fromCharCode(36);
+  const guildItems = await EconomyStore.find({ guildId: interaction.guildId }).lean();
+  const allItems = mergeShopItems(guildItems);
+  const priced = allItems.filter(i => i.price != null);
+  const filtered = query
+    ? priced.filter(i => i.name.toLowerCase().includes(query) || (i.category || '').toLowerCase().includes(query))
+    : priced;
+  if (!filtered.length) {
     return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle(`${account.name} — Shop`)
-        .setDescription('No items are available in the server store.').setFooter({ text: 'RPM' })],
+      embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle(account.name + ' \u2014 Shop')
+        .setDescription(query ? 'No items found matching "' + query + '". Try a different search.' : 'No items are available in the server store.')
+        .setFooter({ text: 'RPM' })],
       components: buildBusinessButtons(accountId),
       flags: 64,
     });
   }
-  const options = items.slice(0, 25).map(i => ({
+  const options = filtered.slice(0, 25).map(i => ({
     label: i.name.slice(0, 100),
-    description: (`${sym}${fmt(i.price)}${i.description ? ' — ' + i.description : ''}`).slice(0, 100),
+    description: (sym + fmt(i.price) + (i.description ? ' \u2014 ' + i.description : '')).slice(0, 100),
     value: i.name.slice(0, 100),
   }));
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
-      .setCustomId(`business_shop_sel_${accountId}`)
+      .setCustomId('business_shop_sel_' + accountId)
       .setPlaceholder('Select an item to buy...')
       .addOptions(options)
   );
+  const countNote = filtered.length > 25 ? 'Showing top 25 of ' + filtered.length + ' results. ' : '';
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle(`${account.name} — Shop`)
-      .setDescription(`### Balance\n${sym}${fmt(account.balance)}\nSelect an item to purchase for this business.`)
+      .setTitle(account.name + ' \u2014 Shop' + (query ? ' \u2014 "' + query + '"' : ''))
+      .setDescription('### Balance\n' + sym + fmt(account.balance) + '\n' + countNote + 'Select an item to purchase for this business.')
       .setFooter({ text: 'RPM' })],
     components: [row],
     flags: 64,
@@ -1253,6 +1279,7 @@ export async function handleBusinessGiveItem(interaction) {
   const items = inv?.items ?? [];
   if (!items.length) {
     return interaction.reply({
+
       embeds: [errorEmbed(`**${account.name}** has no items in its inventory. Use **Shop** to purchase items first.`)],
       flags: 64,
     });

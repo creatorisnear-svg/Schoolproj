@@ -2317,8 +2317,9 @@ function renderEconomySettings(data) {
         (b.incomeAmount ? ' | Passive: +' + esc(String(b.incomeAmount)) + ' every ' + esc(String(b.incomeCooldownHours)) + 'h' : '') +
         '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:6px;">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
         '<button class="btn btn-secondary btn-sm" onclick="loadBizLedger(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')">Ledger</button>' +
+        (b.incomeAmount ? '<button class="btn btn-secondary btn-sm" onclick="grantBizIncome(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')" title="Credit one passive income cycle without resetting the cooldown timer">Send Income</button>' : '') +
         '<button class="btn btn-secondary btn-sm" onclick="showBizEditForm(\'' + esc(b.accountId) + '\')">Edit</button>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteBizAccount(\'' + esc(b.accountId) + '\')">Remove</button>' +
         '</div></div>';
@@ -2470,6 +2471,13 @@ function deleteBizAccount(accountId) {
   api('/guild/' + currentGuild.id + '/economy/business/' + accountId, { method: 'DELETE' }).then(function(r) {
     if (r && r.success) { toast('Business account removed'); renderSettings('economy'); }
     else { toast((r && r.error) || 'Failed to remove', 'error'); }
+  });
+}
+
+function grantBizIncome(accountId, name) {
+  api('/guild/' + currentGuild.id + '/economy/business/' + accountId + '/grant-income', { method: 'POST' }).then(function(r) {
+    if (r && r.success) { toast('Income sent to ' + name + ' (cooldown unaffected)'); renderSettings('economy'); }
+    else { toast((r && r.error) || 'Failed to send income', 'error'); }
   });
 }
 
