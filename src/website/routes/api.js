@@ -898,6 +898,9 @@ export function createApiRouter(client) {
           try {
             const { default: BusinessAccount } = await import('../../models/BusinessAccount.js');
             const businesses = await BusinessAccount.find({ guildId: guild.id }).lean();
+            const { default: BusinessInventory } = await import('../../models/BusinessInventory.js');
+            const inventories = await BusinessInventory.find({ guildId: guild.id }).lean();
+            const invMap = Object.fromEntries(inventories.map(i => [i.accountId, i.items || []]));
             result.businessAccounts = businesses.map(b => ({
               accountId: b.accountId,
               name: b.name,
@@ -906,6 +909,7 @@ export function createApiRouter(client) {
               incomeCooldownHours: b.incomeCooldownHours || 24,
               roleId: b.roleId || null,
               roleName: b.roleId ? (guild.roles.cache.get(b.roleId)?.name || null) : null,
+              inventory: (invMap[b.accountId] || []).filter(i => i.quantity > 0),
             }));
           } catch { result.businessAccounts = []; }
           result.roles = roles;

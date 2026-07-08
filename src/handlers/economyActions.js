@@ -11,6 +11,7 @@ import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import BusinessTransaction from '../models/BusinessTransaction.js';
+import BusinessInventory from '../models/BusinessInventory.js';
 import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
 import { GTA_VEHICLES } from '../data/gtaVehicles.js';
 
@@ -869,11 +870,18 @@ function buildBusinessEmbed(account, sym) {
 }
 
 function buildBusinessButtons(accountId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`business_deposit_${accountId}`).setLabel('Deposit').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`business_withdraw_${accountId}`).setLabel('Withdraw').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`business_paymember_${accountId}`).setLabel('Pay Member').setStyle(ButtonStyle.Primary),
-  );
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`business_deposit_${accountId}`).setLabel('Deposit').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`business_withdraw_${accountId}`).setLabel('Withdraw').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`business_paymember_${accountId}`).setLabel('Pay Member').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`business_inventory_${accountId}`).setLabel('Inventory').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`business_shop_${accountId}`).setLabel('Shop').setStyle(ButtonStyle.Primary),
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`business_give_${accountId}`).setLabel('Give Item').setStyle(ButtonStyle.Secondary),
+    ),
+  ];
 }
 
 export async function handleBusinessPayMemberButton(interaction) {
