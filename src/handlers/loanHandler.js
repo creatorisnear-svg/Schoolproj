@@ -160,9 +160,17 @@ export async function handleLoanApply(interaction) {
 // Type select  →  loan_type_select_{accountId}
 // ─────────────────────────────────────────────────────────────────────────────
 export async function handleLoanTypeSelect(interaction) {
+  const t0 = Date.now();
+
   // Ack immediately — DB lookups + a DM send below can easily exceed Discord's
   // 3s interaction ack window, which otherwise shows "This interaction failed".
-  await interaction.deferUpdate();
+  try {
+    await interaction.deferUpdate();
+  } catch (err) {
+    console.error('[LoanHandler] deferUpdate failed after ' + (Date.now() - t0) + 'ms (interaction likely already expired client-side):', err.code || err.message);
+    throw err;
+  }
+  console.log('[LoanHandler] deferUpdate ack ok in ' + (Date.now() - t0) + 'ms');
 
   const accountId = interaction.customId.replace('loan_type_select_', '');
   const selected  = interaction.values[0]; // "personal_{accountId}" or "property_{accountId}"
@@ -173,12 +181,14 @@ export async function handleLoanTypeSelect(interaction) {
     BusinessLoanConfig.findOne({ accountId, guildId: interaction.guildId }).lean(),
     _getConfig(interaction.guildId),
   ]);
+  console.log('[LoanHandler] DB lookups done at ' + (Date.now() - t0) + 'ms (account=' + !!account + ', loanConfig=' + !!loanConfig + ')');
 
   if (!account || !loanConfig) {
     return interaction.editReply({ embeds: [errEmbed('Loan service not found.')], components: [] });
   }
 
-  const sym  = guildConfig?.currencySymbol || '$';
+  const defaultSym  = '$';
+  const sym  = (guildConfig && guildConfig.currencySymbol) || defaultSym;
   const personalMax = loanConfig.personalLoanMax ?? 100000;
   const propertyMax = loanConfig.propertyLoanMax ?? 500000;
   const max  = loanType === 'personal' ? personalMax : propertyMax;
@@ -193,7 +203,9 @@ export async function handleLoanTypeSelect(interaction) {
         .setDescription(questions[0])
         .setFooter({ text: `Question 1 of ${questions.length} · Type "cancel" to cancel` })],
     });
-  } catch {
+    console.log('[LoanHandler] DM sent at ' + (Date.now() - t0) + 'ms');
+  } catch (err) {
+    console.error('[LoanHandler] DM send failed at ' + (Date.now() - t0) + 'ms:', err.code || err.message);
     return interaction.editReply({ embeds: [errEmbed('I could not send you a DM. Please enable DMs from server members and try again.')], components: [] });
   }
 
@@ -220,6 +232,8 @@ export async function handleLoanTypeSelect(interaction) {
 
   _activeLoanSessions.set(interaction.user.id, session);
   await _saveLoanDraft(interaction.user.id, session);
+
+  console.log('[LoanHandler] handleLoanTypeSelect completed in ' + (Date.now() - t0) + 'ms');
 
   return interaction.editReply({
     embeds: [okEmbed('✅ Application started! Check your DMs to continue.')],
