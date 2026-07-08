@@ -1061,6 +1061,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('economy')) {
         const { handleEconomyMenu } = await import('./handlers/economyHandler.js');
         await handleEconomyMenu(interaction);
+      } else if (interaction.customId.startsWith('loan_type_select_')) {
+        const { handleLoanTypeSelect } = await import('./handlers/loanHandler.js');
+        await handleLoanTypeSelect(interaction);
       } else {
         await handleSelectMenu(interaction);
       }
@@ -1164,9 +1167,6 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId === 'loan_cancel_session') {
         const { handleLoanCancelSession } = await import('./handlers/loanHandler.js');
         await handleLoanCancelSession(interaction);
-      } else if (interaction.customId.startsWith('loan_type_select_')) {
-        const { handleLoanTypeSelect } = await import('./handlers/loanHandler.js');
-        await handleLoanTypeSelect(interaction);
       } else {
         await handleSelectMenu(interaction);
       }
