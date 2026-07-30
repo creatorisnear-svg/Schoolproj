@@ -1840,6 +1840,8 @@ function renderAppySettings(data) {
     }).join('') +
     (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
     '</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional — sent to the applicant when accepted)</div>' +
+    '<textarea id="appy-accept-msg" class="config-input" placeholder="e.g. Welcome to the team! Please read #rules and introduce yourself." rows="3" style="resize:vertical;min-height:60px;"></textarea>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-questions-list\')">+ Add Question</button>' +
@@ -1885,6 +1887,8 @@ function renderAppySettings(data) {
     }).join('') +
     (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
     '</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional — sent to the applicant when accepted)</div>' +
+    '<textarea id="appy-edit-accept-msg" class="config-input" placeholder="e.g. Welcome to the team! Please read #rules and introduce yourself." rows="3" style="resize:vertical;min-height:60px;"></textarea>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
     '<button class="btn btn-secondary btn-sm" style="align-self:flex-start;" onclick="addAppyQuestion(null,\'appy-edit-questions-list\')">+ Add Question</button>' +
@@ -1944,6 +1948,7 @@ function loadAppyEditForm(typeId) {
     document.getElementById('appy-edit-name').value = t.name || '';
     document.getElementById('appy-edit-desc').value = t.description || '';
     document.getElementById('appy-edit-role').value = t.acceptRoleId || '';
+    document.getElementById('appy-edit-accept-msg').value = t.acceptMessage || '';
     document.getElementById('appy-edit-review-ch').value = t.reviewChannelId || '';
     var titleLabel = document.getElementById('appy-edit-title-label');
     if (titleLabel) titleLabel.textContent = t.name || '';
@@ -1971,6 +1976,7 @@ function saveAppyType(isEdit) {
   var name = (document.getElementById(prefix + 'name').value || '').trim();
   var desc = (document.getElementById(prefix + 'desc').value || '').trim();
   var roleId = document.getElementById(prefix + 'role').value || null;
+  var acceptMsg = (document.getElementById(isEdit ? 'appy-edit-accept-msg' : 'appy-accept-msg').value || '').trim();
   var reviewChId = document.getElementById(prefix + 'review-ch').value || null;
   var pingCheckClass = isEdit ? '.appy-edit-ping-role-check' : '.appy-ping-role-check';
   var pingRoleIds = Array.from(document.querySelectorAll(pingCheckClass + ':checked')).map(function(cb) { return cb.value; }).filter(Boolean);
@@ -1982,7 +1988,7 @@ function saveAppyType(isEdit) {
   var url = isEdit ? '/guild/' + currentGuild.id + '/appys/type/' + typeId : '/guild/' + currentGuild.id + '/appys/type';
   var method = isEdit ? 'PUT' : 'POST';
   _pendingScrollRestore = getDashScrollPos();
-  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId, reviewChannelId: reviewChId, reviewPingRoleIds: pingRoleIds }) }).then(function(r) {
+  api(url, { method: method, body: JSON.stringify({ name: name, description: desc, questions: questions, acceptRoleId: roleId, acceptMessage: acceptMsg, reviewChannelId: reviewChId, reviewPingRoleIds: pingRoleIds }) }).then(function(r) {
     if (r && r.success) { toast(isEdit ? 'Application updated' : 'Application created'); renderSettings('appys'); }
     else { _pendingScrollRestore = null; if (r && r.error) toast(r.error, 'error'); }
   });

@@ -1,12 +1,13 @@
 {
   "version": "1.2.1",
-  "title": "Security: premium gate enforcement hardening + wording fixes",
+  "title": "Security hardening, wording fixes, and application acceptance messages",
   "changes": [
-    "Fixed: members could open and submit applications (Appys) even after a server's premium subscription lapsed",
+    "Fixed: members could open and submit applications even after a server's premium subscription lapsed",
     "Fixed: application types could be created, edited, or deleted via direct API calls without a premium subscription",
     "Fixed: application panel could be sent via direct API call without a premium subscription",
     "Fixed: AI Dispatch reload endpoint was accessible without a premium subscription check",
     "Fixed: Blacklist panel send endpoint lacked a premium check, inconsistent with the /blacklist and /removeblacklist commands",
-    "Fixed: Applications feature was described as 'staff application panels' everywhere — updated to 'custom application panels for any purpose' across all commands, dashboard, and landing page"
+    "Fixed: Applications feature was described as 'staff application panels' everywhere — updated to 'custom application panels for any purpose'",
+    "New: staff can now configure a custom acceptance message per application type — sent to the applicant in their acceptance DM"
   ]
 }

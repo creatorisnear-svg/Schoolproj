@@ -999,6 +999,7 @@ export function createApiRouter(client) {
             description: t.description || '',
             questions: t.questions || [],
             acceptRoleId: t.acceptRoleId || null,
+            acceptMessage: t.acceptMessage || '',
             acceptRoleName: t.acceptRoleId ? (guild.roles.cache.get(t.acceptRoleId)?.name || 'Unknown Role') : null,
             reviewChannelId: t.reviewChannelId || null,
             reviewChannelName: t.reviewChannelId ? (guild.channels.cache.get(t.reviewChannelId)?.name || 'Unknown Channel') : null,
@@ -1757,7 +1758,7 @@ export function createApiRouter(client) {
     if (!_appysPostAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { name, description, questions, acceptRoleId, reviewChannelId, reviewPingRoleIds } = req.body;
+    const { name, description, questions, acceptRoleId, acceptMessage, reviewChannelId, reviewPingRoleIds } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
     if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
     try {
@@ -1770,6 +1771,7 @@ export function createApiRouter(client) {
         description: (description || '').trim(),
         questions: questions.map(q => q.trim()).filter(Boolean),
         acceptRoleId: acceptRoleId || null,
+        acceptMessage: (acceptMessage || '').trim(),
         reviewChannelId: reviewChannelId || null,
         reviewPingRoleIds: Array.isArray(reviewPingRoleIds) ? reviewPingRoleIds.filter(Boolean) : [],
       });
@@ -1787,7 +1789,7 @@ export function createApiRouter(client) {
     const { checkFeatureAccess: _cfaAppysPut } = await import('../../utils/premiumCheck.js');
     const _appysPutAccess = await _cfaAppysPut(req.params.id, 'appys');
     if (!_appysPutAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
-    const { name, description, questions, acceptRoleId, reviewChannelId, reviewPingRoleIds } = req.body;
+    const { name, description, questions, acceptRoleId, acceptMessage, reviewChannelId, reviewPingRoleIds } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
     if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
     try {
@@ -1799,6 +1801,7 @@ export function createApiRouter(client) {
           description: (description || '').trim(),
           questions: questions.map(q => q.trim()).filter(Boolean),
           acceptRoleId: acceptRoleId || null,
+          acceptMessage: (acceptMessage || '').trim(),
           reviewChannelId: reviewChannelId || null,
           reviewPingRoleIds: Array.isArray(reviewPingRoleIds) ? reviewPingRoleIds.filter(Boolean) : [],
         }

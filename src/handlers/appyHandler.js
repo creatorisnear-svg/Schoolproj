@@ -453,10 +453,13 @@ export async function handleAppyAccept(interaction, client) {
   try {
     const user = await client.users.fetch(submission.userId).catch(() => null);
     if (user) {
+      const desc = panel?.acceptMessage?.trim()
+        ? `Your application for **${panel.name}** has been accepted.\n\n${panel.acceptMessage}`
+        : `Your application for **${panel?.name || 'the position'}** has been accepted.`;
       const embed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('Application Accepted')
-        .setDescription(`Your application for **${panel?.name || 'the position'}** has been accepted.`)
+        .setDescription(desc)
         .setFooter({ text: 'RPM' });
       await user.send({ embeds: [embed] }).catch(() => {});
     }
