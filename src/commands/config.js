@@ -94,7 +94,7 @@ function ticketsMenu() {
       '**What this does:** Members click a button to open a private support channel with staff. Great for reports, appeals, and questions.\n\n' +
       '**Set these up in order:**\n' +
       '`1.` Select Panel Channel — the channel where the "Open a ticket" button lives\n' +
-      '`2.` Add Ticket Type — create one or more categories (e.g. "Report a Player", "Staff Application")\n' +
+      '`2.` Add Ticket Type — create one or more categories (e.g. "Report a Player", "Ban Appeal")\n' +
       '`3.` Send Panel — posts the button panel to the channel you chose\n\n' +
       '-# You can add up to 5 ticket types for free, unlimited with Premium.'
     )],
@@ -753,7 +753,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('calendar').setDescription('RP Calendar — schedule and display roleplay sessions'))
   .addSubcommand(s => s.setName('moveme').setDescription('Voice mover — panel for members to move between voice channels'))
   .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands — /me, /do, /try, 911 calls'))
-  .addSubcommand(s => s.setName('appys').setDescription('Applications — staff application panels (Premium)'))
+  .addSubcommand(s => s.setName('appys').setDescription('Applications — custom application panels for any purpose (Premium)'))
   .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'))
   .addSubcommand(s => s.setName('help').setDescription('Show all available config commands and what they do'))
   .addSubcommand(s => s.setName('blacklist').setDescription('Blacklist — block banned members at the verification wall (Premium)'))

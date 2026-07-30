@@ -129,7 +129,7 @@ export async function execute(interaction) {
       `${check(moveme?.enabled)} **Voice mover** — ${moveme?.enabled ? 'on' : 'off'} — let members move between voice channels`,
       `${check(roleRequestConfig?.enabled)} **Role requests** — ${roleRequestConfig?.enabled ? 'on' : 'off'} — members can request roles`,
       `${check(dispatchConfig?.enabled)} **AI Dispatch** — ${dispatchConfig?.enabled ? 'on' : 'off'} — AI-powered voice dispatch (Premium)`,
-      `${check(appyConfig?.enabled)} **Applications** — ${appyConfig?.enabled ? 'on' : 'off'} — staff application panels (Premium)`,
+      `${check(appyConfig?.enabled)} **Applications** — ${appyConfig?.enabled ? 'on' : 'off'} — custom application panels for any purpose (Premium)`,
     ] : [
       '-# Complete the foundation steps above to unlock features.',
     ];
@@ -169,7 +169,7 @@ export async function execute(interaction) {
       { label: 'Role Requests', description: 'Let members apply for specific roles', value: 'roles' },
       { label: 'RP Calendar', description: 'Schedule and display roleplay sessions', value: 'calendar' },
       { label: 'Anti-Promoting', description: 'Auto-delete invite links from other servers', value: 'antipromo' },
-      { label: 'Applications (Premium)', description: 'Staff application panels with questions', value: 'appys' },
+      { label: 'Applications (Premium)', description: 'Custom application panels with questions', value: 'appys' },
       { label: 'AI Voice Dispatch (Premium)', description: 'AI listens to patrol channels and dispatches', value: 'dispatch' },
       { label: 'Enable / Disable Features', description: 'Toggle features on or off', value: 'features' },
     ];

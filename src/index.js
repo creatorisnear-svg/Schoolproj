@@ -444,7 +444,7 @@ client.on('guildCreate', async (guild) => {
         `- **Welcome messages** — greet new members\n` +
         `- **Priority tracker** — track active priority events\n` +
         `- **AI Voice Dispatch** — AI listens to patrol channels *(Premium)*\n` +
-        `- **Applications** — staff application panels *(Premium)*\n` +
+        `- **Applications** — custom application panels for any purpose *(Premium)*\n` +
         `- And more — run \`/help\` for the full list`
       )
       .addFields(

@@ -439,7 +439,7 @@ function renderDashboard() {
       { id: 'welcome',      label: 'Welcome System',      desc: 'Greet new members automatically with a message or DM', featureKey: 'welcomeEnabled',       feature: 'welcome' },
       { id: 'rolerequest',  label: 'Role Requests',        desc: 'Members apply for specific roles — staff approve',      featureKey: 'roleRequestEnabled',   feature: 'rolerequest' },
       { id: 'moveme',       label: 'Voice Mover',          desc: 'Panel for members to move between voice channels',      featureKey: 'movemeEnabled',        feature: 'moveme' },
-      { id: 'appys',        label: 'Applications',         desc: 'Staff application panels with DM Q&A flow',            featureKey: 'appysEnabled',         feature: 'appys' },
+      { id: 'appys',        label: 'Applications',         desc: 'Custom application panels with DM Q&A flow',           featureKey: 'appysEnabled',         feature: 'appys' },
       { id: 'sticky',       label: 'Sticky Messages',      desc: 'Auto-reposting pinned messages in channels',           featureKey: null },
       { id: 'reactionroles',label: 'Reaction Roles',       desc: 'Members react to a message to receive a role',         featureKey: null },
     ]},
@@ -584,7 +584,7 @@ function reactivateSubscription() {
 function renderPremiumSection(g) {
   var premiumItems = [];
   if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
-  if (isFlagPremium('appys')) premiumItems.push('Applications - staff application panels with DM Q&A flow');
+  if (isFlagPremium('appys')) premiumItems.push('Applications - custom application panels with DM Q&A flow');
   premiumItems.push('Blackjack & Roulette gambling games');
   premiumItems.push('Top-25 leaderboard (free: top 10)');
   premiumItems.push('Unlimited ticket types (free: 5)');
