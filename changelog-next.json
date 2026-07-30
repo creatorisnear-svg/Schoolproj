@@ -1,14 +1,14 @@
 {
   "version": "1.2.1",
-  "title": "Security hardening, wording fixes, and application acceptance messages",
+  "title": "Security hardening, premium gate fixes, and application acceptance messages",
   "changes": [
+    "Fixed: non-premium servers could access Applications (Appys) — appys was missing from the default premium feature gates in premiumCheck.js",
+    "Fixed: dashboard isFlagPremium only defaulted dispatch as premium — priority and appys now also correctly show as premium when no feature flag record exists",
+    "New: sidebar now shows a PRO badge next to premium features (Priority Tracker, AI Voice Dispatch, Blacklist, Applications)",
     "Fixed: members could open and submit applications even after a server's premium subscription lapsed",
-    "Fixed: application types could be created, edited, or deleted via direct API calls without a premium subscription",
-    "Fixed: application panel could be sent via direct API call without a premium subscription",
-    "Fixed: AI Dispatch reload endpoint was accessible without a premium subscription check",
-    "Fixed: Blacklist panel send endpoint lacked a premium check, inconsistent with the /blacklist and /removeblacklist commands",
-    "Fixed: Applications feature was described as 'staff application panels' everywhere — updated to 'custom application panels for any purpose'",
-    "New: staff can now configure a custom acceptance message per application type — sent to the applicant in their acceptance DM"
+    "Fixed: application types/panels could be managed via direct API calls without a premium subscription",
+    "Fixed: AI Dispatch reload and Blacklist panel endpoints lacked premium checks",
+    "Fixed: Applications feature was described as 'staff application panels' everywhere — now 'custom application panels for any purpose'",
+    "New: staff can configure a custom acceptance message per application type — appended to the applicant's acceptance DM"
   ]
 }
-

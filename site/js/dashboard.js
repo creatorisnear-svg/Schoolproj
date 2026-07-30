@@ -253,7 +253,7 @@ function renderServerSelect() {
 
 function isFlagPremium(featureKey) {
   if (featureKey in featureFlags) return featureFlags[featureKey] === true;
-  return featureKey === 'dispatch';
+  return featureKey === 'dispatch' || featureKey === 'priority' || featureKey === 'appys';
 }
 
 function selectServer(guildId, section) {
@@ -275,7 +275,7 @@ function selectServer(guildId, section) {
 /* ── Feature definitions ── */
 var FEATURES = [
   { key: 'roleplayEnabled',     feature: 'roleplay',      name: 'Roleplay Commands', icon: 'RP',  desc: '911, Twitter, anon tips, CAD',   mod: 'roleplay' },
-  { key: 'priorityEnabled',     feature: 'priority',      name: 'Priority Tracker',  icon: 'PRI', desc: 'Priority event tracking',         mod: 'priority' },
+  { key: 'priorityEnabled',     feature: 'priority',      name: 'Priority Tracker',  icon: 'PRI', desc: 'Priority event tracking',         mod: 'priority',  premium: true },
   { key: 'strikeEnabled',       feature: 'strike',        name: 'Strike System',     icon: 'STR', desc: 'Multi-level strike punishments',  mod: 'strikes' },
   { key: 'calendarEnabled',     feature: 'calendar',      name: 'RP Calendar',       icon: 'CAL', desc: 'Weekly event scheduling',         mod: 'calendar' },
   { key: 'ticketEnabled',       feature: 'ticket',        name: 'Ticket Support',    icon: 'TKT', desc: 'Support ticket system',           mod: 'tickets' },
@@ -283,12 +283,12 @@ var FEATURES = [
   { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: 'rolerequest' },
   { key: 'verifyEnabled',       feature: 'verification',  name: 'Verification',      icon: 'ID',  desc: 'Member verification gate',        mod: 'verification' },
   { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
-  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch' },
+  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch',  premium: true },
   { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
   { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
   { key: 'civjobsEnabled',      feature: 'civjobs',       name: 'Civilian Jobs',     icon: 'CJ',  desc: 'Job board with shift roles',        mod: 'civjobs' },
-  { key: 'blacklistEnabled',    feature: 'blacklist',     name: 'Blacklist',         icon: 'BL',  desc: 'Server blacklist with IP protection', mod: 'blacklist' },
-  { key: 'appysEnabled',        feature: 'appys',         name: 'Applications',      icon: 'APP', desc: 'Application panels with DM Q&A flow', mod: 'appys' },
+  { key: 'blacklistEnabled',    feature: 'blacklist',     name: 'Blacklist',         icon: 'BL',  desc: 'Server blacklist with IP protection', mod: 'blacklist', premium: true },
+  { key: 'appysEnabled',        feature: 'appys',         name: 'Applications',      icon: 'APP', desc: 'Application panels with DM Q&A flow', mod: 'appys',    premium: true },
 ];
 
 var SIDEBAR_GROUPS = [
@@ -333,7 +333,7 @@ function renderSidebar(active) {
   var groupedSections = SIDEBAR_GROUPS.map(function(g) {
     return '<div class="sidebar-section"><div class="sidebar-section-title">' + g.title + '</div>' +
       g.items.map(function(m) {
-        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + '</div>';
+        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + (m.premium ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">PRO</span>' : '') + '</div>';
       }).join('') +
       '</div>';
   }).join('');
