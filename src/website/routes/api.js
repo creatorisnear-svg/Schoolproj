@@ -593,6 +593,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaDispatch } = await import('../../utils/premiumCheck.js');
+    const _dispatchAccess = await _cfaDispatch(req.params.id, 'dispatch');
+    if (!_dispatchAccess.allowed) return res.status(403).json({ error: 'AI Dispatch requires a premium subscription.' });
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
     try {
@@ -1749,6 +1752,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaAppysPost } = await import('../../utils/premiumCheck.js');
+    const _appysPostAccess = await _cfaAppysPost(req.params.id, 'appys');
+    if (!_appysPostAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
     const { name, description, questions, acceptRoleId, reviewChannelId, reviewPingRoleIds } = req.body;
@@ -1778,6 +1784,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaAppysPut } = await import('../../utils/premiumCheck.js');
+    const _appysPutAccess = await _cfaAppysPut(req.params.id, 'appys');
+    if (!_appysPutAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
     const { name, description, questions, acceptRoleId, reviewChannelId, reviewPingRoleIds } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Application name is required' });
     if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'At least one question is required' });
@@ -1805,6 +1814,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaAppysDel } = await import('../../utils/premiumCheck.js');
+    const _appysDelAccess = await _cfaAppysDel(req.params.id, 'appys');
+    if (!_appysDelAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
     try {
       const { default: AppyPanel } = await import('../../models/AppyPanel.js');
       await AppyPanel.deleteOne({ typeId: req.params.typeId, guildId: req.params.id });
@@ -1819,6 +1831,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaAppysPanel } = await import('../../utils/premiumCheck.js');
+    const _appysPanelAccess = await _cfaAppysPanel(req.params.id, 'appys');
+    if (!_appysPanelAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
     const { channelId, panelHeader, panelBody, panelImageUrl, activeTypeIds, reviewChannelId } = req.body;
@@ -3102,6 +3117,9 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { checkFeatureAccess: _cfaBlacklist } = await import('../../utils/premiumCheck.js');
+    const _blacklistAccess = await _cfaBlacklist(req.params.id, 'blacklist');
+    if (!_blacklistAccess.allowed) return res.status(403).json({ error: 'Blacklist system requires a premium subscription.' });
     try {
       const guildId = req.params.id;
       const { default: BlacklistConfig } = await import('../../models/BlacklistConfig.js');

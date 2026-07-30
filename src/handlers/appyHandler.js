@@ -4,6 +4,7 @@ import AppyPanel from '../models/AppyPanel.js';
 import AppySubmission from '../models/AppySubmission.js';
 import AppyDraft from '../models/AppyDraft.js';
 import Config from '../models/Config.js';
+import { checkFeatureAccess } from '../utils/premiumCheck.js';
 
 async function _postAppyLog(client, guildId, { action, applicantId, applicantUsername, panelName, staffUser }) {
   try {
@@ -121,6 +122,11 @@ function _errEmbed(msg) {
 export async function handleAppyOpen(interaction, client) {
   const guildId = interaction.guildId;
   if (!guildId) return;
+
+  const access = await checkFeatureAccess(guildId, 'appys');
+  if (!access.allowed) {
+    return interaction.reply({ embeds: [_errEmbed('Applications require an active premium subscription.')], flags: 64 });
+  }
 
   let config, types;
   try {
