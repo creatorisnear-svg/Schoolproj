@@ -2,3 +2,8 @@
 - [Appys Feature Architecture](appys-architecture.md) - Applications system: AppyConfig+AppyPanel+AppySubmission models; DM Q&A flow; premium gated; panel sent via bot or webhook.
 - [Business System Overview](business-system.md) - BusinessAccount/Inventory/Transaction models; commands: /business /paybusiness /businessleaderboard /businessinfo /businesstransfer /businessadjust; handlers in economyActions.js; dashboard in site/js/dashboard.js; API routes in src/website/routes/api.js.
 - [economyActions.js Edit Risk](economy-actions-edit-risk.md) - File is large (~1675 lines); multi-step edits caused catastrophic duplication. Always use head/tail shell strategy to rebuild rather than chained Edit calls on this file.
+- [Auto-Changelog Requirement](changelog-requirement.md) - Must update changelog-next.json after every set of changes before pushing to GitHub; Koyeb reads it on deploy and auto-posts to Discord.
+- [Two Dashboards — Always Edit site/](two-dashboards.md) - Edit site/js/dashboard.js (Cloudflare Pages), never src/website/public/; same for dev panel: site/dev/index.html not src/website/views/devpanel.html.
+- [Deployment Architecture](deployment-architecture.md) - Replit is dev-only; production = Koyeb (bot+API, PORT=8000) + Cloudflare Pages (site/); push to GitHub to deploy.
+- [Voice UDP Bypass — Never Remove](voice-udp-bypass.md) - Synthetic UDP bypass in voiceListener.js is required on Replit; inbound UDP blocked; @discordjs/voice must stay ≥0.19.2 for DAVE.
+- [Portal Architecture](portal-architecture.md) - Express SPA at /portal on Koyeb; HMAC cookie auth; Civilian/LEO modes; priority polls every 5s; panic via OfficerStatus upsert.
