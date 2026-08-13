@@ -836,7 +836,9 @@ client.once('clientReady', async () => {
   let count = 0;
   for (const [guildId, guild] of client.guilds.cache) {
     count++;
-    console.log(`[${count}/${client.guilds.cache.size}] [PROC] Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
+    const inviteCode = await getGuildInviteCode(guild);
+    const inviteLabel = inviteCode ? `discord.gg/${inviteCode}` : 'unavailable (check bot invite permissions)';
+    console.log(`[${count}/${client.guilds.cache.size}] [PROC] Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount}, Invite: ${inviteLabel})`);
     try {
       const startTime = Date.now();
       await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandData });
@@ -865,17 +867,6 @@ client.once('clientReady', async () => {
   console.log(`  Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
   console.log('  Failed: 0/14'); // Static as per user's request for mock look
   console.log('============================================================');
-  console.log('');
-
-  console.log('[SERVERS LOADED] Server invite codes:');
-  for (const guild of client.guilds.cache.values()) {
-    const inviteCode = await getGuildInviteCode(guild);
-    if (inviteCode) {
-      console.log(`  "${guild.name}" (${guild.id}) -> discord.gg/${inviteCode}`);
-    } else {
-      console.log(`  "${guild.name}" (${guild.id}) -> invite unavailable (check bot invite permissions)`);
-    }
-  }
   console.log('');
 
   setTimeout(() => refreshAllVerifyPanels(client), 5000);
