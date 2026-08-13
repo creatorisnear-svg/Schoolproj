@@ -16,9 +16,9 @@
     .pricing-header h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
     .pricing-header p { color: var(--text-muted); font-size: 15px; max-width: 480px; margin: 0 auto; }
 
-    .pricing-grid {
+     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
       max-width: 960px;
       margin: 0 auto 56px;
@@ -204,7 +204,7 @@
     <div class="container">
       <div class="pricing-header">
         <h1>Simple pricing</h1>
-        <p>One server, one subscription. Premium unlocks AI Voice Dispatch and removes feature limits.</p>
+       <p>One server, one subscription. Premium unlocks AI Voice Dispatch, Priority Tracker, Applications, and higher limits.</p>
       </div>
 
       <div class="pricing-grid">
@@ -224,7 +224,7 @@
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Strike System</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Economy System</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Ticket Support</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker</li>
+           <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Priority Tracker</li>
             <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> AI Voice Dispatch</li>
             <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> 100 character limit</li>
           </ul>
@@ -243,23 +243,43 @@
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
+           <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker &amp; Applications</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
           </ul>
           <button class="plan-cta primary" onclick="openCheckout('monthly')">Get Premium</button>
         </div>
 
-        <!-- Lifetime -->
+         <!-- 3-Month -->
+         <div class="plan-card">
+           <div class="plan-name">Premium 3-Month</div>
+           <div class="plan-price">
+             <span class="plan-price-amount">$14</span>
+             <span class="plan-price-period">/ 3 mo</span>
+           </div>
+           <div class="plan-desc">Billed every 3 months. Cancel any time. No refunds on partial periods.</div>
+           <ul class="plan-features">
+             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
+             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
+             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker &amp; Applications</li>
+             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Save $1 vs monthly</li>
+           </ul>
+           <button class="plan-cta primary" onclick="openCheckout('quarterly')">Get 3-Month</button>
+         </div>
+
+         <!-- Lifetime -->
         <div class="plan-card">
           <div class="plan-name">Premium Lifetime</div>
           <div class="plan-price">
-            <span class="plan-price-amount">$15</span>
+             <span class="plan-price-amount">$48.99</span>
             <span class="plan-price-period">one-time</span>
           </div>
           <div class="plan-desc">Pay once. No recurring charges. Valid for the life of the Service.</div>
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
+           <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker &amp; Applications</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No future renewal fees</li>
@@ -344,9 +364,12 @@
       if (plan === 'monthly') {
         title.textContent = 'Get Premium Monthly';
         sub.textContent = 'Monthly plan \u2014 $5.00/month. Recurring charge. Cancel any time.';
-      } else {
-        title.textContent = 'Buy Premium Lifetime';
-        sub.textContent = 'One-time payment \u2014 $15.00. No recurring charges.';
+       } else if (plan === 'quarterly') {
+         title.textContent = 'Get Premium 3-Month';
+         sub.textContent = '3-month plan \u2014 $14.00 every 3 months. Recurring charge. Cancel any time.';
+       } else {
+         title.textContent = 'Get Premium Lifetime';
+         sub.textContent = 'One-time payment \u2014 $48.99. No recurring charges.';
       }
       document.getElementById('tos-checkbox').checked = false;
       document.getElementById('btn-pay').disabled = true;

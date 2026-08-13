@@ -8,6 +8,7 @@ import { resolve } from 'path';
 const _rateLimitMap = new Map();
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 10;
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'lifetime']);
 
 // Purge expired entries every 30 minutes to prevent memory growth
 setInterval(() => {
@@ -33,6 +34,10 @@ function checkRateLimit(ip) {
 function generateKey() {
   const seg = () => uuidv4().replace(/-/g, '').toUpperCase().slice(0, 4);
   return `${seg()}-${seg()}-${seg()}-${seg()}`;
+}
+
+function isSubscriptionPlan(plan) {
+  return plan === 'monthly' || plan === 'quarterly';
 }
 
 function getDomain(req) {
@@ -141,35 +146,56 @@ async function getOrCreatePrices(stripe) {
 }
 
 // Issue a premium key for a completed Stripe session - idempotent.
-async function issueKeyForSession(sessionId) {
-  const stripe = await getStripeClient();
-  if (!stripe) return null;
+// The session must be paid, complete, and created by our checkout flow.
+async function issueKeyForCompletedSession(session) {
+  if (!session || session.status !== 'complete' || session.payment_status !== 'paid') return null;
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (session.payment_status !== 'paid' && session.status !== 'complete') return null;
+  const plan = session.metadata?.plan;
+  if (!VALID_PLANS.has(plan) || session.metadata?.tosAccepted !== 'true') return null;
+
+  const isSubscription = isSubscriptionPlan(plan);
+  if ((isSubscription && (session.mode !== 'subscription' || !session.subscription)) ||
+      (!isSubscription && (session.mode !== 'payment' || !session.payment_intent))) {
+    return null;
+  }
 
   const { default: PremiumKey } = await import('../../models/PremiumKey.js');
-  const existing = await PremiumKey.findOne({ stripeSessionId: sessionId });
-  if (existing) return existing.key;
-
   const keyValue = generateKey();
-  const plan = session.metadata?.plan || 'monthly';
-  // lifetime is a one-time payment so no subscription; monthly/quarterly are subscriptions
-  const isSubscription = plan === 'monthly' || plan === 'quarterly';
-  await PremiumKey.create({
+  const keyFields = {
     key: keyValue,
     plan,
     purchasedBy: session.metadata?.discordId || null,
     tosAcceptedAt: new Date(),
-    stripeSessionId: sessionId,
+    stripeSessionId: session.id,
     stripeCustomerId: session.customer || null,
     stripeSubscriptionId: session.subscription || null,
     stripePaymentIntentId: session.payment_intent || null,
     subscriptionStatus: isSubscription ? 'active' : null,
-  });
+  };
 
-  console.log(`[Stripe] Premium key issued for session ${sessionId} (plan: ${plan})`);
-  return keyValue;
+  try {
+    const key = await PremiumKey.findOneAndUpdate(
+      { stripeSessionId: session.id },
+      { $setOnInsert: keyFields },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    console.log(`[Stripe] Premium key ready for session ${session.id} (plan: ${plan})`);
+    return key.key;
+  } catch (err) {
+    // A webhook and the success-page request can arrive at the same time.
+    if (err?.code === 11000) {
+      const existing = await PremiumKey.findOne({ stripeSessionId: session.id });
+      return existing?.key || null;
+    }
+    throw err;
+  }
+}
+
+async function issueKeyForSession(sessionId) {
+  const stripe = await getStripeClient();
+  if (!stripe) return null;
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  return issueKeyForCompletedSession(session);
 }
 
 // ── Router factory ────────────────────────────────────────────────────────────
@@ -205,23 +231,25 @@ export function createCheckoutRouter() {
       }
 
       const domain = getDomain(req);
+      const metadata = { plan, tosAccepted: 'true' };
+      if (discordId) metadata.discordId = String(discordId);
       const commonParams = {
         success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${domain}/checkout/cancel`,
-        metadata: { discordId: String(discordId), plan, tosAccepted: 'true' },
+        metadata,
         allow_promotion_codes: true,
       };
 
       const { monthlyPriceId, quarterlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
 
       let session;
-      if (plan === 'monthly' || plan === 'quarterly') {
+      if (isSubscriptionPlan(plan)) {
         const priceId = plan === 'monthly' ? monthlyPriceId : quarterlyPriceId;
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
           line_items: [{ price: priceId, quantity: 1 }],
-          subscription_data: { metadata: { discordId: String(discordId || '') } },
+          subscription_data: { metadata },
         });
       } else {
         // lifetime: one-time payment, auto-created via getOrCreatePrices
@@ -230,7 +258,7 @@ export function createCheckoutRouter() {
           mode: 'payment',
           customer_creation: 'always',
           line_items: [{ price: lifetimePriceId, quantity: 1 }],
-          payment_intent_data: { metadata: { discordId: String(discordId || ''), plan: 'lifetime', tosAccepted: 'true' } },
+          payment_intent_data: { metadata },
         });
       }
 
@@ -302,13 +330,7 @@ export function createCheckoutRouter() {
         return res.status(400).json({ error: 'Webhook signature verification failed.' });
       }
     } else {
-      try {
-        const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
-        event = JSON.parse(raw);
-        console.warn('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not set - skipping key creation events for security. Set STRIPE_WEBHOOK_SECRET on Koyeb to enable full webhook support.');
-      } catch {
-        return res.status(400).json({ error: 'Invalid webhook payload.' });
-      }
+      return res.status(503).json({ error: 'Stripe webhook verification is not configured.' });
     }
 
     try {
@@ -316,24 +338,7 @@ export function createCheckoutRouter() {
 
       if (event.type === 'checkout.session.completed' && signatureVerified) {
         const session = event.data.object;
-        const existing = await PremiumKey.findOne({ stripeSessionId: session.id });
-        if (!existing) {
-          const keyValue = generateKey();
-          const plan = session.metadata?.plan || 'monthly';
-          const isSubscription = plan === 'monthly' || plan === 'quarterly';
-          await PremiumKey.create({
-            key: keyValue,
-            plan,
-            purchasedBy: session.metadata?.discordId || null,
-            tosAcceptedAt: new Date(),
-            stripeSessionId: session.id,
-            stripeCustomerId: session.customer || null,
-            stripeSubscriptionId: session.subscription || null,
-            stripePaymentIntentId: session.payment_intent || null,
-            subscriptionStatus: isSubscription ? 'active' : null,
-          });
-          console.log(`[Stripe Webhook] Key created for session ${session.id} (plan: ${plan})`);
-        }
+        await issueKeyForCompletedSession(session);
       }
 
       if (event.type === 'customer.subscription.deleted') {
@@ -390,6 +395,7 @@ export function createCheckoutRouter() {
 
     } catch (err) {
       console.error('[Stripe Webhook] Handler error:', err.message);
+      return res.status(500).json({ error: 'Webhook processing failed.' });
     }
 
     res.json({ received: true });

@@ -5,9 +5,9 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
-import { checkFeatureAccess, isFeaturePremiumGated } from '../../utils/premiumCheck.js';
+import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild } from '../../utils/premiumCheck.js';
 
-const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'appys'];
+const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'priority', 'appys'];
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -414,7 +414,7 @@ export function createApiRouter(client) {
       try {
         const { default: PremiumKey } = await import('../../models/PremiumKey.js');
         const key = await PremiumKey.findOne({ guildId: guild.id });
-        premium = !!key;
+         premium = await isPremiumGuild(guild.id);
         if (key) {
           premiumDetails = {
             plan: key.plan || 'manual',

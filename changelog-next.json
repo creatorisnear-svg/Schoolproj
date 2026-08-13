@@ -1,9 +1,10 @@
 {
-  "version": "1.2.2",
-  "title": "Documented Premium growth and setup direction",
+  "version": "1.2.3",
+  "title": "Aligned Premium billing plans and checkout safety",
   "changes": [
-    "Documented the decision to keep current Premium pricing while improving setup, discovery, and conversion clarity first",
-    "Documented the requirement to avoid duplicate feature lists, setup paths, and configuration sources",
-    "Documented the session handoff rule for recording intended changes and explicitly reporting when changes are complete"
+    "Added safe idempotent Stripe session handling for paid monthly, 3-month, and lifetime purchases",
+    "Require verified Stripe webhooks and valid checkout metadata before creating or changing Premium records",
+    "Aligned Premium pricing and feature promises across the live and legacy pricing pages",
+    "Enabled quarterly subscription cancellation and reactivation throughout the dashboard"
   ]
 }

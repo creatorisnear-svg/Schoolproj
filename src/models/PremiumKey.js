@@ -41,6 +41,7 @@ const premiumKeySchema = new mongoose.Schema({
 premiumKeySchema.index({ guildId: 1 });
 premiumKeySchema.index({ stripeCustomerId: 1 });
 premiumKeySchema.index({ stripeSubscriptionId: 1 });
+premiumKeySchema.index({ stripeSessionId: 1 }, { unique: true, sparse: true });
 
 const PremiumKey = mongoose.models.PremiumKey || mongoose.model('PremiumKey', premiumKeySchema);
 

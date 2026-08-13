@@ -145,7 +145,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
           <div class="lp-feature-body">
-            <div class="lp-feature-name">Priority Tracker</div>
+            <div class="lp-feature-name">Priority Tracker <span class="feature-premium-tag lp-premium-tag" style="display:none;">Premium</span></div>
             <div class="lp-feature-desc">Real-time priority event board with cooldown timers, staff controls, and a live-updating embed in your dedicated priority channel.</div>
           </div>
         </div>
@@ -711,7 +711,7 @@
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
       function isFlagPremium(feat) {
         if (feat in flags) return flags[feat] === true;
-        return feat === 'dispatch' || feat === 'appys';
+        return feat === 'dispatch' || feat === 'priority' || feat === 'appys';
       }
 
       // Show/hide premium tags on feature cards
@@ -745,8 +745,8 @@
         });
       }
     }).catch(function() {
-      // On error, default: dispatch + appys are premium
-      document.querySelectorAll('.lp-feature-card[data-feature="dispatch"] .feature-premium-tag, .lp-feature-card[data-feature="appys"] .feature-premium-tag').forEach(function(t) {
+      // On error, default to the documented premium features.
+      document.querySelectorAll('.lp-feature-card[data-feature="dispatch"] .feature-premium-tag, .lp-feature-card[data-feature="priority"] .feature-premium-tag, .lp-feature-card[data-feature="appys"] .feature-premium-tag').forEach(function(t) {
         t.style.display = '';
       });
     });

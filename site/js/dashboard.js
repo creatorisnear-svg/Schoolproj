@@ -11,7 +11,7 @@ var guilds = [];
 var pendingChanges = {};
 var _currentSettingsData = null;
 var sidebarOpen = false;
-var featureFlags = { dispatch: true, appys: true };
+var featureFlags = { dispatch: true, priority: true, appys: true };
 var TOPGG_VOTE_URL = '';
 
 function getToken() { return localStorage.getItem('dash_token'); }
@@ -94,7 +94,7 @@ function showLogin(errorCode) {
 
 function loadFeatureFlags(callback) {
   fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
-    featureFlags = flags || { dispatch: true, appys: true };
+    featureFlags = flags || { dispatch: true, priority: true, appys: true };
     if (flags && flags._topggVoteUrl) TOPGG_VOTE_URL = flags._topggVoteUrl;
     callback();
   }).catch(function() {
@@ -264,7 +264,7 @@ function selectServer(guildId, section) {
     fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
   ]).then(function(results) {
     var data = results[0];
-    featureFlags = results[1] || { dispatch: true, appys: true };
+    featureFlags = results[1] || { dispatch: true, priority: true, appys: true };
     if (!data) { clearSession(); renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
@@ -595,7 +595,7 @@ function renderPremiumSection(g) {
     var pd = g.premiumDetails || {};
     var subStatus = pd.subscriptionStatus || null;
     var isCancelling = subStatus === 'cancelling';
-    var isMonthly = pd.hasStripeSubscription;
+    var isSubscription = pd.hasStripeSubscription && (pd.plan === 'monthly' || pd.plan === 'quarterly');
     var periodEnd = pd.subscriptionCurrentPeriodEnd ? new Date(pd.subscriptionCurrentPeriodEnd) : null;
     var periodEndStr = periodEnd ? periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
@@ -607,13 +607,15 @@ function renderPremiumSection(g) {
       ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
       : premiumItems.join(', ') + ' - all unlocked.';
 
-    var planLabel = isMonthly
+    var planLabel = pd.plan === 'monthly'
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
-      : (pd.subscriptionStatus === null && !isMonthly ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
+      : pd.plan === 'quarterly'
+        ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">3-Month</span>'
+        : (pd.subscriptionStatus === null && !isSubscription ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
 
     var actionBtns = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
     actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
-    if (isMonthly) {
+    if (isSubscription) {
       if (isCancelling) {
         actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';
       } else {

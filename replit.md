@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **In progress:** Align Premium billing and entitlement data without changing prices. This session covers the quarterly plan schema, Stripe v3 price-cache fields, checkout/webhook safety, and inconsistent Premium feature promises.
+- **Completed:** Align Premium billing and entitlement data without changing prices. This session covered the quarterly plan schema, Stripe v3 price-cache fields, checkout/webhook safety, and inconsistent Premium feature promises.
 
 ## Agent Checklist — Read This First
 

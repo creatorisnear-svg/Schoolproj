@@ -431,7 +431,9 @@ function activatePremium() {
 }
 
 function cancelSubscription() {
-  if (!confirm('Cancel your monthly subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
+  var plan = (currentGuild && currentGuild.premiumDetails && currentGuild.premiumDetails.plan) || 'monthly';
+  var planLabel = plan === 'quarterly' ? '3-month' : 'monthly';
+  if (!confirm('Cancel your ' + planLabel + ' subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
@@ -472,7 +474,7 @@ function renderPremiumSection(g) {
     var pd = g.premiumDetails || {};
     var subStatus = pd.subscriptionStatus || null;
     var isCancelling = subStatus === 'cancelling';
-    var isMonthly = pd.hasStripeSubscription;
+    var isSubscription = pd.hasStripeSubscription && (pd.plan === 'monthly' || pd.plan === 'quarterly');
     var periodEnd = pd.subscriptionCurrentPeriodEnd ? new Date(pd.subscriptionCurrentPeriodEnd) : null;
     var periodEndStr = periodEnd ? periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
@@ -484,13 +486,15 @@ function renderPremiumSection(g) {
       ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
       : premiumItems.join(', ') + ' - all unlocked.';
 
-    var planLabel = isMonthly
+    var planLabel = pd.plan === 'monthly'
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
-      : (pd.subscriptionStatus === null && !isMonthly ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
+      : pd.plan === 'quarterly'
+        ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">3-Month</span>'
+        : (pd.subscriptionStatus === null && !isSubscription ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
 
     var actionBtns = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
     actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
-    if (isMonthly) {
+    if (isSubscription) {
       if (isCancelling) {
         actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';
       } else {
@@ -544,14 +548,14 @@ function renderBilling() {
   api('/guild/' + currentGuild.id + '/premium/billing').then(function(data) {
     if (!data) return;
 
-    var planLabel = data.plan === 'monthly' ? 'Monthly' : data.plan === 'lifetime' ? 'Lifetime' : 'Manual / Gifted';
+    var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($14/3mo)' : data.plan === 'lifetime' ? 'Lifetime ($48.99 one-time)' : 'Manual / Gifted';
     var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : 'var(--text-muted)';
     var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status || 'Active';
 
     var periodRow = '';
     if (data.currentPeriodEnd) {
       var pEnd = new Date(data.currentPeriodEnd);
-      var pLabel = data.status === 'cancelling' ? 'Access ends' : (data.plan === 'monthly' ? 'Next renewal' : 'Valid through');
+      var pLabel = data.status === 'cancelling' ? 'Access ends' : ((data.plan === 'monthly' || data.plan === 'quarterly') ? 'Next renewal' : 'Valid through');
       periodRow = billingRow(pLabel, pEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
     }
 
@@ -564,7 +568,7 @@ function renderBilling() {
       : '';
 
     var cancelBtn = '';
-    if (data.hasStripeSubscription && data.plan === 'monthly') {
+  if (data.hasStripeSubscription && (data.plan === 'monthly' || data.plan === 'quarterly')) {
       if (data.status === 'cancelling') {
         cancelBtn = '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="reactivateSubscription()">Reactivate Subscription</button>';
       } else if (data.status === 'active') {
