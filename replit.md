@@ -24,7 +24,32 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Align Premium billing and entitlement data without changing prices. This session covered the quarterly plan schema, Stripe v3 price-cache fields, checkout/webhook safety, and inconsistent Premium feature promises.
+- **Completed:** Add an AI handoff protocol so every AI reads this file, scans for unfinished work, and replies only with the required readiness status.
+
+## AI Handoff Protocol — Read Before Responding
+
+This section controls the first response after an AI reads `replit.md`. Follow it exactly:
+
+1. Read this file completely before making assumptions or replying.
+2. Scan for unfinished work in this order:
+   - `Active Change Scope`: any item marked **In progress**, **Blocked**, **Planned**, or **Incomplete**.
+   - The current project task list: any task marked `IN_PROGRESS`, `BLOCKED`, or `TODO`.
+   - The latest user request: any explicit requirement not yet implemented or verified.
+   - `git status --short`: modified or untracked files that are not explained by the active scope or the latest user request.
+   - `changelog-next.json`: changes that are not described, validated, or reflected in the active scope.
+   - Documented blockers such as missing secrets, unavailable services, failed workflows, or failed validation.
+3. If the scan finds no unfinished work or blocker, respond with exactly:
+
+   `Ready to serve.`
+
+   Do not add a summary, greeting, explanation, questions, bullets, or code formatting.
+4. If the scan finds unfinished work, do not say “Ready to serve.” Report only:
+   - `Unfinished:` followed by the specific incomplete item(s).
+   - `Blocked:` followed by the exact blocker, if applicable.
+   - `Next:` followed by the smallest action needed to continue.
+5. Before changing any file, replace the `Active Change Scope` entry with a concise description of the new work. After completing it, mark the entry **Completed** and update `changelog-next.json`.
+6. Never treat a cleanly documented pending changelog as unfinished solely because `changelog-next.json` exists; it is the release descriptor until the next release is deployed.
+7. At the end of an implementation session, explicitly say `change done` or `added`. If neither phrase is present, the next AI must treat the work as incomplete and continue it.
 
 ## Agent Checklist — Read This First
 

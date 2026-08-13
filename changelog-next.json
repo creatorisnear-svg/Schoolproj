@@ -1,10 +1,9 @@
 {
-  "version": "1.2.3",
-  "title": "Aligned Premium billing plans and checkout safety",
+  "version": "1.2.4",
+  "title": "Added explicit AI handoff readiness protocol",
   "changes": [
-    "Added safe idempotent Stripe session handling for paid monthly, 3-month, and lifetime purchases",
-    "Require verified Stripe webhooks and valid checkout metadata before creating or changing Premium records",
-    "Aligned Premium pricing and feature promises across the live and legacy pricing pages",
-    "Enabled quarterly subscription cancellation and reactivation throughout the dashboard"
+    "Added a required unfinished-work scan for active scope, tasks, git changes, blockers, and validation",
+    "Defined the exact `Ready to serve.` response when no unfinished work remains",
+    "Defined a concise unfinished-work handoff format for the next AI"
   ]
 }
