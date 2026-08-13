@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Add an AI handoff protocol so every AI reads this file, scans for unfinished work, and replies only with the required readiness status.
+- **Completed:** Make the npm lockfile portable to Koyeb by removing Replit-internal package registry URLs from dependency resolution.
 
 ## AI Handoff Protocol — Read Before Responding
 
