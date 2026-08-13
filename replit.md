@@ -17,6 +17,9 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 - Staff and Admins have full access to all commands; general members restricted to roleplay/verification commands only
 - Dashboard design: dark theme, minimalist, no emojis, `--accent` #5865f2
 - Applications feature = **"custom application panels for any purpose"** — never describe as "staff application panels" anywhere (commands, dashboard, landing page, descriptions)
+- Keep the current Premium pricing ($5 monthly, $14 every 3 months, $48.99 lifetime) while improving setup, feature discovery, and conversion clarity before reconsidering prices
+- Avoid duplicate feature lists, setup paths, or configuration sources; prefer one canonical definition reused everywhere
+- Before making a change, record in this file what is being changed. At the end of the session explicitly say "change done" or "added"; if neither is stated, the next AI should treat the work as incomplete and continue it
 
 ---
 
