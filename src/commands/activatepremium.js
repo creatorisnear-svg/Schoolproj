@@ -1,0 +1,78 @@
+import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import PremiumKey from '../models/PremiumKey.js';
+import { clearPremiumCache, isPremiumGuild } from '../utils/premiumCheck.js';
+import { createEmbed, errorEmbed } from '../utils/embedBuilder.js';
+
+export const data = new SlashCommandBuilder()
+  .setName('activatepremium')
+  .setDescription('Activate a premium key for this server')
+  .addStringOption(option =>
+    option
+      .setName('key')
+      .setDescription('Your premium activation key')
+      .setRequired(true)
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function execute(interaction) {
+  await interaction.deferReply({ flags: 64 });
+
+  const keyInput = interaction.options.getString('key').trim();
+  const guildId = interaction.guildId;
+
+  const alreadyPremium = await isPremiumGuild(guildId);
+  if (alreadyPremium) {
+    return interaction.editReply({
+      embeds: [errorEmbed('This server already has an active premium subscription.')],
+    });
+  }
+
+  const keyRecord = await PremiumKey.findOne({ key: keyInput });
+
+  if (!keyRecord) {
+    return interaction.editReply({
+      embeds: [errorEmbed('Invalid premium key. Please check your key and try again.')],
+    });
+  }
+
+  if (keyRecord.guildId) {
+    return interaction.editReply({
+      embeds: [errorEmbed('This key has already been activated in another server.')],
+    });
+  }
+
+  // Reject cancelled subscriptions - don't let expired monthly keys activate new servers
+  if (keyRecord.plan === 'monthly' && keyRecord.subscriptionStatus === 'cancelled') {
+    return interaction.editReply({
+      embeds: [errorEmbed('This subscription has been cancelled and is no longer valid.')],
+    });
+  }
+
+  keyRecord.guildId = guildId;
+  keyRecord.guildName = interaction.guild.name;
+  keyRecord.activatedBy = interaction.user.id;
+  keyRecord.activatedAt = new Date();
+  await keyRecord.save();
+
+  clearPremiumCache(guildId);
+
+  return interaction.editReply({
+    embeds: [
+      createEmbed({
+        title: 'Premium Activated',
+        description:
+          'This server now has **Premium** access.\n\n' +
+          '**Unlocked:**\n' +
+          '> AI Voice Dispatch (`/dispatchconfig`)\n' +
+          '> Blackjack & Roulette (`/gamble`)\n' +
+          '> Unlimited CAD characters, vehicles, firearms & BOLOs\n' +
+          '> Unlimited sticky messages\n' +
+          '> Unlimited ticket types\n' +
+          '> Unlimited role income entries\n' +
+          '> Extended leaderboard (top 25)\n\n' +
+          '-# Use `/premium` to view your premium status at any time.',
+        timestamp: true,
+      }),
+    ],
+  });
+}

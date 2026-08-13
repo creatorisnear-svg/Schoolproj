@@ -1,20 +1,51 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-20", "web"]
+    [agent]
+expertMode = true
+    stack = "BEST_EFFORT_FALLBACK"
 
-[deployment]
-router = "application"
-deploymentTarget = "autoscale"
+    [nix]
+channel = "stable-25_05"
 
-[deployment.postBuild]
-args = ["pnpm", "store", "prune"]
-env = { "CI" = "true" }
+    [userenv]
+
+    [userenv.shared]
+    SUPPORT_SERVER_ID = "1441548471906734173"
+    STATUS_BOT_ID = "835223338275569676"
+    STATUS_CHECK_GUILD = "1441548471906734173"
+    STATUS_CHECK_CHANNEL = "1442653565427646495"
+    PORT = "5000"
+    DOMAIN = "roleplaymanager.xyz"
+CHANGELOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1524180924785361027/rR7DADTiQdZw1YzLKX42_jcYjC6vkdEuap0KtASyNUdX9Nm_FgWopdl4KC23gzgu4LZI"
+
+    [deployment]
+    deploymentTarget = "autoscale"
+    run = ["npm", "start"]
 
 [workflows]
 runButton = "Project"
 
-[agent]
-stack = "PNPM_WORKSPACE"
-expertMode = true
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
 
-[postMerge]
-path = "scripts/post-merge.sh"
-timeoutMs = 20000
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+    

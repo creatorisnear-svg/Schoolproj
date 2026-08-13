@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#07090e">
+  <title>DOJRP CAD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/portal.css">
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <img id="login-logo" src="" class="login-logo" alt="Server Logo" style="display:none">
+    <div id="login-logo-placeholder" class="login-logo-placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>
+    </div>
+    <h1 id="login-server-name">DOJRP CAD</h1>
+    <p class="login-sub">Sign in with Discord to access your character, economy, dispatch, and more.</p>
+    <div id="login-error" class="login-error hidden"></div>
+    <a href="/auth/login" class="btn-discord">
+      <svg class="btn-discord-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+      Continue with Discord
+    </a>
+    <p class="login-footer">You must be a member of the server to access this portal.</p>
+  </div>
+</div>
+
+<!-- ══════════ MODE PICKER ══════════ -->
+<div id="mode-screen" class="hidden">
+  <div class="mode-card">
+    <div class="mode-card-logo">
+      <img id="mode-logo-img" src="" alt="" style="display:none">
+      <div id="mode-logo-placeholder" class="mode-logo-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+    </div>
+    <div id="mode-greeting" class="mode-greeting">Welcome back</div>
+    <div class="mode-sub">How are you playing today?</div>
+    <div class="mode-options">
+      <button class="mode-btn" onclick="setPortalMode('civilian')">
+        <div class="mode-btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="mode-btn-title">Civilian</div>
+        <div class="mode-btn-desc">Characters, 911, economy &amp; more</div>
+      </button>
+      <button class="mode-btn mode-btn-leo" id="mode-btn-leo" onclick="setPortalMode('leo')" disabled>
+        <div class="mode-btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="30" height="30"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="mode-btn-title">Law Enforcement</div>
+        <div class="mode-btn-desc">Status board, intel, patrol tools</div>
+        <div class="mode-btn-badge" id="mode-leo-badge">LEO access required</div>
+      </button>
+    </div>
+    <a href="/auth/logout" class="mode-signout">Sign out</a>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app" class="hidden">
+
+  <!-- Mobile Top Bar -->
+  <div id="mobile-topbar">
+    <div class="topbar-server">
+      <img id="topbar-server-icon" class="topbar-server-icon" src="" alt="" style="display:none">
+      <div id="topbar-server-icon-placeholder" class="server-icon-placeholder" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </div>
+      <span id="topbar-server-name" class="topbar-server-name">Portal</span>
+    </div>
+    <div class="topbar-user">
+      <img id="topbar-avatar" class="topbar-avatar" src="" alt="">
+      <span id="topbar-username" class="topbar-username"></span>
+    </div>
+    <button id="topbar-mode-switch" class="topbar-mode-switch" onclick="showModeScreen()" title="Switch mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span id="topbar-mode-label">Civilian</span>
+    </button>
+    <button class="notif-bell-btn leo-only-el hidden" id="notif-bell-topbar" onclick="notif.toggle()" title="Enable LEO notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-bell-dot" id="notif-bell-dot-topbar"></span>
+    </button>
+    <a href="/auth/logout" class="topbar-logout" title="Sign out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </a>
+  </div>
+
+  <!-- Desktop Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <img id="sidebar-server-icon" class="server-icon" src="" alt="" style="display:none">
+      <div id="sidebar-server-icon-placeholder" class="server-icon-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </div>
+      <span id="sidebar-server-name" class="sidebar-server-name">Portal</span>
+    </div>
+    <div class="sidebar-user">
+      <img id="sidebar-avatar" src="" alt="Avatar" class="user-avatar">
+      <div class="user-info">
+        <div id="sidebar-username" class="user-name"></div>
+        <div id="sidebar-server-sub" class="user-server"></div>
+      </div>
+    </div>
+    <div id="sidebar-roles" class="user-roles"></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">General</div>
+      <a class="nav-item active" data-tab="overview">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        Home
+      </a>
+      <a class="nav-item" data-tab="cad">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        CAD System
+      </a>
+      <a class="nav-item" data-tab="economy">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+        Economy
+      </a>
+      <a class="nav-item" data-tab="dispatch">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></span>
+        Dispatch / 911
+      </a>
+      <a class="nav-item" data-tab="fines">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+        Traffic Fines
+      </a>
+      <a class="nav-item" data-tab="tickets">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg></span>
+        Tickets
+      </a>
+      <a class="nav-item" data-tab="calendar">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+        RP Calendar
+      </a>
+      <a class="nav-item" data-tab="rolerequest">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        Role Requests
+      </a>
+      <a class="nav-item" data-tab="priority">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        Priority
+      </a>
+      <div id="nav-leo-section" class="hidden">
+        <div class="nav-section-label">Law Enforcement</div>
+        <a class="nav-item" data-tab="leo" id="nav-leo">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          LEO Dashboard
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="btn-mode-switch" onclick="showModeScreen()">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        Switch Mode
+      </button>
+      <button class="btn-sidebar-notif leo-only-el hidden" id="notif-bell-sidebar" onclick="notif.toggle()">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </span>
+        <span id="notif-sidebar-label">Notifications</span>
+        <span class="notif-bell-dot notif-sidebar-dot" id="notif-bell-dot-sidebar"></span>
+      </button>
+      <a href="/auth/logout" class="btn-logout">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+        Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main id="main">
+    <div class="main-inner">
+
+      <!-- HOME / OVERVIEW -->
+      <div id="tab-overview" class="tab-pane active">
+        <div class="page-header">
+          <h2>Home</h2>
+          <span id="overview-mode-pill" class="mode-pill mode-pill-civ">Civilian</span>
+        </div>
+
+        <!-- Priority / Cooldown Status Widget -->
+        <div id="home-priority-widget" class="home-priority-widget">
+          <div id="home-priority-inner" class="home-priority-loading">Loading...</div>
+        </div>
+
+        <!-- Officers On Duty (civ read-only) -->
+        <div id="home-officers-widget" class="home-officers-widget hidden"></div>
+
+        <!-- Voice Channel Mover -->
+        <div id="home-voice-widget" class="home-voice-widget hidden">
+          <div class="home-voice-header">
+            <div class="home-voice-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              Voice Channels
+            </div>
+            <button class="btn-ghost-sm" onclick="refreshVoiceChannels()" id="voice-refresh-btn">Refresh</button>
+          </div>
+          <div id="home-voice-list" class="home-voice-list">
+            <div class="home-voice-loading">Loading channels...</div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div id="overview-stats" class="stat-grid"></div>
+
+        <!-- Quick Access -->
+        <div class="section-label">Quick Access</div>
+        <div class="quick-actions" id="quick-actions"></div>
+      </div>
+
+      <!-- CAD -->
+      <div id="tab-cad" class="tab-pane">
+        <div class="page-header">
+          <h2>CAD System</h2>
+          <button class="btn btn-primary btn-sm" onclick="openCreateCharModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Character
+          </button>
+        </div>
+        <div id="cad-list" class="cad-list"><div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>Loading characters...</div></div>
+      </div>
+
+      <!-- ECONOMY -->
+      <div id="tab-economy" class="tab-pane">
+        <div class="page-header">
+          <h2>Economy</h2>
+        </div>
+        <div id="economy-balance" class="balance-grid"></div>
+
+        <!-- Bank actions row -->
+        <div class="eco-actions-row" id="eco-actions-row">
+          <button class="btn btn-secondary btn-sm" onclick="openBankModal('deposit')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+            Deposit
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openBankModal('withdraw')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 12 3 16 7"/><line x1="12" y1="3" x2="12" y2="12"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+            Withdraw
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-pay')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Pay
+          </button>
+          <button id="btn-claim-income" class="btn btn-success btn-sm" onclick="claimIncome()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Claim Income
+          </button>
+        </div>
+
+        <div id="eco-action-msg" class="eco-action-msg hidden"></div>
+
+        <div class="economy-grid">
+          <div class="economy-col">
+            <div class="section-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              Shop
+            </div>
+            <input id="shop-search" class="shop-search" type="text" placeholder="Search items..." oninput="filterShop(this.value)">
+            <div id="shop-list" class="shop-list"><div class="empty-state">Loading shop...</div></div>
+          </div>
+          <div class="economy-col">
+            <div class="section-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Inventory
+            </div>
+            <div id="inventory-list" class="inventory-list"><div class="empty-state">Loading...</div></div>
+            <div class="section-label" style="margin-top:10px">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Leaderboard
+            </div>
+            <div id="leaderboard-list" class="lb-list"><div class="empty-state">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISPATCH / 911 -->
+      <div id="tab-dispatch" class="tab-pane">
+        <div class="page-header">
+          <h2>Dispatch / 911</h2>
+          <button class="btn btn-danger" onclick="openModal('modal-911')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+            Submit 911 Call
+          </button>
+        </div>
+        <div class="dispatch-status-bar" id="dispatch-status-bar">
+          <div class="dispatch-status-dot dispatch-dot-active"></div>
+          <span>Dispatch is active - calls are monitored by on-duty officers</span>
+        </div>
+        <div class="section-label">Your Active Calls</div>
+        <div id="dispatch-active" class="dispatch-list"><div class="empty-state">Loading...</div></div>
+        <div class="section-label">Recent Call History</div>
+        <div id="dispatch-history" class="dispatch-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- TRAFFIC FINES -->
+      <div id="tab-fines" class="tab-pane">
+        <div class="page-header"><h2>Traffic Fines</h2></div>
+        <div id="fines-summary" class="fines-summary hidden"></div>
+        <div id="fines-list" class="fines-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- TICKETS -->
+      <div id="tab-tickets" class="tab-pane">
+        <div class="page-header"><h2>Support Tickets</h2></div>
+        <div class="section-label">Open Tickets</div>
+        <div id="tickets-open" class="ticket-list"><div class="empty-state">Loading...</div></div>
+        <div class="section-label">Recent Closed</div>
+        <div id="tickets-closed" class="ticket-list"><div class="empty-state">Loading...</div></div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div id="tab-calendar" class="tab-pane">
+        <div class="page-header"><h2>RP Calendar</h2></div>
+        <div id="calendar-list" class="calendar-list"><div class="empty-state">Loading events...</div></div>
+      </div>
+
+      <!-- ROLE REQUESTS -->
+      <div id="tab-rolerequest" class="tab-pane">
+        <div class="page-header"><h2>Role Requests</h2></div>
+        <div class="rr-grid">
+          <div>
+            <div class="section-label">Submit a Request</div>
+            <div id="rr-form-area"><div class="empty-state">Loading role types...</div></div>
+          </div>
+          <div>
+            <div class="section-label">Your Recent Requests</div>
+            <div id="rr-history" class="rr-history"><div class="empty-state">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIORITY TRACKER -->
+      <div id="tab-priority" class="tab-pane">
+        <div class="page-header"><h2>Priority Tracker</h2></div>
+        <div id="priority-status-hero" class="priority-hero">
+          <div class="priority-hero-loading">Loading...</div>
+        </div>
+        <div id="priority-detail-card" class="priority-detail hidden"></div>
+        <div class="priority-footer-note">Status refreshes automatically every 30 seconds.</div>
+      </div>
+
+      <!-- LEO DASHBOARD -->
+      <div id="tab-leo" class="tab-pane">
+        <div class="page-header">
+          <h2>LEO Dashboard</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-go-offduty" onclick="goOffDuty()" style="display:none">Off Duty</button>
+        </div>
+
+        <!-- Panic Strip -->
+        <div id="panic-idle" class="panic-strip">
+          <div class="panic-strip-left">
+            <div class="panic-strip-title">Officer Emergency</div>
+            <div class="panic-strip-sub">Triggers 10-99 - all units respond</div>
+          </div>
+          <button class="btn btn-danger" id="btn-panic" onclick="triggerPanic()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            PANIC 10-99
+          </button>
+        </div>
+        <div id="panic-active" class="hidden">
+          <div class="panic-active-bar" style="margin-bottom:14px">
+            <div class="panic-active-dot"></div>
+            <div>
+              <div class="panic-active-title">10-99 PANIC ACTIVE</div>
+              <div class="panic-active-sub">Dispatch has been alerted - all units responding</div>
+            </div>
+            <button class="btn btn-sm" id="btn-clear-panic" onclick="clearPanic()" style="margin-left:auto;background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);white-space:nowrap">Clear Panic</button>
+          </div>
+        </div>
+
+        <!-- Cooldown Banner (shown when priority cooldown is active) -->
+        <div id="leo-cooldown-bar" class="leo-cd-bar hidden">
+          <div class="leo-cd-bar-left">
+            <span class="hpw-dot hpw-dot-cooldown"></span>
+            <div>
+              <div class="leo-cd-bar-title">Priority Cooldown Active</div>
+              <div class="leo-cd-bar-sub" id="leo-cd-sub">—</div>
+            </div>
+          </div>
+          <div class="leo-cd-bar-right">
+            <div class="leo-cd-timer" id="leo-cd-timer">--:--</div>
+            <div class="hpw-countdown-label">remaining</div>
+          </div>
+        </div>
+
+        <!-- My Status Panel -->
+        <div class="my-status-panel">
+          <div class="my-status-header">
+            <div class="my-status-title">My Status</div>
+            <div class="my-status-sub" id="my-status-sub">Not on duty</div>
+          </div>
+          <div class="status-quick-grid">
+            <button class="status-btn status-btn-available" data-code="10-8" onclick="selectQuickStatus('10-8')">
+              <span class="status-btn-code">10-8</span>
+              <span class="status-btn-label">Available</span>
+            </button>
+            <button class="status-btn status-btn-busy" data-code="10-6" onclick="selectQuickStatus('10-6')">
+              <span class="status-btn-code">10-6</span>
+              <span class="status-btn-label">Busy</span>
+            </button>
+            <button class="status-btn status-btn-enroute" data-code="10-76" onclick="selectQuickStatus('10-76')">
+              <span class="status-btn-code">10-76</span>
+              <span class="status-btn-label">En Route</span>
+            </button>
+            <button class="status-btn status-btn-scene" data-code="10-97" onclick="selectQuickStatus('10-97')">
+              <span class="status-btn-code">10-97</span>
+              <span class="status-btn-label">On Scene</span>
+            </button>
+            <button class="status-btn status-btn-traffic" data-code="10-11" onclick="selectQuickStatus('10-11')">
+              <span class="status-btn-code">10-11</span>
+              <span class="status-btn-label">Traffic Stop</span>
+            </button>
+            <button class="status-btn status-btn-pursuit" data-code="10-80" onclick="selectQuickStatus('10-80')">
+              <span class="status-btn-code">10-80</span>
+              <span class="status-btn-label">Pursuit</span>
+            </button>
+            <button class="status-btn status-btn-prisoner" data-code="10-15" onclick="selectQuickStatus('10-15')">
+              <span class="status-btn-code">10-15</span>
+              <span class="status-btn-label">Prisoner</span>
+            </button>
+            <button class="status-btn status-btn-oos" data-code="10-7" onclick="selectQuickStatus('10-7')">
+              <span class="status-btn-code">10-7</span>
+              <span class="status-btn-label">Out of Service</span>
+            </button>
+          </div>
+          <div id="status-detail-row" class="status-detail-row hidden">
+            <input id="status-location" class="form-input" type="text" placeholder="Location (optional)">
+            <input id="status-subject" class="form-input" type="text" placeholder="Subject / notes (optional)">
+            <button class="btn btn-primary" id="btn-update-status" onclick="confirmStatusUpdate()">Confirm</button>
+          </div>
+          <div id="status-error" class="form-error hidden" style="margin-top:8px"></div>
+        </div>
+
+        <!-- LEO Inner Tabs -->
+        <div class="leo-innertab-bar">
+          <button class="leo-innertab active" data-leotab="officers" onclick="switchLeoTab('officers')">Officers</button>
+          <button class="leo-innertab" data-leotab="records" onclick="switchLeoTab('records')">Search Records</button>
+          <button class="leo-innertab" data-leotab="intel" onclick="switchLeoTab('intel')">BOLOs &amp; Calls<span id="intel-dot" class="leo-dot hidden">!</span></button>
+          <button class="leo-innertab" data-leotab="actions" onclick="switchLeoTab('actions')">Actions</button>
+          <span id="board-refresh-label" class="board-refresh-label">Refreshes in <span id="board-countdown">30</span>s</span>
+        </div>
+
+        <!-- Officers Pane -->
+        <div id="leo-innerpane-officers" class="leo-innerpane">
+          <div id="leo-officers" class="officer-grid"><div class="empty-state">Loading officers...</div></div>
+        </div>
+
+        <!-- Search Records Pane -->
+        <div id="leo-innerpane-records" class="leo-innerpane hidden">
+          <div class="leo-search-controls">
+            <div class="search-type-toggle">
+              <button class="search-type-btn active" id="srch-btn-plate" onclick="setSearchType('plate')">Plate</button>
+              <button class="search-type-btn" id="srch-btn-character" onclick="setSearchType('character')">Person</button>
+            </div>
+            <input id="leo-search-input" type="text" placeholder="Search by plate..." style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="leoSearch()">Search</button>
+          </div>
+          <div id="leo-results" class="leo-results"></div>
+        </div>
+
+        <!-- Intel Pane (BOLOs + Calls) -->
+        <div id="leo-innerpane-intel" class="leo-innerpane hidden">
+          <div class="intel-section-header">
+            <div class="intel-header-left">
+              <div class="section-label" style="margin:0">Active 911 Calls</div>
+              <span id="intel-unresponded" class="intel-unresponded hidden"></span>
+            </div>
+            <span id="intel-refresh-status" class="intel-refresh-status">Refreshes in <span id="intel-countdown">15</span>s</span>
+          </div>
+          <div id="leo-calls"><div class="empty-state" style="padding:12px 0">Loading...</div></div>
+
+          <div class="section-label" style="margin-top:20px">Active BOLOs</div>
+          <div id="leo-bolos"><div class="empty-state" style="padding:12px 0">Loading...</div></div>
+        </div>
+
+        <!-- Actions Pane (BOLO Create + Ticket Issue) -->
+        <div id="leo-innerpane-actions" class="leo-innerpane hidden">
+
+          <div class="section-label" style="margin-top:0">Create BOLO</div>
+          <div class="leo-action-card">
+            <div class="leo-action-search-row">
+              <input id="bolo-char-search" class="form-input" type="text" placeholder="Search character by name...">
+              <button class="btn btn-secondary btn-sm" onclick="searchForBolo()">Search</button>
+            </div>
+            <div id="bolo-char-results" class="leo-char-results"></div>
+            <div id="bolo-details" class="hidden">
+              <input type="hidden" id="bolo-char-id">
+              <div id="bolo-selected-info" class="leo-selected-char"></div>
+              <div class="form-group"><label class="form-label">Reason *</label><input id="bolo-reason" class="form-input" type="text" placeholder="Armed robbery suspect, fleeing arrest..."></div>
+              <div class="form-group"><label class="form-label">Description</label><textarea id="bolo-description" class="form-input" rows="2" placeholder="Additional details..."></textarea></div>
+              <div id="bolo-error" class="form-error hidden"></div>
+              <div class="leo-action-btns">
+                <button class="btn btn-secondary btn-sm" onclick="cancelBoloSearch()">Cancel</button>
+                <button class="btn btn-danger btn-sm" onclick="submitCreateBolo()">Issue BOLO</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top:24px">Issue Traffic Ticket</div>
+          <div class="leo-action-card">
+            <div class="leo-action-search-row">
+              <input id="ticket-char-search" class="form-input" type="text" placeholder="Search character by name...">
+              <button class="btn btn-secondary btn-sm" onclick="searchForTicket()">Search</button>
+            </div>
+            <div id="ticket-char-results" class="leo-char-results"></div>
+            <div id="ticket-details" class="hidden">
+              <input type="hidden" id="ticket-char-id">
+              <div id="ticket-selected-info" class="leo-selected-char"></div>
+              <div class="form-group"><label class="form-label">Violation *</label><input id="ticket-violation" class="form-input" type="text" placeholder="Speeding, Running red light, No registration..."></div>
+              <div class="form-group"><label class="form-label">Description</label><input id="ticket-description" class="form-input" type="text" placeholder="Additional notes..."></div>
+              <div class="form-group"><label class="form-label">Fine Amount ($)</label><input id="ticket-fine" class="form-input" type="number" min="0" placeholder="500"></div>
+              <div id="ticket-error" class="form-error hidden"></div>
+              <div class="leo-action-btns">
+                <button class="btn btn-secondary btn-sm" onclick="cancelTicketSearch()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitIssueLeoTicket()">Issue Ticket</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Nav -->
+  <nav id="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bnav-item active" data-tab="overview">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="bnav-label">Home</span>
+      </button>
+      <!-- Civilian tabs -->
+      <button class="bnav-item bnav-civ" data-tab="cad">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span class="bnav-label">CAD</span>
+      </button>
+      <button class="bnav-item bnav-dispatch bnav-civ" data-tab="dispatch">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg></span>
+        <span class="bnav-label">911</span>
+      </button>
+      <button class="bnav-item bnav-civ" data-tab="economy">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+        <span class="bnav-label">Economy</span>
+      </button>
+      <!-- LEO tab (shown only in LEO mode) -->
+      <button class="bnav-item bnav-leo hidden" data-tab="leo">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="bnav-label">LEO</span>
+      </button>
+      <button class="bnav-item" id="bnav-more" onclick="toggleMoreDrawer()">
+        <span class="bnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+        <span class="bnav-label">More</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- More Drawer -->
+  <div id="more-overlay" class="more-overlay hidden" onclick="closeMoreDrawer()"></div>
+  <div id="more-drawer" class="more-drawer hidden">
+    <div class="more-drawer-handle"></div>
+    <div class="more-drawer-title">More</div>
+    <div class="more-drawer-grid">
+      <button class="more-item" data-tab="fines" onclick="moreNav('fines')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>
+        <span class="more-item-label">Traffic Fines</span>
+      </button>
+      <button class="more-item" data-tab="tickets" onclick="moreNav('tickets')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg></span>
+        <span class="more-item-label">Tickets</span>
+      </button>
+      <button class="more-item" data-tab="calendar" onclick="moreNav('calendar')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+        <span class="more-item-label">Calendar</span>
+      </button>
+      <button class="more-item" data-tab="rolerequest" onclick="moreNav('rolerequest')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="more-item-label">Role Requests</span>
+      </button>
+      <button class="more-item" data-tab="priority" onclick="moreNav('priority')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        <span class="more-item-label">Priority</span>
+      </button>
+      <button class="more-item hidden" data-tab="leo" id="more-leo" onclick="moreNav('leo')">
+        <span class="more-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="more-item-label">LEO</span>
+      </button>
+    </div>
+    <a href="/auth/logout" class="more-logout">Sign Out</a>
+  </div>
+
+</div>
+
+<!-- ══════════ MODAL: 911 Call ══════════ -->
+<div id="modal-911" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Submit 911 Call</h3>
+      <button class="modal-close" onclick="closeModal('modal-911')">&times;</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">This call will be dispatched to on-duty officers immediately. Only submit genuine emergencies.</p>
+    <form id="form-911" onsubmit="submit911(event)">
+      <div class="form-group"><label class="form-label">What is the emergency? *</label><input class="form-input" name="issue" type="text" required placeholder="e.g. Armed robbery in progress, injury accident..."></div>
+      <div class="form-group"><label class="form-label">Location *</label><input class="form-input" name="location" type="text" required placeholder="e.g. Maze Bank Arena parking lot, Route 68..."></div>
+      <div class="form-group"><label class="form-label">Suspect Description</label><input class="form-input" name="suspectsDescription" type="text" placeholder="e.g. White male, red hoodie, armed..."></div>
+      <div class="form-group"><label class="form-label">Last Seen / Direction of Travel</label><input class="form-input" name="lastSeen" type="text" placeholder="e.g. Fleeing northbound on Olympic Fwy..."></div>
+      <div class="form-group"><label class="form-label">Callback / Contact</label><input class="form-input" name="contact" type="text" placeholder="Your name or number"></div>
+      <div id="form-911-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-911')">Cancel</button>
+        <button type="submit" class="btn btn-danger" id="btn-submit-911">Dispatch Now</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Create Character ══════════ -->
+<div id="modal-create-char" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>New Character</h3>
+      <button class="modal-close" onclick="closeModal('modal-create-char')">&times;</button>
+    </div>
+    <form id="form-create-char" onsubmit="submitCreateChar(event)">
+      <div class="form-group"><label class="form-label">Character Name *</label><input class="form-input" name="characterName" type="text" required placeholder="First Last"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Age</label><input class="form-input" name="age" type="number" min="1" max="120" placeholder="25"></div>
+        <div class="form-group"><label class="form-label">Gender</label><input class="form-input" name="gender" type="text" placeholder="Male / Female"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Hair Color</label><input class="form-input" name="hairColor" type="text" placeholder="Black"></div>
+        <div class="form-group"><label class="form-label">Eye Color</label><input class="form-input" name="eyeColor" type="text" placeholder="Brown"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Height</label><input class="form-input" name="height" type="text" placeholder="5'11&quot;"></div>
+        <div class="form-group"><label class="form-label">Occupation</label><input class="form-input" name="occupation" type="text" placeholder="Mechanic"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Address</label><input class="form-input" name="address" type="text" placeholder="123 Grove St, Los Santos"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" name="phoneNumber" type="text" placeholder="555-0100"></div>
+        <div class="form-group"><label class="form-label">Emergency Contact</label><input class="form-input" name="emergencyContact" type="text" placeholder="Name – Number"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Social Security Number</label><input class="form-input" name="socialSecurityNumber" type="text" placeholder="XXX-XX-XXXX"></div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Driver's License #</label><input class="form-input" name="driversLicense" type="text" placeholder="DL-0000000"></div>
+        <div class="form-group"><label class="form-label">License Status</label>
+          <select class="form-input" name="driverLicenseStatus">
+            <option value="valid">Valid</option>
+            <option value="invalid">Revoked / Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div id="form-char-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-char')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Character</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Add Vehicle ══════════ -->
+<div id="modal-add-vehicle" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Add Vehicle</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-vehicle')">&times;</button>
+    </div>
+    <form id="form-add-vehicle" onsubmit="submitAddVehicle(event)">
+      <input type="hidden" id="vehicle-char-id" name="charId">
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Make *</label><input class="form-input" name="make" type="text" required placeholder="Vapid"></div>
+        <div class="form-group"><label class="form-label">Model *</label><input class="form-input" name="model" type="text" required placeholder="Dominator"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group"><label class="form-label">Color</label><input class="form-input" name="color" type="text" placeholder="Black"></div>
+        <div class="form-group"><label class="form-label">Year</label><input class="form-input" name="year" type="text" placeholder="2021"></div>
+      </div>
+      <div class="form-group"><label class="form-label">License Plate</label><input class="form-input" name="licensePlate" type="text" placeholder="ABC123" style="text-transform:uppercase"></div>
+      <div id="form-vehicle-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-vehicle')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Vehicle</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Add Firearm ══════════ -->
+<div id="modal-add-firearm" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Register Firearm</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-firearm')">&times;</button>
+    </div>
+    <form id="form-add-firearm" onsubmit="submitAddFirearm(event)">
+      <input type="hidden" id="firearm-char-id">
+      <div class="form-group"><label class="form-label">Firearm Name / Model *</label><input class="form-input" name="name" type="text" required placeholder="Glock 19, AR-15, Mossberg 500..."></div>
+      <div class="form-group"><label class="form-label">Serial Number</label><input class="form-input" name="serialNumber" type="text" placeholder="SN-XXXXXXXX"></div>
+      <div id="form-firearm-error" class="form-error hidden"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-firearm')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Register</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: Deposit / Withdraw ══════════ -->
+<div id="modal-bank" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="bank-modal-title">Deposit</h3>
+      <button class="modal-close" onclick="closeModal('modal-bank')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <div class="bank-amount-row">
+        <input id="bank-amount-input" class="form-input" type="text" inputmode="numeric" placeholder="Enter amount...">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBankAmountAll()">All</button>
+      </div>
+    </div>
+    <div id="form-bank-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bank')">Cancel</button>
+      <button id="bank-modal-confirm" class="btn btn-primary" onclick="confirmBankAction()">Deposit</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-pay" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Pay Player</h3>
+      <button class="modal-close" onclick="closeModal('modal-pay')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Player</label>
+      <div class="eco-pay-search-wrap">
+        <input id="pay-player-input" class="form-input" type="text" placeholder="Search player name..." autocomplete="off" oninput="searchPayPlayer(this.value)">
+        <div id="pay-player-results" class="pay-player-results hidden"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input id="pay-amount-input" class="form-input" type="number" inputmode="numeric" placeholder="Amount...">
+    </div>
+    <div id="form-pay-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-pay')">Cancel</button>
+      <button class="btn btn-primary" onclick="payPlayer()">Pay</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-buy" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Purchase Item</h3>
+      <button class="modal-close" onclick="closeModal('modal-buy')">&times;</button>
+    </div>
+    <div id="buy-item-name" class="buy-item-name"></div>
+    <div id="buy-item-desc" class="buy-item-desc"></div>
+    <div class="form-group"><label class="form-label">Quantity</label><input id="buy-qty" class="form-input" type="number" value="1" min="1" max="99"></div>
+    <div id="buy-total" class="buy-total"></div>
+    <div id="form-buy-error" class="form-error hidden"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-buy')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmBuy()">Buy</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/portal-app.js"></script>
+</body>
+</html>

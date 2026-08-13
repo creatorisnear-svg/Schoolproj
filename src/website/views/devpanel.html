@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPM Developer Panel</title>
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
+
+    header {
+      background: #111;
+      border-bottom: 1px solid #1e1e1e;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header img { height: 28px; }
+    header .brand { font-size: 15px; font-weight: 700; color: #fff; }
+    header .brand span { color: #5865f2; }
+    header .user-info { margin-left: auto; font-size: 12px; color: #555; }
+    .sign-out-btn {
+      margin-left: 12px;
+      font-size: 12px;
+      color: #666;
+      text-decoration: none;
+      padding: 5px 12px;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      transition: color .15s, border-color .15s;
+    }
+    .sign-out-btn:hover { color: #ccc; border-color: #444; }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+    .tabs-wrapper {
+      position: relative;
+      margin-bottom: 28px;
+    }
+    .tabs-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 1px;
+      width: 48px;
+      background: linear-gradient(to right, transparent, #0a0a0a);
+      pointer-events: none;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid #1e1e1e;
+      padding-bottom: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 9px 18px;
+      border: none;
+      background: none;
+      color: #666;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all .15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .tab.active { color: #fff; border-bottom-color: #5865f2; }
+    .tab:hover:not(.active) { color: #aaa; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+      transition: border-color .15s;
+    }
+    .card:hover { border-color: #2a2a2a; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .card-title { font-size: 14px; font-weight: 700; color: #fff; }
+    .card-meta { font-size: 12px; color: #555; margin-top: 3px; }
+    .card-content { font-size: 13px; color: #999; line-height: 1.6; margin-top: 10px; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-info { background: #1a2a4a; color: #5b9cf6; }
+    .badge-update { background: #1a3a2a; color: #4ade80; }
+    .badge-warning { background: #3a2a1a; color: #f59e0b; }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s, transform .08s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #5865f2; color: #fff; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-ghost { background: #1e1e1e; color: #ccc; border: 1px solid #2a2a2a; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #999; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+    input, textarea, select {
+      width: 100%;
+      background: #0d0d0d;
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 13px;
+      padding: 9px 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #5865f2; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .add-form {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 24px;
+    }
+    .add-form h3 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 12px;
+    }
+
+    .empty { text-align: center; color: #444; padding: 40px 0; font-size: 13px; }
+
+    .changes-list { list-style: none; margin-top: 8px; }
+    .changes-list li { font-size: 12px; color: #999; padding: 3px 0 3px 14px; position: relative; }
+    .changes-list li::before { content: '•'; position: absolute; left: 0; color: #5865f2; }
+
+    .tag-inactive { opacity: 0.4; }
+    .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .feature-card {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color .15s;
+    }
+    .feature-card:hover { border-color: #2a2a2a; }
+    .feature-card-info { flex: 1; min-width: 0; }
+    .feature-card-name { font-size: 14px; font-weight: 700; color: #fff; }
+    .feature-card-impact { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.5; }
+    .feature-badge-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(88,101,242,0.15);
+      color: #7b8cec;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .feature-badge-free {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #1a1a1a;
+      color: #555;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toggle-track {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .toggle-track.on { background: #5865f2; border-color: #5865f2; }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+    .toggle-track.on .toggle-thumb { left: 23px; }
+
+    .impact-notice {
+      background: rgba(88,101,242,0.08);
+      border: 1px solid rgba(88,101,242,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #aaa;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .impact-notice svg { flex-shrink: 0; color: #5865f2; margin-top: 1px; }
+
+    .alert { padding: 11px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+    .alert-success { background: #0d2a1a; color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+    .alert-error { background: #2a0d0d; color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+
+    .video-thumb { width: 100%; border-radius: 8px; margin-top: 10px; background: #0d0d0d; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: #444; font-size: 13px; overflow: hidden; }
+    .video-thumb iframe, .video-thumb video { width: 100%; height: 100%; border: none; border-radius: 8px; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      header { padding: 12px 16px; gap: 8px; }
+      header .user-info { display: none; }
+      .container { padding: 16px 12px; }
+      .feature-card { flex-wrap: wrap; gap: 12px; }
+      .feature-card-info { min-width: 0; width: 100%; }
+      .card-header { flex-wrap: wrap; gap: 8px; }
+      .actions { flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+      .add-form { padding: 16px; }
+      .btn { font-size: 12px; }
+      .video-thumb { aspect-ratio: 16/9; }
+      .card { padding: 14px; }
+      .maintenance-card { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+      .maintenance-card-actions { flex-direction: row; align-items: center; gap: 10px; width: 100%; }
+      #maintenance-toggle-btn { flex: 1; min-width: 0 !important; }
+
+      /* Wrap tabs into a visible grid - no hidden overflow on mobile */
+      .tabs-wrapper::after { display: none; }
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        overflow: visible;
+        border-bottom: none;
+        gap: 0;
+        border: 1px solid #1e1e1e;
+        border-radius: 10px;
+      }
+      .tab {
+        padding: 9px 4px;
+        font-size: 11px;
+        text-align: center;
+        border-bottom: none;
+        border-right: 1px solid #1e1e1e;
+        border-bottom: 1px solid #1e1e1e;
+        margin-bottom: 0;
+        white-space: normal;
+        line-height: 1.3;
+        border-radius: 0;
+      }
+      .tab:nth-child(3n) { border-right: none; }
+      .tab:nth-last-child(-n+3):nth-child(3n+1),
+      .tab:nth-last-child(-n+3):nth-child(3n+1) ~ .tab { border-bottom: none; }
+      .tab:first-child { border-top-left-radius: 10px; }
+      .tab:nth-child(3) { border-top-right-radius: 10px; }
+      .tab:nth-last-child(3):nth-child(3n+1) { border-bottom-left-radius: 10px; }
+      .tab:last-child { border-bottom-right-radius: 10px; }
+      .tab.active {
+        background: rgba(88,101,242,0.15);
+        color: #7b8cec;
+        border-bottom-color: #1e1e1e;
+      }
+    }
+    @media (max-width: 400px) {
+      header .brand { font-size: 13px; }
+      .sign-out-btn { padding: 4px 8px; font-size: 11px; }
+      .container { padding: 12px 10px; }
+      .tabs { grid-template-columns: repeat(3, 1fr); }
+      .tab { font-size: 10px; padding: 8px 2px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="/img/logo.png" alt="RPM">
+  <span class="brand">RPM <span>Dev</span></span>
+  <div class="user-info" id="user-info"></div>
+  <a href="/dev/logout" class="sign-out-btn">Sign Out</a>
+</header>
+
+<div class="container">
+
+  <div id="alert-box" style="display:none;"></div>
+
+  <div class="tabs-wrapper">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('features')">Premium Features</button>
+      <button class="tab" onclick="switchTab('keys')">Premium Keys</button>
+      <button class="tab" onclick="switchTab('announcements')">Announcements</button>
+      <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
+      <button class="tab" onclick="switchTab('videos')">Preview Videos</button>
+      <button class="tab" onclick="switchTab('broadcast')">Broadcast</button>
+      <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
+      <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
+      <button class="tab" onclick="switchTab('verified')">Verified Members</button>
+    </div>
+  </div>
+
+  <div id="panel-keys" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:14px;">Generate New Key</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:140px;">
+          <label class="form-label">Plan</label>
+          <select id="gen-plan" class="form-input">
+            <option value="manual">Manual (gift)</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="lifetime">Lifetime</option>
+          </select>
+        </div>
+        <div style="width:80px;">
+          <label class="form-label">Quantity</label>
+          <input id="gen-count" type="number" class="form-input" value="1" min="1" max="25" style="width:100%;">
+        </div>
+        <button id="gen-key-btn" class="btn btn-primary btn-sm" onclick="generateKeys()" style="height:38px;white-space:nowrap;">Generate</button>
+      </div>
+      <div id="gen-result" style="margin-top:12px;display:none;">
+        <label class="form-label" style="margin-bottom:6px;">Generated Keys (copy before closing)</label>
+        <textarea id="gen-keys-output" class="form-input" rows="4" readonly style="font-family:monospace;font-size:12px;resize:vertical;background:#0d0d0d;color:#7b8cec;"></textarea>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="copyGenKeys()">Copy All</button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div class="section-label" style="margin-bottom:0;">All Premium Keys</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span id="keys-count" style="font-size:12px;color:#555;"></span>
+        <button class="btn btn-ghost btn-sm" onclick="loadKeys()">Refresh</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" id="keys-filter-all" onclick="filterKeys('all')" style="border-color:#5865f2;color:#7b8cec;">All</button>
+      <button class="btn btn-ghost btn-sm" id="keys-filter-active" onclick="filterKeys('active')">Active</button>
+      <button class="btn btn-ghost btn-sm" id="keys-filter-unused" onclick="filterKeys('unused')">Unused</button>
+    </div>
+    <div id="keys-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div id="panel-features" class="panel active">
+    <div class="impact-notice">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong style="color:#7b8cec;">Changes take effect immediately.</strong>
+        Toggling a feature here updates the website, dashboard, and bot in real time - "Premium" badges appear or disappear for visitors automatically.
+      </div>
+    </div>
+    <div class="section-label">Feature Premium Status</div>
+    <div id="features-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div id="panel-announcements" class="panel">
+    <div class="add-form">
+      <h3>New Announcement</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="ann-title" placeholder="e.g. Scheduled Maintenance">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="ann-type">
+            <option value="info">Info</option>
+            <option value="update">Update</option>
+            <option value="warning">Warning</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="ann-content" placeholder="Announcement message..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="createAnnouncement()">Post Announcement</button>
+    </div>
+    <div class="section-label">Live Announcements</div>
+    <div id="announcements-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div id="panel-changelogs" class="panel">
+    <div class="add-form">
+      <h3>New Changelog</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Version</label>
+          <input type="text" id="cl-version" placeholder="e.g. v2.4.1">
+        </div>
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="cl-title" placeholder="e.g. AI Dispatch Update">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Changes (one per line)</label>
+        <textarea id="cl-changes" placeholder="Added hourly status reset&#10;Fixed traffic stop auto-channel&#10;Improved 10-code recognition"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="createChangelog()">Post Changelog</button>
+    </div>
+    <div class="section-label">Changelog History</div>
+    <div id="changelogs-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div id="panel-videos" class="panel">
+    <div class="add-form">
+      <h3>Add Preview Video</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="vid-title" placeholder="e.g. AI Dispatch Demo">
+        </div>
+        <div class="form-group">
+          <label>Display Order</label>
+          <input type="number" id="vid-order" placeholder="0" value="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>YouTube URL</label>
+        <input type="text" id="vid-url" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <input type="text" id="vid-desc" placeholder="Short description of this video">
+      </div>
+      <div class="form-group">
+        <label>Or upload a video file</label>
+        <input type="file" id="vid-file" accept="video/*">
+      </div>
+      <button class="btn btn-primary" onclick="createVideo()">Add Video</button>
+    </div>
+    <div class="section-label">Preview Videos</div>
+    <div id="videos-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <div id="panel-maintenance" class="panel">
+    <div class="impact-notice" style="border-color:#f04747;background:#2a1a1a;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f04747" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong style="color:#f04747;">Bot-wide setting.</strong>
+        When enabled, all Discord commands return a maintenance message to non-admin members immediately. Admins bypass maintenance and can still use all commands.
+      </div>
+    </div>
+    <div class="section-label">Bot Maintenance Mode</div>
+    <div class="card maintenance-card" style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Maintenance Mode</div>
+        <div id="maintenance-status-text" style="font-size:13px;color:#888;">Loading...</div>
+      </div>
+      <div class="maintenance-card-actions" style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+        <span id="maintenance-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;"></span>
+        <button id="maintenance-toggle-btn" class="btn btn-primary" onclick="toggleMaintenance()" style="min-width:110px;">Loading...</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-stripe" class="panel">
+    <div class="section-label">Stripe Configuration</div>
+    <div id="stripe-status-card" class="card" style="margin-bottom:20px;padding:20px;">
+      <div style="font-size:13px;color:#888;">Loading...</div>
+    </div>
+
+    <div class="section-label">Generate Test Key</div>
+    <div class="add-form" style="margin-bottom:20px;">
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Creates a real premium key in the database with no Stripe payment required. Use this to test the <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">/activatepremium</code> Discord command and all premium features end-to-end.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Plan</label>
+          <select id="testkey-plan">
+            <option value="lifetime">Lifetime</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" onclick="generateTestKey()" id="testkey-btn">Generate Key</button>
+        </div>
+      </div>
+      <div id="testkey-result" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <div class="section-label">Test Checkout Flow</div>
+    <div class="add-form" style="margin-bottom:20px;">
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Launches a real Stripe checkout session using throwaway test prices. Only works when <code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">STRIPE_SECRET_KEY</code> is a test key (<code style="background:#1a1a1a;padding:2px 6px;border-radius:4px;font-size:12px;">sk_test_...</code>). The session opens in a new tab - use the test card below to complete it.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Plan</label>
+          <select id="testcheckout-plan">
+            <option value="monthly">Monthly ($5.00/mo)</option>
+            <option value="lifetime">Lifetime ($48.99)</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" onclick="launchTestCheckout()" id="testcheckout-btn">Open Test Checkout</button>
+        </div>
+      </div>
+      <div id="testcheckout-result" style="display:none;margin-top:12px;"></div>
+    </div>
+
+    <div class="section-label">Test Card Reference</div>
+    <div class="card" style="padding:20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Always succeeds</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#7b8cec;letter-spacing:.1em;">4242 4242 4242 4242</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Any future date - any 3-digit CVC</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Requires 3D Secure auth</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#7b8cec;letter-spacing:.1em;">4000 0025 0000 3155</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Authenticate in the popup that appears</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Payment declined</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#f04747;letter-spacing:.1em;">4000 0000 0000 0002</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Tests the failed payment webhook path</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Insufficient funds</div>
+          <code style="display:block;background:#111;border:1px solid #222;border-radius:6px;padding:8px 12px;font-size:13px;color:#f04747;letter-spacing:.1em;">4000 0000 0000 9995</code>
+          <div style="font-size:12px;color:#555;margin-top:4px;">Tests invoice.payment_failed handler</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-verified" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:14px;">Select Server</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;">
+          <select id="verified-guild-select" class="form-input" onchange="loadVerifiedMembers()">
+            <option value="">Loading servers...</option>
+          </select>
+        </div>
+        <div style="width:auto;">
+          <input id="verified-search" type="text" class="form-input" placeholder="Search name / PSN / IP..." oninput="filterVerified()" style="min-width:200px;">
+        </div>
+        <div style="width:auto;">
+          <button class="btn" onclick="initVerifiedTab(true)" style="white-space:nowrap;">Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-bottom:10px;">
+      Verified Members
+      <span id="verified-count" style="font-weight:400;color:#555;font-size:12px;margin-left:8px;"></span>
+    </div>
+    <div id="verified-table-wrap">
+      <div class="empty" style="padding:24px 0;color:#444;">Select a server above to view verified members.</div>
+    </div>
+  </div>
+
+  <div id="panel-broadcast" class="panel">
+    <div class="add-form">
+      <h3>Broadcast to Server Owners</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:16px;">Sends a plain DM to selected server owners. One message per second to avoid Discord rate limits.</p>
+
+      <div class="section-label" style="margin-bottom:10px;">Select Servers</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="bcSelectAll(true)">Select All</button>
+        <button class="btn btn-ghost btn-sm" onclick="bcSelectAll(false)">Deselect All</button>
+        <span id="bc-selected-count" style="font-size:12px;color:#666;align-self:center;"></span>
+      </div>
+      <div id="bc-server-list" style="max-height:260px;overflow-y:auto;border:1px solid #1e1e1e;border-radius:8px;margin-bottom:16px;background:#0d0d0d;">
+        <div style="padding:16px;font-size:13px;color:#555;">Loading servers...</div>
+      </div>
+
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="bc-message" rows="5" placeholder="Hey, just wanted to give you a heads up..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="sendBroadcast()" id="bc-btn">Send to Selected</button>
+        <span id="bc-status" style="font-size:13px;color:#888;"></span>
+      </div>
+    </div>
+    <div id="bc-result" style="display:none;margin-top:20px;"></div>
+  </div>
+
+</div>
+
+<script>
+  var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified'];
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(function(t, i) {
+      t.classList.toggle('active', TABS[i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'broadcast' && !_bcGuilds.length) loadBcGuilds();
+    if (name === 'keys') loadKeys();
+    if (name === 'verified') initVerifiedTab();
+  }
+
+  function showAlert(msg, type) {
+    var box = document.getElementById('alert-box');
+    box.className = 'alert alert-' + type;
+    box.textContent = msg;
+    box.style.display = 'block';
+    setTimeout(function() { box.style.display = 'none'; }, 4000);
+  }
+
+  function toEmbedUrl(url) {
+    if (!url) return '';
+    var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?\s]+)/);
+    if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0';
+    return url;
+  }
+
+  async function api(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    var res = await fetch('/dev' + path, opts);
+    return res.json();
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function loadAnnouncements() {
+    var items = await api('GET', '/announcements');
+    var el = document.getElementById('announcements-list');
+    if (!items.length) { el.innerHTML = '<div class="empty">No announcements yet.</div>'; return; }
+    el.innerHTML = items.map(function(a) {
+      return '<div class="card ' + (a.active ? '' : 'tag-inactive') + '">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(a.title) + ' <span class="badge badge-' + a.type + '">' + a.type + '</span></div>' +
+        '<div class="card-meta">' + new Date(a.createdAt).toLocaleDateString() + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-ghost btn-sm" onclick="toggleAnnouncement(\'' + a._id + '\',' + !a.active + ')">' + (a.active ? 'Hide' : 'Show') + '</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'announcements\',\'' + a._id + '\',loadAnnouncements)">Delete</button>' +
+        '</div></div>' +
+        '<div class="card-content">' + esc(a.content) + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function createAnnouncement() {
+    var title = document.getElementById('ann-title').value.trim();
+    var content = document.getElementById('ann-content').value.trim();
+    var type = document.getElementById('ann-type').value;
+    if (!title || !content) { showAlert('Title and content are required.', 'error'); return; }
+    await api('POST', '/announcements', { title: title, content: content, type: type });
+    document.getElementById('ann-title').value = '';
+    document.getElementById('ann-content').value = '';
+    showAlert('Announcement posted!', 'success');
+    loadAnnouncements();
+  }
+
+  async function toggleAnnouncement(id, active) {
+    await api('PATCH', '/announcements/' + id, { active: active });
+    loadAnnouncements();
+  }
+
+  async function loadChangelogs() {
+    var items = await api('GET', '/changelogs');
+    var el = document.getElementById('changelogs-list');
+    if (!items.length) { el.innerHTML = '<div class="empty">No changelogs yet.</div>'; return; }
+    el.innerHTML = items.map(function(c) {
+      var changes = (c.changes || []).map(function(ch) { return '<li>' + esc(ch) + '</li>'; }).join('');
+      return '<div class="card">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(c.version) + ' &mdash; ' + esc(c.title) + '</div>' +
+        '<div class="card-meta">' + new Date(c.date).toLocaleDateString() + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'changelogs\',\'' + c._id + '\',loadChangelogs)">Delete</button>' +
+        '</div></div>' +
+        '<ul class="changes-list">' + changes + '</ul>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function createChangelog() {
+    var version = document.getElementById('cl-version').value.trim();
+    var title = document.getElementById('cl-title').value.trim();
+    var changesRaw = document.getElementById('cl-changes').value.trim();
+    if (!version || !title) { showAlert('Version and title are required.', 'error'); return; }
+    var changes = changesRaw.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+    await api('POST', '/changelogs', { version: version, title: title, changes: changes });
+    document.getElementById('cl-version').value = '';
+    document.getElementById('cl-title').value = '';
+    document.getElementById('cl-changes').value = '';
+    showAlert('Changelog posted!', 'success');
+    loadChangelogs();
+  }
+
+  async function loadVideos() {
+    var items = await api('GET', '/videos');
+    var el = document.getElementById('videos-list');
+    if (!items.length) { el.innerHTML = '<div class="empty">No preview videos yet.</div>'; return; }
+    el.innerHTML = items.map(function(v) {
+      var embedSrc = v.videoUrl ? toEmbedUrl(v.videoUrl) : null;
+      var fileSrc = !v.videoUrl ? ('/dev/videos/' + v._id + '/file') : null;
+      var mediaHtml = embedSrc
+        ? '<iframe src="' + esc(embedSrc) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+        : (fileSrc ? '<video src="' + esc(fileSrc) + '" controls preload="metadata"></video>' : '<div style="color:#444;font-size:12px;">No preview</div>');
+      return '<div class="card">' +
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">' + esc(v.title) + '</div>' +
+        '<div class="card-meta">Order: ' + v.order + (v.description ? ' &middot; ' + esc(v.description) : '') + '</div>' +
+        '</div>' +
+        '<div class="actions">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'videos\',\'' + v._id + '\',loadVideos)">Delete</button>' +
+        '</div></div>' +
+        '<div class="video-thumb">' + mediaHtml + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function createVideo() {
+    var title = document.getElementById('vid-title').value.trim();
+    var videoUrl = document.getElementById('vid-url').value.trim();
+    var description = document.getElementById('vid-desc').value.trim();
+    var order = parseInt(document.getElementById('vid-order').value) || 0;
+    var fileInput = document.getElementById('vid-file');
+    var file = fileInput && fileInput.files && fileInput.files[0];
+
+    if (!title) { showAlert('Title is required.', 'error'); return; }
+
+    if (file) {
+      var formData = new FormData();
+      formData.append('video', file);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('order', order);
+      var res = await fetch('/dev/videos', { method: 'POST', body: formData });
+      var result = await res.json();
+      if (result._id) {
+        showAlert('Video uploaded!', 'success');
+      } else {
+        showAlert(result.error || 'Upload failed.', 'error'); return;
+      }
+    } else if (videoUrl) {
+      var result2 = await api('POST', '/videos', { title: title, videoUrl: videoUrl, description: description, order: order });
+      if (result2._id || result2.ok) {
+        showAlert('Video added!', 'success');
+      } else {
+        showAlert(result2.error || 'Failed to add video.', 'error'); return;
+      }
+    } else {
+      showAlert('Provide a YouTube URL or upload a video file.', 'error'); return;
+    }
+
+    document.getElementById('vid-title').value = '';
+    document.getElementById('vid-url').value = '';
+    document.getElementById('vid-desc').value = '';
+    document.getElementById('vid-order').value = '0';
+    if (fileInput) fileInput.value = '';
+    loadVideos();
+  }
+
+  async function deleteItem(type, id, reload) {
+    if (!confirm('Delete this item?')) return;
+    await api('DELETE', '/' + type + '/' + id);
+    showAlert('Deleted.', 'success');
+    reload();
+  }
+
+  var FEATURE_IMPACTS = {
+    dispatch: 'Controls "Premium" badge on AI Voice Dispatch module card, dashboard upsell, and commands page. Bot will also require premium to enable dispatch.',
+    roleplay: 'Controls "Premium" badge on Roleplay Commands module card and dashboard upsell.',
+    priority: 'Controls "Premium" badge on Priority Tracker module card and dashboard upsell.',
+    strike: 'Controls "Premium" badge on Strike System module card and dashboard upsell.',
+    calendar: 'Controls "Premium" badge on RP Calendar module card and dashboard upsell.',
+    ticket: 'Controls "Premium" badge on Ticket Support module card and dashboard upsell.',
+    antipromote: 'Controls "Premium" badge on Anti-Promoting module card and dashboard upsell.',
+    rolerequest: 'Controls "Premium" badge on Role Request module card and dashboard upsell.',
+    verification: 'Controls "Premium" badge on Verification module card and dashboard upsell.',
+    welcome: 'Controls "Premium" badge on Welcome System module card and dashboard upsell.',
+  };
+
+  async function loadFeatures() {
+    var el = document.getElementById('features-list');
+    var items = await api('GET', '/features');
+    if (!Array.isArray(items) || !items.length) {
+      el.innerHTML = '<div class="empty">No features found.</div>';
+      return;
+    }
+    el.innerHTML = items.map(function(f) {
+      var impact = FEATURE_IMPACTS[f.feature] || 'Controls premium gating for this feature across the website and bot.';
+      return '<div class="feature-card" id="feature-card-' + f.feature + '">' +
+        '<div class="feature-card-info">' +
+        '<div class="feature-card-name">' + esc(f.label) + '</div>' +
+        '<div class="feature-card-impact">' + esc(impact) + '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">' +
+        '<div id="feature-badge-' + f.feature + '" class="' + (f.premium ? 'feature-badge-premium' : 'feature-badge-free') + '">' +
+        (f.premium ? 'Premium' : 'Free') +
+        '</div>' +
+        '<div class="toggle-switch">' +
+        '<div class="toggle-track ' + (f.premium ? 'on' : '') + '" id="feature-toggle-' + f.feature + '" onclick="toggleFeaturePremium(\'' + f.feature + '\',' + !f.premium + ')">' +
+        '<div class="toggle-thumb"></div>' +
+        '</div>' +
+        '<span style="font-size:11px;color:#555;" id="feature-label-' + f.feature + '">' + (f.premium ? 'Mark Free' : 'Mark Premium') + '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function toggleFeaturePremium(feature, premium) {
+    var track = document.getElementById('feature-toggle-' + feature);
+    var badge = document.getElementById('feature-badge-' + feature);
+    var label = document.getElementById('feature-label-' + feature);
+    if (track) { track.style.opacity = '0.5'; track.style.pointerEvents = 'none'; }
+    var result = await api('PATCH', '/features/' + feature, { premium: premium });
+    if (track) { track.style.opacity = ''; track.style.pointerEvents = ''; }
+    if (result && result.ok !== undefined) {
+      showAlert((premium ? 'Marked as Premium' : 'Marked as Free') + ': ' + feature + '. Website updated instantly.', 'success');
+      if (track) track.classList.toggle('on', premium);
+      if (badge) {
+        badge.className = premium ? 'feature-badge-premium' : 'feature-badge-free';
+        badge.textContent = premium ? 'Premium' : 'Free';
+      }
+      if (label) label.textContent = premium ? 'Mark Free' : 'Mark Premium';
+      var card = document.getElementById('feature-card-' + feature);
+      if (card) {
+        card.style.transition = 'border-color .3s';
+        card.style.borderColor = premium ? 'rgba(88,101,242,0.5)' : 'rgba(74,222,128,0.3)';
+        setTimeout(function() { card.style.borderColor = ''; }, 1500);
+      }
+      var onclick = 'toggleFeaturePremium(\'' + feature + '\',' + !premium + ')';
+      if (track) track.setAttribute('onclick', onclick);
+    } else {
+      showAlert('Failed to update feature.', 'error');
+    }
+  }
+
+  var _bcGuilds = [];
+
+  async function loadBcGuilds() {
+    var listEl = document.getElementById('bc-server-list');
+    listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#555;">Loading servers...</div>';
+    try {
+      var guilds = await api('GET', '/guilds');
+      _bcGuilds = guilds;
+      renderBcGuilds();
+    } catch (e) {
+      listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#f04747;">Failed to load servers.</div>';
+    }
+  }
+
+  function renderBcGuilds() {
+    var listEl = document.getElementById('bc-server-list');
+    if (!_bcGuilds.length) {
+      listEl.innerHTML = '<div style="padding:16px;font-size:13px;color:#555;">No servers found.</div>';
+      updateBcCount();
+      return;
+    }
+    listEl.innerHTML = _bcGuilds.map(function(g) {
+      var iconHtml = g.icon
+        ? '<img src="' + esc(g.icon) + '" style="width:24px;height:24px;border-radius:50%;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+        : '<div style="width:24px;height:24px;border-radius:50%;background:#1e1e1e;flex-shrink:0;"></div>';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;transition:background .1s;" onmouseover="this.style.background=\'#111\'" onmouseout="this.style.background=\'\'">' +
+        '<input type="checkbox" data-guild-id="' + esc(g.id) + '" checked onchange="updateBcCount()" style="width:15px;height:15px;accent-color:#5865f2;flex-shrink:0;">' +
+        iconHtml +
+        '<span style="flex:1;min-width:0;font-size:13px;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(g.name) + '</span>' +
+        '<span style="font-size:11px;color:#555;flex-shrink:0;">' + g.memberCount.toLocaleString() + ' members</span>' +
+        '</label>';
+    }).join('');
+    updateBcCount();
+  }
+
+  function updateBcCount() {
+    var checked = document.querySelectorAll('#bc-server-list input[type=checkbox]:checked').length;
+    var total = _bcGuilds.length;
+    document.getElementById('bc-selected-count').textContent = checked + ' of ' + total + ' selected';
+  }
+
+  function bcSelectAll(val) {
+    document.querySelectorAll('#bc-server-list input[type=checkbox]').forEach(function(cb) { cb.checked = val; });
+    updateBcCount();
+  }
+
+  async function sendBroadcast() {
+    var msg = document.getElementById('bc-message').value.trim();
+    if (!msg) { showAlert('Write a message first.', 'error'); return; }
+    var selectedIds = Array.from(document.querySelectorAll('#bc-server-list input[type=checkbox]:checked')).map(function(cb) { return cb.dataset.guildId; });
+    if (!selectedIds.length) { showAlert('Select at least one server.', 'error'); return; }
+    var btn = document.getElementById('bc-btn');
+    var status = document.getElementById('bc-status');
+    var resultBox = document.getElementById('bc-result');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    status.textContent = 'This may take ~' + selectedIds.length + 's...';
+    resultBox.style.display = 'none';
+    try {
+      var res = await api('POST', '/broadcast', { message: msg, guildIds: selectedIds });
+      btn.disabled = false;
+      btn.textContent = 'Send to Selected';
+      if (res && res.total !== undefined) {
+        status.textContent = '';
+        var failHtml = '';
+        if (res.errors && res.errors.length) {
+          failHtml = '<div style="margin-top:10px;"><div class="section-label" style="margin-bottom:8px;">Failed (' + res.errors.length + ')</div>' +
+            res.errors.map(function(e) {
+              return '<div style="font-size:12px;color:#888;padding:4px 0;border-bottom:1px solid #1a1a1a;">' +
+                '<strong style="color:#ccc;">' + esc(e.guild) + '</strong> - ' + esc(e.reason) + '</div>';
+            }).join('') + '</div>';
+        }
+        resultBox.style.display = 'block';
+        resultBox.innerHTML =
+          '<div class="impact-notice" style="border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.05);">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' +
+          '<div><strong style="color:#4ade80;">Broadcast complete</strong> &mdash; ' +
+          res.sent + ' of ' + res.total + ' delivered' +
+          (res.failed ? ', ' + res.failed + ' failed (DMs closed)' : '') + '.</div></div>' + failHtml;
+        showAlert('Sent to ' + res.sent + ' owner' + (res.sent !== 1 ? 's' : '') + '.', 'success');
+      } else {
+        status.textContent = '';
+        showAlert(res && res.error ? res.error : 'Something went wrong.', 'error');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Send to Selected';
+      status.textContent = '';
+      showAlert('Request failed: ' + e.message, 'error');
+    }
+  }
+
+  async function loadMaintenance() {
+    try {
+      var status = await api('GET', '/maintenance');
+      renderMaintenanceStatus(status);
+    } catch (e) {
+      document.getElementById('maintenance-status-text').textContent = 'Failed to load status.';
+    }
+  }
+
+  function renderMaintenanceStatus(status) {
+    var btn = document.getElementById('maintenance-toggle-btn');
+    var badge = document.getElementById('maintenance-badge');
+    var text = document.getElementById('maintenance-status-text');
+    if (status.active) {
+      btn.textContent = 'Disable Maintenance';
+      btn.style.background = '#2a2a2a';
+      btn.style.borderColor = '#444';
+      btn.style.color = '#ccc';
+      badge.textContent = 'Active';
+      badge.style.background = 'rgba(240,71,71,0.15)';
+      badge.style.color = '#f04747';
+      badge.style.border = '1px solid rgba(240,71,71,0.3)';
+      badge.style.display = '';
+      text.textContent = status.since
+        ? 'Active since ' + new Date(status.since).toLocaleTimeString() + ' - all non-admin commands blocked.'
+        : 'Active - all non-admin commands are blocked.';
+      text.style.color = '#f04747';
+    } else {
+      btn.textContent = 'Enable Maintenance';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+      badge.style.display = 'none';
+      text.textContent = 'Inactive - all commands working normally.';
+      text.style.color = '#888';
+    }
+  }
+
+  async function toggleMaintenance() {
+    var btn = document.getElementById('maintenance-toggle-btn');
+    var currentText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    try {
+      var current = await api('GET', '/maintenance');
+      var result = await api('POST', '/maintenance', { active: !current.active });
+      renderMaintenanceStatus(result);
+      showAlert(result.active ? 'Maintenance mode enabled.' : 'Maintenance mode disabled.', result.active ? 'error' : 'success');
+    } catch (e) {
+      showAlert('Failed to toggle maintenance mode.', 'error');
+      btn.textContent = currentText;
+    }
+    btn.disabled = false;
+  }
+
+  // ── Stripe Testing ─────────────────────────────────────────────────────────
+  async function loadStripeStatus() {
+    var card = document.getElementById('stripe-status-card');
+    try {
+      var s = await api('GET', '/stripe/status');
+      if (!s.configured) {
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="width:10px;height:10px;border-radius:50%;background:#f04747;flex-shrink:0;"></span>' +
+          '<div><div style="font-size:14px;font-weight:600;color:#f04747;">Not Configured</div>' +
+          '<div style="font-size:12px;color:#666;margin-top:2px;">STRIPE_SECRET_KEY is not set on the server. Set it on Koyeb to enable payments.</div></div></div>';
+        return;
+      }
+      var modeColor = s.mode === 'live' ? '#faa61a' : '#43b581';
+      var modeLabel = s.mode === 'live' ? 'Live Mode' : s.mode === 'test' ? 'Test Mode' : 'Unknown Mode';
+      var connLabel = s.connected ? 'Connected' : 'Connection failed';
+      var connColor = s.connected ? '#43b581' : '#f04747';
+      card.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + modeColor + ';flex-shrink:0;"></span>' +
+        '<div><div style="font-size:14px;font-weight:600;color:' + modeColor + ';">' + modeLabel + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:2px;">STRIPE_SECRET_KEY prefix</div></div></div>' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + connColor + ';flex-shrink:0;"></span>' +
+        '<div><div style="font-size:14px;font-weight:600;color:' + connColor + ';">' + connLabel + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:2px;">' + (s.error ? s.error : 'Stripe API reachable') + '</div></div></div>' +
+        (s.mode === 'live' ? '<div style="background:#2a1f0a;border:1px solid #faa61a33;border-radius:8px;padding:10px 14px;font-size:12px;color:#faa61a;">Live key detected. Test Checkout is disabled in live mode. Use Generate Test Key to test without Stripe.</div>' : '') +
+        '</div>';
+    } catch (e) {
+      card.innerHTML = '<div style="font-size:13px;color:#f04747;">Failed to fetch Stripe status.</div>';
+    }
+  }
+
+  async function generateTestKey() {
+    var btn = document.getElementById('testkey-btn');
+    var result = document.getElementById('testkey-result');
+    var plan = document.getElementById('testkey-plan').value;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    result.style.display = 'none';
+    try {
+      var data = await api('POST', '/stripe/generate-key', { plan: plan });
+      result.style.display = 'block';
+      result.innerHTML = '<div style="background:#0d1f12;border:1px solid #43b58133;border-radius:8px;padding:14px 16px;">' +
+        '<div style="font-size:11px;font-weight:700;color:#43b581;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Key Generated (' + plan + ')</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+        '<code style="background:#111;border:1px solid #222;border-radius:6px;padding:8px 14px;font-size:15px;color:#fff;letter-spacing:.12em;flex:1;">' + data.key + '</code>' +
+        '<button class="btn btn-primary" onclick="copyKey(this, \'' + data.key + '\')" style="flex-shrink:0;">Copy</button>' +
+        '<button class="btn btn-danger" onclick="revokeKey(this, \'' + data.key + '\')" style="flex-shrink:0;">Revoke</button>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:8px;">Run <code style="background:#1a1a1a;padding:1px 5px;border-radius:3px;">/activatepremium</code> in Discord and paste this key to activate premium on a server.</div>' +
+        '</div>';
+    } catch (e) {
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#f04747;">Error: ' + (e.message || 'Failed to generate key') + '</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Generate Key';
+  }
+
+  function copyKey(btn, key) {
+    navigator.clipboard.writeText(key).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function() { btn.textContent = orig; }, 1500);
+    });
+  }
+
+  async function revokeKey(btn, key) {
+    if (!confirm('Revoke key ' + key + '? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+      await api('DELETE', '/stripe/keys/' + encodeURIComponent(key));
+      btn.closest('.add-form > div:last-child').innerHTML = '<div style="font-size:13px;color:#888;">Key revoked.</div>';
+    } catch (e) {
+      alert('Failed to revoke: ' + (e.message || 'Unknown error'));
+      btn.disabled = false;
+    }
+  }
+
+  async function launchTestCheckout() {
+    var btn = document.getElementById('testcheckout-btn');
+    var result = document.getElementById('testcheckout-result');
+    var plan = document.getElementById('testcheckout-plan').value;
+    btn.disabled = true;
+    btn.textContent = 'Creating session...';
+    result.style.display = 'none';
+    try {
+      var data = await api('POST', '/stripe/test-checkout', { plan: plan });
+      window.open(data.url, '_blank');
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#43b581;">Checkout session opened in a new tab. Use card 4242 4242 4242 4242 with any future date and CVC.</div>';
+    } catch (e) {
+      result.style.display = 'block';
+      result.innerHTML = '<div style="font-size:13px;color:#f04747;">' + (e.message || 'Failed to create test session') + '</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Open Test Checkout';
+  }
+
+  async function generateKeys() {
+    var btn = document.getElementById('gen-key-btn');
+    var plan = document.getElementById('gen-plan').value;
+    var count = parseInt(document.getElementById('gen-count').value) || 1;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    try {
+      var res = await api('POST', '/premium-keys', { plan: plan, count: count });
+      if (res.ok && res.keys) {
+        var out = document.getElementById('gen-keys-output');
+        out.value = res.keys.join('\n');
+        document.getElementById('gen-result').style.display = 'block';
+        showAlert('Generated ' + res.keys.length + ' key' + (res.keys.length !== 1 ? 's' : '') + '.', 'success');
+        loadKeys();
+      } else {
+        showAlert(res.error || 'Failed to generate.', 'error');
+      }
+    } catch (e) {
+      showAlert('Request failed: ' + e.message, 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Generate';
+  }
+
+  function copyGenKeys() {
+    var out = document.getElementById('gen-keys-output');
+    if (!out || !out.value) return;
+    navigator.clipboard.writeText(out.value).then(function() {
+      showAlert('Copied to clipboard.', 'success');
+    }).catch(function() {
+      out.select();
+      document.execCommand('copy');
+      showAlert('Copied.', 'success');
+    });
+  }
+
+  var _allKeys = [];
+  var _keysFilter = 'all';
+
+  async function loadKeys() {
+    var el = document.getElementById('keys-list');
+    el.innerHTML = '<div class="empty">Loading...</div>';
+    try {
+      _allKeys = await api('GET', '/premium-keys');
+      renderKeys();
+    } catch (e) {
+      el.innerHTML = '<div class="empty" style="color:#f04747;">Failed to load keys.</div>';
+    }
+  }
+
+  function filterKeys(f) {
+    _keysFilter = f;
+    ['all','active','unused'].forEach(function(n) {
+      var btn = document.getElementById('keys-filter-' + n);
+      if (btn) {
+        btn.style.borderColor = n === f ? '#5865f2' : '';
+        btn.style.color = n === f ? '#7b8cec' : '';
+      }
+    });
+    renderKeys();
+  }
+
+  function renderKeys() {
+    var el = document.getElementById('keys-list');
+    var keys = _allKeys;
+    if (_keysFilter === 'active') keys = keys.filter(function(k) { return k.guildId; });
+    if (_keysFilter === 'unused') keys = keys.filter(function(k) { return !k.guildId; });
+
+    var countEl = document.getElementById('keys-count');
+    if (countEl) countEl.textContent = keys.length + ' key' + (keys.length !== 1 ? 's' : '') + ' (' + _allKeys.filter(function(k){return k.guildId;}).length + ' active, ' + _allKeys.filter(function(k){return !k.guildId;}).length + ' unused)';
+
+    if (!keys.length) {
+      el.innerHTML = '<div class="empty">No keys found.</div>';
+      return;
+    }
+    el.innerHTML = keys.map(function(k) {
+      var isActive = !!k.guildId;
+      var plan = k.plan || 'manual';
+      var planColor = plan === 'lifetime' ? '#fbbf24' : plan === 'monthly' ? '#5865f2' : '#555';
+      var activatedDate = k.activatedAt ? new Date(k.activatedAt).toLocaleDateString() : null;
+      var createdDate = new Date(k.createdAt).toLocaleDateString();
+      return '<div class="card" style="margin-bottom:10px;">' +
+        '<div class="card-header" style="flex-wrap:wrap;gap:8px;">' +
+        '<div style="min-width:0;flex:1;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">' +
+        '<code style="background:#111;border:1px solid #222;border-radius:5px;padding:3px 8px;font-size:12px;color:#7b8cec;word-break:break-all;">' + esc(k.key) + '</code>' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:' + (isActive ? 'rgba(74,222,128,0.1)' : '#1a1a1a') + ';color:' + (isActive ? '#4ade80' : '#555') + ';">' + (isActive ? 'ACTIVE' : 'UNUSED') + '</span>' +
+        '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#1a1a1a;color:' + planColor + ';">' + plan.toUpperCase() + '</span>' +
+        '</div>' +
+        (isActive ? '<div style="font-size:12px;color:#888;">Server: <strong style="color:#ccc;">' + esc(k.guildName || k.guildId) + '</strong> &mdash; activated ' + activatedDate + '</div>' : '') +
+        (!isActive ? '<div style="font-size:12px;color:#555;">Created ' + createdDate + '</div>' : '') +
+        '</div>' +
+        '<div class="actions" style="flex-shrink:0;">' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteKey(\'' + esc(k.key) + '\')">Revoke</button>' +
+        '</div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  async function deleteKey(key) {
+    if (!confirm('Revoke key ' + key + '? This will immediately remove premium from the server using it.')) return;
+    try {
+      var res = await api('DELETE', '/premium-keys/' + encodeURIComponent(key));
+      if (res.ok) {
+        showAlert('Key revoked.', 'success');
+        loadKeys();
+      } else {
+        showAlert(res.error || 'Failed to revoke.', 'error');
+      }
+    } catch (e) {
+      showAlert('Request failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Verified Members ──────────────────────────────────────────────────────
+  var _verifiedGuilds = [];
+  var _verifiedData = [];
+  var _verifiedTabReady = false;
+
+  async function initVerifiedTab(force) {
+    if (_verifiedTabReady && !force) return;
+    var sel = document.getElementById('verified-guild-select');
+    sel.innerHTML = '<option value="">Loading servers...</option>';
+    try {
+      var res = await api('GET', '/guilds');
+      _verifiedGuilds = Array.isArray(res) ? res : [];
+      if (!_verifiedGuilds.length) {
+        sel.innerHTML = '<option value="">No servers available</option>';
+        _verifiedTabReady = false;
+        return;
+      }
+      sel.innerHTML = '<option value="">Select a server...</option>' +
+        _verifiedGuilds.map(function(g) {
+          return '<option value="' + esc(g.id) + '">' + esc(g.name) + ' (' + g.memberCount + ' members)</option>';
+        }).join('');
+      _verifiedTabReady = true;
+    } catch (e) {
+      sel.innerHTML = '<option value="">Error loading servers - click Refresh</option>';
+      _verifiedTabReady = false;
+    }
+  }
+
+  async function loadVerifiedMembers() {
+    var sel = document.getElementById('verified-guild-select');
+    var guildId = sel.value;
+    var wrap = document.getElementById('verified-table-wrap');
+    var countEl = document.getElementById('verified-count');
+    document.getElementById('verified-search').value = '';
+    if (!guildId) {
+      _verifiedData = [];
+      countEl.textContent = '';
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#444;">Select a server above to view verified members.</div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#555;">Loading...</div>';
+    countEl.textContent = '';
+    try {
+      var data = await api('GET', '/verified/' + encodeURIComponent(guildId));
+      _verifiedData = Array.isArray(data) ? data : [];
+      renderVerifiedTable(_verifiedData);
+    } catch (e) {
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#f04747;">Error: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  function filterVerified() {
+    var q = document.getElementById('verified-search').value.trim().toLowerCase();
+    if (!q) { renderVerifiedTable(_verifiedData); return; }
+    var filtered = _verifiedData.filter(function(u) {
+      return (u.discordName || '').toLowerCase().includes(q) ||
+        (u.psnxbox || '').toLowerCase().includes(q) ||
+        (u.ipAddress || '').includes(q) ||
+        (u.userId || '').includes(q);
+    });
+    renderVerifiedTable(filtered, true);
+  }
+
+  function renderVerifiedTable(rows, filtered) {
+    var wrap = document.getElementById('verified-table-wrap');
+    var countEl = document.getElementById('verified-count');
+    countEl.textContent = '(' + rows.length + (filtered ? ' filtered' : ' total') + ')';
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty" style="padding:24px 0;color:#444;">' +
+        (filtered ? 'No members match that search.' : 'No verified members in this server.') +
+        '</div>';
+      return;
+    }
+    var html = '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<thead><tr style="border-bottom:1px solid #222;text-align:left;">' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">Discord</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">User ID</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">PSN / Xbox</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">IP Address</th>' +
+      '<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">Verified At</th>' +
+      '</tr></thead><tbody>';
+
+    rows.forEach(function(u, i) {
+      var bg = i % 2 === 0 ? '#0d0d0d' : '#111';
+      var date = u.verifiedAt ? new Date(u.verifiedAt).toLocaleString() : 'Unknown';
+      html += '<tr style="background:' + bg + ';border-bottom:1px solid #1a1a1a;">' +
+        '<td style="padding:9px 12px;color:#ddd;">' + esc(u.discordName || '(not in server)') + '</td>' +
+        '<td style="padding:9px 12px;"><code style="font-size:11px;color:#7b8cec;background:#1a1a2e;padding:2px 6px;border-radius:4px;">' + esc(u.userId) + '</code></td>' +
+        '<td style="padding:9px 12px;color:#ccc;">' + (u.psnxbox ? esc(u.psnxbox) : '<span style="color:#444;">—</span>') + '</td>' +
+        '<td style="padding:9px 12px;"><code style="font-size:12px;color:#888;">' + (u.ipAddress ? esc(u.ipAddress) : '<span style="color:#444;">—</span>') + '</code></td>' +
+        '<td style="padding:9px 12px;color:#555;font-size:12px;white-space:nowrap;">' + esc(date) + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  }
+  // ── End Verified Members ──────────────────────────────────────────────────
+
+  async function init() {
+    var check = await fetch('/dev/check').then(function(r) { return r.json(); });
+    if (!check.authorized) { window.location.href = '/dev/login'; return; }
+    loadFeatures();
+    loadAnnouncements();
+    loadChangelogs();
+    loadVideos();
+    loadMaintenance();
+    loadStripeStatus();
+  }
+
+  init();
+</script>
+
+</body>
+</html>

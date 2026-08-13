@@ -1,0 +1,1026 @@
+import {
+  joinVoiceChannel,
+  EndBehaviorType,
+  VoiceConnectionStatus,
+  entersState,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  StreamType,
+} from '@discordjs/voice';
+import { createSocket as createUdpSocket } from 'dgram';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { Readable } from 'stream';
+import prism from 'prism-media';
+import { clearRadioLog } from './radioSession.js';
+import OfficerStatus from '../models/OfficerStatus.js';
+
+// Pre-load radio wave sound - played before every dispatch TTS response
+const _radioWavePath = join(dirname(fileURLToPath(import.meta.url)), '../assets/radio_wave.mp3');
+const RADIO_WAVE_BUFFER = existsSync(_radioWavePath) ? readFileSync(_radioWavePath) : null;
+if (RADIO_WAVE_BUFFER) {
+  console.log(`[Dispatch] Radio wave sound loaded (${RADIO_WAVE_BUFFER.length} bytes)`);
+} else {
+  console.warn('[Dispatch] Radio wave sound not found - playing TTS without prefix');
+}
+
+/**
+ * Per-guild dispatch state.
+ * Discord only allows one VoiceConnection per guild, so we maintain ONE connection
+ * and move it between patrol channels as officers become active in them.
+ *
+ * Map<guildId, {
+ *   connection:       VoiceConnection | null,
+ *   currentChannelId: string | null,
+ *   patrolChannelIds: Set<string>,
+ *   guild:            Guild | null,
+ *   options:          { onTranscription, userFilter }
+ * }>
+ */
+const dispatchState = new Map();
+
+/** "guildId:userId" pairs currently being recorded - prevents parallel subscriptions */
+const recordingUsers = new Set();
+
+/** Guild IDs currently in the process of joining a channel - prevents concurrent joins */
+const joiningGuilds = new Set();
+
+/** Per-guild reconnect tracking for exponential backoff */
+const reconnectAttempts = new Map();
+const MAX_RECONNECT_ATTEMPTS = 5;
+const BASE_BACKOFF_MS = 5000;
+const MAX_BACKOFF_MS = 300000;
+
+/** Per-guild log throttling - suppress repetitive voice state logs */
+const lastLoggedState = new Map();
+const logThrottleCounts = new Map();
+
+/** Per-guild panic poller intervals - detect 10-99 from DB without needing BOT_INTERNAL_URL */
+const panicPollers = new Map();
+
+/**
+ * Poll MongoDB every 5s for unannounced 10-99 panics in this guild.
+ * Fires TTS through the active voice connection, then marks them announced.
+ * This runs independently of BOT_INTERNAL_URL - the bot detects panics itself.
+ */
+async function _runPanicPoll(guildId) {
+  try {
+    const panics = await OfficerStatus.find({ guildId, tenCode: '10-99', panicAnnounced: false });
+    if (!panics.length) return;
+
+    const { generateDispatchTTSPublic, PANIC_SOUND_BUFFER } = await import('../handlers/dispatchHandler.js');
+
+    for (const p of panics) {
+      // Mark announced first to prevent double-firing if TTS takes time
+      await OfficerStatus.updateOne({ _id: p._id }, { $set: { panicAnnounced: true } });
+
+      const loc = p.location ? ` at ${p.location}` : '';
+      const ttsText = `Attention all units, 10-99, officer ${p.username} is in distress${loc}. All units respond immediately. This is not a drill.`;
+
+      console.log(`[Dispatch Panic Poller] Announcing 10-99 for ${p.username} in guild ${guildId}`);
+
+      if (PANIC_SOUND_BUFFER) {
+        await playDispatchVoice(guildId, PANIC_SOUND_BUFFER, { urgent: true, skipRadioWave: true });
+        await new Promise(r => setTimeout(r, 600));
+      }
+      try {
+        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+        await playDispatchVoice(guildId, ttsBuffer, { urgent: false });
+      } catch (ttsErr) {
+        console.error('[Dispatch Panic Poller] TTS generation failed:', ttsErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch Panic Poller] Poll error:', err.message);
+  }
+}
+
+function _startPanicPoller(guildId) {
+  if (panicPollers.has(guildId)) return; // already running
+  const interval = setInterval(() => _runPanicPoll(guildId), 5000);
+  panicPollers.set(guildId, interval);
+  console.log(`[Dispatch Panic Poller] Started for guild ${guildId}`);
+}
+
+function _stopPanicPoller(guildId) {
+  const interval = panicPollers.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    panicPollers.delete(guildId);
+    console.log(`[Dispatch Panic Poller] Stopped for guild ${guildId}`);
+  }
+}
+
+/** Per-guild 911 poller intervals - announce portal-submitted 911 calls over AI voice */
+const call911Pollers = new Map();
+
+/**
+ * Poll MongoDB every 5s for active 911 calls that haven't been voice-announced yet.
+ * The portal already posts the text embed via REST when the call is submitted -
+ * this poller ONLY handles the AI voice announcement, since that requires the
+ * live voice connection that only exists in the bot process.
+ */
+async function _run911Poll(guildId) {
+  try {
+    const { default: EmergencyCall } = await import('../models/EmergencyCall.js');
+    const { default: DispatchConfig } = await import('../models/DispatchConfig.js');
+
+    const calls = await EmergencyCall.find({ guildId, status: 'active', dispatchAnnounced: false });
+    if (!calls.length) return;
+
+    const dispatchCfg = await DispatchConfig.findOne({ guildId });
+    // NOTE: must use hasAIKey() (Groq-first, falls back to OpenAI) here, not a raw
+    // OPENAI_API_KEY check - this bot runs on Groq, so OPENAI_API_KEY is normally
+    // unset and a raw check made aiReady permanently false, silently skipping every
+    // portal 911 voice announcement while still marking the call as "announced".
+    const { hasAIKey } = await import('../handlers/dispatchHandler.js');
+    const aiReady = dispatchCfg?.enabled && dispatchCfg?.aiEnabled && hasAIKey();
+
+    for (const call of calls) {
+      // Mark announced first to prevent double-firing if TTS takes time
+      await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
+      if (!aiReady) {
+        console.log(`[Dispatch 911 Poller] Skipping voice announcement for call ${call.callId} (guild ${guildId}) - dispatchCfg.enabled=${!!dispatchCfg?.enabled} aiEnabled=${!!dispatchCfg?.aiEnabled} hasAIKey=${hasAIKey()}`);
+        continue;
+      }
+
+      console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
+      try {
+        const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
+        const ttsText = `Attention all units. Nine one one emergency call. ${call.issue} at ${call.location}. All available units respond.`;
+        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
+        await playDispatchVoice(guildId, ttsBuffer, { urgent: true });
+      } catch (ttsErr) {
+        console.error('[Dispatch 911 Poller] TTS generation failed:', ttsErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[Dispatch 911 Poller] Poll error:', err.message);
+  }
+}
+
+export function start911Poller(guildId) {
+  if (call911Pollers.has(guildId)) return; // already running
+  const interval = setInterval(() => _run911Poll(guildId), 5000);
+  call911Pollers.set(guildId, interval);
+  console.log(`[Dispatch 911 Poller] Started for guild ${guildId}`);
+}
+
+export function stop911Poller(guildId) {
+  const interval = call911Pollers.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    call911Pollers.delete(guildId);
+    console.log(`[Dispatch 911 Poller] Stopped for guild ${guildId}`);
+  }
+}
+
+/**
+ * Store patrol config for a guild without joining any channel yet.
+ * Call this on startup / when config is first loaded.
+ */
+export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAudioBuffer = null) {
+  const existing = dispatchState.get(guildId);
+  if (existing) {
+    existing.patrolChannelIds = new Set(patrolChannelIds);
+    existing.options = options;
+    if (joinAudioBuffer) existing.joinAudioBuffer = joinAudioBuffer;
+  } else {
+    dispatchState.set(guildId, {
+      connection: null,
+      currentChannelId: null,
+      patrolChannelIds: new Set(patrolChannelIds),
+      guild: null,
+      options,
+      joinAudioBuffer,
+      joinAudioPlayed: false,
+    });
+  }
+  _startPanicPoller(guildId);
+}
+
+/**
+ * Register an additional patrol channel for a guild that already has state.
+ * Used when the admin adds a new patrol channel via /dispatchconfig.
+ */
+export function addPatrolChannel(guildId, channelId, options) {
+  const state = dispatchState.get(guildId);
+  if (state) {
+    state.patrolChannelIds.add(channelId);
+    if (options) state.options = options;
+  } else {
+    dispatchState.set(guildId, {
+      connection: null,
+      currentChannelId: null,
+      patrolChannelIds: new Set([channelId]),
+      guild: null,
+      options: options || {},
+    });
+  }
+}
+
+/**
+ * Find the first patrol channel in the guild that currently has human members.
+ * Used to decide where to reconnect after a connection failure.
+ */
+function _findActivePatrolChannel(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state?.guild) return null;
+  for (const channelId of state.patrolChannelIds) {
+    const channel = state.guild.channels.cache.get(channelId);
+    if (channel?.members?.size > 0) return channel;
+  }
+  return null;
+}
+
+/**
+ * Join (or switch to) a voice channel.
+ * Only acts if the channel is in the guild's patrol list.
+ * Destroys any existing connection for that guild before creating a new one.
+ */
+export async function moveToChannel(channel) {
+  const guildId = channel.guild.id;
+  const state = dispatchState.get(guildId);
+  if (!state) return null;
+
+  if (!state.patrolChannelIds.has(channel.id)) return null;
+
+  if (state.currentChannelId === channel.id &&
+      state.connection?.state.status === VoiceConnectionStatus.Ready) {
+    return state.connection;
+  }
+
+  // Prevent concurrent joins for the same guild
+  if (joiningGuilds.has(guildId)) return null;
+  joiningGuilds.add(guildId);
+
+  // Store the guild reference so watchdog/reconnect can find active channels later
+  state.guild = channel.guild;
+
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
+    // Let Discord process the leave before we request to rejoin - this forces a fresh
+    // VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE on the next join, avoiding stale tokens.
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  let connection;
+  try {
+    connection = joinVoiceChannel({
+      channelId: channel.id,
+      guildId,
+      adapterCreator: channel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
+      debug: false,
+    });
+  } catch (err) {
+    console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
+    joiningGuilds.delete(guildId);
+    return null;
+  }
+
+  state.connection = connection;
+  state.currentChannelId = channel.id;
+  joiningGuilds.delete(guildId);
+
+  connection.on('error', (err) => {
+    const errKey = `err:${guildId}`;
+    const cnt = (logThrottleCounts.get(errKey) || 0) + 1;
+    logThrottleCounts.set(errKey, cnt);
+    if (cnt <= 3 || cnt % 10 === 0) {
+      console.error(`[Voice] Connection error in guild ${guildId}: ${err.message} (x${cnt})`);
+    }
+  });
+
+  connection.on('stateChange', (oldState, newState) => {
+    const transition = `${oldState.status}→${newState.status}`;
+    const stateKey = `state:${guildId}`;
+    const last = lastLoggedState.get(stateKey);
+    if (last === transition) {
+      const cnt = (logThrottleCounts.get(stateKey) || 0) + 1;
+      logThrottleCounts.set(stateKey, cnt);
+      if (cnt % 20 === 0) {
+        console.log(`[Voice] ${transition} (repeated ${cnt} times, suppressing)`);
+      }
+    } else {
+      lastLoggedState.set(stateKey, transition);
+      logThrottleCounts.set(stateKey, 0);
+      console.log(`[Voice] ${oldState.status} → ${newState.status}`);
+    }
+    const net = newState.networking;
+    if (net && net !== oldState.networking) {
+      net.once('close', (code) => {
+        const netKey = `net:${guildId}`;
+        const cnt = (logThrottleCounts.get(netKey) || 0) + 1;
+        logThrottleCounts.set(netKey, cnt);
+        if (cnt <= 3 || cnt % 20 === 0) {
+          console.log(`[Voice Networking] closed code: ${code} (x${cnt})`);
+        }
+        if (code === 4006) {
+          connectionFailCount++;
+          if (connectionFailCount >= CONNECTION_FAIL_LIMIT && !watchdogTriggered && state.connection === connection) {
+            console.log(`[Voice] ${CONNECTION_FAIL_LIMIT} consecutive 4006 closes - destroying connection early (watchdog will reconnect)`);
+            watchdogTriggered = true;
+            clearTimeout(watchdog);
+            try { connection.destroy(); } catch {}
+            const attempts = (reconnectAttempts.get(guildId) || 0) + 1;
+            reconnectAttempts.set(guildId, attempts);
+            const backoff = attempts > MAX_RECONNECT_ATTEMPTS
+              ? Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, attempts - MAX_RECONNECT_ATTEMPTS))
+              : Math.min(30000, BASE_BACKOFF_MS * attempts);
+            console.log(`[Dispatch] Reconnect attempt ${attempts}, waiting ${Math.round(backoff / 1000)}s...`);
+            setTimeout(async () => {
+              if (state.connection) return;
+              if (attempts > MAX_RECONNECT_ATTEMPTS) reconnectAttempts.set(guildId, 0);
+              const targetChannel = _findActivePatrolChannel(guildId);
+              if (targetChannel) {
+                console.log(`[Dispatch] Reconnecting to "${targetChannel.name}"`);
+                moveToChannel(targetChannel);
+              }
+            }, backoff);
+          }
+        }
+      });
+      let udpBypassFired = false;
+      let udpBypassAttempts = 0;
+      net.on('stateChange', (_oNS, nNS) => {
+        if (nNS.code === 2 && nNS.udp && !udpBypassFired) {
+          udpBypassFired = true;
+          udpBypassAttempts++;
+          const udp = nNS.udp;
+          const ssrc = nNS.connectionData?.ssrc || 0;
+          if (udpBypassAttempts <= 2) {
+            console.log(`[UDP Bypass] code:2 reached, ssrc=${ssrc}. Waiting 3s for real UDP discovery...`);
+          }
+
+          setTimeout(async () => {
+            if (connection.state.status === VoiceConnectionStatus.Ready) {
+              return;
+            }
+            if (udpBypassAttempts <= 2) {
+              console.log('[UDP Bypass] Connection still not Ready after 3s - faking discovery response');
+            }
+
+            let externalIp = '127.0.0.1';
+            try {
+              const resp = await fetch('https://api.ipify.org?format=json');
+              const json = await resp.json();
+              externalIp = json.ip;
+            } catch (e) {
+              if (udpBypassAttempts <= 2) console.warn('[UDP Bypass] ipify failed:', e.message);
+            }
+
+            const localPort = await new Promise(res => {
+              const start = Date.now();
+              const tryPort = () => {
+                if (connection.state.status === VoiceConnectionStatus.Ready ||
+                    state.connection !== connection ||
+                    Date.now() - start > 2000) {
+                  res(0);
+                  return;
+                }
+                try {
+                  const p = udp.socket.address().port;
+                  if (p > 0) { res(p); return; }
+                } catch {}
+                setImmediate(tryPort);
+              };
+              tryPort();
+            });
+            if (localPort === 0) {
+              return;
+            }
+
+            const fake = Buffer.alloc(74);
+            fake.writeUInt16BE(2, 0);
+            fake.writeUInt16BE(70, 2);
+            fake.writeUInt32BE(ssrc, 4);
+            fake.write(externalIp, 8, 'utf8');
+            fake.writeUInt16BE(localPort, 72);
+            udp.socket.emit('message', fake);
+          }, 3000);
+        }
+      });
+    }
+  });
+
+  _setupReceiver(connection, channel.guild, state, guildId);
+
+  const onConnectionReady = () => {
+    console.log(`[Dispatch] Connection ready in "${channel.name}"`);
+    setTimeout(async () => {
+      if (state.connection !== connection) return;
+      if (state.joinAudioPlayed) {
+        console.log('[Dispatch] Skipping join audio - already played this session');
+        return;
+      }
+      if (state.joinAudioBuffer) {
+        console.log('[Dispatch] Playing cached join audio');
+        playDispatchVoice(guildId, state.joinAudioBuffer);
+        state.joinAudioPlayed = true;
+      } else {
+        console.log('[Dispatch] No join audio cached - generating now...');
+        try {
+          const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
+          const buf = await generateDispatchTTSPublic('Dispatch active. To talk to me, your sentence must begin with dispatch.');
+          state.joinAudioBuffer = buf;
+          if (state.connection === connection) {
+            playDispatchVoice(guildId, buf);
+            state.joinAudioPlayed = true;
+          }
+        } catch (err) {
+          console.error('[Dispatch] Join TTS retry failed:', err.message);
+          if (state.options?.onJoin) {
+            state.options.onJoin(guildId).catch(e => {
+              console.error('[Dispatch] onJoin callback error:', e.message);
+            });
+          }
+        }
+      }
+    }, 500);
+  };
+
+  if (connection.state.status === VoiceConnectionStatus.Ready) {
+    onConnectionReady();
+  } else {
+    connection.once(VoiceConnectionStatus.Ready, onConnectionReady);
+  }
+
+  // Watchdog: Discord voice sessions can be rejected with 4006 (session no longer valid)
+  // on the very first attempt. The internal retry loop reuses the same stale token, so it
+  // never recovers on its own. After 20 seconds, we fully leave and re-join to get fresh
+  // credentials from Discord (new VOICE_STATE_UPDATE + VOICE_SERVER_UPDATE).
+  let connectionFailCount = 0;
+  const CONNECTION_FAIL_LIMIT = 3;
+  let watchdogTriggered = false;
+  const watchdog = setTimeout(async () => {
+    if (state.connection !== connection) return;
+    const status = connection.state.status;
+    if (status === VoiceConnectionStatus.Ready) {
+      reconnectAttempts.set(guildId, 0);
+      return;
+    }
+
+    watchdogTriggered = true;
+    const attempts = (reconnectAttempts.get(guildId) || 0) + 1;
+    reconnectAttempts.set(guildId, attempts);
+
+    if (attempts > MAX_RECONNECT_ATTEMPTS) {
+      const cooldown = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * Math.pow(2, attempts - MAX_RECONNECT_ATTEMPTS));
+      console.log(`[Dispatch] Watchdog: ${attempts} failed attempts - cooling down for ${Math.round(cooldown / 1000)}s before next try`);
+      try { connection.destroy(); } catch {}
+
+      setTimeout(async () => {
+        if (state.connection) return;
+        reconnectAttempts.set(guildId, 0);
+        const targetChannel = _findActivePatrolChannel(guildId);
+        if (targetChannel) {
+          console.log(`[Dispatch] Watchdog: cooldown ended, retrying "${targetChannel.name}"`);
+          moveToChannel(targetChannel);
+        }
+      }, cooldown);
+      return;
+    }
+
+    const backoff = Math.min(30000, BASE_BACKOFF_MS * attempts);
+    console.log(`[Dispatch] Watchdog: connection stuck in "${status}" - attempt ${attempts}/${MAX_RECONNECT_ATTEMPTS}, reconnecting in ${Math.round(backoff / 1000)}s`);
+    try { connection.destroy(); } catch {}
+
+    await new Promise(r => setTimeout(r, backoff));
+    if (state.connection) return;
+
+    const targetChannel = _findActivePatrolChannel(guildId);
+    if (targetChannel) {
+      console.log(`[Dispatch] Watchdog: rejoining "${targetChannel.name}"`);
+      moveToChannel(targetChannel);
+    }
+  }, 25000);
+
+  connection.once(VoiceConnectionStatus.Ready, () => {
+    clearTimeout(watchdog);
+    reconnectAttempts.set(guildId, 0);
+    for (const key of [...logThrottleCounts.keys()]) {
+      if (key.endsWith(`:${guildId}`)) logThrottleCounts.delete(key);
+    }
+    for (const key of [...lastLoggedState.keys()]) {
+      if (key.endsWith(`:${guildId}`)) lastLoggedState.delete(key);
+    }
+  });
+
+  connection.once(VoiceConnectionStatus.Destroyed, () => {
+    clearTimeout(watchdog);
+    if (state.connection === connection) {
+      state.connection = null;
+      state.currentChannelId = null;
+    }
+
+    if (!watchdogTriggered) {
+      const attempts = reconnectAttempts.get(guildId) || 0;
+      const backoff = Math.min(30000, BASE_BACKOFF_MS * Math.max(1, attempts));
+      setTimeout(async () => {
+        if (state.connection) return;
+        const targetChannel = _findActivePatrolChannel(guildId);
+        if (targetChannel) {
+          console.log(`[Dispatch] Auto-reconnecting to "${targetChannel.name}" after disconnect`);
+          moveToChannel(targetChannel);
+        }
+      }, backoff);
+    }
+  });
+
+  // If Discord explicitly disconnects the bot (4014 kick), destroy and schedule re-join
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    try {
+      await entersState(connection, VoiceConnectionStatus.Connecting, 5_000);
+    } catch {
+      if (state.connection === connection) {
+        state.connection = null;
+        state.currentChannelId = null;
+      }
+      try { connection.destroy(); } catch {}
+    }
+  });
+
+  console.log(`[Dispatch] Joined voice channel "${channel.name}" in ${channel.guild.name}`);
+  return connection;
+}
+
+function _setupReceiver(connection, guild, state, guildId) {
+  const { onTranscription, userFilter } = state.options;
+  const receiver = connection.receiver;
+
+  receiver.speaking.on('start', async (userId) => {
+    if (userId === guild.client?.user?.id) return;
+    const key = `${guildId}:${userId}`;
+    if (recordingUsers.has(key)) return;
+
+    if (userFilter) {
+      const allowed = await userFilter(userId).catch(() => false);
+      if (!allowed) {
+        console.log(`[Dispatch] User ${userId} not allowed by filter (no LEO role)`);
+        return;
+      }
+    }
+
+    recordingUsers.add(key);
+    // Recording started (debug-level, suppressed in production)
+
+    const safetyTimeout = setTimeout(() => {
+      if (recordingUsers.has(key)) {
+        console.warn(`[Dispatch] Safety timeout - clearing stuck recording for user ${userId}`);
+        recordingUsers.delete(key);
+        try { stream?.destroy(); } catch {}
+        try { decoder?.destroy(); } catch {}
+      }
+    }, 30000);
+
+    let stream;
+    try {
+      // 600ms silence - faster cutoff for quicker response times
+      const silenceDuration = 600;
+      stream = receiver.subscribe(userId, {
+        end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
+      });
+    } catch (err) {
+      clearTimeout(safetyTimeout);
+      recordingUsers.delete(key);
+      return;
+    }
+
+    let decoder;
+    try {
+      decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+    } catch (err) {
+      console.error('[Dispatch] Failed to create Opus decoder:', err.message);
+      clearTimeout(safetyTimeout);
+      recordingUsers.delete(key);
+      stream.destroy();
+      return;
+    }
+
+    const pcmChunks = [];
+    stream.pipe(decoder);
+
+    decoder.on('data', chunk => pcmChunks.push(chunk));
+
+    decoder.on('end', async () => {
+      clearTimeout(safetyTimeout);
+      recordingUsers.delete(key);
+      // Recording ended (debug-level, suppressed in production)
+      // Require at least 20 chunks (~400ms) to filter out noise bursts and mic pops.
+      // Threshold reduced from 40 to allow short-but-valid transmissions (e.g. "dispatch, 10-8").
+      if (pcmChunks.length < 20) return;
+      const wav = createWavBuffer(pcmChunks);
+      if (onTranscription) {
+        // ── Simultaneous speaker gate ──────────────────────────────────────────
+        // If dispatch is currently playing TTS, check if this is an emergency
+        // before sending to the AI pipeline.  Non-emergency transmissions that
+        // arrive while dispatch is talking are queued silently - only actual
+        // emergencies (10-99, shots fired, officer down) bypass the gate.
+        const guildState = dispatchState.get(guildId);
+        const dispatchSpeaking = guildState?.audioPlaying === true;
+        if (dispatchSpeaking) {
+          // Quick text-free emergency check - we haven't transcribed yet so we
+          // pass a flag via a wrapper so dispatchHandler can check after transcription
+          try { await onTranscription(wav, userId, guild, { dispatchWasSpeaking: true }); }
+          catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
+        } else {
+          try { await onTranscription(wav, userId, guild, { dispatchWasSpeaking: false }); }
+          catch (err) { console.error('[Dispatch] onTranscription error:', err.message); }
+        }
+      }
+    });
+
+    decoder.on('error', (err) => {
+      clearTimeout(safetyTimeout);
+      recordingUsers.delete(key);
+      console.error('[Dispatch] Decoder error:', err.message);
+    });
+
+    stream.on('error', (err) => {
+      clearTimeout(safetyTimeout);
+      recordingUsers.delete(key);
+      console.error('[Dispatch] Stream error:', err.message);
+    });
+  });
+}
+
+/**
+ * Idle disconnect: destroy the voice connection but keep patrol config in memory.
+ * Use this when all patrol channels are temporarily empty so the bot can rejoin
+ * automatically when officers next enter a patrol channel (via voiceStateUpdate).
+ */
+export function disconnectDispatchChannel(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+    state.connection = null;
+    state.currentChannelId = null;
+  }
+  // Clear session memory - AI starts fresh next time the bot joins
+  clearRadioLog(guildId);
+}
+
+/**
+ * Full teardown: destroy the voice connection AND remove all state for this guild.
+ * Use this only for explicit unconfigure flows (e.g., system disabled via /dispatchconfig).
+ */
+export function leaveDispatchChannel(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+  if (state.connection) {
+    try { state.connection.destroy(); } catch {}
+  }
+  clearRadioLog(guildId);
+  _stopPanicPoller(guildId);
+  stop911Poller(guildId);
+  dispatchState.delete(guildId);
+  reconnectAttempts.delete(guildId);
+  for (const key of [...logThrottleCounts.keys()]) {
+    if (key.endsWith(`:${guildId}`)) logThrottleCounts.delete(key);
+  }
+  for (const key of [...lastLoggedState.keys()]) {
+    if (key.endsWith(`:${guildId}`)) lastLoggedState.delete(key);
+  }
+}
+
+/**
+ * Play a TTS audio buffer through the guild's active voice connection.
+ * Uses a per-guild queue so responses never cut each other off mid-sentence.
+ * Only plays if the connection is in the Ready state.
+ *
+ * Options:
+ *   urgent - clears any stale queued audio and stops the current clip so this
+ *            plays immediately (use for 10-99 panic and 10-80 pursuit alerts).
+ */
+
+/**
+ * Fire-and-forget: start playing the radio wave lead-in sound right away,
+ * without waiting for the real TTS speech to finish generating. Callers
+ * queue the actual speech buffer afterward with skipRadioWave:true so the
+ * wave's ~playback time overlaps with TTS generation instead of adding to
+ * it - this is what most of the perceived "response delay" was, since the
+ * wave previously only started AFTER the full TTS clip had been generated.
+ */
+export function playRadioWaveLeadIn(guildId) {
+  if (!RADIO_WAVE_BUFFER) return;
+  playDispatchVoice(guildId, RADIO_WAVE_BUFFER, { skipRadioWave: true }).catch(() => {});
+}
+
+export async function playDispatchVoice(guildId, audioBuffer, { urgent = false, skipRadioWave = false } = {}) {
+  const state = dispatchState.get(guildId);
+  if (!state) {
+    console.error('[Dispatch TTS] No state for guild:', guildId);
+    return;
+  }
+
+  if (!state.audioQueue) state.audioQueue = [];
+
+  if (urgent) {
+    // Discard all queued clips and stop current playback so this fires first.
+    // Mark skipRadioWave so the panic/urgent sound plays raw without a radio prefix.
+    state.audioQueue = [audioBuffer];
+    state.skipRadioWaveNext = skipRadioWave || true;
+    if (state.audioPlayer) {
+      try { state.audioPlayer.stop(true); } catch {}
+    }
+    if (!state.audioPlaying) await _drainAudioQueue(guildId);
+    return;
+  }
+
+  // If queue is already backing up (≥3 pending), drop the oldest non-playing
+  // item so stale responses don't pile up when multiple officers talk at once
+  if (state.audioQueue.length >= 3) {
+    state.audioQueue.shift();
+    console.log(`[Dispatch TTS] Queue trimmed for guild ${guildId} (was ≥3 deep)`);
+  }
+
+  state.audioQueue.push(audioBuffer);
+
+  if (state.audioPlaying) {
+    console.log(`[Dispatch TTS] Queued audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+    return;
+  }
+
+  await _drainAudioQueue(guildId);
+}
+
+/** Play a single buffer on a connection, resolving when playback finishes. */
+function _playBuffer(conn, buffer) {
+  return new Promise((resolve) => {
+    try {
+      const player = createAudioPlayer();
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+      const isOgg = buffer.length >= 4 && buffer.toString('ascii', 0, 4) === 'OggS';
+      const resource = createAudioResource(stream, {
+        inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+      });
+      conn.subscribe(player);
+      player.play(resource);
+      player.on('error', () => resolve());
+      player.on(AudioPlayerStatus.Idle, () => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function _drainAudioQueue(guildId) {
+  const state = dispatchState.get(guildId);
+  if (!state || !state.audioQueue?.length) return;
+
+  state.audioPlaying = true;
+
+  while (state.audioQueue?.length > 0) {
+    const audioBuffer = state.audioQueue.shift();
+
+    // Consume the skip flag (set by urgent calls like panic/pursuit sounds)
+    const skipRadioWave = state.skipRadioWaveNext ?? false;
+    state.skipRadioWaveNext = false;
+
+    const conn = state.connection;
+    if (!conn) {
+      console.error('[Dispatch TTS] No active connection - clearing queue');
+      state.audioQueue = [];
+      break;
+    }
+
+    const connStatus = conn.state?.status;
+    if (connStatus !== VoiceConnectionStatus.Ready) {
+      console.warn(`[Dispatch TTS] Connection not Ready (${connStatus}) - waiting`);
+      try {
+        await entersState(conn, VoiceConnectionStatus.Ready, 15_000);
+      } catch {
+        console.error('[Dispatch TTS] Connection never reached Ready - dropping clip');
+        continue;
+      }
+      if (state.connection !== conn) break;
+    }
+
+    // Play radio wave prefix before every dispatch TTS response (not before raw alert sounds)
+    if (RADIO_WAVE_BUFFER && !skipRadioWave) {
+      await _playBuffer(conn, RADIO_WAVE_BUFFER);
+    }
+
+    await new Promise((resolve) => {
+      try {
+        const player = createAudioPlayer();
+        state.audioPlayer = player;
+
+        const bufferStream = new Readable();
+        bufferStream.push(audioBuffer);
+        bufferStream.push(null);
+
+        const isOgg = audioBuffer.length >= 4 && audioBuffer.toString('ascii', 0, 4) === 'OggS';
+        const resource = createAudioResource(bufferStream, {
+          inputType: isOgg ? StreamType.OggOpus : StreamType.Arbitrary,
+        });
+
+        conn.subscribe(player);
+        player.play(resource);
+
+        console.log(`[Dispatch TTS] Playing audio (${audioBuffer.length} bytes) for guild ${guildId}`);
+
+        player.on('error', err => {
+          console.error('[Dispatch TTS] Audio player error:', err.message);
+          if (state.audioPlayer === player) state.audioPlayer = null;
+          resolve();
+        });
+
+        player.on(AudioPlayerStatus.Idle, () => {
+          if (state.audioPlayer === player) state.audioPlayer = null;
+          resolve();
+        });
+      } catch (err) {
+        console.error('[Dispatch TTS] Failed to play voice:', err.message);
+        resolve();
+      }
+    });
+  }
+
+  state.audioPlaying = false;
+}
+
+// ── Extended Stay Tracking ──────────────────────────────────────────────────
+// Tracks when an officer has asked dispatch to stay on their channel.
+// Map<guildId, { channelId, expiresAt, timeoutId, returnChannelId }>
+const extendedStayState = new Map();
+
+export function setExtendedStay(guildId, channelId, durationMs, returnChannelId) {
+  const existing = extendedStayState.get(guildId);
+  if (existing?.timeoutId) clearTimeout(existing.timeoutId);
+
+  const timeoutId = setTimeout(async () => {
+    extendedStayState.delete(guildId);
+    console.log(`[Dispatch] Extended stay expired for guild ${guildId} - returning to patrol`);
+    const state = dispatchState.get(guildId);
+    if (!state) return;
+    const retCh = state.guild?.channels.cache.get(returnChannelId);
+    if (retCh && state.patrolChannelIds.has(retCh.id)) {
+      state.patrolChannelIds.delete(channelId);
+      await moveToChannel(retCh).catch(() => {});
+    }
+  }, durationMs);
+
+  extendedStayState.set(guildId, { channelId, expiresAt: Date.now() + durationMs, timeoutId, returnChannelId });
+  console.log(`[Dispatch] Extended stay set for guild ${guildId}, channel ${channelId}, ${Math.round(durationMs / 60000)} min`);
+}
+
+export function clearExtendedStay(guildId) {
+  const existing = extendedStayState.get(guildId);
+  if (existing?.timeoutId) clearTimeout(existing.timeoutId);
+  extendedStayState.delete(guildId);
+}
+
+export function getExtendedStay(guildId) {
+  return extendedStayState.get(guildId) || null;
+}
+
+/**
+ * Temporarily join any voice channel (patrol or not), play a TTS buffer,
+ * then listen for a window before returning to the original patrol channel.
+ *
+ * Uses the full moveToChannel pipeline so the officer's voice is transcribed
+ * during the listen window - they can respond, run plates, etc.
+ */
+export async function playTTSInChannelAndReturn(targetChannel, audioBuffer, listenWindowMs = 45000) {
+  const guildId = targetChannel.guild.id;
+  const state = dispatchState.get(guildId);
+  if (!state) return;
+
+  const returnChannelId = state.currentChannelId;
+  const wasInPatrol = state.patrolChannelIds.has(targetChannel.id);
+
+  // Temporarily register this channel so moveToChannel accepts it
+  if (!wasInPatrol) state.patrolChannelIds.add(targetChannel.id);
+
+  // Suppress re-playing "Dispatch online" when moving to the stop channel
+  const originalJoinAudioPlayed = state.joinAudioPlayed;
+  state.joinAudioPlayed = true;
+
+  // Move into the traffic stop channel (sets up full audio listening pipeline)
+  const conn = await moveToChannel(targetChannel);
+  if (!conn) {
+    if (!wasInPatrol) state.patrolChannelIds.delete(targetChannel.id);
+    state.joinAudioPlayed = originalJoinAudioPlayed;
+    return;
+  }
+
+  // Wait for connection to be ready, then play TTS
+  try {
+    await entersState(conn, VoiceConnectionStatus.Ready, 20_000);
+    await playDispatchVoice(guildId, audioBuffer);
+  } catch (err) {
+    console.error('[Dispatch TTS] Check-in TTS error:', err.message);
+  }
+
+  // Listen window - give the officer time to respond on the radio
+  // (their voice will be transcribed by the normal pipeline during this window)
+  console.log(`[Dispatch] Listening in traffic stop channel "${targetChannel.name}" for ${Math.round(listenWindowMs / 1000)}s`);
+  await new Promise(r => setTimeout(r, listenWindowMs));
+
+  // Check if an extended stay was set during the listen window - if so, don't return yet
+  const stay = extendedStayState.get(guildId);
+  if (stay && stay.channelId === targetChannel.id) {
+    console.log(`[Dispatch] Extended stay active - not returning to patrol yet`);
+    return;
+  }
+
+  // Also check if the channel is now empty - if so, return immediately
+  const currentMembers = targetChannel.members?.filter(m => !m.user.bot).size ?? 0;
+
+  // Remove temp patrol registration and return
+  if (!wasInPatrol) state.patrolChannelIds.delete(targetChannel.id);
+
+  if (returnChannelId && returnChannelId !== targetChannel.id && currentMembers > 0) {
+    const returnChannel = targetChannel.guild.channels.cache.get(returnChannelId);
+    if (returnChannel && state.patrolChannelIds.has(returnChannel.id)) {
+      console.log(`[Dispatch] Returning to patrol channel after listen window`);
+      await moveToChannel(returnChannel).catch(() => {});
+    }
+  } else if (currentMembers === 0) {
+    // Channel empty - find any active patrol channel
+    const activePatrol = _findActivePatrolChannel(guildId);
+    if (activePatrol) {
+      console.log(`[Dispatch] Traffic stop channel empty - returning to patrol`);
+      await moveToChannel(activePatrol).catch(() => {});
+    } else {
+      disconnectDispatchChannel(guildId);
+    }
+  }
+}
+
+/** Returns the dispatch state object for a guild, or null if not configured. */
+export function getDispatchState(guildId) {
+  return dispatchState.get(guildId) || null;
+}
+
+/** True if the given channelId is in this guild's patrol list. */
+export function isPatrolChannel(guildId, channelId) {
+  return dispatchState.get(guildId)?.patrolChannelIds.has(channelId) ?? false;
+}
+
+/** Returns the voice channel ID the bot is currently listening in (or null). */
+export function getCurrentChannelId(guildId) {
+  return dispatchState.get(guildId)?.currentChannelId ?? null;
+}
+
+/**
+ * Downsample 48kHz stereo 16-bit PCM → 16kHz mono 16-bit PCM.
+ * Whisper is trained on 16kHz mono - this is the single biggest accuracy gain.
+ * Ratio 3:1 (48000 / 16000). Average L+R → mono, then take every 3rd sample.
+ */
+function downsampleTo16kMono(pcmData) {
+  const RATIO = 3;
+  const numInputFrames = Math.floor(pcmData.length / 4); // 2ch * 2bytes
+  const numOutputSamples = Math.floor(numInputFrames / RATIO);
+  const out = Buffer.alloc(numOutputSamples * 2);
+  for (let i = 0; i < numOutputSamples; i++) {
+    let sum = 0;
+    for (let j = 0; j < RATIO; j++) {
+      const src = (i * RATIO + j) * 4;
+      if (src + 3 >= pcmData.length) break;
+      const left  = pcmData.readInt16LE(src);
+      const right = pcmData.readInt16LE(src + 2);
+      sum += (left + right) >> 1;
+    }
+    out.writeInt16LE(Math.round(sum / RATIO), i * 2);
+  }
+  return out;
+}
+
+function createWavBuffer(pcmChunks) {
+  const rawPcm = Buffer.concat(pcmChunks);
+  const pcmData = downsampleTo16kMono(rawPcm);
+  const numChannels = 1;
+  const sampleRate = 16000;
+  const bitsPerSample = 16;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+
+  const header = Buffer.alloc(44);
+  let o = 0;
+  header.write('RIFF', o); o += 4;
+  header.writeUInt32LE(36 + pcmData.length, o); o += 4;
+  header.write('WAVE', o); o += 4;
+  header.write('fmt ', o); o += 4;
+  header.writeUInt32LE(16, o); o += 4;
+  header.writeUInt16LE(1, o); o += 2;
+  header.writeUInt16LE(numChannels, o); o += 2;
+  header.writeUInt32LE(sampleRate, o); o += 4;
+  header.writeUInt32LE(byteRate, o); o += 4;
+  header.writeUInt16LE(blockAlign, o); o += 2;
+  header.writeUInt16LE(bitsPerSample, o); o += 2;
+  header.write('data', o); o += 4;
+  header.writeUInt32LE(pcmData.length, o);
+
+  return Buffer.concat([header, pcmData]);
+}

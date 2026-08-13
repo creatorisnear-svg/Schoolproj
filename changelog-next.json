@@ -1,0 +1,9 @@
+{
+  "version": "1.2.7",
+  "title": "Strengthen AI operating guidance",
+  "changes": [
+    "Added explicit intent and scope rules for imported projects and uploaded logs",
+    "Defined blocker semantics for optional secrets, historical logs, and follow-up tasks",
+    "Added validation and completion gates for future AI sessions"
+  ]
+}

@@ -1,0 +1,78 @@
+Build ready to start ▶️
+>> Cloning github.com/creatorisnear-svg/Schoolproj.git commit sha 7b04db12ba80473479961b7b0b0045ab4e331734 into /builder/workspace
+Initialized empty Git repository in /builder/workspace/.git/
+From https://github.com/creatorisnear-svg/Schoolproj
+ * branch            7b04db12ba80473479961b7b0b0045ab4e331734 -> FETCH_HEAD
+HEAD is now at 7b04db1 f
+Starting Docker daemon...
+Waiting for the Docker daemon to start...
+done
+Timer: Analyzer started at 2026-08-13T03:25:20Z
+Restoring data for SBOM from previous image
+Timer: Analyzer ran for 2.466919697s and ended at 2026-08-13T03:25:22Z
+Timer: Detector started at 2026-08-13T03:25:23Z
+2 of 5 buildpacks participating
+heroku/nodejs-engine      3.6.5
+heroku/nodejs-npm-install 3.6.5
+Timer: Detector ran for 115.213966ms and ended at 2026-08-13T03:25:23Z
+Timer: Restorer started at 2026-08-13T03:25:24Z
+Restoring metadata for "heroku/nodejs-engine:dist" from app image
+Restoring metadata for "heroku/nodejs-engine:web_env" from app image
+Restoring metadata for "heroku/nodejs-npm-install:npm_runtime_config" from app image
+Restoring metadata for "heroku/nodejs-npm-install:npm_cache" from cache
+Restoring data for "heroku/nodejs-engine:dist" from cache
+Restoring data for "heroku/nodejs-npm-install:npm_cache" from cache
+Timer: Restorer ran for 2.537018547s and ended at 2026-08-13T03:25:26Z
+Timer: Builder started at 2026-08-13T03:25:29Z
+
+[1;35m## Heroku Node.js Engine[0m
+
+- Checking Node.js version
+  - Node.js version not specified, using `[0;33m22.x[0m`
+  - Resolved Node.js version: `[0;33m22.15.1[0m`
+- Installing Node.js distribution
+  - Reusing Node.js 22.15.1 (linux-amd64)
+- Done (finished in < 0.1s)
+
+[1;35m## Heroku Node.js npm Install[0m
+
+- Installing node modules
+  - Using npm version `[0;33m10.9.2[0m`
+  - Restoring npm cache
+  - Configuring npm cache directory
+  - Running `[0;33m[1;36mnpm ci "--production=false"[0m`
+
+      npm warn config production Use `--omit=dev` instead.
+      npm error code ENOTFOUND
+      npm error syscall getaddrinfo
+      npm error errno ENOTFOUND
+      npm error network request to http://package-firewall.replit.local/npm/undici/-/undici-6.28.0.tgz failed, reason: getaddrinfo ENOTFOUND package-firewall.replit.local
+      npm error network This is a problem related to network connectivity.
+      npm error network In most cases you are behind a proxy or have bad network settings.
+      npm error network
+      npm error network If you are behind a proxy, please make sure that the
+      npm error network 'proxy' config is set properly.  See: 'npm help config'
+      npm error A complete log of this run can be found in: /layers/heroku_nodejs-npm-install/npm_cache/_logs/2026-08-13T03_25_29_476Z-debug-0.log
+
+  - Done (1m 10s)
+
+- [1;36mDebug Info:[0m
+  - Command failed `npm ci "--production=false"`
+    exit status: 1
+    stdout: <see above>
+    stderr: <see above>
+
+[0;31m! Failed to install Node modules[0m
+[0;31m![0m
+[0;31m! The Heroku Node.js npm Install buildpack uses the command `[0;33mnpm ci "--production=false"[0m[0;31m` to install your Node modules. This command failed and the buildpack cannot continue. This error can occur due to an unstable network connection. See the log output above for more information.[0m
+[0;31m![0m
+[0;31m! Suggestions:[0m
+[0;31m! - Ensure that this command runs locally without error (exit status = 0).[0m
+[0;31m! - Check the status of the upstream Node module repository service at https://status.npmjs.org/[0m
+[0;31m![0m
+[0;31m! Use the debug information above to troubleshoot and retry your build.[0m
+
+
+Timer: Builder ran for 1m11.038172704s and ended at 2026-08-13T03:26:40Z
+[31;1mERROR: [0mfailed to build: exit status 1
+Build failed ❌

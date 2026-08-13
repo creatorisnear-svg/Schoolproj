@@ -1,0 +1,64 @@
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
+import RoleRequestConfig from '../models/RoleRequestConfig.js';
+import RoleRequest from '../models/RoleRequest.js';
+import { errorEmbed } from '../utils/embedBuilder.js';
+import { v4 as uuidv4 } from 'uuid';
+
+export const data = new SlashCommandBuilder()
+  .setName('rolerequest')
+  .setDescription('Request a role from the server');
+
+export async function execute(interaction) {
+  try {
+    const roleRequestConfig = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+
+    if (!roleRequestConfig || !roleRequestConfig.enabled) {
+      return interaction.reply({
+        embeds: [errorEmbed('The role request system is not enabled.')],
+        flags: 64,
+      });
+    }
+
+    if (!roleRequestConfig.roles || roleRequestConfig.roles.length === 0) {
+      return interaction.reply({
+        embeds: [errorEmbed('No role request types are available. Please contact an administrator.')],
+        flags: 64,
+      });
+    }
+
+    // Show menu to select which role to request
+    const roleOptions = roleRequestConfig.roles.map(r => ({
+      label: r.roleName || r.id,
+      value: r.id,
+      description: `Request the ${r.roleName} role`
+    }));
+
+    const menu = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('select_role_to_request')
+          .setPlaceholder('Select a role to request...')
+          .addOptions(roleOptions)
+      );
+
+    let rolesList = roleRequestConfig.roles.map(r => `> **${r.roleName}**`).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setColor('#2d2d2d')
+      .setTitle('Role Request')
+      .setDescription(rolesList)
+      .setFooter({ text: 'RPM' });
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [menu],
+      flags: 64,
+    });
+  } catch (error) {
+    console.error('Error in role request command:', error);
+    return interaction.reply({
+      embeds: [errorEmbed('An error occurred.')],
+      flags: 64,
+    });
+  }
+}
