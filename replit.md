@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Make the npm lockfile portable to Koyeb by removing Replit-internal package registry URLs from dependency resolution.
+- **Completed:** Clarify the AI handoff response after imported-project setup is complete and no requested blocker remains.
 
 ## AI Handoff Protocol — Read Before Responding
 
@@ -38,6 +38,7 @@ This section controls the first response after an AI reads `replit.md`. Follow i
    - `git status --short`: modified or untracked files that are not explained by the active scope or the latest user request.
    - `changelog-next.json`: changes that are not described, validated, or reflected in the active scope.
    - Documented blockers such as missing secrets, unavailable services, failed workflows, or failed validation.
+   - Once imported-project setup is complete, do not treat optional credentials or a proposed follow-up task as an unfinished blocker unless the user explicitly asked to run or connect that service.
 3. If the scan finds no unfinished work or blocker, respond with exactly:
 
    `Ready to serve.`
@@ -50,6 +51,14 @@ This section controls the first response after an AI reads `replit.md`. Follow i
 5. Before changing any file, replace the `Active Change Scope` entry with a concise description of the new work. After completing it, mark the entry **Completed** and update `changelog-next.json`.
 6. Never treat a cleanly documented pending changelog as unfinished solely because `changelog-next.json` exists; it is the release descriptor until the next release is deployed.
 7. At the end of an implementation session, explicitly say `change done` or `added`. If neither phrase is present, the next AI must treat the work as incomplete and continue it.
+
+### Imported Project Completion Rule
+
+After the imported project has been inspected, its setup path has been documented, and no current user request or required setup step remains incomplete, respond exactly:
+
+`Ready to serve.`
+
+Missing optional runtime secrets (for example, Discord or MongoDB credentials) are only blockers when the user asked to run or connect the service. Replit remains development-only unless the user requests a deployment change.
 
 ## Agent Checklist — Read This First
 
