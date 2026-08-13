@@ -1,8 +1,9 @@
 {
-  "version": "1.2.6",
-  "title": "Clarify AI handoff after project setup",
+  "version": "1.2.7",
+  "title": "Strengthen AI operating guidance",
   "changes": [
-    "Added an explicit completion rule for imported projects",
-    "Clarified that optional credentials are blockers only when the user asks to run or connect the service"
+    "Added explicit intent and scope rules for imported projects and uploaded logs",
+    "Defined blocker semantics for optional secrets, historical logs, and follow-up tasks",
+    "Added validation and completion gates for future AI sessions"
   ]
 }
