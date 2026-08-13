@@ -53,6 +53,8 @@ export async function execute(interaction) {
       statusLine + '\n\n' +
       '### What Premium Unlocks\n' +
       '`AI Voice Dispatch` - bot joins patrol voice channels, transcribes speech, generates AI dispatcher responses, runs plate/name checks by voice, auto-moves officers on 10-11\n\n' +
+       '`Priority Tracker` - live priority status board, cooldown tracking, and staff controls for active events\n\n' +
+       '`Applications` - custom application panels with DM questions, review buttons, and optional role assignment\n\n' +
       '`Advanced Gambling` - Blackjack and Roulette *(free servers keep Slots, Dice, Cockfight, Russian Roulette)*\n\n' +
       '`Unlimited Everything` - characters, vehicles, firearms, BOLOs, stickies, ticket types, role income entries, top-25 leaderboard *(free: capped at lower limits)*\n\n' +
       howTo

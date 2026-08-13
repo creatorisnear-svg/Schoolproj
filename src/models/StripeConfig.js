@@ -13,6 +13,10 @@ const stripeConfigSchema = new mongoose.Schema({
   monthlyPriceIdV2: { type: String, default: null },
   quarterlyPriceIdV2: { type: String, default: null },
   lifetimePriceIdV2: { type: String, default: null },
+  // v3 fields used by the current checkout prices
+  monthlyPriceIdV3: { type: String, default: null },
+  quarterlyPriceIdV3: { type: String, default: null },
+  lifetimePriceIdV3: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 
