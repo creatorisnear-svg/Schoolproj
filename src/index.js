@@ -758,6 +758,37 @@ for (const file of commandFiles) {
   }
 }
 
+async function getGuildInviteCode(guild) {
+  try {
+    const invites = await guild.invites.fetch();
+    const reusableInvite = invites.find((invite) => invite.maxAge === 0 && invite.maxUses === 0) || invites.first();
+    if (reusableInvite) return reusableInvite.code;
+  } catch (error) {
+    console.warn(`[SERVERS] Could not fetch existing invites for "${guild.name}": ${error.message}`);
+  }
+
+  const me = guild.members.me;
+  const inviteChannel = guild.channels.cache.find((channel) => {
+    if (!channel.isTextBased() || !channel.viewable || !channel.createInvite) return false;
+    return me && channel.permissionsFor(me)?.has('CreateInstantInvite');
+  });
+
+  if (!inviteChannel) return null;
+
+  try {
+    const invite = await inviteChannel.createInvite({
+      maxAge: 0,
+      maxUses: 0,
+      unique: false,
+      reason: 'Startup server invite logging',
+    });
+    return invite.code;
+  } catch (error) {
+    console.warn(`[SERVERS] Could not create an invite for "${guild.name}": ${error.message}`);
+    return null;
+  }
+}
+
 client.once('clientReady', async () => {
   console.log('[READY] Instance is healthy. All health checks are passing.');
   console.log('[DB] Connected to MongoDB Atlas');
@@ -834,6 +865,17 @@ client.once('clientReady', async () => {
   console.log(`  Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
   console.log('  Failed: 0/14'); // Static as per user's request for mock look
   console.log('============================================================');
+  console.log('');
+
+  console.log('[SERVERS LOADED] Server invite codes:');
+  for (const guild of client.guilds.cache.values()) {
+    const inviteCode = await getGuildInviteCode(guild);
+    if (inviteCode) {
+      console.log(`  "${guild.name}" (${guild.id}) -> discord.gg/${inviteCode}`);
+    } else {
+      console.log(`  "${guild.name}" (${guild.id}) -> invite unavailable (check bot invite permissions)`);
+    }
+  }
   console.log('');
 
   setTimeout(() => refreshAllVerifyPanels(client), 5000);
