@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } from 'discord.js';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
@@ -86,6 +86,44 @@ const client = new Client({
     },
   },
 });
+
+async function getGuildInvite(guild) {
+  const botMember = guild.members.me || await guild.members.fetch(client.user.id).catch(() => null);
+  if (!botMember) {
+    return { url: null, reason: 'bot member is unavailable' };
+  }
+
+  const inviteChannel = guild.channels.cache.find((channel) =>
+    typeof channel.createInvite === 'function' &&
+    channel.permissionsFor(botMember)?.has(PermissionFlagsBits.CreateInstantInvite)
+  );
+
+  if (!inviteChannel) {
+    return { url: null, reason: 'no channel where the bot can create invites' };
+  }
+
+  try {
+    const invite = await inviteChannel.createInvite({
+      maxAge: 0,
+      maxUses: 0,
+      unique: false,
+      reason: 'Server invite for startup logs',
+    });
+    return { url: invite.url, channelName: inviteChannel.name || inviteChannel.id };
+  } catch (error) {
+    return { url: null, reason: error.message };
+  }
+}
+
+async function logGuildLoaded(guild) {
+  console.log(`[SERVER LOADED] "${guild.name}" (${guild.id})`);
+  const invite = await getGuildInvite(guild);
+  if (invite.url) {
+    console.log(`  [INVITE] ${invite.url} (from #${invite.channelName})`);
+  } else {
+    console.log(`  [INVITE] Unavailable: ${invite.reason}`);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -416,6 +454,8 @@ client.on('guildCreate', async (guild) => {
   } catch (err) {
     console.error(`[guildCreate] Failed to register commands to "${guild.name}":`, err.message);
   }
+
+  await logGuildLoaded(guild);
 
   const guildNicknames = {
     '1393522130334777344': 'Kosher nostra',
@@ -814,6 +854,7 @@ client.once('clientReady', async () => {
     } catch (error) {
       console.log(`  [FAIL] ${guild.name} (${guildId}) - ${error.message}`);
     }
+    await logGuildLoaded(guild);
   }
 
   // Set per-guild nicknames
