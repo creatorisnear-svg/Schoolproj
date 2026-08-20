@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Log each loaded server with a usable Discord invite link when available.
+- **Completed:** Improve startup diagnostics so Discord login failures are visible and the setup documentation matches the current runtime.
 
 ## AI Handoff Protocol — Read Before Responding
 

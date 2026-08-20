@@ -8,8 +8,8 @@
 3. Go to the "Bot" section in the left sidebar
 4. Click "Reset Token" to generate your bot token
 5. **Important**: Enable these intents under "Privileged Gateway Intents":
-   - ✅ Server Members Intent
-   - ✅ Message Content Intent
+   - Server Members Intent
+   - Message Content Intent
 6. Copy the bot token
 
 ### 2. Set Up MongoDB Atlas
@@ -34,28 +34,29 @@ Click the "Secrets" tab (lock icon) in Replit and add:
 4. Copy the generated URL and open it to invite the bot to your server
 
 ### 5. Run the Bot
-Once secrets are added, the bot will automatically start. Check the console for:
+Once secrets are added, run `npm start`. Check the console for:
 ```
-✅ Connected to MongoDB Atlas successfully
-🤖 Bot logged in as RolePlayManager Bot#1234
-✅ Successfully reloaded application (/) commands globally.
+[DB] Connected to MongoDB Atlas successfully
+[READY] Logged in as RolePlayManager Bot#1234
+[OK] Successfully reloaded application (/) commands globally.
 ```
 
-## Available Commands
+## Main Commands
 
-- `/addstaff @user` - Add a user as bot staff (Admin only)
-- `/addstaff @role` - Add a role as bot staff (Admin only)
-- `/removestaff @user` - Remove a user from bot staff (Admin only)
-- `/removestaff @role` - Remove a role from bot staff (Admin only)
-- `/stafflist` - View all bot staff members (Staff only)
+- `/setup` - Open the guided server setup menu
+- `/config` - Configure server features from one command
+- `/staff` - Manage staff permissions
+- `/help` - View the command list
+- `/premium` - View premium status and plans
 
 ## HTTP Server & UptimeRobot Support
 
 The bot includes a built-in HTTP server for health monitoring:
-- Main endpoint: `http://localhost:3000/`
-- Health check: `http://localhost:3000/health`
+- Main endpoint: `http://localhost:5000/`
+- Process health check: `http://localhost:5000/health`
+- Full readiness check: `http://localhost:5000/ready`
 
-Perfect for use with UptimeRobot to keep your bot alive 24/7!
+Use `/health` to confirm the HTTP process is running. Use `/ready` to confirm both MongoDB and Discord are connected.
 
 **Deploying to Koyeb?** Check out [DEPLOYMENT.md](./DEPLOYMENT.md) for a complete guide on deploying to Koyeb and setting up UptimeRobot monitoring.
 

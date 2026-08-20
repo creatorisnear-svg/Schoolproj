@@ -198,6 +198,17 @@ app.use('/js', express.static(resolve('src/website/public/js')));
 app.use('/img', express.static(resolve('src/website/public/img')));
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/ready', (req, res) => {
+  const databaseReady = mongoose.connection.readyState === 1;
+  const discordReady = client.isReady();
+  const status = databaseReady && discordReady ? 'ready' : 'not_ready';
+
+  res.status(status === 'ready' ? 200 : 503).json({
+    status,
+    database: databaseReady ? 'ready' : 'unavailable',
+    discord: discordReady ? 'ready' : 'unavailable',
+  });
+});
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 app.get('/install', (req, res) => {
@@ -1307,7 +1318,9 @@ async function refreshAllVerifyPanels(discordClient) {
 }
 
 connectDatabase().then(async () => {
-  client.login(process.env.DISCORD_TOKEN).catch(() => {});
+  client.login(process.env.DISCORD_TOKEN).catch((error) => {
+    console.error('[DISCORD ERROR] Login failed:', error.message);
+  });
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`HTTP server running on port ${PORT}`);
     console.log(`Health check available at /health`);
