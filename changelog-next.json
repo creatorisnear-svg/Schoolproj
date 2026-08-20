@@ -1,8 +1,8 @@
 {
-  "version": "1.2.8",
-  "title": "Relocate project guidance",
+  "version": "1.2.9",
+  "title": "Complete server invite logging",
   "changes": [
-    "Renamed the repository project guidance file to PROJECT_GUIDE.md",
-    "Preserved the existing project guidance content and application structure"
+    "Marked server invite logging as completed in the project guide",
+    "Documented the existing invite creation and unavailable-invite logging behavior"
   ]
 }
