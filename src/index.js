@@ -533,6 +533,27 @@ client.on('guildCreate', async (guild) => {
   }
 });
 
+client.on('guildDelete', async (guild) => {
+  console.log(`[guildDelete] Removed from "${guild.name}" (${guild.id}) - tearing down per-guild timers`);
+
+  try {
+    const { stopAllDispatchTimers } = await import('./handlers/dispatchHandler.js');
+    stopAllDispatchTimers(guild.id);
+  } catch (err) {
+    console.error('[guildDelete] Failed to stop dispatch timers:', err.message);
+  }
+
+  try {
+    // leaveDispatchChannel destroys the voice connection and stops the panic and
+    // 911 pollers; clearExtendedStay cancels a pending return-to-patrol timeout.
+    const { leaveDispatchChannel, clearExtendedStay } = await import('./utils/voiceListener.js');
+    leaveDispatchChannel(guild.id);
+    clearExtendedStay(guild.id);
+  } catch (err) {
+    console.error('[guildDelete] Failed to tear down voice state:', err.message);
+  }
+});
+
 client.on('guildMemberAdd', async (member) => {
   try {
     if (!member?.guild || member.user?.bot) return;

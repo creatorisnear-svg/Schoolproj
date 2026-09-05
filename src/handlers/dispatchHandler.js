@@ -4558,6 +4558,27 @@ export function startCallRepeatTimer(guild, client) {
   console.log(`[Dispatch] 911 repeat timer started for ${guild.name}`);
 }
 
+export function stopCallRepeatTimer(guildId) {
+  const interval = repeatIntervals.get(guildId);
+  if (interval) {
+    clearInterval(interval);
+    repeatIntervals.delete(guildId);
+  }
+}
+
+/**
+ * Stop every per-guild dispatch timer at once. Call this when the bot leaves a
+ * guild - otherwise the traffic stop and call repeat intervals keep firing
+ * every 60s forever against a guild the bot can no longer see, holding a
+ * reference to the stale Guild object with them.
+ */
+export function stopAllDispatchTimers(guildId) {
+  stopTrafficStopCheckTimer(guildId);
+  stopStatusReminderTimer(guildId);
+  stopHourlyStatusReset(guildId);
+  stopCallRepeatTimer(guildId);
+}
+
 export async function initDispatchForGuild(guild, client) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });

@@ -4,6 +4,7 @@
   "changes": [
     "Automatic background tasks - 911 call cleanup, BOLO expiry, panic alerts, and traffic stop checks - now pause during a database interruption and resume on their own once the connection is back",
     "The bot stays quiet and stable through short connection drops instead of erroring every few seconds",
+    "When the bot is removed from a server, its dispatch, 911, panic and traffic stop background tasks now shut down properly instead of running on in the background",
     "Connection and startup problems are now reported clearly, so outages get spotted and fixed faster"
   ]
 }

@@ -23,4 +23,4 @@ if (mongoose.connection.readyState !== 1) return;
 
 **How to audit:** grep every `setInterval(` under `src/` and `portal/` excluding `public/js`, then read ~14 lines of each callback for a `readyState` check. See [[deployment-architecture]] for why the connection is unreliable in the first place.
 
-**Related open issue:** there is no `guildDelete` listener, so the per-guild timers in `dispatchHandler.js` and `voiceListener.js` are never cleared when the bot is removed from a guild. `startCallRepeatTimer` has no `stop` counterpart at all. The readyState guard limits the noise but does not stop the leak.
+**Fixed Sep 2026:** `src/index.js` now has a `guildDelete` listener that calls `stopAllDispatchTimers(guildId)` (dispatchHandler), plus `leaveDispatchChannel(guildId)` and `clearExtendedStay(guildId)` (voiceListener) to stop the panic/911 pollers, destroy the voice connection and cancel the return-to-patrol timeout. `stopCallRepeatTimer` was added at the same time - `repeatIntervals` previously had no stop function at all.
