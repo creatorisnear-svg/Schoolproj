@@ -16,10 +16,10 @@ export async function execute(interaction) {
     });
   }
 
-  const access = await checkFeatureAccess(interaction.guildId, 'membermovement');
+  const access = await checkFeatureAccess(interaction.guildId, 'moveme');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [buildPremiumEmbed('Member Movement')],
+      embeds: [buildPremiumEmbed('Voice Mover')],
       flags: 64,
     });
   }

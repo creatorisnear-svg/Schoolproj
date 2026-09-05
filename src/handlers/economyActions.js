@@ -1679,7 +1679,7 @@ export async function runBusinessAdjust(interaction) {
   const isAdmin = interaction.member?.permissions?.has('Administrator');
   if (!isAdmin) {
     const { checkStaffPermission } = await import('../utils/permissions.js');
-    const isStaff = await checkStaffPermission(interaction.guildId, interaction.member);
+    const isStaff = await checkStaffPermission(interaction);
     if (!isStaff) {
       return interaction.reply({ embeds: [errorEmbed('You must be a staff member or admin to use this command.')], flags: 64 });
     }

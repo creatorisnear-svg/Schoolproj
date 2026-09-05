@@ -255,6 +255,15 @@ export async function handleBlacklistConfigMenu(interaction, client) {
     const embed = new EmbedBuilder().setColor('#2d2d2d').setTitle('Active Blacklist').setDescription(lines.join('\n').slice(0, 4000)).setFooter({ text: 'RPM' });
     return interaction.editReply({ embeds: [embed], components: [] });
   }
+
+  if (value === 'setup_done') {
+    return interaction.update({
+      embeds: [successEmbed('Blacklist Setup', 'Setup closed. Use `/blacklist` to add members and `/removeblacklist` to remove them.')],
+      components: [],
+    });
+  }
+
+  return interaction.deferUpdate().catch(() => {});
 }
 
 export async function handleBlacklistPanelChannelSelect(interaction, client) {

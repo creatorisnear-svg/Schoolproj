@@ -439,7 +439,7 @@ export async function handleLoanApprove(interaction) {
     || loanConfig?.reviewPingRoleIds?.some(r => interaction.member?.roles?.cache?.has(r));
   if (!canReview) {
     const { checkStaffPermission } = await import('../utils/permissions.js');
-    const isStaff = await checkStaffPermission(interaction.guildId, interaction.member);
+    const isStaff = await checkStaffPermission(interaction);
     if (!isStaff) return interaction.reply({ embeds: [errEmbed('You do not have permission to review loan applications.')], flags: 64 });
   }
 
@@ -601,7 +601,7 @@ export async function handleLoanDeny(interaction) {
     || loanConfig?.reviewPingRoleIds?.some(r => interaction.member?.roles?.cache?.has(r));
   if (!canReview) {
     const { checkStaffPermission } = await import('../utils/permissions.js');
-    const isStaff = await checkStaffPermission(interaction.guildId, interaction.member);
+    const isStaff = await checkStaffPermission(interaction);
     if (!isStaff) return interaction.reply({ embeds: [errEmbed('You do not have permission to review loan applications.')], flags: 64 });
   }
 

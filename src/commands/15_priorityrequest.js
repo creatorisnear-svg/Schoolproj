@@ -37,7 +37,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   try {
     const access = await checkFeatureAccess(interaction.guildId, 'priority');
-    if (!access) return interaction.reply({ embeds: [buildPremiumEmbed('priority')], flags: 64 });
+    if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Priority Tracker')], flags: 64 });
 
     // Check if priority tracker is enabled and has a channel
     const priority = await Priority.findOne({ guildId: interaction.guildId });

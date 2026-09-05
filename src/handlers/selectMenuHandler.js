@@ -139,10 +139,6 @@ export async function handleSelectMenu(interaction) {
     await handleVerifiedRoleSelect(interaction);
   }
 
-  if (interaction.customId === 'select_verified_channels_menu') {
-    await handleVerifiedChannelsSelect(interaction);
-  }
-
   if (interaction.customId === 'select_approval_channel_menu') {
     await handleApprovalChannelSelect(interaction);
   }

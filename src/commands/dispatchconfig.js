@@ -36,7 +36,7 @@ export async function execute(interaction) {
         { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for dispatch logs' },
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for officer status' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel to monitor' },
-        { label: 'Set Traffic Stop Channel', value: 'set_stop_channel', description: 'Voice channel for 10-11 moves' },
+        { label: 'Set Traffic Stop Channel', value: 'add_stop_channel', description: 'Voice channel for 10-11 moves' },
         { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn dispatch on or off' },
         { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI responses' },
         { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a channel' },

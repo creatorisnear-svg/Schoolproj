@@ -50,7 +50,7 @@ export async function execute(interaction) {
   }
 
   const access = await checkFeatureAccess(interaction.guildId, 'priority');
-  if (!access) return interaction.reply({ embeds: [buildPremiumEmbed('priority')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Priority Tracker')], flags: 64 });
 
   try {
     const minutes = interaction.options.getInteger('minutes');

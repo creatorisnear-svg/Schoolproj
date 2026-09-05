@@ -350,17 +350,17 @@ const moduleResponses = {
         '- `/do` — describe something happening in the scene\n' +
         '- `/try` — attempt an action (bot randomly says if it succeeds)\n' +
         '- `911` — members send emergency calls that LEO and FD can respond to\n\n' +
-        '**Toggle each one on or off below:**'
+        '**Set each one up below:**'
       )],
       components: [
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId('roleplaycommands_setup_menu')
-            .setPlaceholder('What do you want to toggle?')
+            .setPlaceholder('What do you want to set up?')
             .addOptions([
-              { label: 'Toggle 911 / CAD Commands', description: 'Enable or disable emergency calls', value: 'toggle_911' },
-              { label: 'Toggle Twitter Commands', description: 'Enable or disable /twitter', value: 'toggle_twitter' },
-              { label: 'Toggle Anonymous Commands', description: 'Enable or disable /anon', value: 'toggle_anon' },
+              { label: 'Set Up 911 / CAD Commands', description: 'Turn on emergency calls and the CAD database', value: 'setup_emergency' },
+              { label: 'Set Twitter Channel', description: 'Choose the channel for /twitter posts', value: 'setup_twitter' },
+              { label: 'Set Anonymous Channel', description: 'Choose the channel for /anon messages', value: 'setup_anon' },
               { label: 'Done', description: 'Close this menu', value: 'setup_done' },
             ])
         ),
@@ -411,7 +411,8 @@ const moduleResponses = {
             '`1.` Set Dispatch Channel — text channel for dispatch logs\n' +
             '`2.` Set Status Board Channel — text channel for the live status board\n' +
             '`3.` Add Patrol Voice Channel — voice channel(s) to listen to\n' +
-            '`4.` Enable the System — turn it on when ready' +
+            '`4.` Set LEO Role(s) — without this the bot listens to everyone in the channel\n' +
+            '`5.` Enable the System — turn it on when ready' +
             warning
           )
           .setFooter({ text: 'RPM — run /setup to go back' }),
@@ -425,8 +426,9 @@ const moduleResponses = {
               { label: '1. Set Dispatch Channel', description: 'Text channel for dispatch logs', value: 'set_dispatch_channel' },
               { label: '2. Set Status Board Channel', description: 'Text channel for the live officer status board', value: 'set_status_channel' },
               { label: '3. Add Patrol Voice Channel', description: 'Voice channel the bot will listen and talk in', value: 'add_patrol_channel' },
-              { label: 'Set Traffic Stop Channel', description: 'Voice channel officers are moved to on 10-11', value: 'set_stop_channel' },
-              { label: '4. Enable / Disable System', description: 'Turn AI dispatch on or off', value: 'toggle_system' },
+              { label: '4. Set LEO Role(s)', description: 'Roles the bot will listen to in patrol channels', value: 'set_leo_roles' },
+              { label: 'Set Traffic Stop Channel', description: 'Voice channel officers are moved to on 10-11', value: 'add_stop_channel' },
+              { label: '5. Enable / Disable System', description: 'Turn AI dispatch on or off', value: 'toggle_system' },
               { label: 'Toggle AI Responses', description: 'Enable or disable AI-generated dispatcher replies', value: 'toggle_ai' },
               { label: 'Remove Patrol Channel', description: 'Stop monitoring a channel', value: 'remove_patrol_channel' },
               { label: 'View Settings', description: 'See current configuration', value: 'view_settings' },

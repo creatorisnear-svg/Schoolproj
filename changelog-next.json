@@ -1,10 +1,13 @@
 {
-  "version": "1.3.1",
-  "title": "Stability improvements",
+  "version": "1.3.2",
+  "title": "Setup fixes",
   "changes": [
-    "Automatic background tasks - 911 call cleanup, BOLO expiry, panic alerts, and traffic stop checks - now pause during a database interruption and resume on their own once the connection is back",
-    "The bot stays quiet and stable through short connection drops instead of erroring every few seconds",
-    "When the bot is removed from a server, its dispatch, 911, panic and traffic stop background tasks now shut down properly instead of running on in the background",
-    "Connection and startup problems are now reported clearly, so outages get spotted and fixed faster"
+    "Setting up 911 and the CAD system from /setup and /config now works - those options used to fail with \"This interaction failed\"",
+    "AI Dispatch: the traffic stop channel option now works instead of showing an error",
+    "AI Dispatch: added a Set LEO Roles step - without it the bot listened to everyone in the patrol channel instead of just your officers",
+    "The blacklist setup menu now closes properly when you pick Done",
+    "Loan and business banking commands now work for staff members who are not full administrators",
+    "Removed a Set Priority Role option that never did anything",
+    "Priority Tracker now correctly requires Premium, as it was always meant to"
   ]
 }
