@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { Readable } from 'stream';
 import prism from 'prism-media';
 import { clearRadioLog } from './radioSession.js';
+import mongoose from 'mongoose';
 import OfficerStatus from '../models/OfficerStatus.js';
 
 // Pre-load radio wave sound - played before every dispatch TTS response
@@ -99,7 +100,10 @@ async function _runPanicPoll(guildId) {
 
 function _startPanicPoller(guildId) {
   if (panicPollers.has(guildId)) return; // already running
-  const interval = setInterval(() => _runPanicPoll(guildId), 5000);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    _runPanicPoll(guildId);
+  }, 5000);
   panicPollers.set(guildId, interval);
   console.log(`[Dispatch Panic Poller] Started for guild ${guildId}`);
 }
@@ -163,7 +167,10 @@ async function _run911Poll(guildId) {
 
 export function start911Poller(guildId) {
   if (call911Pollers.has(guildId)) return; // already running
-  const interval = setInterval(() => _run911Poll(guildId), 5000);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    _run911Poll(guildId);
+  }, 5000);
   call911Pollers.set(guildId, interval);
   console.log(`[Dispatch 911 Poller] Started for guild ${guildId}`);
 }

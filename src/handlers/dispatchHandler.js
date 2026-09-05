@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
+import mongoose from 'mongoose';
 import DispatchConfig from '../models/DispatchConfig.js';
 import OfficerStatus from '../models/OfficerStatus.js';
 import CADConfig from '../models/CADConfig.js';
@@ -4172,7 +4173,10 @@ const TRAFFIC_STOP_CHECK_MS = 60 * 1000; // check every 1 minute
 
 export function startTrafficStopCheckTimer(guild) {
   if (trafficStopCheckIntervals.has(guild.id)) return;
-  const interval = setInterval(() => checkTrafficStops(guild), TRAFFIC_STOP_CHECK_MS);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    checkTrafficStops(guild);
+  }, TRAFFIC_STOP_CHECK_MS);
   trafficStopCheckIntervals.set(guild.id, interval);
   console.log(`[Dispatch] Traffic stop check timer started for ${guild.name} (60s interval)`);
 }
@@ -4288,7 +4292,10 @@ async function checkStatusReminders(guild) {
 
 export function startStatusReminderTimer(guild) {
   if (statusReminderIntervals.has(guild.id)) return;
-  const interval = setInterval(() => checkStatusReminders(guild), STATUS_REMINDER_MS);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    checkStatusReminders(guild);
+  }, STATUS_REMINDER_MS);
   statusReminderIntervals.set(guild.id, interval);
   console.log(`[Dispatch] Status reminder timer started for ${guild.name}`);
 }
@@ -4352,7 +4359,10 @@ async function runHourlyStatusReset(guild) {
 
 export function startHourlyStatusReset(guild) {
   if (hourlyResetIntervals.has(guild.id)) return;
-  const interval = setInterval(() => runHourlyStatusReset(guild), HOURLY_RESET_MS);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    runHourlyStatusReset(guild);
+  }, HOURLY_RESET_MS);
   hourlyResetIntervals.set(guild.id, interval);
   console.log(`[Dispatch] Hourly status reset timer started for ${guild.name}`);
 }
@@ -4540,7 +4550,10 @@ async function checkUnrespondedCalls(guild, client) {
 
 export function startCallRepeatTimer(guild, client) {
   if (repeatIntervals.has(guild.id)) return;
-  const interval = setInterval(() => checkUnrespondedCalls(guild, client), 60 * 1000);
+  const interval = setInterval(() => {
+    if (mongoose.connection.readyState !== 1) return;
+    checkUnrespondedCalls(guild, client);
+  }, 60 * 1000);
   repeatIntervals.set(guild.id, interval);
   console.log(`[Dispatch] 911 repeat timer started for ${guild.name}`);
 }

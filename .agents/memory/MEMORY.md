@@ -1,4 +1,4 @@
-- [Mongoose Model Guards](mongoose-model-guards.md) - all 37 models need `mongoose.models.X ||` guard; EmergencyCall.js uses named import pattern requiring `models` in import.
+- [Mongoose Model Guards](mongoose-model-guards.md) - all 58 models need `mongoose.models.X ||` guard; verified all present Sep 2026; EmergencyCall.js uses named import pattern requiring `models` in import.
 - [Appys Feature Architecture](appys-architecture.md) - Applications system: AppyConfig+AppyPanel+AppySubmission models; DM Q&A flow; premium gated; panel sent via bot or webhook.
 - [Business System Overview](business-system.md) - BusinessAccount/Inventory/Transaction models; commands: /business /paybusiness /businessleaderboard /businessinfo /businesstransfer /businessadjust; handlers in economyActions.js; dashboard in site/js/dashboard.js; API routes in src/website/routes/api.js.
 - [economyActions.js Edit Risk](economy-actions-edit-risk.md) - File is large (~1675 lines); multi-step edits caused catastrophic duplication. Always use head/tail shell strategy to rebuild rather than chained Edit calls on this file.
@@ -8,3 +8,4 @@
 - [Portable npm lockfiles](portable-npm-lockfiles.md) - Koyeb builds cannot resolve Replit package-firewall URLs; lockfiles must use public npm tarball URLs.
 - [Voice UDP Bypass — Never Remove](voice-udp-bypass.md) - Synthetic UDP bypass in voiceListener.js is required on Replit; inbound UDP blocked; @discordjs/voice must stay ≥0.19.2 for DAVE.
 - [Portal Architecture](portal-architecture.md) - Express SPA at /portal on Koyeb; HMAC cookie auth; Civilian/LEO modes; priority polls every 5s; panic via OfficerStatus upsert.
+- [Scheduled DB Query Guards](interval-db-guards.md) - every setInterval touching MongoDB needs a `readyState !== 1` guard; lists which 8 intervals are DB-backed vs which 5 are in-memory only; notes the missing guildDelete timer cleanup.

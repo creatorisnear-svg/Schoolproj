@@ -915,6 +915,7 @@ client.once('clientReady', async () => {
   }
 
   setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     try {
       const cutoff = new Date(Date.now() - 10 * 60 * 1000);
       const expiredCalls = await EmergencyCall.find({ status: 'active', timestamp: { $lt: cutoff } });
@@ -953,6 +954,7 @@ client.once('clientReady', async () => {
   console.log('[ALERT] Emergency call auto-delete started (10-minute timeout for all calls)');
 
   setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     try {
       const now = new Date();
       const result = await BOLO.deleteMany({ expiresAt: { $lt: now } });

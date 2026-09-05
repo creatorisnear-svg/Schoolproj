@@ -1,9 +1,11 @@
 {
-  "version": "1.3.0",
-  "title": "Improve startup diagnostics",
+  "version": "1.3.1",
+  "title": "Improve startup diagnostics and connection resilience",
   "changes": [
     "Log Discord login failures instead of silently ignoring them",
     "Add a readiness endpoint that reports MongoDB and Discord status",
+    "Skip scheduled database work while MongoDB is disconnected instead of throwing every cycle",
+    "Stop the 911, BOLO, panic, traffic stop, and dispatch pollers from spamming errors during a database outage",
     "Refresh setup, command, and health-check documentation"
   ]
 }
