@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Phase 0 of the setup restructure - repaired six broken setup paths (911/CAD, dispatch traffic stop, blacklist Done, dead priority role option), fixed the no-op Priority premium gate and the checkStaffPermission call signature that crashed Loans for non-admin staff, and unified the moveme feature key.
+- **Completed:** Phase 0 follow-up from the verification sweep - six spread-then-override Done branches now clear components, the char_delete_cancel button is no longer shadowed by the char_delete_ prefix branch, the dev panel gained the five missing feature keys and the correct premium default, and the enable panel now checks premium.
 
 ## AI Handoff Protocol — Read Before Responding
 

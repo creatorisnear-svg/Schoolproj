@@ -249,10 +249,10 @@ export async function handleTicketSetupMenu(interaction) {
     }
 
     if (choice === 'setup_done') {
-      const menuData = await showSetupMenu(interaction);
       return interaction.update({
-        ...menuData,
+        content: '',
         embeds: [successEmbed('Setup Complete', 'Your ticket system is ready to use!')],
+        components: [],
       });
     }
   } catch (error) {

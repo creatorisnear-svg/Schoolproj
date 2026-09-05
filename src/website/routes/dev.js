@@ -33,7 +33,16 @@ const ALL_FEATURES = [
   { feature: 'verification', label: 'Verification' },
   { feature: 'welcome', label: 'Welcome System' },
   { feature: 'dispatch', label: 'AI Voice Dispatch' },
+  { feature: 'appys', label: 'Applications' },
+  { feature: 'blacklist', label: 'Blacklist System' },
+  { feature: 'moveme', label: 'Voice Mover' },
+  { feature: 'economy', label: 'Economy' },
+  { feature: 'civjobs', label: 'Civilian Jobs' },
 ];
+
+// Mirrors the fallback in src/utils/premiumCheck.js — that file is the source of
+// truth. Used only when a feature has no FeatureFlag row yet.
+const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'priority', 'appys'];
 
 const DEV_PASSWORD = process.env.DEV_PASSWORD || '67678967';
 const sessions = new Set();
@@ -278,7 +287,7 @@ export function createDevRouter(client) {
       const result = ALL_FEATURES.map(f => ({
         feature: f.feature,
         label: f.label,
-        premium: flagMap[f.feature] ?? (f.feature === 'dispatch'),
+        premium: flagMap[f.feature] ?? DEFAULT_PREMIUM_FEATURES.includes(f.feature),
       }));
       res.json(result);
     } catch (err) {

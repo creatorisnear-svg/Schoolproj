@@ -262,6 +262,16 @@ export async function handleEnableCommandButton(interaction) {
       setupCommand = 'Run `/movemeconfig` to configure and send the Voice Mover panel.';
     }
 
+    // Premium gate. Without this the enable panel is a way to switch on a
+    // premium-gated feature without passing the check every other entry point
+    // enforces. Button ids match the canonical feature keys except membermove.
+    const featureKey = customId === 'enable_membermove' ? 'moveme' : customId.replace('enable_', '');
+    const { checkFeatureAccess, buildPremiumEmbed } = await import('../utils/premiumCheck.js');
+    const access = await checkFeatureAccess(guildId, featureKey);
+    if (!access.allowed) {
+      return interaction.reply({ embeds: [buildPremiumEmbed(featureName || featureKey)], flags: 64 });
+    }
+
     // Save to database
     if (model) {
       let doc = await model.findOne({ guildId }) || new model({ guildId });

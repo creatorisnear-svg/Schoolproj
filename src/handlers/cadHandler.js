@@ -105,10 +105,10 @@ export async function handleCADSetupMenu(interaction) {
     }
 
     if (choice === 'setup_done') {
-      const menuData = await showSetupMenu(interaction);
       return interaction.update({
-        ...menuData,
+        content: '',
         embeds: [successEmbed('CAD Setup Complete', 'Your CAD system is ready! Members can now create characters.')],
+        components: [],
       });
     }
   } catch (error) {

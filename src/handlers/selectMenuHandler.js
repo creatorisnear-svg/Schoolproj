@@ -629,7 +629,7 @@ export async function handleSelectMenu(interaction) {
     const { handleCharacterDeleteConfirm } = await import('./civilianDatabaseHandler.js');
     return handleCharacterDeleteConfirm(interaction, characterId);
   }
-  if (customId.startsWith('char_delete_') && !customId.startsWith('char_delete_confirm_')) {
+  if (customId.startsWith('char_delete_') && !customId.startsWith('char_delete_confirm_') && customId !== 'char_delete_cancel') {
     const characterId = customId.replace('char_delete_', '');
     const { handleCharacterDelete } = await import('./civilianDatabaseHandler.js');
     return handleCharacterDelete(interaction, characterId);
@@ -1018,10 +1018,10 @@ async function handleVerifySetupMenu(interaction) {
     }
 
     if (choice === 'verify_setup_done') {
-      const menuData = createSetupMenu();
       await interaction.update({
-        ...menuData,
+        content: '',
         embeds: [successEmbed('Verification system setup is complete!\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels')],
+        components: [],
       });
     }
   } catch (error) {
@@ -1810,10 +1810,10 @@ async function handleWelcomeSetupMenu(interaction) {
     }
 
     if (choice === 'welcome_setup_done') {
-      const menuData = createWelcomeSetupMenu();
       return interaction.update({
-        ...menuData,
+        content: '',
         embeds: [successEmbed('Welcome system setup is complete. Your welcome system is now active.')],
+        components: [],
       });
     }
   } catch (error) {
@@ -1959,10 +1959,10 @@ async function handleStrikeSetupMenu(interaction) {
     }
 
     if (choice === 'strike_setup_done') {
-      const menuData = createStrikeSetupMenu();
       return interaction.update({
-        ...menuData,
+        content: '',
         embeds: [successEmbed('Strike System Configured', 'Your strike system is ready to use. Staff can now use `/strike` to strike members.')],
+        components: [],
       });
     }
   } catch (error) {
