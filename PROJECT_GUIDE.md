@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Guard scheduled MongoDB queries with a `readyState` check, and add a `guildDelete` listener that stops the per-guild dispatch, panic and 911 timers when the bot is removed from a server.
+- **Completed:** Guard scheduled MongoDB queries with a `readyState` check, add a `guildDelete` listener that stops per-guild dispatch/panic/911 timers, and repoint 15 Replit-firewall lockfile URLs at the public npm registry so the Koyeb buildpack stops failing with exit 51.
 
 ## AI Handoff Protocol — Read Before Responding
 
