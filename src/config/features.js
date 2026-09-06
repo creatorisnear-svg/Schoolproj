@@ -17,6 +17,8 @@
  *               NOT always equal to key: strike/strikes, ticket/tickets,
  *               antipromote/antipromo. Keeping both is what stops api.js from
  *               crossing the two namespaces.
+ *   configKey   key this feature's on/off state arrives under in GET /guild/:id,
+ *               e.g. verifyEnabled. Empty when the feature has no toggle.
  *   label       the one human name, used everywhere
  *   group       section heading for /setup and the dashboard sidebar
  *   short       one line for menus and sidebars
@@ -40,6 +42,7 @@ export const FEATURES = [
   {
     key: "general",
     mod: "general",
+    configKey: "",
     label: "General Settings",
     group: "Foundation",
     order: 10,
@@ -57,6 +60,7 @@ export const FEATURES = [
   {
     key: "staff",
     mod: "staff",
+    configKey: "",
     label: "Staff Management",
     group: "Foundation",
     order: 20,
@@ -78,6 +82,7 @@ export const FEATURES = [
   {
     key: "verification",
     mod: "verification",
+    configKey: "verifyEnabled",
     label: "Verification",
     group: "Moderation",
     order: 30,
@@ -95,6 +100,7 @@ export const FEATURES = [
   {
     key: "strike",
     mod: "strikes",
+    configKey: "strikeEnabled",
     label: "Strike System",
     group: "Moderation",
     order: 40,
@@ -112,6 +118,7 @@ export const FEATURES = [
   {
     key: "antipromote",
     mod: "antipromo",
+    configKey: "antiPromotingEnabled",
     label: "Anti-Promoting",
     group: "Moderation",
     order: 50,
@@ -129,6 +136,7 @@ export const FEATURES = [
   {
     key: "blacklist",
     mod: "blacklist",
+    configKey: "blacklistEnabled",
     label: "Blacklist System",
     group: "Moderation",
     order: 60,
@@ -150,6 +158,7 @@ export const FEATURES = [
   {
     key: "roleplay",
     mod: "roleplay",
+    configKey: "roleplayEnabled",
     label: "Roleplay Commands",
     group: "Roleplay",
     order: 70,
@@ -167,6 +176,7 @@ export const FEATURES = [
   {
     key: "dispatch",
     mod: "dispatch",
+    configKey: "dispatchEnabled",
     label: "AI Voice Dispatch",
     group: "Roleplay",
     order: 80,
@@ -184,6 +194,7 @@ export const FEATURES = [
   {
     key: "priority",
     mod: "priority",
+    configKey: "priorityEnabled",
     label: "Priority Tracker",
     group: "Roleplay",
     order: 90,
@@ -201,6 +212,7 @@ export const FEATURES = [
   {
     key: "calendar",
     mod: "calendar",
+    configKey: "calendarEnabled",
     label: "RP Calendar",
     group: "Roleplay",
     order: 100,
@@ -222,6 +234,7 @@ export const FEATURES = [
   {
     key: "ticket",
     mod: "tickets",
+    configKey: "ticketEnabled",
     label: "Ticket Support",
     group: "Community",
     order: 110,
@@ -239,6 +252,7 @@ export const FEATURES = [
   {
     key: "welcome",
     mod: "welcome",
+    configKey: "welcomeEnabled",
     label: "Welcome System",
     group: "Community",
     order: 120,
@@ -256,6 +270,7 @@ export const FEATURES = [
   {
     key: "rolerequest",
     mod: "rolerequest",
+    configKey: "roleRequestEnabled",
     label: "Role Requests",
     group: "Community",
     order: 130,
@@ -273,6 +288,7 @@ export const FEATURES = [
   {
     key: "moveme",
     mod: "moveme",
+    configKey: "movemeEnabled",
     label: "Voice Mover",
     group: "Community",
     order: 140,
@@ -290,6 +306,7 @@ export const FEATURES = [
   {
     key: "appys",
     mod: "appys",
+    configKey: "appysEnabled",
     label: "Applications",
     group: "Community",
     order: 150,
@@ -307,6 +324,7 @@ export const FEATURES = [
   {
     key: "sticky",
     mod: "sticky",
+    configKey: "",
     label: "Sticky Messages",
     group: "Community",
     order: 160,
@@ -324,6 +342,7 @@ export const FEATURES = [
   {
     key: "reactionroles",
     mod: "reactionroles",
+    configKey: "",
     label: "Reaction Roles",
     group: "Community",
     order: 170,
@@ -345,6 +364,7 @@ export const FEATURES = [
   {
     key: "economy",
     mod: "economy",
+    configKey: "economyEnabled",
     label: "Economy",
     group: "Economy",
     order: 180,
@@ -362,6 +382,7 @@ export const FEATURES = [
   {
     key: "civjobs",
     mod: "civjobs",
+    configKey: "civjobsEnabled",
     label: "Civilian Jobs",
     group: "Economy",
     order: 190,

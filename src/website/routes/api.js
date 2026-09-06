@@ -218,6 +218,7 @@ export function createApiRouter(client) {
       features: FEATURES.map((f) => ({
         key: f.key,
         mod: f.mod,
+        configKey: f.configKey,
         label: f.label,
         group: f.group,
         order: f.order,
@@ -336,7 +337,7 @@ export function createApiRouter(client) {
         roleplayEnabled: false,
         roleRequestEnabled: false,
         movemeEnabled: false,
-        civJobsEnabled: false,
+        civjobsEnabled: false,
         blacklistEnabled: false,
         appysEnabled: false,
       };
@@ -483,6 +484,31 @@ export function createApiRouter(client) {
       });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch guild data' });
+    }
+  });
+
+  // Real per-feature readiness for one guild: off / incomplete / ready, plus the
+  // fields each incomplete feature is still missing. The dashboard used to count
+  // `enabled` booleans, which measured menus that had been opened rather than
+  // features that work - a server could read "12 of 15 active" with nothing set up.
+  router.get('/guild/:id/status', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    try {
+      const isAdmin = await verifyAdminAccess(token, req.params.id);
+      if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(403).json({ error: 'No admin access' });
+    }
+
+    try {
+      const { getAllFeatureStatus, summarize } = await import('../../utils/featureStatus.js');
+      const statuses = await getAllFeatureStatus(req.params.id);
+      res.json({ statuses, summary: summarize(statuses) });
+    } catch (err) {
+      console.error('[API] status failed:', err.message);
+      res.status(500).json({ error: 'Failed to compute feature status' });
     }
   });
 

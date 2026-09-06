@@ -13,6 +13,8 @@ var _currentSettingsData = null;
 var sidebarOpen = false;
 var featureFlags = { dispatch: true, priority: true, appys: true };
 var TOPGG_VOTE_URL = '';
+var featureStatus = {};
+var featureSummary = null;
 
 function getToken() { return localStorage.getItem('dash_token'); }
 function setToken(t) { localStorage.setItem('dash_token', t); }
@@ -180,7 +182,7 @@ function init() {
 
   app.innerHTML = fullPageLoader('Loading');
 
-  loadFeatureFlags(function() {
+  loadRegistry(function() { loadFeatureFlags(function() {
     api('/me').then(function(data) {
       if (!data || !data.user) { clearToken(); showLogin(); return; }
       currentUser = data.user;
@@ -210,7 +212,7 @@ function init() {
         renderServerSelect();
       }
     });
-  });
+  }); });
 }
 
 function toggleUserMenu(e) {
@@ -251,9 +253,15 @@ function renderServerSelect() {
     '</div></div>';
 }
 
+// Premium state comes from the registry, which the API resolves per feature
+// (a dev-panel FeatureFlag row, else the feature's premiumDefault). The old
+// version hardcoded dispatch/priority/appys here - a fourth copy of that list.
 function isFlagPremium(featureKey) {
+  for (var i = 0; i < REGISTRY.length; i++) {
+    if (REGISTRY[i].key === featureKey) return REGISTRY[i].premium === true;
+  }
   if (featureKey in featureFlags) return featureFlags[featureKey] === true;
-  return featureKey === 'dispatch' || featureKey === 'priority' || featureKey === 'appys';
+  return false;
 }
 
 function selectServer(guildId, section) {
@@ -261,10 +269,16 @@ function selectServer(guildId, section) {
   app.innerHTML = fullPageLoader('Loading server');
   Promise.all([
     api('/guild/' + guildId),
-    fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; })
+    fetch(API_BASE + '/api/public/features').then(function(r) { return r.ok ? r.json() : {}; }).catch(function() { return {}; }),
+    fetch(API_BASE + '/api/public/registry').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+    api('/guild/' + guildId + '/status').catch(function() { return null; })
   ]).then(function(results) {
     var data = results[0];
     featureFlags = results[1] || { dispatch: true, priority: true, appys: true };
+    applyRegistry(results[2]);
+    // Real readiness per feature, not just which toggles are on.
+    featureStatus = (results[3] && results[3].statuses) || {};
+    featureSummary = (results[3] && results[3].summary) || null;
     if (!data) { clearSession(); renderServerSelect(); return; }
     currentGuild = data;
     pendingChanges = {};
@@ -272,56 +286,79 @@ function selectServer(guildId, section) {
   });
 }
 
-/* ── Feature definitions ── */
-var FEATURES = [
-  { key: 'roleplayEnabled',     feature: 'roleplay',      name: 'Roleplay Commands', icon: 'RP',  desc: '911, Twitter, anon tips, CAD',   mod: 'roleplay' },
-  { key: 'priorityEnabled',     feature: 'priority',      name: 'Priority Tracker',  icon: 'PRI', desc: 'Priority event tracking',         mod: 'priority',  premium: true },
-  { key: 'strikeEnabled',       feature: 'strike',        name: 'Strike System',     icon: 'STR', desc: 'Multi-level strike punishments',  mod: 'strikes' },
-  { key: 'calendarEnabled',     feature: 'calendar',      name: 'RP Calendar',       icon: 'CAL', desc: 'Weekly event scheduling',         mod: 'calendar' },
-  { key: 'ticketEnabled',       feature: 'ticket',        name: 'Ticket Support',    icon: 'TKT', desc: 'Support ticket system',           mod: 'tickets' },
-  { key: 'antiPromotingEnabled',feature: 'antipromote',   name: 'Anti-Promoting',    icon: 'AP',  desc: 'Invite link filtering',           mod: 'antipromo' },
-  { key: 'roleRequestEnabled',  feature: 'rolerequest',   name: 'Role Request',      icon: 'RR',  desc: 'Self-serve role requests',        mod: 'rolerequest' },
-  { key: 'verifyEnabled',       feature: 'verification',  name: 'Verification',      icon: 'ID',  desc: 'Member verification gate',        mod: 'verification' },
-  { key: 'welcomeEnabled',      feature: 'welcome',       name: 'Welcome System',    icon: 'WEL', desc: 'New member messages',             mod: 'welcome' },
-  { key: 'dispatchEnabled',     feature: 'dispatch',      name: 'AI Voice Dispatch', icon: 'AI',  desc: 'AI-powered voice dispatch',       mod: 'dispatch',  premium: true },
-  { key: 'economyEnabled',      feature: 'economy',       name: 'Economy',           icon: '$',   desc: 'Currency, work, crime, gambling', mod: 'economy' },
-  { key: 'movemeEnabled',       feature: 'moveme',        name: 'Voice Mover',       icon: 'VM',  desc: 'Member self-move between channels', mod: 'moveme' },
-  { key: 'civjobsEnabled',      feature: 'civjobs',       name: 'Civilian Jobs',     icon: 'CJ',  desc: 'Job board with shift roles',        mod: 'civjobs' },
-  { key: 'blacklistEnabled',    feature: 'blacklist',     name: 'Blacklist',         icon: 'BL',  desc: 'Server blacklist with IP protection', mod: 'blacklist', premium: true },
-  { key: 'appysEnabled',        feature: 'appys',         name: 'Applications',      icon: 'APP', desc: 'Application panels with DM Q&A flow', mod: 'appys',    premium: true },
-];
+/* ── Feature definitions ──────────────────────────────────────────────────────
+ * These used to be three hand-maintained arrays in this file - FEATURES,
+ * SIDEBAR_GROUPS and a FEATURE_SECTIONS local inside renderDashboard - which had
+ * drifted apart from each other and from the bot. They are now derived from
+ * GET /api/public/registry, which serves src/config/features.js. site/ is static
+ * and cannot import the bot's modules, so the API is the bridge.
+ *
+ * Everything below is rebuilt by applyRegistry(). Until that resolves the arrays
+ * are empty, which renders an empty list rather than a wrong one.
+ */
+var REGISTRY = [];
+var FEATURES = [];
+var SIDEBAR_GROUPS = [];
+var FEATURE_SECTIONS = [];
 
-var SIDEBAR_GROUPS = [
-  { title: 'Roleplay', items: [
-    { id: 'roleplay',    label: 'Roleplay Commands' },
-    { id: 'priority',    label: 'Priority Tracker' },
-    { id: 'calendar',    label: 'RP Calendar' },
-  ]},
-  { title: 'Moderation', items: [
-    { id: 'verification', label: 'Verification' },
-    { id: 'strikes',      label: 'Strike System' },
-    { id: 'antipromo',    label: 'Anti-Promoting' },
-    { id: 'blacklist',    label: 'Blacklist' },
-  ]},
-  { title: 'Community', items: [
-    { id: 'tickets',       label: 'Ticket Support' },
-    { id: 'welcome',       label: 'Welcome System' },
-    { id: 'rolerequest',   label: 'Role Request' },
-    { id: 'moveme',        label: 'Voice Mover' },
-    { id: 'appys',         label: 'Applications' },
-    { id: 'sticky',        label: 'Sticky Messages' },
-    { id: 'reactionroles', label: 'Reaction Roles' },
-  ]},
-  { title: 'Economy', items: [
-    { id: 'economy',     label: 'Economy' },
-    { id: 'civjobs',     label: 'Civilian Jobs' },
-  ]},
-  { title: 'Advanced', items: [
-    { id: 'dispatch',    label: 'AI Voice Dispatch' },
-    { id: 'staff',       label: 'Staff Management' },
-    { id: 'general',     label: 'General Settings' },
-  ]},
-];
+function applyRegistry(payload) {
+  var features = (payload && payload.features) || [];
+  if (!features.length) return;
+  REGISTRY = features.slice().sort(function(a, b) { return a.order - b.order; });
+  if (payload.topggVoteUrl) TOPGG_VOTE_URL = payload.topggVoteUrl;
+
+  // Only features with a config toggle can be counted or switched on.
+  FEATURES = REGISTRY.filter(function(f) { return f.configKey; }).map(function(f) {
+    return {
+      key: f.configKey,
+      feature: f.key,
+      name: f.label,
+      desc: f.short,
+      mod: f.mod,
+      premium: f.premium,
+    };
+  });
+
+  var groups = [];
+  REGISTRY.forEach(function(f) {
+    var last = groups[groups.length - 1];
+    if (last && last.title === f.group) { last.items.push(f); return; }
+    groups.push({ title: f.group, items: [f] });
+  });
+
+  SIDEBAR_GROUPS = groups.map(function(g) {
+    return {
+      title: g.title,
+      items: g.items.map(function(f) {
+        return { id: f.mod, label: f.label, premium: f.premium };
+      }),
+    };
+  });
+
+  FEATURE_SECTIONS = groups.map(function(g) {
+    return {
+      title: g.title,
+      items: g.items.map(function(f) {
+        return {
+          id: f.mod,
+          label: f.label,
+          desc: f.short,
+          long: f.long,
+          feature: f.key,
+          featureKey: f.configKey || null,
+          premium: f.premium,
+        };
+      }),
+    };
+  });
+}
+
+function loadRegistry(callback) {
+  fetch(API_BASE + '/api/public/registry')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(payload) { applyRegistry(payload); callback(); })
+    .catch(function() { callback(); });
+}
 
 /* ── Sidebar HTML ── */
 function renderSidebar(active) {
@@ -362,6 +399,16 @@ function renderDashboard() {
   var g = currentGuild;
   var config = g.config || {};
 
+  // Readiness, not toggle count. "12 / 15 active" used to count enabled flags,
+  // and ensureEnabled sets those the moment a menu is opened - so a server could
+  // read 12/15 with nothing actually configured.
+  var readyCount = 0, incompleteCount = 0;
+  for (var _k in featureStatus) {
+    if (!Object.prototype.hasOwnProperty.call(featureStatus, _k)) continue;
+    if (featureStatus[_k].status === 'ready') readyCount++;
+    else if (featureStatus[_k].status === 'incomplete') incompleteCount++;
+  }
+  var haveStatus = featureSummary !== null;
   var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
   var totalCount = FEATURES.length;
   var hasLogChannel = !!config.logChannelId;
@@ -380,7 +427,7 @@ function renderDashboard() {
   html += '<div class="dash-grid" style="margin-bottom:16px;">' +
     '<div class="dash-card"><div class="dash-label">Members</div><div class="dash-value">' + (g.memberCount || 0).toLocaleString() + '</div></div>' +
     '<div class="dash-card"><div class="dash-label">Premium</div><div class="dash-value" style="font-size:15px;color:' + (g.premium ? 'var(--green)' : 'var(--text-dim)') + '">' + (g.premium ? 'Active' : 'Inactive') + '</div></div>' +
-    '<div class="dash-card"><div class="dash-label">Active Features</div><div class="dash-value">' + enabledCount + ' / ' + totalCount + '</div></div>' +
+    '<div class="dash-card"><div class="dash-label">' + (haveStatus ? 'Features Ready' : 'Active Features') + '</div><div class="dash-value">' + (haveStatus ? readyCount : enabledCount) + ' / ' + totalCount + '</div>' + (haveStatus && incompleteCount ? '<div class="dash-sub" style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + incompleteCount + ' need finishing</div>' : '') + '</div>' +
     '</div>';
 
   // ── Setup guide (shown when no log channel set) ───────────────────────────
@@ -417,40 +464,8 @@ function renderDashboard() {
       '</div>';
   }
 
-  // ── Unified features section ──────────────────────────────────────────────
-  var FEATURE_SECTIONS = [
-    { title: 'Foundation', items: [
-      { id: 'general',      label: 'General Settings',   desc: 'Log channel — set this first, the bot needs it to work', featureKey: null },
-      { id: 'staff',        label: 'Staff Management',   desc: 'Who can run bot commands — add yourself and your admins', featureKey: null },
-    ]},
-    { title: 'Roleplay & Operations', items: [
-      { id: 'roleplay',     label: 'Roleplay Commands',  desc: '/me, /do, /try, 911 calls and CAD database',             featureKey: 'roleplayEnabled',      feature: 'roleplay' },
-      { id: 'priority',     label: 'Priority Tracker',   desc: 'Live board showing when a priority event is active',     featureKey: 'priorityEnabled',      feature: 'priority' },
-      { id: 'calendar',     label: 'RP Calendar',         desc: 'Schedule and display weekly roleplay sessions',          featureKey: 'calendarEnabled',      feature: 'calendar' },
-    ]},
-    { title: 'Moderation', items: [
-      { id: 'verification', label: 'Verification',        desc: 'Gate your server — members fill a form to get access',  featureKey: 'verifyEnabled',        feature: 'verification' },
-      { id: 'strikes',      label: 'Strike System',       desc: 'Warn rule-breakers, auto timeout / kick / ban',         featureKey: 'strikeEnabled',        feature: 'strike' },
-      { id: 'antipromo',    label: 'Anti-Promoting',      desc: 'Auto-delete Discord invite links from other servers',   featureKey: 'antiPromotingEnabled', feature: 'antipromote' },
-      { id: 'blacklist',    label: 'Blacklist',            desc: 'IP + gamertag protection across servers',               featureKey: 'blacklistEnabled',     feature: 'blacklist' },
-    ]},
-    { title: 'Community', items: [
-      { id: 'tickets',      label: 'Ticket Support',      desc: 'Members open private support channels with a button',   featureKey: 'ticketEnabled',        feature: 'ticket' },
-      { id: 'welcome',      label: 'Welcome System',      desc: 'Greet new members automatically with a message or DM', featureKey: 'welcomeEnabled',       feature: 'welcome' },
-      { id: 'rolerequest',  label: 'Role Requests',        desc: 'Members apply for specific roles — staff approve',      featureKey: 'roleRequestEnabled',   feature: 'rolerequest' },
-      { id: 'moveme',       label: 'Voice Mover',          desc: 'Panel for members to move between voice channels',      featureKey: 'movemeEnabled',        feature: 'moveme' },
-      { id: 'appys',        label: 'Applications',         desc: 'Custom application panels with DM Q&A flow',           featureKey: 'appysEnabled',         feature: 'appys' },
-      { id: 'sticky',       label: 'Sticky Messages',      desc: 'Auto-reposting pinned messages in channels',           featureKey: null },
-      { id: 'reactionroles',label: 'Reaction Roles',       desc: 'Members react to a message to receive a role',         featureKey: null },
-    ]},
-    { title: 'Economy', items: [
-      { id: 'economy',      label: 'Economy',              desc: 'Currency, work, crime, gambling, shops and businesses', featureKey: 'economyEnabled',       feature: 'economy' },
-      { id: 'civjobs',      label: 'Civilian Jobs',         desc: 'Job board with shift-based roles and hours tracking',  featureKey: 'civjobsEnabled',       feature: 'civjobs' },
-    ]},
-    { title: 'Advanced', items: [
-      { id: 'dispatch',     label: 'AI Voice Dispatch',    desc: 'Bot joins patrol voice channels and acts as an AI dispatcher', featureKey: 'dispatchEnabled', feature: 'dispatch' },
-    ]},
-  ];
+  // Feature sections come from the registry (see applyRegistry) - this used to be
+  // a hand-maintained copy that disagreed with FEATURES and SIDEBAR_GROUPS above.
 
   html += '<div class="overview-section">' +
     '<div class="overview-section-header">' +
@@ -463,10 +478,26 @@ function renderDashboard() {
     section.items.forEach(function(m) {
       var enabled = m.featureKey ? !!config[m.featureKey] : true;
       var isPremium = m.feature ? isFlagPremium(m.feature) : false;
+      // Status badge: "Ready", or "Needs setup" naming what is still missing.
+      var st = (m.feature && featureStatus[m.feature]) || null;
+      var badge = '';
+      if (st && st.status === 'ready') {
+        badge = ' <span class="premium-tag" style="background:#3ba55d;">Ready</span>';
+      } else if (st && st.status === 'incomplete') {
+        badge = ' <span class="premium-tag" style="background:#faa61a;color:#000;">Needs setup</span>';
+      }
+      var missingNote = '';
+      if (st && st.status === 'incomplete' && st.missing && st.missing.length) {
+        missingNote = '<div class="feature-row-desc" style="color:#faa61a;">Still needs: ' +
+          st.missing.map(function(x) {
+            return esc(x.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase());
+          }).join(', ') + '</div>';
+      }
       html += '<div class="feature-row">' +
         '<div class="feature-row-info">' +
-          '<div class="feature-row-name">' + m.label + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + '</div>' +
-          '<div class="feature-row-desc">' + m.desc + '</div>' +
+          '<div class="feature-row-name">' + m.label + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + badge + '</div>' +
+          '<div class="feature-row-desc" title="' + esc(m.long || m.desc) + '">' + m.desc + '</div>' +
+          missingNote +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
           (m.featureKey
