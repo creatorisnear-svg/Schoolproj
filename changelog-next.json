@@ -7,6 +7,7 @@
     "The number is meant to survive an argument. Time spent deafened does not count, sitting in a channel on your own does not count at all, and one shift is capped at 6 hours, so nobody tops the board by leaving Discord open overnight",
     "With Premium: the 30 and 90 day views, every officer instead of the top 10, a board that posts itself in a channel every week, and a list of who has not been on patrol in 14 days",
     "Nobody on that list gets messaged by the bot. It tells you, and what happens next is your call",
-    "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses"
+    "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses",
+    "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free"
   ]
 }

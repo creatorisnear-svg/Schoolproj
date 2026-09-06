@@ -293,7 +293,9 @@ function dispatchMenuEmbed(warning = '') {
         .setColor('#2d2d2d')
         .setTitle('AI Voice Dispatch Setup')
         .setDescription(
-          '**What this does (Premium):** The bot joins voice channels where your LEO officers patrol. It listens, transcribes their speech with AI, and responds as a dispatcher, updating a live status board, handling 10-codes, and announcing 911 calls.\n\n' +
+          '**What this does:** The bot joins the voice channels where your LEO officers patrol.\n\n' +
+          '**Included free:** it turns up when a 911 call comes in, reads it out, and leaves. Patrol Hours also counts from these channels.\n\n' +
+          '**With Premium:** it stays, listens, transcribes what officers say and answers as a dispatcher, keeping a live status board and handling 10-codes.\n\n' +
           '**Set these up in order:**\n' +
           '`1.` Set Dispatch Channel: text channel for dispatch logs\n' +
           '`2.` Set Status Board Channel: text channel for the live officer status board\n' +
@@ -423,8 +425,14 @@ async function handleEconomy(interaction) {
 }
 
 async function handleDispatch(interaction) {
-  const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
-  if (!access.allowed) return interaction.reply({ ...premiumReply('AI Voice Dispatch'), flags: 64 });
+  // No wall here. The same feature is configurable three ways and this was the
+  // only one that turned a free server away: /setup lets them through, the
+  // dashboard lets them through, and dispatch carries a freeTier value so it is
+  // absent from PREMIUM_SETTINGS_MODS on purpose. A free server is entitled to
+  // set patrol channels and get its 911 calls read out; the AI dispatcher on
+  // top is the paid part, and the runtime already decides which of the two they
+  // get. Patrol Hours also reads these channels, so the wall was quietly
+  // costing free servers a feature that is meant to be free.
   const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
   const warning = hasApiKey ? '' : '\n\n-# No AI key set up yet. Ask your server host to set `GROQ_API_KEY` or `OPENAI_API_KEY`.';
   return interaction.reply(dispatchMenuEmbed(warning));

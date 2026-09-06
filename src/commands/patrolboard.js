@@ -40,7 +40,7 @@ export async function execute(interaction) {
       embeds: [errorEmbed(
         'No patrol channels set',
         'Patrol hours come from time spent in your patrol voice channels, and this server has not chosen any yet.\n\n' +
-        'An administrator can pick them with `/config dispatch`.'
+        'An administrator can pick them with `/setup`, under Voice Dispatch, or with `/config dispatch`.'
       )],
     });
   }
