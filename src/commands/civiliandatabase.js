@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 
@@ -42,13 +42,24 @@ export async function execute(interaction) {
         '**Getting started?**\n' +
         '> Start with **Create Character** to register your civilian identity, then use **Add Vehicle** or **Add Firearm** to register your property.\n\n' +
         '**Need help?**\n' +
-        '> Use **Report 911** to alert on-duty officers, or **View Fines** to check and pay any outstanding tickets.'
+        '> Use **Report 911** to alert on-duty officers, or **View Fines** to check and pay any outstanding tickets.\n\n' +
+        '**Prefer a browser?**\n' +
+        '> Everything here is on the web CAD too, which is easier on a phone.'
       )
       .setFooter({ text: 'RPM  •  Only visible to you' });
 
+    // The same records, in a browser. Everything here is available there too,
+    // which is easier on a phone than working through a select menu.
+    const cadLink = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Open the web CAD')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://roleplaymanager.xyz/cad')
+    );
+
     return interaction.reply({
       embeds: [embed],
-      components: [menu],
+      components: [menu, cadLink],
       flags: 64,
     });
   } catch (error) {

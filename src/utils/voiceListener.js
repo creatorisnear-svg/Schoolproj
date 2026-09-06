@@ -251,7 +251,11 @@ export function stop911Poller(guildId) {
  * Store patrol config for a guild without joining any channel yet.
  * Call this on startup / when config is first loaded.
  */
-export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAudioBuffer = null) {
+/**
+ * @param {object} [tier] - { panicPoller } - false on the free tier, where
+ *   only 911 announcements are included and a 10-99 would never be spoken.
+ */
+export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAudioBuffer = null, tier = {}) {
   const existing = dispatchState.get(guildId);
   if (existing) {
     existing.patrolChannelIds = new Set(patrolChannelIds);
@@ -268,7 +272,9 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
       joinAudioPlayed: false,
     });
   }
-  _startPanicPoller(guildId);
+  // Distress alerts are part of the premium AI layer. A free server still gets
+  // 911 announcements, which is started separately by the caller.
+  if (tier.panicPoller !== false) _startPanicPoller(guildId);
 }
 
 /**

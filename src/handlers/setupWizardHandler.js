@@ -397,26 +397,34 @@ const moduleResponses = {
   },
 
   async dispatch(interaction) {
+    // No upgrade wall here any more. A free server can set this up and get its
+    // 911 calls read out on patrol; the AI dispatcher is what they are paying
+    // for, and the runtime decides which of the two they get.
     const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
-    if (!access.allowed) return interaction.update(premiumReply('AI Voice Dispatch'));
     const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
     const warning = hasApiKey ? '' : '\n\n-# No AI key set up yet. Set `GROQ_API_KEY` or `OPENAI_API_KEY` to enable transcription.';
+
+    const tierNote = access.allowed
+      ? '**Premium is active.** The bot joins your patrol channels, listens, and replies as an AI dispatcher, keeping a live status board and handling 10-codes.\n\n'
+      : '**Included free:** the bot joins your patrol channel and reads out 911 calls as they come in.\n\n'
+        + '**With Premium:** it also listens and replies as an AI dispatcher, keeps a live status board, and handles 10-codes. [Get Premium](https://roleplaymanager.xyz/pricing)\n\n';
+
     return interaction.update({
       embeds: [
         new EmbedBuilder()
           .setColor('#2d2d2d')
-          .setTitle('AI Voice Dispatch Setup')
+          .setTitle('Voice Dispatch Setup')
           .setDescription(
-            '**What this does (Premium):** The bot joins your officers\' voice channels, listens, and responds as an AI dispatcher — updating a live status board, handling 10-codes, and announcing 911 calls.\n\n' +
+            tierNote +
             '**Set these up in order:**\n' +
-            '`1.` Set Dispatch Channel — text channel for dispatch logs\n' +
-            '`2.` Set Status Board Channel — text channel for the live status board\n' +
-            '`3.` Add Patrol Voice Channel — voice channel(s) to listen to\n' +
-            '`4.` Set LEO Role(s) — without this the bot listens to everyone in the channel\n' +
-            '`5.` Enable the System — turn it on when ready' +
+            '`1.` Set Dispatch Channel · text channel for dispatch logs\n' +
+            '`2.` Set Status Board Channel · text channel for the live status board\n' +
+            '`3.` Add Patrol Voice Channel · voice channel(s) the bot sits in\n' +
+            '`4.` Set LEO Role(s) · so the bot knows whose channel to join\n' +
+            '`5.` Enable the System · turn it on when ready' +
             warning
           )
-          .setFooter({ text: 'RPM — run /setup to go back' }),
+          .setFooter({ text: 'RPM · run /setup to go back' }),
       ],
       components: [
         new ActionRowBuilder().addComponents(

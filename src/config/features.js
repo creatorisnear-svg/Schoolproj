@@ -189,6 +189,9 @@ export const FEATURES = [
     required: ["patrolChannelIds", "dispatchChannelId"],
     configSubcommand: "dispatch",
     premiumDefault: true,
+    // Free servers get 911 calls read out in their patrol channel. The AI
+    // dispatcher, the status board and 10-code handling stay premium.
+    freeTier: "911 calls announced in your patrol voice channel",
     botGated: true,
   },
   {
@@ -412,8 +415,17 @@ export function getFeatureByMod(mod) {
 /** Features that are premium when no FeatureFlag row exists. */
 export const DEFAULT_PREMIUM_FEATURES = FEATURES.filter((f) => f.premiumDefault).map((f) => f.key);
 
-/** Mod slugs whose settings routes must be premium-gated - derived, not hardcoded. */
-export const PREMIUM_SETTINGS_MODS = FEATURES.filter((f) => f.premiumDefault).map((f) => f.mod);
+/**
+ * Mod slugs whose settings routes must be premium gated, derived rather than
+ * hardcoded.
+ *
+ * A feature with a freeTier is deliberately absent: it still counts as premium
+ * for checkFeatureAccess, so it still degrades at runtime, but a free server has
+ * to be able to configure it or the free part is unreachable.
+ */
+export const PREMIUM_SETTINGS_MODS = FEATURES
+  .filter((f) => f.premiumDefault && !f.freeTier)
+  .map((f) => f.mod);
 
 /** Ordered [groupTitle, features[]] pairs for menus and the sidebar. */
 export function featureGroups() {

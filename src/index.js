@@ -520,6 +520,7 @@ client.on('guildCreate', async (guild) => {
         `**Verification** · members fill out a form to join\n` +
         `**Tickets** · private support channels with a button\n` +
         `**911 / CAD** · civilian and LEO database, emergency calls\n` +
+        `**Web CAD** · the same CAD in a browser at roleplaymanager.xyz/cad\n` +
         `**Economy** · currency, work, crime, shops\n` +
         `**Strikes** · warn rule breakers, auto punish\n` +
         `**Welcome messages** · greet new members\n` +

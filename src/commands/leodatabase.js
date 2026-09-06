@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADConfig from '../models/CADConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
@@ -67,13 +67,22 @@ export async function execute(interaction) {
         '**Need a record check?**\n' +
         '> Use **Search License Plate** or **Search Character Name** for instant civilian record lookups.\n\n' +
         '**Enforcement tools**\n' +
-        '> **Issue Ticket**, **Create BOLO**, and **Revoke Weapon** are all available from the menu.'
+        '> **Issue Ticket**, **Create BOLO**, and **Revoke Weapon** are all available from the menu.\n\n' +
+        '**On patrol?**\n' +
+        '> The web CAD has the same tools plus a live call queue and status board, which is easier to work from than a menu.'
       )
       .setFooter({ text: 'RPM  •  LEO Access  •  Only visible to you' });
 
+    const cadLink = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Open the web CAD')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://roleplaymanager.xyz/cad')
+    );
+
     return interaction.editReply({
       embeds: [embed],
-      components: [menu],
+      components: [menu, cadLink],
     });
   } catch (error) {
     console.error('Error executing leodatabase:', error);

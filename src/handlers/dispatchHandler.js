@@ -4715,31 +4715,42 @@ export async function initDispatchForGuild(guild, client) {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
     if (!config || !config.enabled || config.patrolChannelIds.length === 0) return;
 
-    const { isPremiumGuild } = await import('../utils/premiumCheck.js');
-    const premium = await isPremiumGuild(guild.id);
-    if (!premium) {
-      console.log(`[Dispatch] Skipping AI dispatch for ${guild.name} - not premium`);
-      return;
-    }
+    // checkFeatureAccess, not isPremiumGuild: the raw check ignores trials, so a
+    // server on the seven day trial was getting no voice dispatch at all.
+    const { checkFeatureAccess } = await import('../utils/premiumCheck.js');
+    const access = await checkFeatureAccess(guild.id, 'dispatch');
+    const fullDispatch = !!access.allowed;
 
     const { setupDispatchForGuild, moveToChannel } = await import('../utils/voiceListener.js');
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
 
-    const options = {
-      onTranscription: (wavBuffer, userId, _g, opts) => processVoiceCall(wavBuffer, userId, guild, client, opts),
-      userFilter: async () => true,
-    };
+    // On the free tier nothing is ever recorded. The receiver only captures a
+    // speaker that passes userFilter, so refusing everyone means no audio, no
+    // transcription and no AI spend - the bot sits in the channel purely to
+    // announce 911 calls.
+    const options = fullDispatch
+      ? {
+          onTranscription: (wavBuffer, userId, _g, opts) => processVoiceCall(wavBuffer, userId, guild, client, opts),
+          userFilter: async () => true,
+        }
+      : { onTranscription: null, userFilter: async () => false };
+
+    // The premium line invites people to talk to it. On the free tier that would
+    // be a lie, because it is not listening.
+    const joinLine = fullDispatch
+      ? 'Dispatch active. To talk to me, your sentence must begin with dispatch.'
+      : 'Dispatch online. Emergency calls will be announced on this channel.';
 
     let joinAudioBuffer = null;
     try {
-      joinAudioBuffer = await generateDispatchTTS('Dispatch active. To talk to me, your sentence must begin with dispatch.');
+      joinAudioBuffer = await generateDispatchTTS(joinLine);
       console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
     } catch (err) {
       console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
     }
 
-    setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer);
+    setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer, { panicPoller: fullDispatch });
 
     for (const channelId of config.patrolChannelIds) {
       const channel = guild.channels.cache.get(channelId) ||
@@ -4756,12 +4767,22 @@ export async function initDispatchForGuild(guild, client) {
       }
     }
 
-    startCallRepeatTimer(guild, client);
-    startTrafficStopCheckTimer(guild);
-    /* Periodic "please update your status" / hourly status reset TTS prompts were
-       disabled per staff feedback - they were interrupting patrol too often. */
+    if (fullDispatch) {
+      startCallRepeatTimer(guild, client);
+      startTrafficStopCheckTimer(guild);
+      /* Periodic "please update your status" / hourly status reset TTS prompts were
+         disabled per staff feedback - they were interrupting patrol too often. */
+    }
+
+    // Free for everyone. This is the whole point: a server that has never paid
+    // still hears its 911 calls read out on patrol.
     const { start911Poller } = await import('../utils/voiceListener.js');
     start911Poller(guild.id);
+
+    console.log(
+      `[Dispatch] ${fullDispatch ? 'Full AI dispatch' : '911 announcements only (free tier)'} ` +
+      `active for ${guild.name}`
+    );
   } catch (err) {
     console.error(`[Dispatch] initDispatchForGuild error for ${guild.name}:`, err.message);
   }
