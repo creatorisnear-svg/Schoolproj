@@ -308,7 +308,7 @@
     { id: 'search', label: 'Records' },
     { id: 'bolos', label: 'BOLOs' },
     { id: 'tickets', label: 'Ticket Book' },
-    { id: 'units', label: 'Units' },
+    { id: 'units', label: 'LEO Dashboard' },
   ];
 
   // The fire department works the same 911 queue as law enforcement and keeps
@@ -1036,7 +1036,7 @@
     return api('/' + state.guildId + '/board').then(function (res) {
       $('main').innerHTML = '<div class="panel">'
         + panelHead('On Duty', 'Units active in the last eight hours.')
-        + '<div class="card">' + officerRows(res.officers) + '</div></div>';
+        + unitBoard(res.officers) + '</div>';
     });
   };
 
@@ -1072,20 +1072,6 @@
         // vehicle needs the VIN as well as the plate.
         + (v.vin ? '<span class="mono muted">VIN ' + esc(v.vin) + '</span>' : '')
         + (v.licensePlate ? '<span class="mono">' + esc(v.licensePlate) + '</span>' : '')
-        + '</div>';
-    }).join('');
-  }
-
-  function officerRows(officers) {
-    if (!officers || !officers.length) return '<div class="row muted">Nobody is on duty right now.</div>';
-    return officers.map(function (o) {
-      var cls = o.tenCode === '10-99' ? 'panic' : (o.tenCode === '10-8' ? 'available' : 'busy');
-      return '<div class="row">'
-        + '<span class="status-pill ' + cls + '">' + esc(o.tenCode) + '</span>'
-        + '<span>' + esc(o.username) + '</span>'
-        + (o.location ? '<span class="muted">' + esc(o.location) + '</span>' : '')
-        + '<span class="spacer"></span>'
-        + '<span class="muted">' + esc(timeAgo(o.updatedAt)) + '</span>'
         + '</div>';
     }).join('');
   }
@@ -1428,50 +1414,147 @@
     });
   };
 
+  /**
+   * The codes that get set constantly, in the order an officer moves through
+   * them: back in service, taking a call, arriving, then the ones that mean
+   * something has gone wrong. Everything else stays in the full list below.
+   */
+  var QUICK_CODES = ['10-8', '10-6', '10-7', '10-11', '10-76', '10-97', '10-78', '10-80'];
+
   VIEWS.units = function () {
     return Promise.all([
       api('/' + state.guildId + '/leo/status'),
       api('/' + state.guildId + '/leo/codes'),
     ]).then(function (results) {
       var status = results[0];
+      // 10-99 is never in this list. Declaring distress is the panic button, not
+      // an entry in a dropdown you could hit by accident.
       var codes = (results[1].codes || []).filter(function (c) { return c.code !== '10-99'; });
       var mine = status.mine || {};
+      state.data.codes = codes;
 
-      var options = codes.map(function (c) {
+      var byCode = {};
+      codes.forEach(function (c) { byCode[c.code] = c.label; });
+
+      // Only offer a quick code the server actually knows about, so this cannot
+      // drift out of sync with the bot's own list.
+      var quick = QUICK_CODES.filter(function (c) { return byCode[c]; });
+      var rest = codes.filter(function (c) { return quick.indexOf(c.code) === -1; });
+
+      var quickButtons = quick.map(function (code) {
+        var label = byCode[code].replace(code, '').trim();
+        return '<button class="code-btn' + (mine.tenCode === code ? ' current' : '') + '"'
+          + ' data-code="' + esc(code) + '">'
+          + '<span class="code">' + esc(code) + '</span>'
+          + '<span class="what">' + esc(label) + '</span></button>';
+      }).join('');
+
+      var restOptions = '<option value="">Other codes</option>' + rest.map(function (c) {
         return '<option value="' + esc(c.code) + '"'
           + (c.code === mine.tenCode ? ' selected' : '') + '>' + esc(c.label) + '</option>';
       }).join('');
 
-      $('main').innerHTML = '<div class="panel">'
-        + panelHead('Units', 'Your status shows on the Discord status board too.')
-        + '<div class="card"><div class="card-head"><h3>My status</h3>'
-        + '<span class="spacer"></span>'
-        + '<span class="status-pill' + (mine.tenCode === '10-8' ? ' available' : ' busy') + '">'
-        + esc(mine.tenCode || 'Off duty') + '</span></div>'
-        + '<div class="field-row">'
-        + '<div class="field"><label for="s-code">10-code</label><select id="s-code">' + options + '</select></div>'
-        + '<div class="field"><label for="s-location">Location</label>'
-        + '<input id="s-location" maxlength="200" value="' + esc(mine.location || '') + '"></div>'
-        + '<div class="field"><label for="s-subject">Subject</label>'
-        + '<input id="s-subject" maxlength="200" value="' + esc(mine.subject || '') + '"></div>'
-        + '</div>'
-        + '<button class="btn btn-primary" style="margin-top:12px" id="save-status">Update status</button>'
-        + '</div>'
-        + '<div class="subhead">Everyone on duty</div>'
-        + '<div class="card">' + officerRows(status.officers) + '</div></div>';
+      var onDistress = mine.tenCode === '10-99';
 
-      $('save-status').addEventListener('click', function () {
-        api('/' + state.guildId + '/leo/status', {
-          method: 'POST',
-          body: {
-            tenCode: $('s-code').value,
-            location: $('s-location').value.trim(),
-            subject: $('s-subject').value.trim(),
-          },
-        }).then(function () { toast('Status updated.', 'ok'); go('units'); }).catch(fail);
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('LEO Dashboard', 'Your status here is the same one the Discord board shows.')
+
+        // ── Current status ──────────────────────────────────────────────────
+        + '<div class="card status-hero' + (onDistress ? ' distress' : '') + '">'
+        + '<div class="hero-code">' + esc(mine.tenCode || 'Off duty') + '</div>'
+        + '<div class="hero-what">' + esc(mine.tenCode ? (byCode[mine.tenCode] || '10-99 Officer Down').replace(mine.tenCode, '').trim() : 'You have not gone on duty yet') + '</div>'
+        + '<div class="hero-meta">'
+        + (mine.location ? '<span>' + esc(mine.location) + '</span>' : '')
+        + (mine.subject ? '<span>' + esc(mine.subject) + '</span>' : '')
+        + (mine.updatedAt ? '<span>' + esc(timeAgo(mine.updatedAt)) + '</span>' : '')
+        + '</div></div>'
+
+        // ── One tap per code ────────────────────────────────────────────────
+        + '<div class="subhead">Set your status</div>'
+        + '<div class="code-grid">' + quickButtons + '</div>'
+        + '<div class="card" style="margin-top:12px">'
+        + '<div class="field-row">'
+        + '<div class="field"><label for="s-location">Location</label>'
+        + '<input id="s-location" maxlength="200" placeholder="Where are you?" value="' + esc(mine.location || '') + '"></div>'
+        + '<div class="field"><label for="s-subject">Subject</label>'
+        + '<input id="s-subject" maxlength="200" placeholder="Who or what" value="' + esc(mine.subject || '') + '"></div>'
+        + '<div class="field"><label for="s-code">Other codes</label>'
+        + '<select id="s-code">' + restOptions + '</select></div>'
+        + '</div>'
+        + '<p class="server-meta" style="margin-top:10px">Location and subject are sent with whichever code you set next.</p>'
+        + '</div>'
+
+        // ── Distress ────────────────────────────────────────────────────────
+        + '<div class="subhead">Emergency</div>'
+        + '<button class="panic-btn" id="panic-big">'
+        + '<span class="code">10-99</span>'
+        + '<span class="what">Officer down. Alerts every unit on duty.</span></button>'
+
+        // ── The board ───────────────────────────────────────────────────────
+        + '<div class="subhead">Units on duty</div>'
+        + unitBoard(status.officers)
+        + '</div>';
+
+      // A quick code sets the status immediately. Making somebody pick a code
+      // and then press Save is one interaction too many when they are driving.
+      bind('[data-code]', function (el) { setStatus(el.dataset.code); });
+
+      $('s-code').addEventListener('change', function () {
+        if (this.value) setStatus(this.value);
       });
+
+      $('panic-big').addEventListener('click', confirmPanic);
     });
   };
+
+  function setStatus(tenCode) {
+    var location = $('s-location') ? $('s-location').value.trim() : '';
+    var subject = $('s-subject') ? $('s-subject').value.trim() : '';
+
+    api('/' + state.guildId + '/leo/status', {
+      method: 'POST',
+      body: { tenCode: tenCode, location: location, subject: subject },
+    }).then(function () {
+      var label = (state.data.codes || []).filter(function (c) { return c.code === tenCode; })[0];
+      toast(label ? label.label : tenCode, 'ok');
+      go('units');
+    }).catch(fail);
+  }
+
+  /**
+   * The board, as units rather than table rows.
+   *
+   * Sorted by how much attention each needs: anyone in distress first, then
+   * whoever is tied up, then whoever is free. On a busy server the top of this
+   * list is the only part most people read.
+   */
+  function unitBoard(officers) {
+    if (!officers || !officers.length) {
+      return '<div class="empty">Nobody is on duty right now.</div>';
+    }
+
+    var rank = function (o) {
+      if (o.tenCode === '10-99') return 0;
+      if (o.tenCode === '10-8') return 2;
+      return 1;
+    };
+    var sorted = officers.slice().sort(function (a, b) {
+      return rank(a) - rank(b) || new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+
+    return '<div class="unit-grid">' + sorted.map(function (o) {
+      var cls = o.tenCode === '10-99' ? 'panic' : (o.tenCode === '10-8' ? 'available' : 'busy');
+      var detail = [o.location, o.subject].filter(Boolean).join(' · ');
+      return '<div class="unit-card ' + cls + '">'
+        + '<div class="unit-top">'
+        + '<span class="unit-code">' + esc(o.tenCode || '') + '</span>'
+        + '<span class="unit-when">' + esc(timeAgo(o.updatedAt)) + '</span>'
+        + '</div>'
+        + '<div class="unit-name">' + esc(o.username) + '</div>'
+        + (detail ? '<div class="unit-detail">' + esc(detail) + '</div>' : '')
+        + '</div>';
+    }).join('') + '</div>';
+  }
 
   VIEWS.tickets = function () {
     var outstandingOnly = state.data.ticketFilter === 'unpaid';
