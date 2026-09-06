@@ -57,10 +57,10 @@
     <span id="premium-badge" class="badge badge-premium" hidden>Premium</span>
     <span id="dispatch-badge" class="badge badge-live" hidden>AI Dispatch</span>
     <span class="spacer"></span>
-    <div class="mode-toggle" id="mode-toggle">
-      <button type="button" data-mode="civilian" aria-pressed="true">Civilian</button>
-      <button type="button" data-mode="leo" aria-pressed="false">Law Enforcement</button>
-    </div>
+    <!-- Filled in by renderTopbar once the member's roles are known. Left empty
+         and hidden on purpose: a Law Enforcement button sitting in the markup
+         was visible to everyone until that ran. -->
+    <div class="mode-toggle" id="mode-toggle" hidden></div>
     <div class="who" id="cad-who"></div>
     <button class="btn btn-sm" data-signout>Sign out</button>
   </div>

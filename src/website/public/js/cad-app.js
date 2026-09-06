@@ -363,10 +363,13 @@
    * reads worse than "LEO" to the people who actually use it.
    */
   function availableModes() {
+    // No context yet means nothing has been proven yet, so offer nothing but
+    // civilian. Guessing upward here is how a tab appears before the server has
+    // said whether it should.
     var member = (state.context && state.context.member) || {};
     var modes = [{ id: 'civilian', label: 'Civilian', short: 'Civ' }];
-    if (member.isLeo) modes.push({ id: 'leo', label: 'Law Enforcement', short: 'LEO' });
-    if (member.isFd) modes.push({ id: 'fire', label: 'Fire / EMS', short: 'Fire' });
+    if (member.isLeo === true) modes.push({ id: 'leo', label: 'Law Enforcement', short: 'LEO' });
+    if (member.isFd === true) modes.push({ id: 'fire', label: 'Fire / EMS', short: 'Fire' });
     return modes;
   }
 

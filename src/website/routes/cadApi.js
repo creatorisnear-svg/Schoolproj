@@ -275,7 +275,11 @@ export function resolveGuild(client) {
       member = {
         displayName: fetched.displayName,
         roleIds,
-        isLeo: hasAny(cadConfig?.leoRoleIds) || isStaff,
+        // The role itself, with no staff or administrator bypass. Discord's
+        // /leodatabase does let staff in without a LEO role; the CAD
+        // deliberately does not, so the tab is only ever there for people the
+        // server has actually made officers.
+        isLeo: hasAny(cadConfig?.leoRoleIds),
         isFd: hasAny(cadConfig?.fireDepartmentRoleIds),
         isStaff,
         cadConfig,
