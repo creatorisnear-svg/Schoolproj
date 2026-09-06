@@ -59,6 +59,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   font-size: 13px; font-weight: 500; cursor: pointer;
   transition: background 0.15s, border-color 0.15s, opacity 0.15s;
   white-space: nowrap;
+  /* Some buttons are links (sign in, sign out) and would otherwise be underlined. */
+  text-decoration: none;
 }
 .btn:hover:not(:disabled) { background: var(--bg-card-hover); border-color: var(--border-hover); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
