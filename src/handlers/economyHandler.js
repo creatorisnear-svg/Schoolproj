@@ -5,6 +5,7 @@ import {
   ButtonBuilder, ButtonStyle, PermissionFlagsBits,
 } from 'discord.js';
 import EconomyConfig from '../models/EconomyConfig.js';
+import { backRow } from '../utils/setupNav.js';
 import EconomyBalance from '../models/EconomyBalance.js';
 import EconomyStore from '../models/EconomyStore.js';
 import EconomyInventory from '../models/EconomyInventory.js';
@@ -214,6 +215,9 @@ export function getEconomySetupMenu() {
             { label: 'Done',                     value: 'done',                description: 'Close this menu' },
           ])
       ),
+      // Reached from /setup as well as /config economy, and without this it was
+      // the one branch of the wizard with no way back to the hub.
+      backRow(),
     ],
     flags: 64,
   };

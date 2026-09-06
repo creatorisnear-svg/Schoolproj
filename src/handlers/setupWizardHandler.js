@@ -47,23 +47,35 @@ async function ensureEnabled(Model, guildId) {
 
 // ─── module handlers (each returns an interaction.update() call) ──────────────
 
-const moduleResponses = {
+export const moduleResponses = {
 
   async general(interaction) {
+    // This used to be a wall. /setup told a brand new owner "pick General
+    // Settings", and on a fresh server this returned "Add Staff First" with no
+    // buttons on it at all, instructing them to leave, type /staff add
+    // @themselves, and run /setup again. It guarded nothing: they are an
+    // administrator, checkStaffPermission already let them in, and the log
+    // channel does not depend on the Staff collection. It was the second thing
+    // anyone saw and the likeliest place to give up.
+    //
+    // If a Staff row is wanted, create it rather than demanding it.
     const staffCount = await Staff.countDocuments({ guildId: interaction.guildId });
+    let addedSelf = false;
     if (staffCount === 0) {
-      return interaction.update({
-        embeds: [menuEmbed(
-          'Add Staff First',
-          '**Before setting a log channel**, you need to add at least one staff member.\n\n' +
-          '**Do this right now:**\n' +
-          '`1.` Run `/staff add @YourName` to add yourself\n' +
-          '`2.` Then come back and run `/setup` again\n\n' +
-          '-# Staff are people who can use bot commands. Add yourself first.'
-        )],
-        components: [],
-      });
+      await Staff.findOneAndUpdate(
+        { guildId: interaction.guildId, type: 'user', userId: interaction.user.id },
+        {
+          $setOnInsert: {
+            position: 'manager',
+            username: interaction.user.username,
+            addedBy: interaction.user.id,
+          },
+        },
+        { upsert: true }
+      ).catch(() => null);
+      addedSelf = true;
     }
+
     const config = await Config.findOne({ guildId: interaction.guildId });
     const logStatus = config?.logChannelId
       ? `Currently set to <#${config.logChannelId}>`
@@ -73,7 +85,8 @@ const moduleResponses = {
         'General Settings, Log Channel',
         `**The log channel is where the bot records everything**: verifications, strikes, ticket opens, bans, etc. Only staff should be able to see it.\n\n` +
         `**${logStatus}**\n\n` +
-        'Pick a text channel below:'
+        'Pick a text channel below:' +
+        (addedSelf ? '\n\n-# You have been added as staff, so you can use the bot commands.' : '')
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -209,20 +222,32 @@ const moduleResponses = {
   },
 
   async antipromo(interaction) {
+    // This screen used to say "Works automatically with no setup required",
+    // which was false: antiPromotingEnabled defaults to false, the handler bails
+    // on it, and not one of the six options below could turn it on. The only
+    // switch was three screens away under Enable / Disable Features, and nothing
+    // here said so. An owner read that sentence, left, and deleted nothing.
+    const cfg = await Config.findOne({ guildId: interaction.guildId });
+    const on = !!cfg?.antiPromotingEnabled;
+
     return interaction.update({
       embeds: [menuEmbed(
         'Anti-Promoting Setup',
         '**What this does:** Automatically deletes Discord invite links that members post, so nobody advertises other servers in yours.\n\n' +
-        '**Works automatically with no setup required.** Use the options below to customize:\n\n' +
-        '`1.` Add Whitelisted Link: allow your own server invite so it is never deleted\n' +
-        '`2.` Toggle Staff Bypass: choose if staff can post any invite without it being deleted'
+        `**Currently:** ${on ? 'ON, invite links are being deleted.' : 'OFF, nothing is being deleted yet.'}\n\n` +
+        (on
+          ? 'Use the options below to change what it lets through.'
+          : 'Pick **Turn On** below to start. There is nothing else you have to set.')
       )],
       components: [
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId('antipromotingsetup_menu')
-            .setPlaceholder('What do you want to set up?')
+            .setPlaceholder('What do you want to do?')
             .addOptions([
+              on
+                ? { label: 'Turn Off', description: 'Stop deleting invite links', value: 'toggle_enabled' }
+                : { label: 'Turn On', description: 'Start deleting invite links now', value: 'toggle_enabled' },
               { label: 'Add Whitelisted Link', description: 'Allow a specific invite link to stay', value: 'add_link' },
               { label: 'Remove Whitelisted Link', description: 'Remove a link from the allowlist', value: 'remove_link' },
               { label: 'View Whitelisted Links', description: 'See all links that are allowed', value: 'view_links' },

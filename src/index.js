@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } from 'discord.js';
+import { Client, GatewayIntentBits, Options, Collection, REST, Routes, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, Partials } from 'discord.js';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
@@ -65,6 +65,12 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  // Reaction roles live on a panel posted once and then reacted to for months.
+  // The message cache holds 50 and is swept every 5 minutes, so by the time
+  // somebody reacts the message is almost always uncached and Discord
+  // delivers the event partial. Without these the event is dropped and the
+  // whole feature silently does nothing.
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
   makeCache: Options.cacheWithLimits({
     ...Options.DefaultMakeCacheSettings,
     MessageManager: 50,
@@ -768,6 +774,32 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
         await newMember.send({ embeds: [embed] }).catch(() => {});
       } catch {}
     }
+  }
+});
+
+// ── Reaction roles ───────────────────────────────────────────────────────────
+//
+// These two listeners did not exist. reactionRoleHandler.js was written, tested
+// against nothing, and never wired up: it exported handleReactionAdd and
+// handleReactionRemove and no file in the repo imported it. So /config
+// reactionroles let an owner build a panel, /setup reported the feature as
+// configurable, and reacting to the panel did nothing at all, in every server,
+// since the feature shipped.
+client.on('messageReactionAdd', async (reaction, user) => {
+  try {
+    const { handleReactionAdd } = await import('./handlers/reactionRoleHandler.js');
+    await handleReactionAdd(reaction, user);
+  } catch (err) {
+    console.error('[ReactionRole] add:', err.message);
+  }
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  try {
+    const { handleReactionRemove } = await import('./handlers/reactionRoleHandler.js');
+    await handleReactionRemove(reaction, user);
+  } catch (err) {
+    console.error('[ReactionRole] remove:', err.message);
   }
 });
 

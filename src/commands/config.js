@@ -689,24 +689,22 @@ async function handleHelp(interaction) {
 }
 
 async function handleGeneral(interaction) {
+  // The wall this used to put up is gone. See moduleResponses.general in
+  // setupWizardHandler.js for why: it demanded the owner grant themselves a
+  // permission they already had, and sent them out of the flow to do it.
   const staffCount = await Staff.countDocuments({ guildId: interaction.guildId });
   if (staffCount === 0) {
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor('#ed4245')
-          .setTitle('Add Staff First')
-          .setDescription(
-            '**Before setting a log channel**, you need to add at least one staff member.\n\n' +
-            '**Do this right now:**\n' +
-            '`1.` Run `/staff add @YourName` to add yourself\n' +
-            '`2.` Then come back and run `/config general` again\n\n' +
-            '-# Staff are people who can use bot commands. Add yourself first.'
-          )
-          .setFooter({ text: 'RPM' }),
-      ],
-      flags: 64,
-    });
+    await Staff.findOneAndUpdate(
+      { guildId: interaction.guildId, type: 'user', userId: interaction.user.id },
+      {
+        $setOnInsert: {
+          position: 'manager',
+          username: interaction.user.username,
+          addedBy: interaction.user.id,
+        },
+      },
+      { upsert: true }
+    ).catch(() => null);
   }
   const config = await Config.findOne({ guildId: interaction.guildId });
   return interaction.reply(generalMenu(config));

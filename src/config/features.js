@@ -128,7 +128,10 @@ export const FEATURES = [
     modelFile: "models/Config.js",
     modelImport: "default",
     enabledPath: "antiPromotingEnabled",
-    required: [],
+    // Off until somebody turns it on, and the screen used to claim it needed no
+    // setup at all. Listing the flag here makes /setup say so rather than
+    // showing a bare OFF with no way to tell what is wrong.
+    required: ["antiPromotingEnabled"],
     configSubcommand: "antipromo",
     premiumDefault: false,
     botGated: true,
@@ -252,7 +255,9 @@ export const FEATURES = [
     modelFile: "models/TicketConfig.js",
     modelImport: "default",
     enabledPath: "enabled",
-    required: ["ticketTypes"],
+    // Both, because a ticket type with no panel posted leaves members with no
+    // button anywhere, and /setup was calling that finished.
+    required: ["ticketTypes", "panelMessageId"],
     configSubcommand: "tickets",
     premiumDefault: false,
     botGated: true,

@@ -2,6 +2,7 @@ import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, Chann
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import Config from '../models/Config.js';
+import { backRow } from '../utils/setupNav.js';
 import { StrikeConfig } from '../models/Strike.js';
 import DispatchConfig from '../models/DispatchConfig.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../utils/embedBuilder.js';
@@ -14,18 +15,45 @@ function menuEmbed(title, description) {
     .setFooter({ text: 'RPM' });
 }
 
-function createSetupMenu() {
+/**
+ * The verification setup menu, showing what is already done.
+ *
+ * It used to be a static list. After saving the channel it was byte identical
+ * to the menu before it, so the only way to answer "which of these four have I
+ * done?" was to re-pick things and see what came back. On a phone the select
+ * opens as a full screen sheet covering the embed, so whatever the embed said
+ * is gone at the exact moment of choosing.
+ *
+ * Discord renders option descriptions as plain text, so a channel mention would
+ * arrive as <#123> rather than a name. Done versus Not set yet is the part the
+ * owner actually needs.
+ *
+ * @param {object} [verification] the guild's config, when the caller has it
+ */
+function createSetupMenu(verification) {
+  const mark = (done, tail) => (verification === undefined
+    ? tail
+    : `${done ? 'Done' : 'Not set yet'} · ${tail}`).slice(0, 100);
+
+  const v = verification || {};
   const steps = [
-    { id: 'select_verify_channel', label: 'Verify Channel', description: 'Required - where members submit verification' },
-    { id: 'select_verified_role', label: 'Verified Role', description: 'Required - role granted on approval' },
-    { id: 'select_unverified_role', label: 'Unverified Role', description: 'Required - role before verification' },
-    { id: 'select_verified_channels', label: 'Verified Channels', description: 'Required - channels unlocked after verify' },
-    { id: 'set_custom_question', label: 'Custom Question', description: 'Optional - question shown to applicants' },
-    { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional - clear the custom question' },
-    { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: 'Optional - require staff to approve' },
-    { id: 'set_rp_tag', label: 'RP Tag', description: 'Optional - tag added to verified nicknames' },
+    { id: 'select_verify_channel', label: 'Verify Channel', description: mark(!!v.verifyChannelId, 'Required, where members submit verification') },
+    { id: 'select_verified_role', label: 'Verified Role', description: mark(!!v.verifiedRoleId, 'Required, role granted on approval') },
+    { id: 'select_unverified_role', label: 'Unverified Role', description: mark(!!v.unverifiedRoleId, 'Optional, role before verification') },
+    { id: 'select_verified_channels', label: 'Verified Channels', description: mark(!!(v.verifiedChannelIds?.length), 'Optional, channels unlocked after verify') },
+    { id: 'set_custom_question', label: 'Custom Question', description: mark(!!v.customQuestion, 'Optional, question shown to applicants') },
+    { id: 'delete_custom_question', label: 'Remove Custom Question', description: 'Optional, clear the custom question' },
+    { id: 'toggle_approval_required', label: 'Toggle Staff Approval', description: mark(!!v.approvalRequired, 'Optional, require staff to approve') },
+    { id: 'set_rp_tag', label: 'RP Tag', description: mark(!!v.rpTag, 'Optional, tag added to verified nicknames') },
     { id: 'verify_setup_done', label: 'Finish Setup', description: 'Close the setup menu' },
   ];
+
+  // The two that actually gate a working feature, so the header can say what is
+  // left instead of making the owner count.
+  const left = [
+    !v.verifyChannelId && 'the verify channel',
+    !v.verifiedRoleId && 'the verified role',
+  ].filter(Boolean);
 
   const menu = new ActionRowBuilder()
     .addComponents(
@@ -36,9 +64,16 @@ function createSetupMenu() {
     );
 
   return {
-    embeds: [menuEmbed('Verification Setup', 'Configure how members verify and what happens once they do. At minimum, set the verify channel and verified role.')],
+    embeds: [menuEmbed(
+      'Verification Setup',
+      verification === undefined
+        ? 'Configure how members verify and what happens once they do. At minimum, set the verify channel and verified role.'
+        : left.length
+          ? `Still needed: **${left.join('** and **')}**. The verify button goes up on its own once both are set.`
+          : 'Everything required is set and the verify button is live. Everything below is optional.'
+    )],
     content: '',
-    components: [menu],
+    components: [menu, backRow()],
     flags: 64
   };
 }
@@ -62,7 +97,7 @@ function createWelcomeSetupMenu() {
   return {
     embeds: [menuEmbed('Welcome System Setup', 'Set a welcome channel, customize the server greeting, and optionally send a DM to new members.')],
     content: '',
-    components: [menu],
+    components: [menu, backRow()],
     flags: 64
   };
 }
@@ -91,7 +126,7 @@ function createStrikeSetupMenu() {
   return {
     embeds: [menuEmbed('Strike System Setup', 'Configure strike roles and what actions are taken at each strike level (kick, timeout, ban).')],
     content: '',
-    components: [menu],
+    components: [menu, backRow()],
     flags: 64
   };
 }
@@ -1142,7 +1177,7 @@ export async function handleSetupModals(interaction) {
       verification.rpTag = rpTag;
       await verification.save();
 
-      const menuOptions = createSetupMenu();
+      const menuOptions = createSetupMenu(verification);
       return interaction.reply({
         content: '',
         embeds: [infoEmbed('RP Tag Set', `Tag: ${rpTag}\n\nSelect your next option below to continue setup.`)],
@@ -1170,7 +1205,7 @@ export async function handleSetupModals(interaction) {
       
       await verification.save();
 
-      const menuOptions = createSetupMenu();
+      const menuOptions = createSetupMenu(verification);
       return interaction.reply({
         content: '',
         embeds: [infoEmbed('Custom Question Added', `Question: "${question}"\n\nTotal questions: ${verification.customQuestions.length}\n\nSelect your next option below to continue setup.`)],
@@ -1184,7 +1219,7 @@ export async function handleSetupModals(interaction) {
       verification.verifyDMMessage = message;
       await verification.save();
 
-      const menuOptions = createSetupMenu();
+      const menuOptions = createSetupMenu(verification);
       return interaction.reply({
         content: '',
         embeds: [infoEmbed('DM Message Updated', 'Verification DM has been updated. Select your next option below to continue setup.')],
@@ -1398,27 +1433,27 @@ async function handleVerifyChannelSelect(interaction) {
     verification.verifyChannelId = channel.id;
     await verification.save();
 
-    const { ButtonBuilder, ActionRowBuilder: ARB, EmbedBuilder } = await import('discord.js');
-    const verifyButton = new ButtonBuilder()
-      .setCustomId('verify_button')
-      .setLabel('Click Here to Verify')
-      .setStyle(1);
+    // The panel is NOT posted here any more.
+    //
+    // This used to send the public "Click Here to Verify" button the moment the
+    // channel was picked, which is step 1 of 4. Anybody who pressed it before
+    // the owner reached step 2 completed the whole web form and was told "You
+    // have been verified", while the code that grants the role does
+    // `if (role)` against a verifiedRoleId that was still null. They got
+    // nothing, and nobody was told. The panel now waits for the role, and
+    // posting it is what handleVerifiedRoleSelect does.
+    const posted = await postVerifyPanelIfReady(interaction.guild, verification);
 
-    const verifyEmbed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle('Server Verification')
-      .setDescription('Click the button below to verify and access all member channels!')
-      .setFooter({ text: 'RPM' });
-
-    await channel.send({
-      embeds: [verifyEmbed],
-      components: [new ARB().addComponents(verifyButton)],
-    });
-
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Verify Channel Set', `Channel: ${channel}\n\nVerification button has been sent. Select your next option below to continue setup.`)],
+      embeds: [infoEmbed(
+        'Verify Channel Set',
+        `Channel: ${channel}\n\n` +
+        (posted
+          ? 'The verify button has been posted there. Members can start now.'
+          : '**Next: pick the Verified Role.** The button goes up once the bot knows which role to hand out, so nobody can verify into nothing.')
+      )],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -1445,7 +1480,7 @@ async function handleWelcomeChannelSelect(interaction) {
     verification.welcomeChannelId = channel.id;
     await verification.save();
 
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: `Welcome channel set to ${channel}!\n\n${menuOptions.content}`,
       components: menuOptions.components,
@@ -1475,7 +1510,7 @@ async function handleUnverifiedRoleSelect(interaction) {
     verification.unverifiedRoleId = role.id;
     await verification.save();
 
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
       embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.\n\n-# Set this role\u2019s channel permissions yourself in Discord - the bot assigns the role but does not change channel permissions.`)],
@@ -1505,10 +1540,48 @@ async function handleUnverifiedRoleSelect(interaction) {
 // owner's own. Disabling verification quietly wiped their manual setup.
 //
 // Server owners manage these permissions themselves, so all three are gone.
+/**
+ * Post the public verify button, once there is something to verify into.
+ *
+ * Called from whichever of the two required steps completes the pair, so the
+ * owner can do channel-then-role or role-then-channel and get the same result.
+ * Returns true if it posted, false if the pair is still incomplete or the panel
+ * is already up.
+ */
+async function postVerifyPanelIfReady(guild, verification) {
+  if (!verification?.verifyChannelId || !verification?.verifiedRoleId) return false;
+  // panelMessageId already tracks the live panel, so it doubles as the guard
+  // against posting a second one when the owner revisits either step.
+  if (verification.panelMessageId) return false;
+
+  const channel = guild.channels.cache.get(verification.verifyChannelId)
+    || await guild.channels.fetch(verification.verifyChannelId).catch(() => null);
+  if (!channel?.isTextBased()) return false;
+
+  const { ButtonBuilder, ActionRowBuilder: ARB, EmbedBuilder } = await import('discord.js');
+  const verifyEmbed = new EmbedBuilder()
+    .setColor('#2d2d2d')
+    .setTitle('Server Verification')
+    .setDescription('Click the button below to verify and access all member channels.')
+    .setFooter({ text: 'RPM' });
+
+  const sent = await channel.send({
+    embeds: [verifyEmbed],
+    components: [new ARB().addComponents(
+      new ButtonBuilder().setCustomId('verify_button').setLabel('Click Here to Verify').setStyle(1)
+    )],
+  }).catch(() => null);
+  if (!sent) return false;
+
+  verification.panelMessageId = sent.id;
+  await verification.save().catch(() => {});
+  return true;
+}
+
 async function handleVerifiedRoleSelect(interaction) {
   try {
     const role = interaction.roles.first();
-    
+
     if (!role) {
       return interaction.reply({
         embeds: [errorEmbed('Please select a valid role.')],
@@ -1520,11 +1593,23 @@ async function handleVerifiedRoleSelect(interaction) {
     verification.verifiedRoleId = role.id;
     await verification.save();
 
+    // With a channel and a role both set, there is now something to verify
+    // into, so the public button can safely go up.
+    const posted = await postVerifyPanelIfReady(interaction.guild, verification);
+
     // Return to setup menu
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Verified Role Set', `Verified Role: ${role}\n\nSelect your next option below to continue setup.`)],
+      embeds: [infoEmbed(
+        'Verified Role Set',
+        `Verified Role: ${role}\n\n` +
+        (posted
+          ? 'The verify button has been posted in your verify channel. Members can start now.'
+          : verification.verifyChannelId
+            ? 'Select your next option below to continue setup.'
+            : '**Next: pick the Verify Channel.** The button goes up once you choose where it lives.')
+      )],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -1556,7 +1641,7 @@ async function handleVerifiedChannelsSelect(interaction) {
       return channel ? `${channel.name}` : 'Unknown';
     }).join('\n');
     
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
       embeds: [infoEmbed('Verified Categories Set', `Saved:\n${categoryMentions}\n\n-# Give the verified role access to these in Discord\u2019s channel permissions - the bot records your choice but does not apply it.\n\nSelect your next option below to continue setup.`)],
@@ -1872,6 +1957,14 @@ async function handleStrikeActionSelect(interaction, strikeLevel) {
     const strikeKey = `strike${strikeLevel}`;
     strikeConfig.strikes[strikeKey].action = action;
 
+    // Saved here, before the modal. The timeout and ban branches below return
+    // straight into showModal, and the modal's own handler loads a fresh
+    // StrikeConfig and writes only the duration, so the action was never
+    // persisted on those two paths. strike.js only punishes when action is set,
+    // so an owner was told "Strike 2 Timeout Set" and nothing ever happened.
+    // Kick and No Action worked, because they fall through to the save below.
+    await strikeConfig.save();
+
     if (action === 'timeout') {
       const modal = new ModalBuilder()
         .setCustomId(`setup_strike_timeout_${strikeLevel}`)
@@ -2086,6 +2179,24 @@ async function handleAntiPromotingSetupMenu(interaction) {
   const { ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = await import('discord.js');
 
   try {
+    // The switch that was missing. Anti-Promoting is off until somebody turns
+    // it on, and until this option existed the only way to do that was three
+    // screens away under Enable / Disable Features, which this page never
+    // mentioned. Explicit both ways rather than a blind negate, so the label
+    // and the result always agree.
+    if (choice === 'toggle_enabled') {
+      const cfg = await Config.findOneAndUpdate(
+        { guildId: interaction.guildId },
+        {},
+        { upsert: true, new: true }
+      );
+      cfg.antiPromotingEnabled = !cfg.antiPromotingEnabled;
+      await cfg.save();
+
+      const { moduleResponses } = await import('./setupWizardHandler.js');
+      return moduleResponses.antipromo(interaction);
+    }
+
     if (choice === 'add_link') {
       console.log(' Creating add_link modal...');
       const modal = new ModalBuilder()
@@ -2358,7 +2469,7 @@ async function handleApprovalToggle(interaction, enabled) {
       verification.approvalChannelId = null;
       await verification.save();
 
-      const menuOptions = createSetupMenu();
+      const menuOptions = createSetupMenu(verification);
       return interaction.update({
         content: '',
         embeds: [infoEmbed('Approval Disabled', 'Users will now be instantly verified without staff approval.')],
@@ -2567,7 +2678,7 @@ async function handleDeleteCustomQuestion(interaction) {
     verification.markModified('customQuestions');
     await verification.save();
 
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
       embeds: [successEmbed('Custom Question Deleted', `Question removed: "${deletedQuestion}"\n\nSelect your next option below to continue setup.`)],
@@ -2589,7 +2700,7 @@ async function handleApprovalChannelSelect(interaction) {
     verification.approvalChannelId = channelId;
     await verification.save();
 
-    const menuOptions = createSetupMenu();
+    const menuOptions = createSetupMenu(verification);
     return interaction.update({
       content: '',
       embeds: [infoEmbed('Approval Channel Set', `Staff will review verifications in <#${channelId}>`)],

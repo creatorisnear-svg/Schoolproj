@@ -5,9 +5,15 @@ export async function handleReactionAdd(reaction, user) {
   if (user.bot) return;
 
   try {
-    // Fetch full reaction if partial
+    // A reaction-role panel is posted once and reacted to for months, so by the
+    // time anyone touches it the message is long out of cache and both the
+    // reaction and its message arrive partial. That is the normal path here,
+    // not the exception.
     if (reaction.partial) {
       await reaction.fetch();
+    }
+    if (reaction.message.partial) {
+      await reaction.message.fetch().catch(() => null);
     }
 
     if (!reaction.message.guildId) return;
@@ -58,10 +64,15 @@ export async function handleReactionRemove(reaction, user) {
   if (user.bot) return;
 
   try {
-    // Fetch full reaction if partial
     if (reaction.partial) {
       await reaction.fetch();
     }
+    if (reaction.message.partial) {
+      await reaction.message.fetch().catch(() => null);
+    }
+
+    // A reaction in a DM has no guild to take a role away in.
+    if (!reaction.message.guildId) return;
 
     const reactionRole = await ReactionRole.findOne({
       guildId: reaction.message.guildId,
@@ -76,9 +87,13 @@ export async function handleReactionRemove(reaction, user) {
 
     if (!emojiRole) return;
 
-    // Get the guild and member
-    const guild = reaction.message.guild;
-    if (!guild) return;
+    // Get the guild and member. Same fallback as the add path: a partial
+    // message can come back without its guild resolved.
+    let guild = reaction.message.guild;
+    if (!guild) {
+      guild = await reaction.client.guilds.fetch(reaction.message.guildId).catch(() => null);
+      if (!guild) return;
+    }
 
     const member = await guild.members.fetch(user.id).catch(() => null);
     if (!member) return;
