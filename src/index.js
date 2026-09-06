@@ -512,33 +512,42 @@ client.on('guildCreate', async (guild) => {
       .setThumbnail(client.user.displayAvatarURL())
       .setDescription(
         `Welcome to **${guild.name}**!\n\n` +
-        `RolePlayManager is a Discord bot built for GTA5 RP communities. It handles member verification, tickets, a 911 CAD system, economy, AI voice dispatch, strikes, and more — all customizable for your server.\n\n` +
+        `RolePlayManager is a Discord bot built for GTA5 RP communities. It handles member verification, tickets, a 911 CAD system, economy, AI voice dispatch, strikes, and more · all customizable for your server.\n\n` +
         `### How to get started\n` +
         `**Type \`/setup\` in any channel.** It shows you exactly what to do, step by step. Takes less than 5 minutes.\n\n` +
         `That's it. The bot guides you from there.\n\n` +
         `### What you can set up\n` +
-        `- **Verification** — members fill out a form to join\n` +
-        `- **Tickets** — private support channels with a button\n` +
-        `- **911 / CAD** — civilian and LEO database, emergency calls\n` +
-        `- **Economy** — currency, work, crime, shops\n` +
-        `- **Strikes** — warn rule-breakers, auto-punish\n` +
-        `- **Welcome messages** — greet new members\n` +
-        `- **Priority tracker** — track active priority events\n` +
-        `- **AI Voice Dispatch** — AI listens to patrol channels *(Premium)*\n` +
-        `- **Applications** — custom application panels for any purpose *(Premium)*\n` +
-        `- And more — run \`/help\` for the full list`
+        `**Verification** · members fill out a form to join\n` +
+        `**Tickets** · private support channels with a button\n` +
+        `**911 / CAD** · civilian and LEO database, emergency calls\n` +
+        `**Economy** · currency, work, crime, shops\n` +
+        `**Strikes** · warn rule breakers, auto punish\n` +
+        `**Welcome messages** · greet new members\n` +
+        `**Priority tracker** · track active priority events\n` +
+        `**AI Voice Dispatch** · AI listens to patrol channels *(Premium)*\n` +
+        `**Applications** · custom application panels for any purpose *(Premium)*\n` +
+        `Run \`/help\` for the full list`
       )
       .addFields(
         {
           name: 'Prefer clicking over typing?',
-          value: 'Configure everything through the web dashboard — no commands needed.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
+          value: 'Configure everything through the web dashboard · no commands needed.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
         },
         {
           name: 'Need help?',
-          value: '**[Support Server](https://discord.gg/cSdhfGPeV2)** — discord.gg/cSdhfGPeV2\n**Email** — creatorisnear@gmail.com',
+          value: '**[Support Server](https://discord.gg/cSdhfGPeV2)** · discord.gg/cSdhfGPeV2\n**Email** · creatorisnear@gmail.com',
         }
       )
       .setFooter({ text: 'RPM • roleplaymanager.xyz • /setup to get started' });
+
+    // The owner reads this in a DM, where there is no server to type into, so
+    // their copy names the one the bot just joined.
+    const dmEmbed = EmbedBuilder.from(embed).setDescription(
+      embed.data.description.replace(
+        '**Type `/setup` in any channel.**',
+        `**Head to ${guild.name} and type \`/setup\` in any channel.**`
+      )
+    );
 
     const buttons = new ActionRowBuilder().addComponents(
       // A real button, not a link. Both buttons here used to be ButtonStyle.Link,
@@ -557,12 +566,65 @@ client.on('guildCreate', async (guild) => {
         .setURL('https://discord.gg/cSdhfGPeV2')
     );
 
-    const systemChannel = guild.systemChannel;
-    if (systemChannel?.permissionsFor(guild.members.me)?.has('SendMessages')) {
-      await systemChannel.send({ embeds: [embed], components: [buttons] });
-    } else {
+    // A channel post AND a DM, not one or the other. Whichever channel Discord
+    // picked for join messages is often a general nobody reads, and the owner is
+    // the person who actually has to act on this.
+    const me = guild.members.me;
+    const canPost = (ch) => !!ch?.isTextBased?.()
+      && !!ch.permissionsFor(me)?.has('ViewChannel')
+      && !!ch.permissionsFor(me)?.has('SendMessages');
+
+    let channel = canPost(guild.systemChannel) ? guild.systemChannel : null;
+    if (!channel) {
+      // No usable system channel is not a reason to post nowhere at all.
+      channel = guild.channels.cache
+        .filter(canPost)
+        .sort((a, b) => a.rawPosition - b.rawPosition)
+        .first() || null;
+    }
+
+    let postedTo = null;
+    if (channel) {
+      try {
+        await channel.send({ embeds: [embed], components: [buttons] });
+        postedTo = channel.name;
+      } catch (err) {
+        console.error(`[guildCreate] Could not post in #${channel.name}:`, err.message);
+      }
+    }
+
+    // Start Setup reads interaction.guildId, and a button pressed inside a DM
+    // has no guild, so the owner gets links only.
+    const dmButtons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Open Dashboard')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://roleplaymanager.xyz/dashboard'),
+      new ButtonBuilder()
+        .setLabel('Support Server')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://discord.gg/cSdhfGPeV2')
+    );
+
+    let dmResult;
+    try {
       const owner = await guild.fetchOwner();
-      await owner.send({ embeds: [embed], components: [buttons] }).catch(() => {});
+      await owner.send({ embeds: [dmEmbed], components: [dmButtons] });
+      dmResult = 'sent';
+    } catch (err) {
+      // 50007 is the owner having DMs from server members switched off, which
+      // is a setting rather than a fault. Anything else is worth the message.
+      dmResult = err.code === 50007 ? 'blocked by their privacy settings' : err.message;
+    }
+
+    console.log(
+      `[guildCreate] "${guild.name}": posted=${postedTo ? "#" + postedTo : "nowhere"} ownerDM=${dmResult}`
+    );
+    if (!postedTo && dmResult !== 'sent') {
+      console.error(
+        `[guildCreate] NOBODY was told the bot joined "${guild.name}" (${guild.id}): ` +
+        `no channel it can post in, and the owner DM ${dmResult}.`
+      );
     }
   } catch (err) {
     console.error('[guildCreate] Failed to send welcome message:', err.message);
