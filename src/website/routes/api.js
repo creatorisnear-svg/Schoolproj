@@ -7,6 +7,7 @@ import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild } from '../../utils/premiumCheck.js';
 import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, getFeatureByMod } from '../../config/features.js';
+import { COMMAND_GROUPS, groupForCommand } from '../../config/commandGroups.js';
 
 
 function levenshtein(a, b) {
@@ -228,6 +229,51 @@ export function createApiRouter(client) {
         premium: flagMap[f.key] ?? f.premiumDefault,
       })),
       topggVoteUrl: botId ? `https://top.gg/bot/${botId}/vote` : '',
+    });
+  });
+
+  // The live command list for the public site, joined against COMMAND_GROUPS.
+  // The landing page used to hand-list its commands and had drifted to ~60 of 77,
+  // missing the whole business banking and loans system. Descriptions come from
+  // the command definitions the bot actually registered, so they cannot go stale.
+  router.get('/public/commands', async (req, res) => {
+    let flagMap = {};
+    try {
+      const flags = await FeatureFlag.find();
+      flags.forEach((f) => { flagMap[f.feature] = f.premium; });
+    } catch {
+      // premiumDefault below still gives a correct answer.
+    }
+    const premiumKeys = new Set(
+      FEATURES.filter((f) => flagMap[f.key] ?? f.premiumDefault).map((f) => f.label.toLowerCase())
+    );
+
+    const groups = COMMAND_GROUPS.map((g) => ({ title: g.title, blurb: g.blurb, commands: [] }));
+    const byTitle = new Map(groups.map((g) => [g.title, g]));
+    const other = { title: 'Other', blurb: '', commands: [] };
+
+    for (const [name, cmd] of client.commands) {
+      let description = '';
+      try { description = cmd.data.toJSON().description || ''; } catch { /* ignore */ }
+      // Deprecated shims redirect to /config and should not be advertised.
+      if (description.startsWith('Moved')) continue;
+
+      const entry = {
+        name,
+        description,
+        // The description convention is the only per-command premium signal there is.
+        premium: /premium/i.test(description) || premiumKeys.has(name),
+      };
+      const title = groupForCommand(name);
+      (title && byTitle.has(title) ? byTitle.get(title) : other).commands.push(entry);
+    }
+
+    for (const g of groups) g.commands.sort((a, b) => a.name.localeCompare(b.name));
+    if (other.commands.length) groups.push(other);
+
+    res.json({
+      total: groups.reduce((n, g) => n + g.commands.length, 0),
+      groups: groups.filter((g) => g.commands.length),
     });
   });
 

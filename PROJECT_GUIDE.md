@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Visual consistency pass on the dashboard - added .status-tag/.feature-missing/.feature-group-tag/.feature-category-sub/.error-panel/.offline-banner classes plus an --amber-border token to site/css/style.css, and replaced the ad-hoc inline styles (raw #3ba55d/#faa61a/#f97316) added in the previous phases with those classes.
+- **Completed:** Landing page commands section now renders from GET /api/public/commands instead of hand-written markup - added src/config/commandGroups.js (8 groups, validated complete against the live command list), the endpoint joins it against client.commands and filters deprecated shims, and index.html keeps its per-category icons via a client-side map plus one new briefcase icon for Business & Loans.
 
 ## AI Handoff Protocol — Read Before Responding
 

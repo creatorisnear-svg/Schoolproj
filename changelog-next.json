@@ -1,9 +1,9 @@
 {
-  "version": "1.4.0",
-  "title": "Dashboard visual polish",
+  "version": "1.4.1",
+  "title": "The website now lists every command",
   "changes": [
-    "The Ready and Needs setup labels now match the rest of the dashboard instead of using their own colours",
-    "Feature rows highlight as you move over them, so it is clearer what you are about to click",
-    "Error messages and the offline banner now use the same styling as everything else"
+    "The commands section on roleplaymanager.xyz now shows all 61 commands instead of about 60 hand-written ones - the entire business banking and loans system was missing from the site until now",
+    "Command names and descriptions come straight from the bot, so the site can no longer fall out of date when a command is added or changed",
+    "Added a Business & Loans section covering business accounts, payroll, transfers and the full lending system"
   ]
 }
