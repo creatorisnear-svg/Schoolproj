@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
 import RoleplayCommands from '../models/RoleplayCommands.js';
 import CADConfig from '../models/CADConfig.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
@@ -54,8 +54,25 @@ export async function execute(interaction) {
           )
       );
 
+    // Presented like the civilian and LEO databases rather than as a bare line
+    // of bold text. It is the same kind of screen and was the only one of the
+    // three not built as an embed.
+    const embed = new EmbedBuilder()
+      .setColor(0x2B2D31)
+      .setTitle('Fire Department Database')
+      .setDescription(
+        'Select an option from the menu below.\n\n' +
+        '**Active calls**\n' +
+        '> **View Active 911 Calls** shows what is open right now, so you can see what is waiting before you respond.\n\n' +
+        '**Getting started?**\n' +
+        '> Start with **Create FD Character** to register yourself, then **Add Vehicle** to register an apparatus to that character.\n\n' +
+        '**Prefer a browser?**\n' +
+        '> The same records are on the web CAD, which is easier on a phone.'
+      )
+      .setFooter({ text: 'RPM  ·  Only visible to you' });
+
     return interaction.reply({
-      content: '**FIRE DEPARTMENT DATABASE**\n\nSelect an action:',
+      embeds: [embed],
       components: [menu],
       flags: 64,
     });

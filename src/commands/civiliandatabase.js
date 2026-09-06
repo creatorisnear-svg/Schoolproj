@@ -48,18 +48,13 @@ export async function execute(interaction) {
       )
       .setFooter({ text: 'RPM  •  Only visible to you' });
 
-    // The same records, in a browser. Everything here is available there too,
-    // which is easier on a phone than working through a select menu.
-    const cadLink = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setLabel('Open the web CAD')
-        .setStyle(ButtonStyle.Link)
-        .setURL('https://roleplaymanager.xyz/cad')
-    );
-
+    // The same records are in a browser, which is easier on a phone than
+    // working through a select menu. The button for that is added to every
+    // screen like this one by the wrapper in utils/replyLinks.js, so the hand
+    // rolled row that used to sit here would only have duplicated it.
     return interaction.reply({
       embeds: [embed],
-      components: [menu, cadLink],
+      components: [menu],
       flags: 64,
     });
   } catch (error) {

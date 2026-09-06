@@ -73,16 +73,12 @@ export async function execute(interaction) {
       )
       .setFooter({ text: 'RPM  •  LEO Access  •  Only visible to you' });
 
-    const cadLink = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setLabel('Open the web CAD')
-        .setStyle(ButtonStyle.Link)
-        .setURL('https://roleplaymanager.xyz/cad')
-    );
-
+    // The CAD button is added to every screen like this one by the wrapper in
+    // utils/replyLinks.js, so the hand rolled row that used to sit here would
+    // only have duplicated it.
     return interaction.editReply({
       embeds: [embed],
-      components: [menu, cadLink],
+      components: [menu],
     });
   } catch (error) {
     console.error('Error executing leodatabase:', error);

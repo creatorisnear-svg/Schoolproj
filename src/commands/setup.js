@@ -107,11 +107,13 @@ export async function buildSetupPayload(guildId) {
     const lines = features.map((f) => {
       const s = statuses[f.key] || { status: 'off', missing: [] };
       const premium = f.premiumDefault ? ' *(Premium)*' : '';
-      const detail = s.status === 'ready' ? 'ready'
-        : s.status === 'incomplete' ? `on${missingText(s.missing)}`
-        : s.status === 'unknown' ? 'unavailable'
-        : 'off';
-      return `${MARK[s.status] || MARK.off} **${f.label}**${premium}, ${detail}`;
+      // The mark already says ready or off, so only add words when there is
+      // something to do about it. "ON Verification, ready" and "OFF Blacklist,
+      // off" each said the same thing twice and made the list harder to scan.
+      const detail = s.status === 'incomplete' ? missingText(s.missing)
+        : s.status === 'unknown' ? ': unavailable'
+        : '';
+      return `${MARK[s.status] || MARK.off} **${f.label}**${premium}${detail}`;
     });
     sections.push(`### ${group}\n${lines.join('\n')}`);
   }
