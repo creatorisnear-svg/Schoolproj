@@ -125,6 +125,7 @@ select:focus-visible,
   --red-border: rgba(248, 113, 113, 0.2);
   --amber: #fbbf24;
   --amber-bg: rgba(251, 191, 36, 0.08);
+  --amber-border: rgba(251, 191, 36, 0.22);
   --blue: #60a5fa;
   --blue-bg: rgba(96, 165, 250, 0.08);
   --radius: 10px;
@@ -877,4 +878,53 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   /* Legal pages */
   .legal-page { padding: 80px 0 60px; }
   .legal-header h1 { font-size: 24px; }
+}
+
+/* ── Feature status ─────────────────────────────────────────────────────────
+   These were inline styles with raw hex (#3ba55d, #faa61a) that did not match
+   the palette, so the status UI read as bolted on. They follow .premium-tag's
+   tinted-pill pattern now and use the palette tokens. */
+.status-tag {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px; margin-left: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.status-tag.ready { color: var(--green); background: var(--green-bg); }
+.status-tag.incomplete { color: var(--amber); background: var(--amber-bg); }
+
+.feature-group-tag {
+  font-size: 10px; font-weight: 400; color: var(--text-dim); margin-left: 6px;
+}
+.feature-missing { font-size: 11px; color: var(--amber); margin-top: 2px; }
+.feature-category-sub {
+  font-size: 11px; color: var(--text-dim); margin: -2px 0 8px; line-height: 1.5;
+}
+
+/* Rows are clickable targets, so give them a hover the way cards have one.
+   The negative inline margin lets the highlight breathe past the text. */
+.feature-row {
+  margin: 0 -8px; padding-left: 8px; padding-right: 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
+}
+.feature-row:hover { background: rgba(255, 255, 255, 0.025); }
+
+/* ── Error state ── */
+.error-panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px 24px; text-align: center;
+  max-width: 460px; margin: 48px auto;
+}
+.error-panel-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.error-panel-msg {
+  color: var(--text-muted); font-size: 13px; line-height: 1.55; margin-bottom: 18px;
+}
+
+/* ── Offline banner ── */
+.offline-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: var(--amber-bg); color: var(--amber);
+  border-bottom: 1px solid var(--amber-border);
+  font-size: 12px; font-weight: 600; text-align: center;
+  padding: 7px 12px; backdrop-filter: blur(10px);
 }

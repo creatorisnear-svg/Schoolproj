@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Dashboard failure handling - added a 20s AbortController timeout to api(), a retryable errorState panel replacing the two `if (!data) return;` bail-outs that left skeleton loaders on screen forever, rememberView/retryLastView so Retry re-runs the current view, an offline banner with auto-retry on reconnect, and window error/unhandledrejection handlers.
+- **Completed:** Visual consistency pass on the dashboard - added .status-tag/.feature-missing/.feature-group-tag/.feature-category-sub/.error-panel/.offline-banner classes plus an --amber-border token to site/css/style.css, and replaced the ad-hoc inline styles (raw #3ba55d/#faa61a/#f97316) added in the previous phases with those classes.
 
 ## AI Handoff Protocol — Read Before Responding
 

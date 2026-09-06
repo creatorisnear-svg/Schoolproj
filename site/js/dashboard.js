@@ -49,9 +49,9 @@ function retryLastView() {
 /** A recoverable error panel. Replaces a stuck loader with something actionable. */
 function errorState(title, message) {
   return '<div class="dashboard-content" style="padding-top:20px;">' +
-    '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;max-width:460px;margin:40px auto;">' +
-      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">' + esc(title) + '</div>' +
-      '<div style="color:var(--text-muted);font-size:13px;margin-bottom:16px;line-height:1.5;">' + esc(message) + '</div>' +
+    '<div class="error-panel">' +
+      '<div class="error-panel-title">' + esc(title) + '</div>' +
+      '<div class="error-panel-msg">' + esc(message) + '</div>' +
       '<button class="btn btn-primary btn-sm" onclick="retryLastView()">Try Again</button>' +
     '</div></div>';
 }
@@ -64,8 +64,7 @@ function renderErrorView(title, message) {
 
 /* ── Offline awareness ── */
 function offlineBannerHtml() {
-  return '<div id="offline-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;' +
-    'background:#f97316;color:#fff;font-size:12px;font-weight:600;text-align:center;padding:6px 12px;">' +
+  return '<div id="offline-banner" class="offline-banner">' +
     'You are offline — changes cannot be saved until the connection returns.</div>';
 }
 
@@ -614,12 +613,12 @@ function renderDashboard() {
     var isPremium = m.feature ? isFlagPremium(m.feature) : false;
 
     var badge = '';
-    if (st && st.status === 'ready') badge = ' <span class="premium-tag" style="background:#3ba55d;">Ready</span>';
-    else if (st && st.status === 'incomplete') badge = ' <span class="premium-tag" style="background:#faa61a;color:#000;">Needs setup</span>';
+    if (st && st.status === 'ready') badge = ' <span class="status-tag ready">Ready</span>';
+    else if (st && st.status === 'incomplete') badge = ' <span class="status-tag incomplete">Needs setup</span>';
 
     var missingNote = '';
     if (st && st.status === 'incomplete' && st.missing && st.missing.length) {
-      missingNote = '<div class="feature-row-desc" style="color:#faa61a;">Still needs: ' +
+      missingNote = '<div class="feature-missing">Still needs: ' +
         st.missing.map(function(x) {
           return esc(x.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase());
         }).join(', ') + '</div>';
@@ -628,7 +627,7 @@ function renderDashboard() {
     return '<div class="feature-row">' +
       '<div class="feature-row-info">' +
         '<div class="feature-row-name">' + m.label +
-          ' <span style="font-size:10px;color:var(--text-dim);font-weight:400;">' + esc(entry.group) + '</span>' +
+          ' <span class="feature-group-tag">' + esc(entry.group) + '</span>' +
           (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + badge +
         '</div>' +
         '<div class="feature-row-desc">' + esc(showLong && m.long ? m.long : m.desc) + '</div>' +
@@ -647,7 +646,7 @@ function renderDashboard() {
     if (!entries.length) return '';
     return '<div class="feature-category">' +
       '<div class="feature-category-title">' + title + ' (' + entries.length + ')</div>' +
-      (sub ? '<div class="overview-section-sub" style="margin:-4px 0 8px;">' + sub + '</div>' : '') +
+      (sub ? '<div class="feature-category-sub">' + sub + '</div>' : '') +
       entries.map(function(e) { return featureRow(e, showLong); }).join('') +
       '</div>';
   }
@@ -883,7 +882,7 @@ function renderBilling() {
     }
 
     var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($14/3mo)' : data.plan === 'lifetime' ? 'Lifetime ($48.99 one-time)' : 'Manual / Gifted';
-    var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
+    var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? 'var(--amber)' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
     var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status === 'past_due' ? 'Past Due' : data.status || 'Active';
 
     var periodRow = '';
