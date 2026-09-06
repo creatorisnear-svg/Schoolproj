@@ -57,13 +57,9 @@ export function createCivilianRouter(client) {
     const clash = await CADCharacter.findOne({ ...own(req), characterName }).lean();
     if (clash) return badRequest(res, 'You already have a character with that name.');
 
-    // Plates and licence numbers are issued, not typed. Nobody should have to
-    // invent a licence number, and a blank plate is exactly the value that used
-    // to collide in the database index.
-    const requested = plate(req.body.licensePlate);
-    const { plate: licensePlate, taken } = await resolvePlate(req.guildId, requested);
-    if (taken) return duplicatePlate(res);
-
+    // No licence plate here on purpose. A plate belongs to a vehicle, and asking
+    // for one on the person led people to fill it in and believe they had
+    // registered their car. Register a vehicle to get a plate.
     try {
       const character = await CADCharacter.create({
         ...own(req),
@@ -79,7 +75,6 @@ export function createCivilianRouter(client) {
         address: str(req.body.address, 200),
         occupation: str(req.body.occupation, 100),
         phoneNumber: str(req.body.phoneNumber, 40),
-        licensePlate,
         driversLicense: str(req.body.driversLicense, 40) || randomLicenseNumber(),
         // Issued, never asked for. It exists so law enforcement has an
         // identifier to run; the person it belongs to does not need to invent it.
@@ -104,7 +99,7 @@ export function createCivilianRouter(client) {
   const CIVILIAN_EDITABLE = [
     'characterName', 'age', 'gender', 'hairColor', 'eyeColor', 'height', 'build',
     'distinguishingFeatures', 'scarsAndTattoos', 'address', 'occupation',
-    'phoneNumber', 'licensePlate', 'driversLicense', 'medicalInfo',
+    'phoneNumber', 'driversLicense', 'medicalInfo',
     'emergencyContact', 'veteranStatus',
   ];
 
@@ -115,18 +110,6 @@ export function createCivilianRouter(client) {
     for (const field of CIVILIAN_EDITABLE) {
       if (!(field in req.body)) continue;
       if (field === 'age') { character.age = num(req.body.age, 0, 200); continue; }
-
-      if (field === 'licensePlate') {
-        // Clearing a plate would put a null back into the record, so an empty
-        // value means "issue me a new one" rather than "remove it".
-        const wanted = plate(req.body.licensePlate);
-        if (wanted !== character.licensePlate) {
-          const { plate: next, taken } = await resolvePlate(req.guildId, wanted, character._id);
-          if (taken) return duplicatePlate(res);
-          character.licensePlate = next;
-        }
-        continue;
-      }
 
       character[field] = str(req.body[field], 500);
     }

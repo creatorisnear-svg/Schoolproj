@@ -640,8 +640,11 @@
     var facts = [
       ['Age', c.age], ['Gender', c.gender], ['Height', c.height], ['Build', c.build],
       ['Hair', c.hairColor], ['Eyes', c.eyeColor], ['Occupation', c.occupation],
-      ['Address', c.address], ['Phone', c.phoneNumber], ['Plate', c.licensePlate],
+      ['Address', c.address], ['Phone', c.phoneNumber],
       ["Driver's Licence", c.driversLicense],
+      // Only on older records: new characters have no plate of their own, their
+      // vehicles do.
+      ['Plate (legacy)', c.licensePlate],
     ].filter(function (pair) { return pair[1]; });
 
     var vehicles = (c.vehicles || []).map(function (v) {
@@ -675,8 +678,12 @@
       + (c.status === 'wanted' && c.wantedReason
         ? '<div class="notice error" style="margin-top:12px">Wanted: ' + esc(c.wantedReason) + '</div>' : '')
       + '<div class="subhead">Vehicles</div>'
-      + (vehicles || '<div class="row muted">No vehicles registered.</div>')
-      + '<button class="btn btn-sm" style="margin-top:8px" data-add-vehicle="' + esc(c._id) + '">Add Vehicle</button>'
+      + (vehicles
+        // Spelling out where a plate comes from, because the old form asked for
+        // one on the person and left people expecting it to appear here.
+        || '<div class="row muted">No vehicles registered. Register one to be issued a plate.</div>')
+      + '<button class="btn btn-sm ' + (vehicles ? '' : 'btn-primary')
+      + '" style="margin-top:8px" data-add-vehicle="' + esc(c._id) + '">Register Vehicle</button>'
       + '<div class="subhead">Firearms</div>'
       + (guns || '<div class="row muted">No firearms registered.</div>')
       + '<button class="btn btn-sm" style="margin-top:8px" data-add-gun="' + esc(c._id) + '">Add Firearm</button>'
@@ -706,10 +713,8 @@
         { value: 'organ_donor', label: 'Organ donor' },
       ],
     },
-    // Left last and left blank on purpose: leaving it empty issues one. Nobody
-    // should have to invent a plate, and a blank plate is what the database
-    // index used to collide on.
-    { name: 'licensePlate', label: 'License plate (leave blank to be issued one)', max: 16 },
+    // No licence plate. It belongs to a vehicle, and asking for it here made
+    // people think filling it in registered their car.
   ];
 
   function withValues(fields, source) {
@@ -766,20 +771,31 @@
 
   function addVehicle(characterId) {
     dialog({
-      title: 'Add vehicle',
+      title: 'Register vehicle',
+      sub: 'Leave the plate blank and one will be issued for you.',
       fields: [
-        { name: 'make', label: 'Make', max: 60 },
-        { name: 'model', label: 'Model', max: 60 },
+        // Required, and marked as such on the form rather than only refused
+        // after submitting. An officer running a stop needs something to
+        // recognise; a row that just says "Vehicle" helps nobody.
+        { name: 'make', label: 'Make', max: 60, required: true },
+        { name: 'model', label: 'Model', max: 60, required: true },
         { name: 'year', label: 'Year', max: 10 },
         { name: 'color', label: 'Colour', max: 40 },
         { name: 'licensePlate', label: 'License plate', max: 16 },
         { name: 'condition', label: 'Condition', max: 60 },
       ],
-      confirm: 'Add',
+      confirm: 'Register',
       onSubmit: function (values) {
         return api('/' + state.guildId + '/characters/' + characterId + '/vehicles',
           { method: 'POST', body: values })
-          .then(function () { toast('Vehicle added.', 'ok'); go('characters'); });
+          .then(function (res) {
+            var list = (res.character && res.character.vehicles) || [];
+            var added = list[list.length - 1];
+            toast(added && added.licensePlate
+              ? 'Vehicle registered. Plate: ' + added.licensePlate
+              : 'Vehicle registered.', 'ok');
+            go('characters');
+          });
       },
     });
   }
