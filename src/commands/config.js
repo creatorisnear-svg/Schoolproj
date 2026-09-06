@@ -451,6 +451,63 @@ async function handleRoles(interaction) {
   return interaction.reply(rolesMenu());
 }
 
+async function handleDutyTime(interaction) {
+  const { default: DutyConfig } = await import('../models/DutyConfig.js');
+  const { guildTotals, formatDuration } = await import('../utils/dutyTracker.js');
+
+  const [cfg, dispatchCfg, totals] = await Promise.all([
+    DutyConfig.findOneAndUpdate(
+      { guildId: interaction.guildId },
+      { $set: { enabled: true } },
+      { upsert: true, new: true }
+    ),
+    DispatchConfig.findOne({ guildId: interaction.guildId }).select('patrolChannelIds').lean(),
+    guildTotals(interaction.guildId, 90),
+  ]);
+
+  const patrolCount = dispatchCfg?.patrolChannelIds?.length ?? 0;
+  const access = await checkFeatureAccess(interaction.guildId, 'dutytime');
+
+  // Recorded for everyone, so this screen has a real number on it even for a
+  // server that has never paid. That number is the argument for paying.
+  const recorded = totals.seconds
+    ? `**${formatDuration(totals.seconds)}** recorded across **${totals.officers}** officer${totals.officers === 1 ? '' : 's'} in the last 90 days.`
+    : 'Nothing recorded yet. Hours start counting as soon as two people sit in a patrol channel together.';
+
+  return interaction.reply({
+    embeds: [menuEmbed(
+      'Patrol Hours Setup',
+      '**What this does:** Counts how long each officer spends in your patrol voice channels, so you can see who is actually turning up.\n\n' +
+      `**${recorded}**\n\n` +
+      (patrolCount
+        ? `Counting from ${patrolCount} patrol channel${patrolCount === 1 ? '' : 's'}. Change them with \`/config dispatch\`.\n\n`
+        : '**No patrol channels are set**, so nothing is being counted. Pick them with `/config dispatch` first.\n\n') +
+      '**Free on every server:** `/duty` for your own hours, and `/patrolboard` for the top 10 over 7 days.\n\n' +
+      (access.allowed
+        ? '**Premium is active:** pick a channel below and the bot posts a board there every week, plus a list of who has stopped turning up.'
+        : '**With Premium:** the full roster, 30 and 90 day views, a board that posts itself weekly, and a list of who has not patrolled in 14 days.') +
+      '\n\n-# Deafened time does not count, and neither does sitting in a channel alone.'
+    )],
+    components: access.allowed
+      ? [
+        new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId('dutytime_board_channel')
+            .setPlaceholder('Where should the weekly board go?')
+            .setChannelTypes(ChannelType.GuildText)
+        ),
+        new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId('dutytime_report_channel')
+            .setPlaceholder('Where should the inactivity list go? (staff only)')
+            .setChannelTypes(ChannelType.GuildText)
+        ),
+      ]
+      : premiumReply('Patrol Hours').components,
+    flags: 64,
+  });
+}
+
 async function handlePriority(interaction) {
   await ensureEnabled(Priority, interaction.guildId);
   const config = await Priority.findOne({ guildId: interaction.guildId });
@@ -722,6 +779,7 @@ const subcommandHandlers = {
   antipromo: handleAntipromo,
   roles: handleRoles,
   priority: handlePriority,
+  dutytime: handleDutyTime,
   calendar: handleCalendar,
   appys: handleAppys,
   moveme: handleMoveme,
@@ -751,6 +809,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('antipromo').setDescription('Anti-promoting, auto-delete invite links'))
   .addSubcommand(s => s.setName('roles').setDescription('Role requests, members apply for specific roles'))
   .addSubcommand(s => s.setName('priority').setDescription('Priority tracker, track active priority events'))
+  .addSubcommand(s => s.setName('dutytime').setDescription('Patrol hours, count time officers spend in patrol channels'))
   .addSubcommand(s => s.setName('calendar').setDescription('RP Calendar, schedule and display roleplay sessions'))
   .addSubcommand(s => s.setName('moveme').setDescription('Voice mover, panel for members to move between voice channels'))
   .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands, /me, /do, /try, 911 calls'))

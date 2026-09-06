@@ -585,6 +585,11 @@ export function createApiRouter(client) {
           await Priority.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
           break;
         }
+        case 'dutytime': {
+          const { default: DutyConfig } = await import('../../models/DutyConfig.js');
+          await DutyConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
+          break;
+        }
         case 'strike': {
           const { StrikeConfig } = await import('../../models/Strike.js');
           await StrikeConfig.findOneAndUpdate({ guildId }, { enabled }, { upsert: true });
@@ -837,6 +842,26 @@ export function createApiRouter(client) {
           ];
           result.stats = [
             { label: 'Status', value: pc?.priorityActive ? 'ACTIVE' : 'Inactive' },
+          ];
+          break;
+        }
+
+        case 'dutytime': {
+          result.name = 'Patrol Hours';
+          result.description = 'Counts time officers spend in patrol voice channels';
+          result.premium = await isFeaturePremiumGated('dutytime');
+          const { default: DutyConfig } = await import('../../models/DutyConfig.js');
+          const { guildTotals, formatDuration } = await import('../../utils/dutyTracker.js');
+          const dc = await DutyConfig.findOne({ guildId: guild.id });
+          const totals = await guildTotals(guild.id, 90);
+          result.fields = [
+            { key: 'boardChannelId', label: 'Weekly Board Channel', description: 'Where the patrol leaderboard is posted and kept up to date', type: 'select', value: dc?.boardChannelId || '', options: channels },
+            { key: 'reportChannelId', label: 'Inactivity Report Channel', description: 'Where the list of officers who stopped patrolling goes. Staff only', type: 'select', value: dc?.reportChannelId || '', options: channels },
+            { key: 'inactiveAfterDays', label: 'Inactive After (days)', description: 'How long an officer can go without patrolling before appearing on the list', type: 'number', value: dc?.inactiveAfterDays ?? 14, min: 1, max: 90 },
+          ];
+          result.stats = [
+            { label: 'Recorded (90 days)', value: formatDuration(totals.seconds) },
+            { label: 'Officers', value: String(totals.officers) },
           ];
           break;
         }
@@ -1303,6 +1328,22 @@ export function createApiRouter(client) {
               await initDispatchForGuild(guild, client);
             }
           } catch (e) { console.error('[Dashboard] dispatch reload on settings save:', e.message); }
+          break;
+        }
+
+        case 'dutytime': {
+          const { default: DutyConfig } = await import('../../models/DutyConfig.js');
+          const allowed = ['boardChannelId', 'reportChannelId', 'inactiveAfterDays'];
+          const update = {};
+          for (const [k, v] of Object.entries(changes)) {
+            if (!allowed.includes(k)) continue;
+            if (k === 'inactiveAfterDays') update[k] = Math.max(1, Math.min(90, parseInt(v) || 14));
+            else update[k] = v;
+          }
+          // Moving the board means the old message is somewhere else, so
+          // forget it and let the next run post a fresh one.
+          if ('boardChannelId' in update) { update.boardMessageId = null; update.lastBoardAt = null; }
+          await DutyConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           break;
         }
 

@@ -35,7 +35,7 @@ export const COMMAND_GROUPS = [
   {
     title: 'Priority & Dispatch',
     blurb: 'Run priority scenes and AI voice dispatch.',
-    commands: ['priorityrequest', 'activepriority', 'deactivatepriority', 'prioritycooldown', 'dispatchannounce'],
+    commands: ['priorityrequest', 'activepriority', 'deactivatepriority', 'prioritycooldown', 'dispatchannounce', 'duty', 'patrolboard'],
   },
   {
     title: 'Economy',

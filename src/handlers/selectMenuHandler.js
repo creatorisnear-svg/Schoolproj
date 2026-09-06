@@ -629,6 +629,38 @@ export async function handleSelectMenu(interaction) {
     return handlePriorityTrackerChannelSelect(interaction);
   }
 
+  // Patrol hours: where the weekly board and the inactivity list go
+  if (customId === 'dutytime_board_channel' || customId === 'dutytime_report_channel') {
+    const channel = interaction.channels.first();
+    if (!channel?.isTextBased()) {
+      return interaction.reply({ embeds: [errorEmbed('Pick a text channel.')], flags: 64 });
+    }
+    const { default: DutyConfig } = await import('../models/DutyConfig.js');
+    const board = customId === 'dutytime_board_channel';
+
+    // Clearing the message id makes the next run post a fresh board in the new
+    // channel rather than trying to edit one that lives somewhere else.
+    const update = board
+      ? { boardChannelId: channel.id, boardMessageId: null, lastBoardAt: null }
+      : { reportChannelId: channel.id, lastReportAt: null };
+
+    await DutyConfig.findOneAndUpdate(
+      { guildId: interaction.guildId },
+      { $set: { enabled: true, ...update } },
+      { upsert: true }
+    );
+
+    return interaction.reply({
+      embeds: [successEmbed(
+        board ? 'Patrol board channel set' : 'Inactivity report channel set',
+        board
+          ? `The weekly patrol board will be posted in ${channel} and kept up to date there.`
+          : `The list of officers who have stopped patrolling will go to ${channel}. Nobody named on it gets messaged.`
+      )],
+      flags: 64,
+    });
+  }
+
   // Roleplay calendar setup channel
   if (customId === 'roleplaycalendarsetup_channel') {
     const { handleRoleplayCalendarChannelSelect } = await import('./roleplayCalendarHandler.js');

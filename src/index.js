@@ -817,6 +817,40 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const joinedChannelId = newState.channelId;
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
+  // ── Patrol hours ─────────────────────────────────────────────────────────
+  //
+  // Its own try/catch, deliberately, and above the dispatch block rather than
+  // inside it. That block wraps all of the bot's channel following in a single
+  // catch that only logs, so a database hiccup while recording would silently
+  // stop dispatch from moving. Recording is the less important of the two and
+  // must not be able to break the other.
+  try {
+    const duty = await import('./utils/dutyTracker.js');
+
+    const leftDuty = leftChannelId && await duty.isDutyChannel(guild.id, leftChannelId);
+    const joinedDuty = joinedChannelId && await duty.isDutyChannel(guild.id, joinedChannelId);
+
+    if (leftDuty) await duty.closeSession(guild.id, userId, 'left');
+
+    if (joinedDuty && leftChannelId !== joinedChannelId) {
+      await duty.openSession(guild.id, newState.member, newState.channel);
+
+      // Everyone in the channel now has company, including whoever got here
+      // first and had been sitting on their own until this moment.
+      const present = [...(newState.channel?.members?.values() ?? [])]
+        .filter((m) => !m.user?.bot)
+        .map((m) => m.id);
+      if (present.length > 1) await duty.markCompany(guild.id, present);
+    }
+
+    // Deafening yourself is leaving the radio, so it stops counting.
+    if (joinedDuty && oldState.selfDeaf !== newState.selfDeaf) {
+      await duty.markDeaf(guild.id, userId, !!newState.selfDeaf);
+    }
+  } catch (err) {
+    console.error('[Duty] record:', err.message);
+  }
+
   try {
     const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel, clearExtendedStay, getExtendedStay, isAnnounceOnly } = await import('./utils/voiceListener.js');
 
@@ -1183,6 +1217,44 @@ client.once('clientReady', async () => {
     }
   } catch (err) {
     console.error('[Dispatch] Startup initialization error:', err.message);
+  }
+
+  // ── Patrol hours: pick up where the last process left off ────────────────
+  //
+  // Load bearing, not tidiness. Pushing to main redeploys this several times a
+  // week, so sessions that were open when the old process died would otherwise
+  // hang forever and the people in them would stop accruing. Close the orphans,
+  // then open fresh sessions for everybody currently sitting in a patrol
+  // channel.
+  try {
+    const duty = await import('./utils/dutyTracker.js');
+    const DutySession = (await import('./models/DutySession.js')).default;
+
+    const orphans = await DutySession.find({ endedAt: null });
+    for (const o of orphans) await duty.closeSession(o.guildId, o.userId, 'startup');
+
+    let resumed = 0;
+    for (const cfg of await DispatchConfig.find({ 'patrolChannelIds.0': { $exists: true } }).lean()) {
+      const guild = client.guilds.cache.get(cfg.guildId);
+      if (!guild) continue;
+
+      for (const channelId of cfg.patrolChannelIds) {
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel?.isVoiceBased?.()) continue;
+
+        const humans = [...channel.members.values()].filter((m) => !m.user?.bot);
+        for (const m of humans) {
+          await duty.openSession(guild.id, m, channel);
+          resumed++;
+        }
+        if (humans.length > 1) await duty.markCompany(guild.id, humans.map((m) => m.id));
+      }
+    }
+    if (orphans.length || resumed) {
+      console.log(`[Duty] Closed ${orphans.length} session(s) left open by the last process, resumed ${resumed}`);
+    }
+  } catch (err) {
+    console.error('[Duty] Startup reconciliation error:', err.message);
   }
 
   // ── Business role migration ─────────────────────────────────────────────────
@@ -1650,6 +1722,19 @@ connectDatabase().then(async () => {
       await checkLoanReminders(client);
     } catch (err) {
       console.error('[LoanReminder] Poller error:', err.message);
+    }
+  }, 60 * 60 * 1000);
+
+  // Patrol hours: the weekly board and the inactivity list. Hourly, but each
+  // guild carries its own lastBoardAt so it only actually posts once a week,
+  // which also means a redeploy cannot cause a double post.
+  setInterval(async () => {
+    if (mongoose.connection.readyState !== 1) return;
+    try {
+      const { runDutyReports } = await import('./handlers/dutyReportHandler.js');
+      await runDutyReports(client);
+    } catch (err) {
+      console.error('[Duty] Poller error:', err.message);
     }
   }, 60 * 60 * 1000);
 

@@ -221,6 +221,30 @@ export const FEATURES = [
     botGated: true,
   },
   {
+    key: "dutytime",
+    mod: "dutytime",
+    configKey: "dutyEnabled",
+    label: "Patrol Hours",
+    group: "Roleplay",
+    order: 95,
+    short: "Counts time officers spend in patrol voice channels",
+    long:
+      "Counts how long each officer actually spends on patrol, from the time they sit in a patrol voice channel with somebody else. Members check their own hours with /duty and compete on a leaderboard, and staff get a weekly board plus a list of who has stopped turning up. Deafened time and sitting alone do not count, so the number holds up in an argument.",
+    modelFile: "models/DutyConfig.js",
+    modelImport: "default",
+    enabledPath: "enabled",
+    required: ["boardChannelId"],
+    configSubcommand: "dutytime",
+    // Premium, but recording runs for everybody. A board that only starts
+    // filling up once you subscribe shows a trial user a blank screen for the
+    // whole week they are deciding in, which is the worst possible moment to
+    // have nothing to show. Free servers accrue history and get /duty and a
+    // top ten; paying opens the depth.
+    premiumDefault: true,
+    freeTier: "your own hours and a top ten over 7 days",
+    botGated: true,
+  },
+  {
     key: "calendar",
     mod: "calendar",
     configKey: "calendarEnabled",
