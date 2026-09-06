@@ -1,10 +1,10 @@
 {
-  "version": "1.8.0",
-  "title": "Free plan limits, and the blacklist joins Premium",
+  "version": "1.8.1",
+  "title": "Blacklist fixes worth checking your server for",
   "changes": [
-    "The blacklist system is now part of Premium. If your server already has it turned on it keeps working and nothing changes for you. This only affects servers switching it on for the first time",
-    "The free plan now covers 100 shop items, 5 civilian jobs and 5 requestable roles. If you already have more than that you keep every one of them, you just cannot add new ones without Premium",
-    "Every limit now offers the 7 day free trial on a button instead of sending you to a price list. Press it and everything unlocks right away, no card and no signup",
-    "/premium now starts the free trial from a button, and lists what you actually get"
+    "Fixed: blacklisting someone by their Discord account did not stop them verifying straight back in. They were kicked once, and after that the verification check only looked at gamertags and IP addresses, so anyone who had never verified on your server before was not blocked at all. It checks the Discord account now. If you have blacklisted people in the past it is worth a look through your member list",
+    "Fixed: an IP ban added from the web dashboard never banned an address. It said it worked and did nothing",
+    "Blacklisting with an IP ban used to say the ban was applied even when there was no address on record for that account. It now tells you when it could not, and what is still blocking them",
+    "The website is up to date: the pricing page lists what Premium actually includes, says what the free plan limits are, and the free 7 day trial is on there now"
   ]
 }
