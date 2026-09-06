@@ -429,27 +429,118 @@
     });
   }
 
-  function loading(message) {
-    $('main').innerHTML = '<div class="loading"><span class="spinner"></span> '
-      + esc(message || 'Loading') + '</div>';
+  /** A grey block standing in for a piece of content that is on its way. */
+  function sk(width, height, extra) {
+    return '<div class="sk" style="width:' + width + ';height:' + height + 'px;' + (extra || '') + '"></div>';
   }
 
-  function go(view) {
+  function skCard(lines) {
+    var body = [];
+    for (var i = 0; i < (lines || 3); i++) {
+      body.push(sk((90 - i * 12) + '%', 11, 'margin-top:9px'));
+    }
+    return '<div class="card">' + sk('45%', 15) + body.join('') + '</div>';
+  }
+
+  /**
+   * Placeholders shaped like the view that is loading.
+   *
+   * A spinner tells you to wait. A skeleton tells you what you are waiting
+   * for, and the page does not jump when the real content lands in the same
+   * shape.
+   */
+  var SKELETONS = {
+    units: function () {
+      return '<div class="card" style="text-align:center;padding:26px">'
+        + sk('120px', 40, 'margin:0 auto')
+        + sk('90px', 12, 'margin:10px auto 0') + '</div>'
+        + '<div class="subhead">Set your status</div>'
+        + '<div class="code-grid">'
+        + new Array(8).join(',').split(',').map(function () { return sk('100%', 58); }).join('')
+        + '</div>'
+        + '<div class="subhead">Units on duty</div>'
+        + '<div class="unit-grid">'
+        + new Array(4).join(',').split(',').map(function () { return sk('100%', 74); }).join('')
+        + '</div>';
+    },
+    calls: function () { return skCard(4) + skCard(3); },
+    characters: function () { return skCard(5) + skCard(4); },
+    board: function () {
+      return '<div class="unit-grid">'
+        + new Array(5).join(',').split(',').map(function () { return sk('100%', 74); }).join('')
+        + '</div>';
+    },
+  };
+
+  function loading(view) {
+    var shape = SKELETONS[view];
+    $('main').innerHTML = '<div class="panel" aria-busy="true">'
+      + '<div class="panel-head"><div>' + sk('180px', 20) + sk('260px', 12, 'margin-top:8px')
+      + '</div></div>'
+      + (shape ? shape() : skCard(3) + skCard(3))
+      + '</div>';
+  }
+
+  /**
+   * @param {object} [opts] - { silent } for a background refresh, which keeps
+   *   what is on screen until the new content is ready and puts the scroll
+   *   position back afterwards.
+   */
+  function go(view, opts) {
+    opts = opts || {};
     state.view = view;
     renderNav();
     var handler = VIEWS[view];
     if (!handler) return;
 
+    var main = $('main');
+    var scrollWas = main.scrollTop;
+
     state.loading = true;
-    loading();
-    handler().catch(function (err) {
+    if (!opts.silent) loading(view);
+
+    handler().then(function () {
+      // The handler replaces innerHTML, which drops the scroll position. On a
+      // refresh nobody asked for, being sent back to the top is the whole
+      // annoyance.
+      if (opts.silent) main.scrollTop = scrollWas;
+      state.lastRefresh = Date.now();
+    }).catch(function (err) {
       if (err && err.handled) return;
+      // A background refresh that fails leaves the screen alone. Replacing
+      // readable content with an error nobody asked to see is worse than
+      // showing something a few seconds stale.
+      if (opts.silent) {
+        console.warn('[CAD] background refresh failed:', err && err.message);
+        return;
+      }
       $('main').innerHTML = '<div class="panel"><div class="notice error">'
         + esc((err && err.message) || 'Could not load this section.')
         + '</div><button class="btn" id="retry">Try again</button></div>';
       var retry = $('retry');
       if (retry) retry.addEventListener('click', function () { go(view); });
     }).then(function () { state.loading = false; });
+  }
+
+  /** Minimum gap between redraws nobody asked for. */
+  var REFRESH_COOLDOWN_MS = 8000;
+
+  /**
+   * Redraw the current view because something changed on the server.
+   *
+   * Refuses in every case where a redraw would take something away from the
+   * person using it: mid dialog, mid typing, or too soon after the last one.
+   */
+  function backgroundRefresh() {
+    if (state.loading) return;
+    if ($('dialog-root').children.length) return;
+
+    var focused = document.activeElement;
+    if (focused && /^(INPUT|TEXTAREA|SELECT)$/.test(focused.tagName)) return;
+
+    if (Date.now() - (state.lastRefresh || 0) < REFRESH_COOLDOWN_MS) return;
+
+    go(state.view, { silent: true });
   }
 
   function setMode(mode) {
@@ -465,7 +556,7 @@
     state.guildId = guildId;
     store(LAST_SERVER_KEY, guildId);
     show('view-cad');
-    loading('Opening the CAD');
+    // No argument: which view is about to open is not decided until the
 
     api('/' + guildId + '/context').then(function (ctx) {
       state.context = ctx;
@@ -527,7 +618,7 @@
       });
 
       if (changed.indexOf('calls') !== -1) refreshCallCount();
-      if (shouldRefresh && !state.loading) go(state.view);
+      if (shouldRefresh) backgroundRefresh();
     });
 
     // A ticket is single use, so the browser's own retry would reconnect with a
@@ -1164,7 +1255,9 @@
       var query = $('q').value.trim();
       if (query.length < 2) return toast('Enter at least two characters.', 'error');
 
-      $('results').innerHTML = '<div class="loading"><span class="spinner"></span> Searching</div>';
+      // Two record-shaped placeholders: a search usually returns one or two,
+      // and the page does not jump when they arrive.
+      $('results').innerHTML = skCard(5) + skCard(4);
       api('/' + state.guildId + '/leo/search?q=' + encodeURIComponent(query))
         .then(function (res) {
           state.data.results = res.results || [];

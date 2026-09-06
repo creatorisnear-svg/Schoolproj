@@ -726,3 +726,27 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   box-shadow: 0 0 22px rgba(248, 113, 113, 0.16);
 }
 .unit-card.panic .unit-code { color: var(--red); }
+
+/* ── Loading placeholders ────────────────────────────────────────────────── */
+
+/* Blocks in the shape of the content that is coming, so the page does not jump
+   when it lands. The sweep is slow and low contrast on purpose: it should read
+   as pending rather than as something demanding attention. */
+.sk {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 37%, var(--bg-card) 63%);
+  background-size: 400% 100%;
+  animation: sk-sweep 1.6s ease-in-out infinite;
+}
+@keyframes sk-sweep { to { background-position: -135% 0; } }
+
+/* Inside a card the ground is already lighter, so the blocks need to sit
+   against it rather than disappear into it. */
+.card .sk {
+  background: linear-gradient(90deg, rgba(255,255,255,0.045) 25%, rgba(255,255,255,0.085) 37%, rgba(255,255,255,0.045) 63%);
+  background-size: 400% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; background: var(--bg-card-hover); }
+}

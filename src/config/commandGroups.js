@@ -30,7 +30,7 @@ export const COMMAND_GROUPS = [
   {
     title: 'Roleplay & CAD',
     blurb: 'Characters, vehicles, 911 calls and department records.',
-    commands: ['civiliandatabase', 'leodatabase', 'firedepartmentdatabase'],
+    commands: ['cad', 'civiliandatabase', 'leodatabase', 'firedepartmentdatabase'],
   },
   {
     title: 'Priority & Dispatch',
