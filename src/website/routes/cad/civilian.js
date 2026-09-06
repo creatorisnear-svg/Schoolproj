@@ -6,6 +6,7 @@ import OfficerStatus from '../../../models/OfficerStatus.js';
 import BOLO from '../../../models/BOLO.js';
 import { getGuildLimits } from '../../../utils/premiumCheck.js';
 import { announceWeb911, generateCallId, updateCallMessage } from '../../cadBridge.js';
+import { resolvePlate, randomLicenseNumber, randomSerial } from '../../../utils/cadIdentifiers.js';
 import { str, num, plate, limitError, notFound, badRequest, duplicatePlate } from './shared.js';
 
 /**
@@ -54,6 +55,13 @@ export function createCivilianRouter(client) {
     const clash = await CADCharacter.findOne({ ...own(req), characterName }).lean();
     if (clash) return badRequest(res, 'You already have a character with that name.');
 
+    // Plates and licence numbers are issued, not typed. Nobody should have to
+    // invent a licence number, and a blank plate is exactly the value that used
+    // to collide in the database index.
+    const requested = plate(req.body.licensePlate);
+    const { plate: licensePlate, taken } = await resolvePlate(req.guildId, requested);
+    if (taken) return duplicatePlate(res);
+
     try {
       const character = await CADCharacter.create({
         ...own(req),
@@ -69,8 +77,8 @@ export function createCivilianRouter(client) {
         address: str(req.body.address, 200),
         occupation: str(req.body.occupation, 100),
         phoneNumber: str(req.body.phoneNumber, 40),
-        licensePlate: plate(req.body.licensePlate),
-        driversLicense: str(req.body.driversLicense, 40),
+        licensePlate,
+        driversLicense: str(req.body.driversLicense, 40) || randomLicenseNumber(),
         medicalInfo: str(req.body.medicalInfo, 500),
         emergencyContact: str(req.body.emergencyContact, 200),
       });
@@ -96,10 +104,23 @@ export function createCivilianRouter(client) {
 
     for (const field of CIVILIAN_EDITABLE) {
       if (!(field in req.body)) continue;
-      if (field === 'age') character.age = num(req.body.age, 0, 200);
-      else if (field === 'licensePlate') character.licensePlate = plate(req.body.licensePlate);
-      else character[field] = str(req.body[field], 500);
+      if (field === 'age') { character.age = num(req.body.age, 0, 200); continue; }
+
+      if (field === 'licensePlate') {
+        // Clearing a plate would put a null back into the record, so an empty
+        // value means "issue me a new one" rather than "remove it".
+        const wanted = plate(req.body.licensePlate);
+        if (wanted !== character.licensePlate) {
+          const { plate: next, taken } = await resolvePlate(req.guildId, wanted, character._id);
+          if (taken) return duplicatePlate(res);
+          character.licensePlate = next;
+        }
+        continue;
+      }
+
+      character[field] = str(req.body[field], 500);
     }
+    if (!character.driversLicense) character.driversLicense = randomLicenseNumber();
     if (!character.characterName) return badRequest(res, 'A character name is required.');
 
     try {
@@ -125,11 +146,15 @@ export function createCivilianRouter(client) {
     const hit = await overLimit(req.guildId, 'vehicles');
     if (hit) return limitError(res, 'vehicles', hit);
 
+    const wanted = plate(req.body.licensePlate);
+    const { plate: licensePlate, taken } = await resolvePlate(req.guildId, wanted, character._id);
+    if (taken) return duplicatePlate(res);
+
     character.vehicles.push({
       make: str(req.body.make, 60),
       model: str(req.body.model, 60),
       color: str(req.body.color, 40),
-      licensePlate: plate(req.body.licensePlate),
+      licensePlate,
       year: str(req.body.year, 10),
       condition: str(req.body.condition, 60),
     });
@@ -166,7 +191,10 @@ export function createCivilianRouter(client) {
     const hit = await overLimit(req.guildId, 'firearms');
     if (hit) return limitError(res, 'firearms', hit);
 
-    character.guns.push({ name, serialNumber: str(req.body.serialNumber, 60) });
+    character.guns.push({
+      name,
+      serialNumber: str(req.body.serialNumber, 60) || randomSerial(),
+    });
     await character.save();
     res.status(201).json({ character });
   });
