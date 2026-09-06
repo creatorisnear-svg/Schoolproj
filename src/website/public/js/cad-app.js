@@ -323,6 +323,35 @@
   }
 
   /**
+   * Line icons for the navigation, drawn inline.
+   *
+   * Inline rather than an icon font or sprite sheet: there are eight of them,
+   * they never change, and a request that can fail is a poor trade for a few
+   * hundred bytes. Every one is decorative - the label beside it carries the
+   * meaning - so they are hidden from assistive technology.
+   */
+  var ICONS = {
+    characters: '<path d="M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    call911: '<path d="M4.5 5.5h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a1.5 1.5 0 0 1-1.7 1.5A15.5 15.5 0 0 1 3 7.2 1.5 1.5 0 0 1 4.5 5.5Z"/>',
+    fines: '<path d="M6 3h9l3 3v15H6z"/><path d="M9.5 10h5"/><path d="M9.5 14h5"/>',
+    social: '<path d="M20 4H4v12h5l3 4 3-4h5z"/>',
+    board: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>',
+    alerts: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>',
+    calls: '<path d="M12 2.5v3"/><path d="M12 18.5v3"/><path d="M5 12H2"/><path d="M22 12h-3"/><path d="M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"/>',
+    search: '<path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/><path d="m20 20-4-4"/>',
+    bolos: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><path d="M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>',
+    tickets: '<path d="M4 7.5h16v3a2 2 0 0 0 0 3v3H4v-3a2 2 0 0 0 0-3z"/><path d="M9.5 7.5v9"/>',
+    units: '<path d="M3 16.5h18"/><path d="M5 16.5v-4l2-4h10l2 4v4"/><path d="M7.5 16.5v2"/><path d="M16.5 16.5v2"/>',
+  };
+
+  function icon(id) {
+    if (!ICONS[id]) return '';
+    return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+      + ' stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + ICONS[id] + '</svg>';
+  }
+
+  /**
    * Which modes this member may switch into on this server.
    *
    * Each carries a short label as well as a full one. On a narrow screen the CSS
@@ -346,7 +375,8 @@
       }
       return '<button data-view="' + item.id + '" aria-current="'
         + (state.view === item.id ? 'true' : 'false') + '">'
-        + '<span>' + esc(item.label) + '</span>' + count + '</button>';
+        + '<span>' + icon(item.id) + '<span>' + esc(item.label) + '</span></span>'
+        + count + '</button>';
     }).join('');
 
     var extra = '';
