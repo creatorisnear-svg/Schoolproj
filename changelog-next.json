@@ -1,9 +1,10 @@
 {
-  "version": "1.3.3",
-  "title": "More setup fixes",
+  "version": "1.3.4",
+  "title": "A clearer setup screen",
   "changes": [
-    "Finish Setup and Done now actually close the setup menu - in six places they left the same menu sitting on screen under the success message",
-    "Cancel on the character delete confirmation now works instead of showing an error and leaving the delete button live",
-    "Premium features can no longer be switched on from the enable and disable panel without Premium"
+    "/setup now lists every feature, including Blacklist, Sticky Messages, Reaction Roles and Civilian Jobs - these existed but never appeared there, so most servers never knew they were available",
+    "/setup now separates features that are ready from features that are switched on but unfinished, and tells you exactly what each one is still missing",
+    "/setup no longer refuses to help until you add yourself as a staff member - administrators already had access",
+    "Features are grouped in the setup menu now instead of listed in an arbitrary order, and Premium features are labelled as such"
   ]
 }

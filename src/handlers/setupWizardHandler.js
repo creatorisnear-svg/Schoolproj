@@ -462,6 +462,13 @@ const moduleResponses = {
   },
 };
 
+/**
+ * The module keys this wizard can actually handle. /setup builds its menu from
+ * this, so it can never offer an option that falls through to "Unknown option"
+ * - which is exactly how the 911/CAD, traffic-stop and blacklist paths broke.
+ */
+export const SUPPORTED_MODULES = Object.keys(moduleResponses);
+
 export async function handleSetupConfigSelect(interaction) {
   if (!await checkStaffPermission(interaction)) {
     return interaction.update({ embeds: [errorEmbed('Permission denied.')], components: [] });

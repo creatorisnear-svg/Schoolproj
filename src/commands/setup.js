@@ -3,28 +3,28 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
 } from 'discord.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import Staff from '../models/Staff.js';
+import { featureGroups, getFeature } from '../config/features.js';
+import { getAllFeatureStatus, summarize } from '../utils/featureStatus.js';
+import { SUPPORTED_MODULES } from '../handlers/setupWizardHandler.js';
 import Config from '../models/Config.js';
-import Verification from '../models/Verification.js';
-import TicketConfig from '../models/TicketConfig.js';
-import { StrikeConfig } from '../models/Strike.js';
-import Welcome from '../models/Welcome.js';
-import EconomyConfig from '../models/EconomyConfig.js';
-import DispatchConfig from '../models/DispatchConfig.js';
-import RoleplayCommands from '../models/RoleplayCommands.js';
-import Priority from '../models/Priority.js';
-import MemberMovementConfig from '../models/MemberMovementConfig.js';
-import AppyConfig from '../models/AppyConfig.js';
-import RoleRequestConfig from '../models/RoleRequestConfig.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setup')
   .setDescription('Step-by-step setup guide — start here if you just added the bot (Admin/Staff)');
+
+const MARK = { ready: '`✓`', incomplete: '`!`', off: '`✗`', unknown: '`?`' };
+
+/** Turn required field names into something an owner can act on. */
+function missingText(missing) {
+  if (!missing.length) return '';
+  const pretty = missing
+    .map((f) => f.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase())
+    .join(', ');
+  return ` — needs ${pretty}`;
+}
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
@@ -39,162 +39,116 @@ export async function execute(interaction) {
   const guildId = interaction.guildId;
 
   try {
-    const [
-      staffCount,
-      config,
-      verification,
-      ticketConfig,
-      strikeConfig,
-      welcome,
-      economyConfig,
-      dispatchConfig,
-      roleplayCommands,
-      priority,
-      moveme,
-      appyConfig,
-      roleRequestConfig,
-    ] = await Promise.all([
-      Staff.countDocuments({ guildId }),
+    // One registry-driven pass instead of thirteen hand-maintained model reads.
+    const [config, statuses] = await Promise.all([
       Config.findOne({ guildId }),
-      Verification.findOne({ guildId }),
-      TicketConfig.findOne({ guildId }),
-      StrikeConfig.findOne({ guildId }),
-      Welcome.findOne({ guildId }),
-      EconomyConfig.findOne({ guildId }),
-      DispatchConfig.findOne({ guildId }),
-      RoleplayCommands.findOne({ guildId }),
-      Priority.findOne({ guildId }),
-      MemberMovementConfig.findOne({ guildId }),
-      AppyConfig.findOne({ guildId }),
-      RoleRequestConfig.findOne({ guildId }),
+      getAllFeatureStatus(guildId),
     ]);
 
-    const hasStaff = staffCount > 0;
     const hasLog = !!config?.logChannelId;
-    const foundationDone = hasStaff && hasLog;
+    const counts = summarize(statuses);
 
-    // ── Determine what to highlight as "next step" ──────────────────────────
+    // ── Next step ────────────────────────────────────────────────────────────
+    // No /staff gate here. checkStaffPermission above already passes any
+    // administrator, so telling the owner to grant themselves a permission they
+    // already hold was pure friction, and the only button offered in that state
+    // was a link to the dashboard.
     let nextStepTitle = null;
     let nextStepText = null;
     let color = '#2d2d2d';
 
-    if (!hasStaff) {
-      color = '#ed4245';
-      nextStepTitle = 'Step 1 — Add a staff member first';
-      nextStepText =
-        'The bot needs at least one staff member before anything else will work.\n\n' +
-        '**Right now:** Run `/staff add @YourName` — add yourself or your server admin.\n' +
-        'Then come back and run `/setup` again.';
-    } else if (!hasLog) {
-      color = '#fee75c';
-      nextStepTitle = 'Step 2 — Set a log channel';
-      nextStepText =
-        'The bot needs a private channel to log everything that happens (kicks, verifications, tickets, etc.).\n\n' +
-        '**Right now:** Select **General Settings** from the menu below — then pick a channel.\n' +
-        'Use a channel only staff can see, like `#bot-logs`.';
-    } else {
-      // Foundation done — guide towards features
-      const featuresOn = [
-        verification?.enabled, ticketConfig?.enabled, strikeConfig?.enabled,
-        welcome?.enabled, economyConfig?.enabled, roleplayCommands?.enabled,
-        priority?.enabled, moveme?.enabled, appyConfig?.enabled,
-        roleRequestConfig?.enabled, dispatchConfig?.enabled,
-      ].filter(Boolean).length;
+    const needsAttention = Object.entries(statuses)
+      .filter(([, s]) => s.status === 'incomplete')
+      .map(([key]) => getFeature(key))
+      .filter(Boolean);
 
-      if (featuresOn === 0) {
-        color = '#5865f2';
-        nextStepTitle = 'Step 3 — Turn on your first feature';
-        nextStepText =
-          'Your foundation is all set. Now pick which features you want to use.\n\n' +
-          '**Right now:** Pick something from the menu below. Start simple — **Verification** or **Welcome Messages** are good first picks.';
-      }
+    if (!hasLog) {
+      color = '#fee75c';
+      nextStepTitle = 'Start here — set a log channel';
+      nextStepText =
+        'The bot records verifications, strikes, tickets and bans in one staff-only channel.\n\n' +
+        '**Right now:** pick **General Settings** below, then choose a channel like `#bot-logs`.';
+    } else if (needsAttention.length) {
+      color = '#fee75c';
+      const names = needsAttention.slice(0, 3).map((f) => f.label).join(', ');
+      nextStepTitle = `${needsAttention.length} feature${needsAttention.length === 1 ? '' : 's'} turned on but not finished`;
+      nextStepText =
+        `${names}${needsAttention.length > 3 ? ' and others' : ''} ${needsAttention.length === 1 ? 'is' : 'are'} enabled but still missing something, so members cannot use ${needsAttention.length === 1 ? 'it' : 'them'} yet.\n\n` +
+        '**Right now:** pick one below and fill in what it asks for.';
+    } else if (counts.ready === 0) {
+      color = '#5865f2';
+      nextStepTitle = 'Turn on your first feature';
+      nextStepText =
+        'Your foundation is set. Pick what you want to use — **Verification** and **Welcome Messages** are good first picks.';
     }
 
-    // ── Foundation section ───────────────────────────────────────────────────
-    const check = (v) => v ? '`✓`' : '`✗`';
-    const foundationLines = [
-      `${check(hasStaff)} **Staff added** — ${hasStaff ? `${staffCount} member${staffCount !== 1 ? 's' : ''}` : 'none — run \`/staff add @you\` first'}`,
-      `${check(hasLog)} **Log channel** — ${hasLog ? `<#${config.logChannelId}>` : foundationDone || hasStaff ? 'not set — pick "General Settings" below' : 'locked until staff is added'}`,
-    ];
+    // ── Status, grouped exactly as the registry orders it ─────────────────────
+    const sections = [];
+    for (const [group, features] of featureGroups()) {
+      if (group === 'Foundation') continue;
+      const lines = features.map((f) => {
+        const s = statuses[f.key] || { status: 'off', missing: [] };
+        const premium = f.premiumDefault ? ' *(Premium)*' : '';
+        const detail = s.status === 'ready' ? 'ready'
+          : s.status === 'incomplete' ? `on${missingText(s.missing)}`
+          : s.status === 'unknown' ? 'unavailable'
+          : 'off';
+        return `${MARK[s.status] || MARK.off} **${f.label}**${premium} — ${detail}`;
+      });
+      sections.push(`### ${group}\n${lines.join('\n')}`);
+    }
 
-    // ── Features section ─────────────────────────────────────────────────────
-    const featureLines = foundationDone ? [
-      `${check(verification?.enabled)} **Verification** — ${verification?.enabled ? 'on' : 'off'} — members fill out a form to join`,
-      `${check(ticketConfig?.enabled)} **Tickets** — ${ticketConfig?.enabled ? 'on' : 'off'} — members can open support tickets`,
-      `${check(strikeConfig?.enabled)} **Strikes** — ${strikeConfig?.enabled ? 'on' : 'off'} — warn and punish rule breakers`,
-      `${check(welcome?.enabled)} **Welcome messages** — ${welcome?.enabled ? 'on' : 'off'} — greet new members automatically`,
-      `${check(economyConfig?.enabled)} **Economy** — ${economyConfig?.enabled ? 'on' : 'off'} — currency, jobs, shops`,
-      `${check(roleplayCommands?.enabled)} **Roleplay commands** — ${roleplayCommands?.enabled ? 'on' : 'off'} — /me, /do, 911 calls`,
-      `${check(priority?.enabled)} **Priority tracker** — ${priority?.enabled ? 'on' : 'off'} — track active priority events`,
-      `${check(moveme?.enabled)} **Voice mover** — ${moveme?.enabled ? 'on' : 'off'} — let members move between voice channels`,
-      `${check(roleRequestConfig?.enabled)} **Role requests** — ${roleRequestConfig?.enabled ? 'on' : 'off'} — members can request roles`,
-      `${check(dispatchConfig?.enabled)} **AI Dispatch** — ${dispatchConfig?.enabled ? 'on' : 'off'} — AI-powered voice dispatch (Premium)`,
-      `${check(appyConfig?.enabled)} **Applications** — ${appyConfig?.enabled ? 'on' : 'off'} — custom application panels for any purpose (Premium)`,
-    ] : [
-      '-# Complete the foundation steps above to unlock features.',
-    ];
-
-    // ── Build embed ──────────────────────────────────────────────────────────
     const descParts = [];
-
     if (nextStepTitle) {
       descParts.push(`### ${nextStepTitle}\n${nextStepText}`);
       descParts.push('─────────────────────────────');
     }
-
-    descParts.push('### Foundation\n' + foundationLines.join('\n'));
-    descParts.push('### Features\n' + featureLines.join('\n'));
-
-    if (foundationDone) {
-      descParts.push('-# Pick any feature from the menu below to configure it. You can come back to this anytime with \`/setup\`.');
-    }
+    descParts.push(
+      '### Foundation\n' +
+      `${hasLog ? MARK.ready : MARK.off} **Log channel** — ${hasLog ? `<#${config.logChannelId}>` : 'not set — pick "General Settings" below'}`
+    );
+    descParts.push(...sections);
+    descParts.push(
+      `-# ${counts.ready} ready · ${counts.incomplete} need finishing · ${counts.off} off. ` +
+      'Pick anything below to set it up, or use the dashboard at roleplaymanager.xyz/dashboard.'
+    );
 
     const embed = new EmbedBuilder()
       .setColor(color)
       .setTitle('Server Setup')
-      .setDescription(descParts.join('\n\n'))
+      .setDescription(descParts.join('\n\n').slice(0, 4000))
       .setFooter({ text: 'RPM — run /setup anytime to check your status' });
 
-    // ── Select menu ──────────────────────────────────────────────────────────
-    const menuOptions = [
-      { label: 'General Settings', description: 'Set the log channel (do this first)', value: 'general' },
-      { label: 'Verification', description: 'Members fill out a form to join your server', value: 'verify' },
-      { label: 'Tickets', description: 'Members open support tickets via a button', value: 'tickets' },
-      { label: 'Strikes', description: 'Warn rule-breakers — auto kick/ban/timeout', value: 'strikes' },
-      { label: 'Welcome Messages', description: 'Say hello when a new member joins', value: 'welcome' },
-      { label: 'Economy', description: 'Give members currency, jobs, and a shop', value: 'economy' },
-      { label: 'Roleplay Commands', description: '/me, /do, /try, 911 calls and CAD', value: 'roleplay' },
-      { label: 'Priority Tracker', description: 'Track active priority events in a channel', value: 'priority' },
-      { label: 'Voice Mover', description: 'Panel for members to move between voice channels', value: 'moveme' },
-      { label: 'Role Requests', description: 'Let members apply for specific roles', value: 'roles' },
-      { label: 'RP Calendar', description: 'Schedule and display roleplay sessions', value: 'calendar' },
-      { label: 'Anti-Promoting', description: 'Auto-delete invite links from other servers', value: 'antipromo' },
-      { label: 'Applications (Premium)', description: 'Custom application panels with questions', value: 'appys' },
-      { label: 'AI Voice Dispatch (Premium)', description: 'AI listens to patrol channels and dispatches', value: 'dispatch' },
-      { label: 'Enable / Disable Features', description: 'Toggle features on or off', value: 'features' },
-    ];
+    // ── Menu, built from the registry ────────────────────────────────────────
+    // Filtered by what the wizard can actually handle, so an option can never
+    // fall through to "Unknown option selected" the way 911/CAD did.
+    const menuOptions = [];
+    for (const [, features] of featureGroups()) {
+      for (const f of features) {
+        if (!f.configSubcommand || !SUPPORTED_MODULES.includes(f.configSubcommand)) continue;
+        menuOptions.push({
+          label: (f.premiumDefault ? `${f.label} (Premium)` : f.label).slice(0, 100),
+          description: f.short.slice(0, 100),
+          value: f.configSubcommand,
+        });
+      }
+    }
+    if (SUPPORTED_MODULES.includes('features')) {
+      menuOptions.push({
+        label: 'Enable / Disable Features',
+        description: 'Turn features on or off',
+        value: 'features',
+      });
+    }
 
     const configRow = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('setup_config_select')
-        .setPlaceholder(foundationDone ? 'Pick a feature to set up...' : 'Pick a step to complete...')
-        .addOptions(menuOptions)
+        .setPlaceholder(hasLog ? 'Pick a feature to set up...' : 'Start with General Settings...')
+        .addOptions(menuOptions.slice(0, 25))
     );
 
-    const rows = [configRow];
-
-    // If foundation isn't done yet, show a quick-action button for the first blocker
-    if (!hasStaff) {
-      const staffRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setLabel('How to add staff')
-          .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/dashboard')
-      );
-      rows.push(staffRow);
-    }
-
-    return interaction.editReply({ embeds: [embed], components: rows });
+    return interaction.editReply({ embeds: [embed], components: [configRow] });
 
   } catch (err) {
     console.error('[/setup]', err);
