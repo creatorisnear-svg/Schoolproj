@@ -570,22 +570,37 @@
     var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
 
     // ── Bot status ──
-    fetch(API_BASE + '/api/bot-status').then(function(r) { return r.json(); }).then(function(data) {
-      var dot = document.getElementById('hero-status-dot');
-      var txt = document.getElementById('hero-status-text');
-      if (data.online) {
-        dot.className = 'lp-status-dot lp-status-online';
-        txt.textContent = data.ping > 0 ? 'Online  ' + data.ping + 'ms' : 'Bot Online';
-      } else {
-        dot.className = 'lp-status-dot lp-status-offline';
-        txt.textContent = 'Bot Offline';
-      }
-    }).catch(function() {
-      var dot = document.getElementById('hero-status-dot');
-      var txt = document.getElementById('hero-status-text');
-      if (dot) dot.className = 'lp-status-dot lp-status-offline';
-      if (txt) txt.textContent = 'Status Unknown';
-    });
+    //
+    // A request that does not land is not the same as a bot that is down, and
+    // this used to treat them alike: one failed fetch turned the badge red and
+    // said "Status Unknown", which reads as "this thing is broken" to somebody
+    // seeing the site for the first time. Pushing to main redeploys the API
+    // several times a week and each one is a minute or two of downtime, so that
+    // was on show regularly for no good reason. A phone on a weak connection or
+    // an ad blocker did it too.
+    //
+    // Red is now only for the bot reporting itself offline. If the API cannot
+    // be reached at all, the badge keeps the tagline it already had, and the
+    // uptime section further down the page is where somebody actually checks.
+    (function loadStatus(attempt) {
+      fetch(API_BASE + '/api/bot-status').then(function (r) { return r.json(); }).then(function (data) {
+        var dot = document.getElementById('hero-status-dot');
+        var txt = document.getElementById('hero-status-text');
+        if (!dot || !txt) return;
+        if (data.online) {
+          dot.className = 'lp-status-dot lp-status-online';
+          txt.textContent = data.ping > 0 ? 'Online  ' + data.ping + 'ms' : 'Bot Online';
+        } else {
+          dot.className = 'lp-status-dot lp-status-offline';
+          txt.textContent = 'Bot Offline';
+        }
+      }).catch(function () {
+        // Two more goes, spaced far enough apart to ride over a redeploy.
+        if (attempt < 2) {
+          setTimeout(function () { loadStatus(attempt + 1); }, (attempt + 1) * 2000);
+        }
+      });
+    })(0);
 
     // ── Stats ──
     fetch(API_BASE + '/api/stats').then(function(r) { return r.json(); }).then(function(data) {
