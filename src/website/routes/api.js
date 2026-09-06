@@ -1167,6 +1167,16 @@ export function createApiRouter(client) {
       console.error(`[DASHBOARD] Settings fetch error (${mod}):`, err.message);
     }
 
+    // One canonical description per feature. The best copy in the codebase was
+    // the outcome-oriented text on the marketing page; it now lives in the
+    // registry and is used everywhere, so the settings page, the dashboard
+    // overview and the public site all say the same thing.
+    const registryFeature = getFeatureByMod(mod);
+    if (registryFeature) {
+      result.name = registryFeature.label;
+      if (registryFeature.long) result.description = registryFeature.long;
+    }
+
     res.json(result);
   });
 

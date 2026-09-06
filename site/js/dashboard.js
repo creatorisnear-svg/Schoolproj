@@ -402,11 +402,22 @@ function renderDashboard() {
   // Readiness, not toggle count. "12 / 15 active" used to count enabled flags,
   // and ensureEnabled sets those the moment a menu is opened - so a server could
   // read 12/15 with nothing actually configured.
-  var readyCount = 0, incompleteCount = 0;
+  var readyCount = 0, incompleteCount = 0, offCount = 0;
+  var incompleteNames = [];
+  var firstIncompleteMod = null;
   for (var _k in featureStatus) {
     if (!Object.prototype.hasOwnProperty.call(featureStatus, _k)) continue;
-    if (featureStatus[_k].status === 'ready') readyCount++;
-    else if (featureStatus[_k].status === 'incomplete') incompleteCount++;
+    var _s = featureStatus[_k].status;
+    if (_s === 'ready') { readyCount++; continue; }
+    if (_s === 'off') { offCount++; continue; }
+    if (_s !== 'incomplete') continue;
+    incompleteCount++;
+    for (var _i = 0; _i < REGISTRY.length; _i++) {
+      if (REGISTRY[_i].key !== _k) continue;
+      incompleteNames.push(REGISTRY[_i].label);
+      if (!firstIncompleteMod) firstIncompleteMod = REGISTRY[_i].mod;
+      break;
+    }
   }
   var haveStatus = featureSummary !== null;
   var enabledCount = FEATURES.filter(function(f) { return !!config[f.key]; }).length;
@@ -418,9 +429,13 @@ function renderDashboard() {
     sidebarToggleBtn('Menu') +
     '<div class="mobile-back" onclick="closeSidebar();renderServerSelect()">&#8249; Switch Server</div>' +
     '<div class="dash-header"><h1>' + esc(g.name) + '</h1><p>' +
-    (enabledCount > 0
-      ? enabledCount + ' feature' + (enabledCount !== 1 ? 's' : '') + ' active'
-      : 'No features enabled yet — follow the guide below') +
+    (haveStatus
+      ? (readyCount + ' ready' +
+         (incompleteCount ? ' · ' + incompleteCount + ' need finishing' : '') +
+         (offCount ? ' · ' + offCount + ' off' : ''))
+      : (enabledCount > 0
+          ? enabledCount + ' feature' + (enabledCount !== 1 ? 's' : '') + ' active'
+          : 'No features enabled yet — follow the guide below')) +
     '</p></div>';
 
   // ── Stats row ──────────────────────────────────────────────────────────────
@@ -430,85 +445,127 @@ function renderDashboard() {
     '<div class="dash-card"><div class="dash-label">' + (haveStatus ? 'Features Ready' : 'Active Features') + '</div><div class="dash-value">' + (haveStatus ? readyCount : enabledCount) + ' / ' + totalCount + '</div>' + (haveStatus && incompleteCount ? '<div class="dash-sub" style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + incompleteCount + ' need finishing</div>' : '') + '</div>' +
     '</div>';
 
-  // ── Setup guide (shown when no log channel set) ───────────────────────────
-  if (!hasLogChannel) {
+  // ── Getting started ────────────────────────────────────────────────────────
+  // Previously gated on !hasLogChannel alone, so it vanished forever the moment
+  // a log channel was set - even with every feature still unconfigured - and its
+  // third step had no button. It now stays while there is something to act on.
+  if (!hasLogChannel || incompleteCount > 0) {
     html +=
       '<div class="setup-guide" style="margin-bottom:16px;">' +
         '<div class="setup-guide-title">Getting Started</div>' +
-        '<div class="setup-guide-sub">Complete these steps to get the bot working on your server</div>' +
+        '<div class="setup-guide-sub">' +
+          (hasLogChannel
+            ? 'You have features switched on that are not finished yet — members cannot use those until they are.'
+            : 'Complete these steps to get the bot working on your server') +
+        '</div>' +
         '<div class="setup-steps">' +
-          '<div class="setup-step">' +
-            '<div class="setup-step-num">1</div>' +
-            '<div class="setup-step-body">' +
-              '<div class="setup-step-title">Set a log channel</div>' +
-              '<div class="setup-step-desc">Pick a private text channel where the bot records everything — strikes, verifications, tickets. Staff-only channels work best.</div>' +
-            '</div>' +
-            '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'general\')">Set Channel &rsaquo;</button>' +
-          '</div>' +
-          '<div class="setup-step">' +
-            '<div class="setup-step-num">2</div>' +
-            '<div class="setup-step-body">' +
-              '<div class="setup-step-title">Add staff members</div>' +
-              '<div class="setup-step-desc">In Discord, run <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;">/staff add @you</code> to add yourself, then add your admins.</div>' +
-            '</div>' +
-            '<button class="btn btn-secondary btn-sm" onclick="renderSettings(\'staff\')">Manage Staff &rsaquo;</button>' +
-          '</div>' +
-          '<div class="setup-step">' +
-            '<div class="setup-step-num">3</div>' +
-            '<div class="setup-step-body">' +
-              '<div class="setup-step-title">Enable and configure features</div>' +
-              '<div class="setup-step-desc">Toggle any feature on below, then click <strong>Configure</strong> to set up its channels and options.</div>' +
-            '</div>' +
-          '</div>' +
+          (!hasLogChannel
+            ? '<div class="setup-step">' +
+                '<div class="setup-step-num">1</div>' +
+                '<div class="setup-step-body">' +
+                  '<div class="setup-step-title">Set a log channel</div>' +
+                  '<div class="setup-step-desc">Pick a private text channel where the bot records everything — strikes, verifications, tickets. Staff-only channels work best.</div>' +
+                '</div>' +
+                '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'general\')">Set Channel &rsaquo;</button>' +
+              '</div>' +
+              '<div class="setup-step">' +
+                '<div class="setup-step-num">2</div>' +
+                '<div class="setup-step-body">' +
+                  '<div class="setup-step-title">Add staff members</div>' +
+                  '<div class="setup-step-desc">Give trusted members access to bot commands without handing out Administrator.</div>' +
+                '</div>' +
+                '<button class="btn btn-secondary btn-sm" onclick="renderSettings(\'staff\')">Manage Staff &rsaquo;</button>' +
+              '</div>'
+            : '') +
+          (incompleteCount > 0
+            ? '<div class="setup-step">' +
+                '<div class="setup-step-num">' + (hasLogChannel ? '1' : '3') + '</div>' +
+                '<div class="setup-step-body">' +
+                  '<div class="setup-step-title">Finish ' + incompleteCount + ' feature' + (incompleteCount !== 1 ? 's' : '') + '</div>' +
+                  '<div class="setup-step-desc">' + esc(incompleteNames.slice(0, 3).join(', ')) +
+                    (incompleteNames.length > 3 ? ' and ' + (incompleteNames.length - 3) + ' more' : '') +
+                    ' — each is switched on but still missing something.</div>' +
+                '</div>' +
+                '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'' + esc(firstIncompleteMod || 'general') + '\')">Finish Setup &rsaquo;</button>' +
+              '</div>'
+            : '<div class="setup-step">' +
+                '<div class="setup-step-num">3</div>' +
+                '<div class="setup-step-body">' +
+                  '<div class="setup-step-title">Turn on the features you want</div>' +
+                  '<div class="setup-step-desc">Everything below is off by default. Each one explains what it does — switch on whatever fits your server.</div>' +
+                '</div>' +
+              '</div>') +
         '</div>' +
       '</div>';
   }
 
-  // Feature sections come from the registry (see applyRegistry) - this used to be
-  // a hand-maintained copy that disagreed with FEATURES and SIDEBAR_GROUPS above.
+  // ── Features, grouped by what you need to do about them ────────────────────
+  // Ordered needs-setup first, then ready, then off. The off list carries the
+  // full description: an owner who has never heard of Civilian Jobs or Sticky
+  // Messages learns what they are here rather than from a 10-word fragment.
+  var buckets = { incomplete: [], ready: [], off: [] };
+  FEATURE_SECTIONS.forEach(function(section) {
+    section.items.forEach(function(m) {
+      var st = (m.feature && featureStatus[m.feature]) || null;
+      var key = st && buckets[st.status] ? st.status : (m.featureKey && config[m.featureKey] ? 'ready' : 'off');
+      buckets[key].push({ item: m, st: st, group: section.title });
+    });
+  });
+
+  function featureRow(entry, showLong) {
+    var m = entry.item;
+    var st = entry.st;
+    var enabled = m.featureKey ? !!config[m.featureKey] : true;
+    var isPremium = m.feature ? isFlagPremium(m.feature) : false;
+
+    var badge = '';
+    if (st && st.status === 'ready') badge = ' <span class="premium-tag" style="background:#3ba55d;">Ready</span>';
+    else if (st && st.status === 'incomplete') badge = ' <span class="premium-tag" style="background:#faa61a;color:#000;">Needs setup</span>';
+
+    var missingNote = '';
+    if (st && st.status === 'incomplete' && st.missing && st.missing.length) {
+      missingNote = '<div class="feature-row-desc" style="color:#faa61a;">Still needs: ' +
+        st.missing.map(function(x) {
+          return esc(x.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase());
+        }).join(', ') + '</div>';
+    }
+
+    return '<div class="feature-row">' +
+      '<div class="feature-row-info">' +
+        '<div class="feature-row-name">' + m.label +
+          ' <span style="font-size:10px;color:var(--text-dim);font-weight:400;">' + esc(entry.group) + '</span>' +
+          (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + badge +
+        '</div>' +
+        '<div class="feature-row-desc">' + esc(showLong && m.long ? m.long : m.desc) + '</div>' +
+        missingNote +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+        (m.featureKey
+          ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" data-mod="' + m.id + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
+          : '') +
+        '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(\'' + m.id + '\')" title="Configure ' + m.label + '">Configure</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function bucketSection(title, sub, entries, showLong) {
+    if (!entries.length) return '';
+    return '<div class="feature-category">' +
+      '<div class="feature-category-title">' + title + ' (' + entries.length + ')</div>' +
+      (sub ? '<div class="overview-section-sub" style="margin:-4px 0 8px;">' + sub + '</div>' : '') +
+      entries.map(function(e) { return featureRow(e, showLong); }).join('') +
+      '</div>';
+  }
 
   html += '<div class="overview-section">' +
     '<div class="overview-section-header">' +
     '<h2 class="overview-section-title">Features</h2>' +
-    '<p class="overview-section-sub">Toggle on/off and configure each feature — all from one place</p>' +
+    '<p class="overview-section-sub">Everything the bot can do for this server</p>' +
     '</div><div class="feature-groups">';
 
-  FEATURE_SECTIONS.forEach(function(section) {
-    html += '<div class="feature-category"><div class="feature-category-title">' + section.title + '</div>';
-    section.items.forEach(function(m) {
-      var enabled = m.featureKey ? !!config[m.featureKey] : true;
-      var isPremium = m.feature ? isFlagPremium(m.feature) : false;
-      // Status badge: "Ready", or "Needs setup" naming what is still missing.
-      var st = (m.feature && featureStatus[m.feature]) || null;
-      var badge = '';
-      if (st && st.status === 'ready') {
-        badge = ' <span class="premium-tag" style="background:#3ba55d;">Ready</span>';
-      } else if (st && st.status === 'incomplete') {
-        badge = ' <span class="premium-tag" style="background:#faa61a;color:#000;">Needs setup</span>';
-      }
-      var missingNote = '';
-      if (st && st.status === 'incomplete' && st.missing && st.missing.length) {
-        missingNote = '<div class="feature-row-desc" style="color:#faa61a;">Still needs: ' +
-          st.missing.map(function(x) {
-            return esc(x.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase());
-          }).join(', ') + '</div>';
-      }
-      html += '<div class="feature-row">' +
-        '<div class="feature-row-info">' +
-          '<div class="feature-row-name">' + m.label + (isPremium ? ' <span class="premium-tag">Premium</span>' : '') + badge + '</div>' +
-          '<div class="feature-row-desc" title="' + esc(m.long || m.desc) + '">' + m.desc + '</div>' +
-          missingNote +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
-          (m.featureKey
-            ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" data-mod="' + m.id + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
-            : '') +
-          '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(\'' + m.id + '\')" title="Configure ' + m.label + '">Configure</button>' +
-        '</div>' +
-        '</div>';
-    });
-    html += '</div>';
-  });
+  html += bucketSection('Needs setup', 'Switched on, but members cannot use these until the missing pieces are filled in.', buckets.incomplete, false);
+  html += bucketSection('Ready', 'Set up and working.', buckets.ready, false);
+  html += bucketSection('Not enabled', 'Off right now. Switch on anything that fits your server.', buckets.off, true);
 
   html += '</div></div>';
   html += renderPremiumSection(g);

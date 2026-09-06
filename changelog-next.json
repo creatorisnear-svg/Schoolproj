@@ -1,9 +1,10 @@
 {
-  "version": "1.3.6",
-  "title": "Setup no longer dead-ends",
+  "version": "1.3.7",
+  "title": "A dashboard that tells you what to do next",
   "changes": [
-    "Every setup screen now has a Back to Setup button, so you can configure several features in a row instead of retyping /setup after each one",
-    "Hitting a Premium notice or an error during setup no longer leaves you with a message you cannot click out of",
-    "The welcome message the bot posts when it joins your server now has a Start Setup button instead of only telling you to type /setup"
+    "The dashboard now groups features by what you need to do: Needs setup first, then Ready, then everything that is still off",
+    "Features you have not enabled now show a full description of what they actually do, so you can find things you did not know the bot could do",
+    "The Getting Started guide no longer disappears the moment you set a log channel - it stays while anything is still unfinished, and now has a button that takes you straight to the next thing",
+    "Feature descriptions are the same everywhere now - the website, the dashboard overview and each settings page no longer say three different things"
   ]
 }
