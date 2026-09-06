@@ -212,6 +212,11 @@ export function createApiRouter(client) {
         long: f.long,
         botGated: f.botGated,
         premium: flagMap[f.key] ?? f.premiumDefault,
+        // What a free server still gets on a premium feature, or null. Three of
+        // them are only partly gated and nothing downstream could tell, so the
+        // site and the dashboard both showed dispatch, patrol hours and the
+        // blacklist as flatly Premium and sold the free tier short.
+        freeTier: f.freeTier ?? null,
       })),
       topggVoteUrl: botId ? `https://top.gg/bot/${botId}/vote` : '',
     });

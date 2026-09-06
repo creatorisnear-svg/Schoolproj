@@ -284,6 +284,22 @@
           </ul>
         </div>
 
+        <div class="lp-premium-card" data-premium-block="dutytime">
+          <div class="lp-premium-card-badge">Premium Only</div>
+          <div class="lp-premium-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          </div>
+          <h3 class="lp-premium-card-title">Patrol Hours</h3>
+          <p class="lp-premium-card-desc">Counts how long each officer actually spends in your patrol voice channels, so you can see who is turning up and who has quietly stopped.<br><br><strong>Free servers get part of this:</strong> every member can check their own hours, and the top 10 board over the last 7 days. Recording runs on every server from the start, so the history is already there if you upgrade later.</p>
+          <ul class="lp-premium-card-list">
+            <li>The 30 and 90 day views, not just 7</li>
+            <li>Every officer, not the top 10</li>
+            <li>A board that posts itself every week</li>
+            <li>A list of who has not patrolled in 14 days</li>
+            <li>Deafened time and sitting alone do not count</li>
+          </ul>
+        </div>
+
         <div class="lp-premium-card" data-premium-block="blacklist">
           <div class="lp-premium-card-badge">Premium Only</div>
           <div class="lp-premium-card-icon">
@@ -617,7 +633,14 @@
     // throws into the existing catch below, which restores the documented set.
     fetch(API_BASE + '/api/public/registry').then(function(r) { return r.json(); }).then(function(payload) {
       var flags = {};
-      ((payload && payload.features) || []).forEach(function(f) { flags[f.key] = f.premium === true; });
+      var partial = {};
+      ((payload && payload.features) || []).forEach(function(f) {
+        flags[f.key] = f.premium === true;
+        // A premium feature that still gives a free server something is
+        // not the same as a locked one, and saying "Premium" for both is
+        // what made the free tier look smaller than it is.
+        if (f.premium === true && f.freeTier) partial[f.key] = f.freeTier;
+      });
       if (!Object.keys(flags).length) throw new Error('empty registry');
       function isFlagPremium(feat) {
         return flags[feat] === true;
@@ -629,6 +652,11 @@
         var tag = card.querySelector('.feature-premium-tag');
         if (!tag) return;
         tag.style.display = isFlagPremium(feature) ? '' : 'none';
+        if (isFlagPremium(feature) && partial[feature]) {
+          tag.textContent = 'Partly free';
+          tag.classList.add('lp-partial-tag');
+          tag.title = 'Free servers get ' + partial[feature];
+        }
       });
 
       // Show/hide premium command rows
@@ -651,6 +679,15 @@
         premiumSection.querySelectorAll('[data-premium-block]').forEach(function(block) {
           var feat = block.getAttribute('data-premium-block');
           block.style.display = isFlagPremium(feat) ? '' : 'none';
+
+          // "Premium Only" is a lie on a feature a free server partly
+          // gets. Each of these cards already explains its own split in
+          // the body text; this stops the badge contradicting it.
+          var badge = block.querySelector('.lp-premium-card-badge');
+          if (badge && partial[feat]) {
+            badge.textContent = 'Partly Free';
+            badge.classList.add('lp-badge-blue');
+          }
         });
       }
     }).catch(function() {

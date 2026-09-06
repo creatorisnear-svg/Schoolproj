@@ -423,7 +423,7 @@ function applyRegistry(payload) {
     return {
       title: g.title,
       items: g.items.map(function(f) {
-        return { id: f.mod, label: f.label, premium: f.premium };
+        return { id: f.mod, label: f.label, premium: f.premium, freeTier: f.freeTier || null };
       }),
     };
   });
@@ -463,7 +463,7 @@ function renderSidebar(active) {
   var groupedSections = SIDEBAR_GROUPS.map(function(g) {
     return '<div class="sidebar-section"><div class="sidebar-section-title">' + g.title + '</div>' +
       g.items.map(function(m) {
-        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + (m.premium ? ' <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">PRO</span>' : '') + '</div>';
+        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + (m.premium ? ' <span title="' + (m.freeTier ? 'Free servers get ' + esc(m.freeTier) : 'Premium only') + '" style="font-size:9px;background:' + (m.freeTier ? 'var(--blue, #5865f2)' : 'var(--accent)') + ';color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">' + (m.freeTier ? 'PART' : 'PRO') + '</span>' : '') + '</div>';
       }).join('') +
       '</div>';
   }).join('');
