@@ -1211,7 +1211,7 @@ export function createApiRouter(client) {
     res.json(result);
   });
 
-  router.post('/guild/:id/settings/:mod', async (req, res) => {
+  router.post('/guild/:id/settings/:mod', async (req, res, next) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
@@ -1226,6 +1226,13 @@ export function createApiRouter(client) {
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
 
     const mod = req.params.mod;
+
+    // Express matches routes in the order they were registered, and this one
+    // is registered before POST /guild/:id/settings/sticky, so :mod swallowed
+    // it and the dashboard's "add sticky" got 404 Module not found. Hand it
+    // on. It is the only dedicated single segment POST under /settings/.
+    if (mod === 'sticky') return next();
+
     const changes = req.body;
 
     if (!changes || Object.keys(changes).length === 0) {
