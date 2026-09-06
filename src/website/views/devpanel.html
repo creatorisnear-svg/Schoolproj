@@ -349,7 +349,8 @@
 
   <div class="tabs-wrapper">
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('features')">Premium Features</button>
+      <button class="tab active" onclick="switchTab('funnel')">Premium Funnel</button>
+      <button class="tab" onclick="switchTab('features')">Premium Features</button>
       <button class="tab" onclick="switchTab('keys')">Premium Keys</button>
       <button class="tab" onclick="switchTab('announcements')">Announcements</button>
       <button class="tab" onclick="switchTab('changelogs')">Changelogs</button>
@@ -361,6 +362,32 @@
     </div>
   </div>
 
+  <div id="panel-funnel" class="panel active">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:14px;">Where servers stop</div>
+      <div id="funnel-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;">
+        <div style="color:#7a818e;font-size:13px;">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">Set it up and never paid</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">
+        These servers configured a Premium feature and are not paying. They wanted it
+        enough to do the work and then hit a wall, which is the shortest distance to a sale.
+      </p>
+      <div id="funnel-warm"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label" style="margin-bottom:6px;">Trialled and left</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">
+        Had the whole thing free for a week and did not stay. Worth knowing whether they
+        ever configured anything during it, which is the column on the right.
+      </p>
+      <div id="funnel-cold"></div>
+    </div>
+  </div>
   <div id="panel-keys" class="panel">
     <div class="card" style="margin-bottom:20px;">
       <div class="section-label" style="margin-bottom:14px;">Generate New Key</div>
@@ -402,7 +429,7 @@
     <div id="keys-list"><div class="empty">Loading...</div></div>
   </div>
 
-  <div id="panel-features" class="panel active">
+  <div id="panel-features" class="panel">
     <div class="impact-notice">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div>
@@ -644,7 +671,65 @@
 <script>
   var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified'];
 
+  function funnelStat(label, value, hint, tone) {
+    var colour = tone === 'good' ? '#34d399' : tone === 'bad' ? '#f87171' : '#e8eaed';
+    return '<div style="background:#16181e;border:1px solid #23272f;border-radius:10px;padding:14px;">'
+      + '<div style="font-size:26px;font-weight:700;color:' + colour + ';line-height:1;">' + value + '</div>'
+      + '<div style="font-size:12px;color:#e8eaed;margin-top:6px;">' + label + '</div>'
+      + (hint ? '<div style="font-size:11px;color:#545a66;margin-top:2px;">' + hint + '</div>' : '')
+      + '</div>';
+  }
+
+  function funnelRows(list, emptyText) {
+    if (!list || !list.length) {
+      return '<div style="color:#545a66;font-size:13px;padding:8px 0;">' + emptyText + '</div>';
+    }
+    return list.map(function (r) {
+      var set = r.configured.length ? r.configured.join(', ') : 'nothing configured';
+      return '<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #23272f;font-size:13px;">'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.name) + '</span>'
+        + '<span style="color:#7a818e;font-size:12px;">' + r.members.toLocaleString() + ' members</span>'
+        + '<span style="color:#60a5fa;font-size:12px;">' + esc(set) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  function loadFunnel() {
+    fetch('/dev/funnel', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) {
+          document.getElementById('funnel-stats').innerHTML =
+            '<div style="color:#f87171;font-size:13px;">' + esc(d.error) + '</div>';
+          return;
+        }
+
+        var conv = d.servers ? Math.round((d.paying / d.servers) * 100) : 0;
+
+        document.getElementById('funnel-stats').innerHTML =
+          funnelStat('Servers', d.servers, 'bot is in')
+          + funnelStat('Paying', d.paying, conv + '% of servers', d.paying > 0 ? 'good' : 'bad')
+          + funnelStat('On trial now', d.trialActive, 'decide within days')
+          + funnelStat('Trial expired', d.trialExpired, 'tried it, did not stay')
+          + funnelStat('Never trialled', d.trialNever, 'have not seen it at all')
+          + funnelStat('Set up, not paying', d.warmLeadCount, 'closest to a sale',
+              d.warmLeadCount > 0 ? 'good' : null)
+          + funnelStat('Trial to paid', d.trialConversion === null ? 'n/a' : d.trialConversion + '%',
+              'of finished trials');
+
+        document.getElementById('funnel-warm').innerHTML =
+          funnelRows(d.warmLeads, 'Nobody has configured a Premium feature without paying.');
+        document.getElementById('funnel-cold').innerHTML =
+          funnelRows(d.trialledAndLeft, 'No trials have ended yet.');
+      })
+      .catch(function (err) {
+        document.getElementById('funnel-stats').innerHTML =
+          '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
+      });
+  }
+
   function switchTab(name) {
+    if (name === 'funnel') loadFunnel();
     document.querySelectorAll('.tab').forEach(function(t, i) {
       t.classList.toggle('active', TABS[i] === name);
     });
@@ -1360,6 +1445,8 @@
     var check = await fetch('/dev/check').then(function(r) { return r.json(); });
     if (!check.authorized) { window.location.href = '/dev/login'; return; }
     loadFeatures();
+    // The funnel is the tab that opens first, so it has to fetch without a click.
+    loadFunnel();
     loadAnnouncements();
     loadChangelogs();
     loadVideos();

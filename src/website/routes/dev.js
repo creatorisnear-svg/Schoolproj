@@ -423,6 +423,127 @@ export function createDevRouter(client) {
     res.json(guilds);
   });
 
+  /**
+   * Where servers stop on the way to paying.
+   *
+   * Everything here is counted live rather than stored, so there is nothing to
+   * backfill and nothing that can drift out of date. It is a handful of counts
+   * over collections that are already small.
+   */
+  router.get('/funnel', devAuth, async (req, res) => {
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ error: 'Bot is not connected to Discord' });
+    }
+
+    try {
+      const [
+        { default: PremiumKey },
+        { default: GuildTrial },
+        { default: DispatchConfig },
+        { default: Priority },
+        { default: AppyConfig },
+      ] = await Promise.all([
+        import('../../models/PremiumKey.js'),
+        import('../../models/GuildTrial.js'),
+        import('../../models/DispatchConfig.js'),
+        import('../../models/Priority.js'),
+        import('../../models/AppyConfig.js'),
+      ]);
+
+      const guildIds = [...client.guilds.cache.keys()];
+      const now = new Date();
+
+      const [keys, trials, dispatch, priority, appys] = await Promise.all([
+        PremiumKey.find({ guildId: { $in: guildIds } }).lean(),
+        GuildTrial.find({ guildId: { $in: guildIds } }).lean(),
+        DispatchConfig.find({ guildId: { $in: guildIds } }).lean(),
+        Priority.find({ guildId: { $in: guildIds } }).lean(),
+        AppyConfig.find({ guildId: { $in: guildIds } }).lean(),
+      ]);
+
+      // Paying means the same thing here as it does to isPremiumGuild, so the
+      // dashboard cannot disagree with what the bot actually enforces.
+      const ACTIVE = ['active', 'trialing', 'past_due', 'cancelling'];
+      const paying = new Set(
+        keys
+          .filter((k) => k.plan === 'lifetime' || k.plan === 'manual' || ACTIVE.includes(k.subscriptionStatus))
+          .map((k) => k.guildId)
+      );
+
+      const trialById = new Map(trials.map((t) => [t.guildId, t]));
+      const trialLive = new Set(
+        trials.filter((t) => t.active && new Date(t.expiresAt) > now).map((t) => t.guildId)
+      );
+
+      // Configured, not merely enabled. Somebody who set a patrol channel and a
+      // dispatch channel has done real work and meant it.
+      const configured = new Map();
+      const note = (guildId, what) => {
+        if (!configured.has(guildId)) configured.set(guildId, []);
+        configured.get(guildId).push(what);
+      };
+      for (const d of dispatch) {
+        if (d.patrolChannelIds?.length || d.dispatchChannelId) note(d.guildId, 'dispatch');
+      }
+      for (const p of priority) if (p.enabled) note(p.guildId, 'priority');
+      for (const a of appys) if (a.enabled) note(a.guildId, 'applications');
+
+      const guilds = [...client.guilds.cache.values()];
+
+      const rows = guilds.map((g) => {
+        const trial = trialById.get(g.id);
+        return {
+          id: g.id,
+          name: g.name,
+          members: g.memberCount,
+          paying: paying.has(g.id),
+          trialState: !trial
+            ? 'never'
+            : (trialLive.has(g.id) ? 'active' : 'expired'),
+          trialEndsAt: trial ? trial.expiresAt : null,
+          configured: configured.get(g.id) || [],
+        };
+      });
+
+      // The interesting group: set a premium feature up, never paid, and the
+      // trial is not currently carrying them.
+      const warmLeads = rows
+        .filter((r) => !r.paying && r.configured.length && !trialLive.has(r.id))
+        .sort((a, b) => b.members - a.members);
+
+      const neverHeard = rows.filter(
+        (r) => !r.paying && r.trialState === 'never' && !r.configured.length
+      );
+
+      const trialledAndLeft = rows.filter(
+        (r) => !r.paying && r.trialState === 'expired'
+      ).sort((a, b) => b.members - a.members);
+
+      res.json({
+        servers: rows.length,
+        paying: rows.filter((r) => r.paying).length,
+        trialActive: rows.filter((r) => r.trialState === 'active').length,
+        trialExpired: rows.filter((r) => r.trialState === 'expired').length,
+        trialNever: rows.filter((r) => r.trialState === 'never').length,
+
+        // How many who tried it went on to pay. This is the number to move.
+        trialConversion: (() => {
+          const finished = rows.filter((r) => r.trialState === 'expired' || r.paying && trialById.has(r.id));
+          const converted = finished.filter((r) => r.paying).length;
+          return finished.length ? Math.round((converted / finished.length) * 100) : null;
+        })(),
+
+        warmLeads: warmLeads.slice(0, 40),
+        warmLeadCount: warmLeads.length,
+        trialledAndLeft: trialledAndLeft.slice(0, 40),
+        neverHeardCount: neverHeard.length,
+      });
+    } catch (err) {
+      console.error('[Dev] funnel:', err.message);
+      res.status(500).json({ error: 'Could not build the funnel: ' + err.message });
+    }
+  });
+
   router.post('/broadcast', devAuth, async (req, res) => {
     const { message, guildIds } = req.body;
     if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });

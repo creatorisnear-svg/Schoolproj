@@ -1624,18 +1624,161 @@ connectDatabase().then(async () => {
     }
   }, 5 * 60 * 1000);
 
-  // Send expiry DMs for ended vote trials (every 30 minutes)
+  /**
+   * What a server actually switched on during its trial.
+   *
+   * A trial message that names the thing they set up reads like a note about
+   * their server. One that lists all three reads like an advert, and they can
+   * tell the difference.
+   */
+  async function trialFeaturesInUse(guildId) {
+    const [{ default: DispatchConfig }, { default: Priority }, { default: AppyConfig }] =
+      await Promise.all([
+        import('./models/DispatchConfig.js'),
+        import('./models/Priority.js'),
+        import('./models/AppyConfig.js'),
+      ]);
+
+    const [dispatch, priority, appys] = await Promise.all([
+      DispatchConfig.findOne({ guildId }).lean().catch(() => null),
+      Priority.findOne({ guildId }).lean().catch(() => null),
+      AppyConfig.findOne({ guildId }).lean().catch(() => null),
+    ]);
+
+    const using = [];
+    if (dispatch?.patrolChannelIds?.length || dispatch?.dispatchChannelId) {
+      using.push('AI Voice Dispatch');
+    }
+    if (priority?.enabled) using.push('the Priority Tracker');
+    if (appys?.enabled) using.push('Applications');
+    return using;
+  }
+
+  const list = (items) => (items.length <= 1
+    ? (items[0] || '')
+    : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1]);
+
+  // Mirrors TRIAL_DAYS in premiumCheck.js, in milliseconds, for the midpoint.
+  const TRIAL_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // Trial nudges and expiry, every 30 minutes.
   setInterval(async () => {
     if (mongoose.connection.readyState !== 1) return;
     try {
       const { default: GuildTrial } = await import('./models/GuildTrial.js');
-      const { EmbedBuilder } = await import('discord.js');
+      const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+      const now = new Date();
+
+      const pricingRow = () => new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel('See pricing')
+          .setStyle(ButtonStyle.Link)
+          .setURL('https://roleplaymanager.xyz/pricing'),
+        new ButtonBuilder()
+          .setLabel('Support')
+          .setStyle(ButtonStyle.Link)
+          .setURL('https://discord.gg/cSdhfGPeV2')
+      );
+
+      // ── Halfway through, if they have not set anything up ────────────────
+      //
+      // A trial nobody configured is a trial nobody experienced, and a decision
+      // about Premium made without ever seeing it working is not really a
+      // decision. This is the only chance to change that while it still counts.
+      const midpoint = await GuildTrial.find({
+        active: true,
+        expiresAt: { $gt: now },
+        setupNudgeSent: { $ne: true },
+      });
+
+      for (const trial of midpoint) {
+        const halfLeft = new Date(trial.expiresAt).getTime() - now.getTime()
+          <= (TRIAL_DAYS_MS / 2);
+        if (!halfLeft) continue;
+
+        trial.setupNudgeSent = true;
+        await trial.save();
+
+        const using = await trialFeaturesInUse(trial.guildId);
+        if (using.length) continue;   // they are using it, leave them alone
+
+        const guild = client.guilds.cache.get(trial.guildId);
+        const user = await client.users.fetch(trial.activatedBy).catch(() => null);
+        if (!user) continue;
+
+        const days = Math.max(1, Math.ceil((new Date(trial.expiresAt) - now) / 86400000));
+
+        await user.send({
+          embeds: [new EmbedBuilder()
+            .setColor(0x2d2d2d)
+            .setTitle('Your Premium trial is running and nothing is switched on yet')
+            .setDescription(
+              'You started a Premium trial for **' + (guild?.name || 'your server') + '** and there is ' +
+              days + (days === 1 ? ' day' : ' days') + ' left on it.\n\n' +
+              'Nothing is set up yet, so you have not actually seen any of it working. ' +
+              'The quickest one is AI Voice Dispatch, which takes about two minutes:\n\n' +
+              '`1.` Run `/setup` and open Voice Dispatch\n' +
+              '`2.` Add a patrol voice channel\n' +
+              '`3.` Set your LEO role\n' +
+              '`4.` Enable it, then sit in the patrol channel and say ' +
+              '"dispatch, show me ten eight"\n\n' +
+              'It replies out loud in a dispatcher voice, runs plates and names, and keeps ' +
+              'a live status board. That is the part people pay for.'
+            )
+            .setFooter({ text: 'RPM • Ask in the support server if you get stuck' })],
+          components: [pricingRow()],
+        }).catch(() => {});
+      }
+
+      // ── Two days out ─────────────────────────────────────────────────────
+      //
+      // Asking after it has ended asks somebody who has already lost the thing.
+      // Asking while they still have it asks somebody who can feel what stops.
+      const ending = await GuildTrial.find({
+        active: true,
+        expiresAt: { $gt: now, $lt: new Date(now.getTime() + 2 * 86400000) },
+        endingSoonSent: { $ne: true },
+      });
+
+      for (const trial of ending) {
+        trial.endingSoonSent = true;
+        await trial.save();
+
+        const using = await trialFeaturesInUse(trial.guildId);
+        const guild = client.guilds.cache.get(trial.guildId);
+        const user = await client.users.fetch(trial.activatedBy).catch(() => null);
+        if (!user) continue;
+
+        const hours = Math.max(1, Math.round((new Date(trial.expiresAt) - now) / 3600000));
+
+        await user.send({
+          embeds: [new EmbedBuilder()
+            .setColor(0x2d2d2d)
+            .setTitle('Your Premium trial ends in about ' + hours + ' hours')
+            .setDescription(
+              using.length
+                ? 'You have been using ' + list(using) + ' in **' + (guild?.name || 'your server') + '**. When the trial ends ' + (using.length === 1 ? 'it stops' : 'they stop') + ' working.\n\n' +
+                  'Premium is $5 a month and everything stays exactly as you set it up. ' +
+                  'Nothing is deleted either way, so if you come back later it is all still there.'
+                : 'The trial for **' + (guild?.name || 'your server') + '** is nearly up and nothing was set up, so there is probably nothing to lose.\n\n' +
+                  'If you meant to try AI Voice Dispatch and did not get to it, say so in the ' +
+                  'support server and I will give you more time.'
+            )
+            .setFooter({ text: 'RPM' })],
+          components: [pricingRow()],
+        }).catch(() => {});
+      }
+
+      // ── Ended ────────────────────────────────────────────────────────────
       const expired = await GuildTrial.find({
         active: true,
-        expiresAt: { $lt: new Date() },
+        expiresAt: { $lt: now },
         expiredMessageSent: false,
       });
+
       for (const trial of expired) {
+        const using = await trialFeaturesInUse(trial.guildId);
+
         trial.active = false;
         trial.expiredMessageSent = true;
         await trial.save();
@@ -1643,24 +1786,28 @@ connectDatabase().then(async () => {
         const { clearPremiumCache } = await import('./utils/premiumCheck.js');
         clearPremiumCache(trial.guildId);
 
+        const guild = client.guilds.cache.get(trial.guildId);
         const user = await client.users.fetch(trial.activatedBy).catch(() => null);
-        if (user) {
-          const embed = new EmbedBuilder()
+        if (!user) continue;
+
+        await user.send({
+          embeds: [new EmbedBuilder()
             .setColor(0x2d2d2d)
-            .setTitle('Your Free Trial Has Ended')
+            .setTitle('Your free trial has ended')
             .setDescription(
-              `The free Premium trial for your server has ended.\n\n` +
-              `If AI Voice Dispatch, the Priority Tracker or Applications were useful, ` +
-              `Premium keeps them running from $5 a month:\n` +
-              `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n\n` +
-              `-# Thanks for trying RPM Premium.`
+              (using.length
+                ? list(using) + ' has stopped working in **' + (guild?.name || 'your server') + '**. ' +
+                  'Your settings are untouched, so turning Premium on puts it straight back.\n\n'
+                : 'The Premium trial for **' + (guild?.name || 'your server') + '** has ended.\n\n') +
+              'Premium is $5 a month.\n\n' +
+              '-# The rest of the bot carries on as normal, including 911 voice announcements.'
             )
-            .setFooter({ text: 'RPM' });
-          user.send({ embeds: [embed] }).catch(() => {});
-        }
+            .setFooter({ text: 'RPM' })],
+          components: [pricingRow()],
+        }).catch(() => {});
       }
     } catch (err) {
-      console.error('[TrialExpiry] Check error:', err.message);
+      console.error('[Trial] Check error:', err.message);
     }
   }, 30 * 60 * 1000);
 }).catch(() => {});
