@@ -27,7 +27,7 @@ if (PANIC_SOUND_BUFFER) {
   console.warn('[Dispatch] Panic alert sound not found - audio alert disabled');
 }
 
-const TEN_CODES = {
+export const TEN_CODES = {
   '10-4':  { label: '10-4 Acknowledged', action: null },
   '10-6':  { label: '10-6 Busy', action: null },
   '10-7':  { label: '10-7 Out of Service', action: 'out_of_service' },

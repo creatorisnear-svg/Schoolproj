@@ -17,6 +17,8 @@ import { createPortalRouter } from './website/routes/portal.js';
 import { createPortalApiRouter } from './website/routes/portalApi.js';
 import { createCheckoutRouter } from './website/routes/checkout.js';
 import { createWebhooksRouter } from './website/routes/webhooks.js';
+import { createCadAuthRouter } from './website/routes/cadAuth.js';
+import { createCadApiRouter } from './website/routes/cadApi.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -272,8 +274,22 @@ app.get('/sitemap.xml', (req, res) => {
 });
 
 
+/**
+ * The CAD gets its own subdomain, so on that host the root IS the CAD - nobody
+ * should have to type cad.roleplaymanager.xyz/cad. Every other host keeps the
+ * marketing page, and /cad keeps working everywhere for testing on the raw
+ * Koyeb URL before DNS is pointed.
+ */
+function isCadHost(req) {
+  const domain = process.env.CAD_DOMAIN;
+  if (!domain) return false;
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0];
+  return host.toLowerCase() === domain.toLowerCase();
+}
+
 app.get('/', (req, res) => {
-  res.send(readFileSync(resolve('src/website/views/landing.html'), 'utf8'));
+  const page = isCadHost(req) ? 'cad.html' : 'landing.html';
+  res.send(readFileSync(resolve('src/website/views/' + page), 'utf8'));
 });
 app.get('/pricing', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/pricing.html'), 'utf8'));
@@ -360,6 +376,16 @@ app.use('/checkout', apiRateLimit, createCheckoutRouter());
 app.use('/webhooks', createWebhooksRouter(client));
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
+
+// ── Web CAD ───────────────────────────────────────────────────────────────────
+// Served from this process rather than Cloudflare Pages so the browser is
+// same-origin with the API: session cookies work without a CORS exception, and
+// the live event stream works at all.
+app.get('/cad', (req, res) => {
+  res.send(readFileSync(resolve('src/website/views/cad.html'), 'utf8'));
+});
+app.use('/cad', createCadAuthRouter());
+app.use('/api/cad', apiRateLimit, createCadApiRouter(client));
 
 app.get('/callback', async (req, res) => {
   console.log('[OAUTH CALLBACK] Received code, attempting exchange...');
@@ -638,6 +664,16 @@ client.on('guildMemberAdd', async (member) => {
 });
 
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
+  // The web CAD caches a member's roles for five minutes to keep Discord calls
+  // down. Without this, an owner who just handed someone a LEO role would be
+  // told the CAD still does not see it, and would go looking for a bug.
+  if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
+    try {
+      const { clearCadCaches } = await import('./website/routes/cadApi.js');
+      clearCadCaches(newMember.id);
+    } catch { /* CAD not loaded; nothing to clear */ }
+  }
+
   const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
   for (const [roleId] of addedRoles) {
     const config = await AutoJoin.findOne({ guildId: newMember.guild.id, roleId, enabled: true });

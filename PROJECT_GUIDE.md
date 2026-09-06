@@ -388,9 +388,59 @@ site/
 
 ---
 
-## Portal (Civ/LEO Web App, `portal/`)
+## Web CAD (`/cad`, `src/website/routes/cad*`)
 
-- Express SPA mounted at `/portal` on the same Koyeb instance as the bot. Entry: `portal/server.js` (imports `src/index.js` for the shared bot client).
+The multi-tenant CAD. Any server that has the bot with Roleplay Commands enabled
+can use it; a member signs in with Discord, picks a server, and works as a
+civilian or (with a LEO role) as law enforcement.
+
+- **Hosting**: served by the bot process, so the browser is same-origin with the
+  API. On `CAD_DOMAIN` the CAD is the root path; everywhere else it is `/cad`.
+  Same-origin is what makes the session cookie and the SSE stream work without
+  touching the single-origin CORS check in `src/index.js`.
+- **Auth** (`routes/cadAuth.js`): Discord OAuth2 with scope `identify guilds` —
+  `guilds` is required or there is no server picker. HMAC-signed httpOnly
+  `cad_session` cookie carrying the Discord access token, plus a one-shot
+  `cad_oauth_state` cookie. **Refuses to sign a session if no secret is set**
+  rather than falling back to a literal.
+- **Tenancy** (`routes/cadApi.js`): every data route is under `/:guildId` behind
+  `resolveGuild`, which proves the bot is in the guild, the caller is a member,
+  and resolves live roles into `isLeo` / `isFd` / `isStaff`. A Discord outage
+  answers 503, never 403 — treating an outage as "not a member" would lock every
+  user out of their own server.
+- **Routes**: `cad/civilian.js` (characters, vehicles, firearms, 911, fines,
+  public boards), `cad/leo.js` (search, records, BOLOs, tickets, 10-codes,
+  panic, call queue), `cad/events.js` (SSE), `cad/shared.js` (input coercion).
+- **Front end**: `views/cad.html`, `public/js/cad-app.js`, `public/css/cad.css`.
+- **Limits**: every write checks `getGuildLimits`, the same per-guild caps the
+  Discord handlers enforce. Note `getGuildLimits` returns `Infinity` for premium,
+  which `JSON.stringify` turns into `null` — `/context` converts it explicitly.
+- **Bot bridge** (`src/website/cadBridge.js`) — the contract, and its two traps:
+  - **Call IDs must end in a number.** Dispatch speaks the trailing segment and
+    matches an officer's spoken reply with `callId.split('-').pop()`. Format is
+    `${guildId}-${4 digits}`, matching `/911`.
+  - **Panic must write `panicAnnounced: false`.** The field defaults to *true*,
+    so an upsert that omits it is invisible to the panic poller. Non-panic codes
+    write `true`, so going 10-8 clears a stale pending panic.
+  - A web 911 is saved with `dispatchAnnounced: false` and the voice poller picks
+    it up within ~5s. Do **not** also call the announce path, or it is said twice.
+- **Role cache**: `resolveGuild` caches a member's roles for 5 minutes;
+  `guildMemberUpdate` in `src/index.js` calls `clearCadCaches(userId)` so a
+  newly granted LEO role takes effect at once.
+- **Env**: `CAD_DOMAIN` (optional, enables root-path serving and fixes the OAuth
+  redirect URI), `CAD_SECRET` (falls back to `PORTAL_SECRET` /
+  `DISCORD_CLIENT_SECRET`). The redirect URI `<origin>/cad/callback` must be
+  registered in the Discord Developer Portal.
+
+---
+
+## Portal (legacy, superseded)
+
+- **Superseded by the web CAD above.** Kept only until the new CAD is confirmed working in production, then deleted.
+- Two separate implementations exist, and neither is what this section used to describe:
+  - **Live**: `src/website/routes/portal.js` + `portalApi.js`, mounted at `/portal` and `/api/portal` by `src/index.js`, serving `src/website/views/portal.html`.
+  - **Dead**: the `portal/` directory is a standalone Express app with its own `server.js`. It does **not** import `src/index.js`, is not mounted anywhere, and only runs via `npm run portal`.
+- Both are locked to a single server through `PORTAL_GUILD_ID`, which is why the new CAD was written rather than extended.
 - **Auth**: Discord OAuth2 → HMAC-signed `portal_session` cookie (`portal/routes/auth.js`), callback at `/portal/auth/callback`. All API routes under `/api/portal/*` require `portalAuth` middleware.
 - **Frontend**: `portal/views/portal.html` (shell), `portal/public/js/portal-app.js` (SPA logic), `portal/public/css/portal.css` (dark theme: `--surface`/`--card`/`--elevated`, `--accent` #5865f2, `--danger` red, `--warning` amber, `var(--radius)` 10px, no emojis).
 - **Modes**: Civilian (default) vs LEO (requires LEO Discord role, `isLeo: true`); stored in `localStorage.portalMode`.

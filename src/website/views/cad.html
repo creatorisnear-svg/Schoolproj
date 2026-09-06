@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAD — RolePlayManager</title>
+  <meta name="description" content="Computer Aided Dispatch for your RolePlayManager server.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/cad.css">
+</head>
+<body>
+
+<!-- Signed out ------------------------------------------------------------ -->
+<div class="screen centered" id="view-login" hidden>
+  <div class="login-card">
+    <div class="wordmark" style="justify-content:center;margin-bottom:18px">
+      RolePlay<span class="dim">Manager</span>
+    </div>
+    <h1>Computer Aided Dispatch</h1>
+    <p>Sign in with Discord to open the CAD for any server you are in.</p>
+    <div class="notice error" id="login-error" hidden></div>
+    <a class="btn btn-primary btn-block" href="/cad/login">Continue with Discord</a>
+  </div>
+</div>
+
+<!-- Server picker --------------------------------------------------------- -->
+<div class="screen" id="view-servers" hidden>
+  <div class="topbar">
+    <span class="wordmark">RolePlay<span class="dim">Manager</span></span>
+    <span class="spacer"></span>
+    <div class="who" id="picker-who"></div>
+    <a class="btn btn-sm" href="/cad/logout">Sign out</a>
+  </div>
+  <div class="picker">
+    <div class="picker-head">
+      <h1>Choose a server</h1>
+      <p>These are the servers you are in that have the CAD switched on.</p>
+    </div>
+    <div id="servers-body">
+      <div class="loading"><span class="spinner"></span> Loading your servers</div>
+    </div>
+  </div>
+</div>
+
+<!-- The CAD --------------------------------------------------------------- -->
+<div class="screen" id="view-cad" hidden>
+  <div class="topbar">
+    <button class="server-switch" id="btn-switch-server" title="Switch server">
+      <span id="switch-icon"></span>
+      <span class="label" id="switch-name">Server</span>
+    </button>
+    <span id="premium-badge" class="badge badge-premium" hidden>Premium</span>
+    <span id="dispatch-badge" class="badge badge-live" hidden>AI Dispatch</span>
+    <span class="spacer"></span>
+    <div class="mode-toggle" id="mode-toggle">
+      <button type="button" data-mode="civilian" aria-pressed="true">Civilian</button>
+      <button type="button" data-mode="leo" aria-pressed="false">Law Enforcement</button>
+    </div>
+    <div class="who" id="cad-who"></div>
+    <a class="btn btn-sm" href="/cad/logout">Sign out</a>
+  </div>
+
+  <div class="shell">
+    <nav class="sidenav" id="sidenav"></nav>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="dialog-root"></div>
+
+<script src="/js/cad-app.js"></script>
+</body>
+</html>
