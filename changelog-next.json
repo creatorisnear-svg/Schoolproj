@@ -1,16 +1,12 @@
 {
-  "version": "1.10.0",
-  "title": "Five features that were not actually working, and an easier setup",
+  "version": "1.11.0",
+  "title": "Patrol Hours: see who is actually turning up",
   "changes": [
-    "Fixed: reaction roles never worked. Reacting to a panel did nothing, on every server, since the feature shipped. If you set one up and quietly gave up on it, it works now",
-    "Fixed: strike timeouts and bans never happened. The bot said the punishment was set and then did nothing at that strike level. Kick and No Action were fine. Worth checking your strike settings and re-picking the punishment",
-    "Fixed: Anti-Promoting said it needed no setup while being switched off. Its own page now shows whether it is on and lets you turn it on there",
-    "Fixed: the verify button was posted as soon as you picked the channel, before you had chosen the role to give people. Anyone who used it in that gap was told they were verified and got no role. The button now waits until both are set",
-    "Fixed: ticket support reported itself as finished when no panel had been posted, so members had no button anywhere. It now tells you the panel is still missing",
-    "Setup no longer sends you away. Picking General Settings used to tell you to go run another command and start over. It just works now",
-    "Back to Setup stays on every screen, so setting up three features no longer means typing /setup three times",
-    "The verification menu shows what you have already done, instead of looking identical whether you had finished a step or not",
-    "Every feature listed by /setup can now be opened from its menu. Blacklist, Sticky Messages, Reaction Roles and Civilian Jobs were in the checklist but missing from the dropdown, with no explanation",
-    "The dashboard link on this bot host now takes you to the real dashboard. The copy it used to serve was well out of date and was missing business accounts, blacklist management, sticky messages and reaction roles entirely"
+    "New: the bot now counts how long your officers spend in patrol voice channels. Run /duty to see your own hours, or /patrolboard to see the whole server ranked",
+    "It is already counting. Recording is free on every server and starts as soon as you have patrol channels set, so by the time you look there is real history there rather than an empty page",
+    "The number is meant to survive an argument. Time spent deafened does not count, sitting in a channel on your own does not count at all, and one shift is capped at 6 hours, so nobody tops the board by leaving Discord open overnight",
+    "With Premium: the 30 and 90 day views, every officer instead of the top 10, a board that posts itself in a channel every week, and a list of who has not been on patrol in 14 days",
+    "Nobody on that list gets messaged by the bot. It tells you, and what happens next is your call",
+    "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses"
   ]
 }
