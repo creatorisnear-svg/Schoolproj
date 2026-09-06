@@ -1,10 +1,9 @@
 {
-  "version": "1.3.5",
-  "title": "A shorter command list",
+  "version": "1.3.6",
+  "title": "Setup no longer dead-ends",
   "changes": [
-    "Regular members no longer see the 23 admin-only setup commands in their command picker - those are hidden from anyone without Manage Server",
-    "The old per-feature config commands (/verifysystemconfig, /economyconfig and 14 others) now point you to /config instead, so there is one place to set anything up rather than two that disagreed",
-    "Heads up: if you added staff with /staff add who do not have Manage Server, they will no longer see the setup commands in the picker. Give them Manage Server, or have them use the dashboard. Day-to-day staff commands like /strike and /clear are unaffected and stay visible",
-    "The startup log now reports how many servers actually received commands instead of always claiming success"
+    "Every setup screen now has a Back to Setup button, so you can configure several features in a row instead of retyping /setup after each one",
+    "Hitting a Premium notice or an error during setup no longer leaves you with a message you cannot click out of",
+    "The welcome message the bot posts when it joins your server now has a Start Setup button instead of only telling you to type /setup"
   ]
 }

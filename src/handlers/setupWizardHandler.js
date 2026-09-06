@@ -14,6 +14,7 @@ import {
   ChannelType,
 } from 'discord.js';
 import { checkStaffPermission } from '../utils/permissions.js';
+import { withBackRow, withSetupNav } from '../utils/setupNav.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
 import { getEconomySetupMenu } from './economyHandler.js';
@@ -478,16 +479,16 @@ export async function handleSetupConfigSelect(interaction) {
   const handler = moduleResponses[choice];
 
   if (!handler) {
-    return interaction.update({ embeds: [errorEmbed('Unknown option. Please try again.')], components: [] });
+    return interaction.update(withBackRow({ embeds: [errorEmbed('Unknown option. Please try again.')], components: [] }));
   }
 
   try {
-    await handler(interaction);
+    await handler(withSetupNav(interaction));
   } catch (err) {
     console.error(`[setupWizardHandler] ${choice}:`, err);
-    await interaction.update({
+    await interaction.update(withBackRow({
       embeds: [errorEmbed('Something went wrong. Please try again.')],
       components: [],
-    });
+    }));
   }
 }

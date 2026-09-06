@@ -511,6 +511,12 @@ client.on('guildCreate', async (guild) => {
       .setFooter({ text: 'RPM • roleplaymanager.xyz • /setup to get started' });
 
     const buttons = new ActionRowBuilder().addComponents(
+      // A real button, not a link. Both buttons here used to be ButtonStyle.Link,
+      // so the only way to start was to retype /setup from the embed text.
+      new ButtonBuilder()
+        .setCustomId('setup_hub')
+        .setLabel('Start Setup')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setLabel('Open Dashboard')
         .setStyle(ButtonStyle.Link)
@@ -1148,7 +1154,27 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isButton()) {
       console.log(`[BUTTON] ${interaction.user.tag} clicked ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'verify_button') {
+      if (interaction.customId === 'setup_hub') {
+        // Return to the /setup screen from any wizard step, and from the
+        // "Start Setup" button on the welcome message posted when the bot joins.
+        const { checkStaffPermission } = await import('./utils/permissions.js');
+        if (!await checkStaffPermission(interaction)) {
+          await interaction.reply({
+            embeds: [new EmbedBuilder().setColor('#2d2d2d').setDescription('Only staff and administrators can run setup.').setFooter({ text: 'RPM' })],
+            flags: 64,
+          });
+          return;
+        }
+        const { buildSetupPayload } = await import('./commands/setup.js');
+        const payload = await buildSetupPayload(interaction.guildId);
+        // The welcome message is a public post that must not be overwritten, so
+        // only update in place when this came from an existing setup screen.
+        if (interaction.message?.interactionMetadata || interaction.message?.flags?.has?.(64)) {
+          await interaction.update(payload);
+        } else {
+          await interaction.reply({ ...payload, flags: 64 });
+        }
+      } else if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
       } else if (interaction.customId.startsWith('verify_approve_')) {
         const pendingId = interaction.customId.replace('verify_approve_', '');
