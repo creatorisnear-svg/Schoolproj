@@ -402,6 +402,74 @@
     if (panic) panic.addEventListener('click', confirmPanic);
   }
 
+  /**
+   * The priority badge in the top bar.
+   *
+   * Shown to everybody, civilian and LEO and fire alike, because whether a
+   * priority is running is not privileged information and it is the thing you
+   * most want to know before starting anything. The Discord board it comes from
+   * is in another tab at best.
+   *
+   * Two facts, because they answer different questions: whether one is running
+   * now, and whether another can be started yet.
+   */
+  function renderPriority(p) {
+    var el = $('priority-badge');
+    if (!el) return;
+
+    // A server without the tracker set up gets no badge at all, rather than one
+    // reporting "inactive" about something it does not have.
+    if (!p || !p.showing) {
+      el.hidden = true;
+      el.classList.remove('is-active');
+      return;
+    }
+
+    var until = p.cooldownUntil ? new Date(p.cooldownUntil).getTime() : 0;
+    var left = until - Date.now();
+    var cooldown = 'Inactive';
+    if (left > 0) {
+      var mins = Math.ceil(left / 60000);
+      cooldown = mins >= 60
+        ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm'
+        : mins + 'm';
+    }
+
+    el.hidden = false;
+    el.classList.toggle('is-active', !!p.active);
+    el.innerHTML = 'Priority ' + (p.active ? 'Active' : 'Inactive')
+      + '<span class="sep">|</span>Cooldown: ' + esc(cooldown);
+    el.title = p.active
+      ? 'A priority is running right now.'
+      : left > 0
+        ? 'No priority running. Another can be started in ' + cooldown + '.'
+        : 'No priority running, and none on cooldown.';
+  }
+
+  /**
+   * Keep it current without reloading the screen.
+   *
+   * The badge is the one thing on the page that goes stale on its own: nobody
+   * clicks anything when a priority starts somewhere else. A minute is often
+   * enough to be useful and rare enough to be invisible, and the countdown is
+   * recomputed from an absolute time on every tick, so a page left open
+   * overnight ticks down rather than freezing.
+   */
+  var priorityTimer = null;
+  function startPriorityPolling() {
+    if (priorityTimer) clearInterval(priorityTimer);
+    priorityTimer = setInterval(function () {
+      if (!state.guildId) return;
+      // Redraw from what we already have first, so the countdown moves even
+      // when the request is slow or fails.
+      renderPriority(state.context && state.context.priority);
+      api('/' + state.guildId + '/priority').then(function (p) {
+        if (state.context) state.context.priority = p;
+        renderPriority(p);
+      }).catch(function () { /* leave the last known state on screen */ });
+    }, 60000);
+  }
+
   function renderTopbar() {
     var server = state.servers.filter(function (s) { return s.id === state.guildId; })[0] || {};
     // Written as innerHTML of a stable wrapper: the icon img carries an onerror
@@ -413,6 +481,8 @@
     var ctx = state.context || {};
     $('premium-badge').hidden = !ctx.premium;
     $('dispatch-badge').hidden = !ctx.hasDispatch;
+    renderPriority(ctx.priority);
+    startPriorityPolling();
 
     // Built from the member's roles rather than hard-coded, so somebody with no
     // second role sees one plain label instead of a control they cannot use.

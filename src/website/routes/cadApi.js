@@ -6,6 +6,7 @@ import { isPremiumGuild, getGuildLimits } from '../../utils/premiumCheck.js';
 import CADConfig from '../../models/CADConfig.js';
 import RoleplayCommands from '../../models/RoleplayCommands.js';
 import DispatchConfig from '../../models/DispatchConfig.js';
+import Priority from '../../models/Priority.js';
 import { isStaff as isStaffMember } from '../../utils/permissions.js';
 import { createCivilianRouter } from './cad/civilian.js';
 import { createLeoRouter } from './cad/leo.js';
@@ -162,6 +163,36 @@ export function createCadApiRouter(client) {
   // Everything below is scoped to one guild and proves membership first.
   router.use('/:guildId', resolveGuild(client));
 
+  /**
+   * Priority state as the CAD needs it.
+   *
+   * `showing` is false when the server has not set the tracker up, and the
+   * badge stays hidden rather than reporting "inactive" about a feature
+   * that does not exist here.
+   *
+   * The cooldown is sent as an absolute time rather than minutes left, so a
+   * page left open overnight counts down instead of freezing on whatever it
+   * was told once.
+   */
+  async function priorityState(guildId) {
+    const p = await Priority.findOne({ guildId })
+      .select('enabled priorityActive cooldownEndsAt cooldownMinutes').lean().catch(() => null);
+    if (!p?.enabled) return { showing: false };
+
+    const until = p.cooldownEndsAt ? new Date(p.cooldownEndsAt).getTime() : 0;
+    return {
+      showing: true,
+      active: !!p.priorityActive,
+      cooldownUntil: until > Date.now() ? new Date(until).toISOString() : null,
+    };
+  }
+
+  // Polled by the top bar badge. Deliberately tiny and its own route: the
+  // full context is heavy and the badge needs to stay current.
+  router.get('/:guildId/priority', async (req, res) => {
+    res.json(await priorityState(req.guildId));
+  });
+
   router.get('/:guildId/context', async (req, res) => {
     // getGuildLimits returns Infinity for premium, which JSON.stringify turns
     // into null - the front end would read that as "no allowance" and hide
@@ -181,6 +212,7 @@ export function createCadApiRouter(client) {
       },
       premium: req.cadContext.premium,
       hasDispatch: req.cadContext.hasDispatch,
+      priority: await priorityState(req.guildId),
       // Which optional systems this server actually turned on, so the CAD can
       // hide what is not set up rather than offering a button that always fails.
       social: {

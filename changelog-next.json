@@ -9,6 +9,7 @@
     "Nobody on that list gets messaged by the bot. It tells you, and what happens next is your call",
     "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses",
     "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free",
-    "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit"
+    "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit",
+    "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown, and updates on its own"
   ]
 }

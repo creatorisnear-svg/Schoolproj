@@ -266,6 +266,21 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   box-shadow: 0 0 14px rgba(251, 191, 36, 0.14);
 }
 .badge-leo { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+/* Priority. Quiet when nothing is happening, loud when one is running, and
+   the running state pulses so it is noticed from across the room. */
+.badge-priority {
+  background: var(--surface-2, rgba(255,255,255,0.04));
+  color: var(--text-dim); border-color: var(--border);
+  gap: 6px;
+}
+.badge-priority.is-active {
+  background: var(--red-bg, rgba(239,68,68,0.12));
+  border-color: var(--red-border, rgba(239,68,68,0.3));
+  color: var(--red, #ef4444);
+  animation: pulse 2s ease-in-out infinite;
+}
+.badge-priority .sep { opacity: 0.35; }
+
 .badge-live {
   background: var(--green-bg); border-color: var(--green-border); color: var(--green);
 }
