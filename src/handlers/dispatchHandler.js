@@ -263,6 +263,42 @@ function detectJoinStop(text) {
   return null;
 }
 
+/**
+ * How a wanted flag should be said and shown.
+ *
+ * Dispatch used to announce "record shows WANTED" and stop, which tells an
+ * officer to be careful without telling them what for. The reason is on the
+ * record already.
+ *
+ * The spoken form is capped: wantedReason is free text a player typed, and
+ * dispatch reading a paragraph over the radio is worse than reading nothing.
+ * The embed is not capped the same way, because it can be read at leisure.
+ */
+function wantedPhrase(character) {
+  if (character?.status !== 'wanted') {
+    return { spoken: 'clean', display: 'Clean', reason: null };
+  }
+
+  const reason = String(character.wantedReason || '').trim().replace(/[.\s]+$/, '');
+  if (!reason) {
+    return { spoken: 'WANTED', display: '**WANTED**', reason: null };
+  }
+
+  // Cut at a word boundary so the radio call does not end mid word.
+  let short = reason;
+  if (short.length > 120) {
+    short = short.slice(0, 120);
+    short = short.slice(0, Math.max(short.lastIndexOf(' '), 60));
+  }
+
+  return {
+    spoken: 'WANTED for ' + short,
+    display: '**WANTED**',
+    // Discord caps an embed field at 1024 characters.
+    reason: reason.slice(0, 1000),
+  };
+}
+
 function detectCADLookup(text) {
   const lower = text.toLowerCase().trim();
   console.log(`[CAD Detect] Checking transcript for CAD lookup: "${lower}"`);
@@ -338,13 +374,14 @@ async function runCADLookup(guildId, lookup) {
 
     const vehicle = character.vehicles?.find(v => v.licensePlate?.toUpperCase() === lookup.query) || character.vehicles?.[0];
     const vehicleDesc = vehicle ? `${vehicle.color || ''} ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim() : 'unknown vehicle';
-    const wantedStatus = character.status === 'wanted' ? 'WANTED' : 'clean';
+    const wanted = wantedPhrase(character);
+    const wantedStatus = wanted.display;
     const licenseStatus = character.driverLicenseStatus || 'unknown';
 
     const bolos = await BOLO.find({ guildId, characterId: character._id, active: true });
     const hasBolo = bolos.length > 0;
 
-    let tts = `Plate ${lookup.query.split('').join(' ')} comes back to ${character.characterName}, ${vehicleDesc}. Record shows ${wantedStatus}.`;
+    let tts = `Plate ${lookup.query.split('').join(' ')} comes back to ${character.characterName}, ${vehicleDesc}. Record shows ${wanted.spoken}.`;
     if (licenseStatus === 'invalid') tts += ' License is invalid.';
     if (hasBolo) tts += ` Caution, active BOLO on this individual. ${bolos[0].reason}.`;
 
@@ -359,6 +396,7 @@ async function runCADLookup(guildId, lookup) {
         vehicleDesc,
         plate: lookup.query,
         status: wantedStatus,
+        wantedReason: wanted.reason,
         license: licenseStatus,
         hasBolo,
         boloReason: hasBolo ? bolos[0].reason : null,
@@ -378,13 +416,14 @@ async function runCADLookup(guildId, lookup) {
     }
     console.log(`[CAD Lookup] Name match found: "${character.characterName}", status="${character.status}"`);
 
-    const wantedStatus = character.status === 'wanted' ? 'WANTED' : 'clean';
+    const wanted = wantedPhrase(character);
+    const wantedStatus = wanted.display;
     const licenseStatus = character.driverLicenseStatus || 'unknown';
     const vehicleCount = character.vehicles?.length || 0;
     const bolos = await BOLO.find({ guildId, characterId: character._id, active: true });
     const hasBolo = bolos.length > 0;
 
-    let tts = `${character.characterName}, record shows ${wantedStatus}. License ${licenseStatus}. ${vehicleCount} registered vehicle${vehicleCount !== 1 ? 's' : ''}.`;
+    let tts = `${character.characterName}, record shows ${wanted.spoken}. License ${licenseStatus}. ${vehicleCount} registered vehicle${vehicleCount !== 1 ? 's' : ''}.`;
     if (hasBolo) tts += ` Caution, active BOLO. ${bolos[0].reason}.`;
 
     return {
@@ -397,6 +436,7 @@ async function runCADLookup(guildId, lookup) {
         age: character.age,
         gender: character.gender,
         status: wantedStatus,
+        wantedReason: wanted.reason,
         license: licenseStatus,
         vehicles: character.vehicles,
         hasBolo,
@@ -2276,6 +2316,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
               { name: 'Status', value: result.embed.status, inline: true },
               { name: 'License', value: result.embed.license, inline: true },
             );
+            // Its own row rather than crammed into Status, which is inline and
+            // would wrap badly around anything longer than a couple of words.
+            if (result.embed.wantedReason) {
+              embed.addFields({ name: 'Wanted For', value: result.embed.wantedReason, inline: false });
+            }
             if (result.embed.hasBolo) {
               embed.addFields({ name: 'BOLO', value: result.embed.boloReason, inline: false });
             }
@@ -2300,6 +2345,9 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
               { name: 'Status', value: result.embed.status, inline: true },
               { name: 'License', value: result.embed.license, inline: true },
             );
+            if (result.embed.wantedReason) {
+              embed.addFields({ name: 'Wanted For', value: result.embed.wantedReason, inline: false });
+            }
             if (result.embed.age) embed.addFields({ name: 'Age', value: `${result.embed.age}`, inline: true });
             if (result.embed.gender) embed.addFields({ name: 'Gender', value: result.embed.gender, inline: true });
             if (result.embed.vehicles?.length > 0) {
@@ -2739,13 +2787,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
         if (character) {
           const firearm = character.firearms?.find(f => f.serialNumber?.toUpperCase() === serialQuery);
           const fa = firearm ? `${firearm.make || ''} ${firearm.model || ''}`.trim() || 'Unknown' : 'Unknown';
+          const ownerWanted = wantedPhrase(character);
           embed.addFields(
             { name: 'Registered Owner', value: character.characterName, inline: true },
             { name: 'Firearm', value: fa, inline: true },
-            { name: 'Owner Status', value: character.status === 'wanted' ? '**WANTED**' : 'Clean', inline: true },
+            { name: 'Owner Status', value: ownerWanted.display, inline: true },
           );
+          if (ownerWanted.reason) {
+            embed.addFields({ name: 'Wanted For', value: ownerWanted.reason, inline: false });
+          }
           tts = `Serial ${serialQuery.split('').join(' ')} comes back registered to ${character.characterName}, ${fa}.`;
-          if (character.status === 'wanted') tts += ` Caution, owner is showing WANTED.`;
+          if (character.status === 'wanted') tts += ` Caution, owner is showing ${ownerWanted.spoken}.`;
         } else {
           embed.addFields({ name: 'Result', value: 'No records found - serial not registered in system', inline: false });
           tts = `Serial ${serialQuery.split('').join(' ')} comes back with no records. Firearm is not registered in the system. Use caution.`;
