@@ -1,71 +1,34 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { StrikeConfig } from '../models/Strike.js';
-import Config from '../models/Config.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
-import { isAdmin } from '../utils/permissions.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('strikesystemconfig')
-  .setDescription('Configure the strike system for your server');
+  .setDescription('Moved — use /config strikes instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  if (!await isAdmin(interaction.member)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. Only administrators can set up the strike system.')],
-      flags: 64,
-    });
-  }
-
-  const access = await checkFeatureAccess(interaction.guildId, 'strike');
-  if (!access.allowed) {
-    return interaction.reply({
-      embeds: [buildPremiumEmbed('Strike System')],
-      flags: 64,
-    });
-  }
-
-  const config = await Config.findOne({ guildId: interaction.guildId });
-
-  if (!config || !config.logChannelId) {
-    return interaction.reply({
-      embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the strike system.')],
-      flags: 64,
-    });
-  }
-
-  const strikeConfig = await StrikeConfig.findOne({ guildId: interaction.guildId });
-  
-  if (!strikeConfig || !strikeConfig.enabled) {
-    return interaction.reply({
-      embeds: [errorEmbed('Strike System Not Enabled', 'Use `/enablecommands` → Enable Features → Strike System')],
-      flags: 64,
-    });
-  }
-
-  const steps = [
-    { id: 'strike_set_roles', label: 'Set Strike Level Roles (Optional)' },
-    { id: 'strike_set_actions', label: 'Set Strike Actions (Kick/Timeout/Ban)' },
-    { id: 'strike_setup_done', label: 'Done - Close Setup' },
-  ];
-
-  const menu = new ActionRowBuilder()
-    .addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('strike_setup_menu')
-        .setPlaceholder('Choose a setup option...')
-        .addOptions(
-          steps.map(step => ({
-            label: step.label,
-            value: step.id,
-            description: `Configure ${step.label.toLowerCase()}`,
-          }))
-        )
-    );
-
   return interaction.reply({
-    content: '**Strike System Setup**\n\nSelect an option below to configure your strike system:\n\n-# Tip: use `/config strikes` for all setup options in one place.',
-    components: [menu],
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/strikesystemconfig` is now `/config strikes`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
     flags: 64,
   });
 }

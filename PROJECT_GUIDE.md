@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Phase 1 of the setup restructure - added src/config/features.js as the canonical 19-feature registry plus featureStatus.js for a real off/incomplete/ready model, repointed premiumCheck, api.js and dev.js at it, fixed the mod-slug/feature-key crossing in the settings premium gate, added GET /api/public/registry for the web side, and rebuilt /setup to be registry-driven.
+- **Completed:** Phase 4 of the setup restructure - converted 16 legacy /xxxconfig commands into deprecation shims pointing at /config, applied setDefaultMemberPermissions(ManageGuild) to the 21 configuration commands so members stop seeing them, and made the command-sync summary report real counts instead of a hardcoded "Failed: 0/14".
 
 ## AI Handoff Protocol — Read Before Responding
 

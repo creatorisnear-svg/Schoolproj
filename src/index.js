@@ -875,6 +875,8 @@ client.once('clientReady', async () => {
   console.log('');
 
   let count = 0;
+  let syncOk = 0;
+  let syncFailed = 0;
   for (const [guildId, guild] of client.guilds.cache) {
     count++;
     console.log(`[${count}/${client.guilds.cache.size}] [PROC] Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
@@ -882,8 +884,10 @@ client.once('clientReady', async () => {
       const startTime = Date.now();
       await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandData });
       const endTime = Date.now();
+      syncOk++;
       console.log(`  [OK] ${commandData.length} commands registered in ${endTime - startTime}ms`);
     } catch (error) {
+      syncFailed++;
       console.log(`  [FAIL] ${guild.name} (${guildId}) - ${error.message}`);
     }
     await logGuildLoaded(guild);
@@ -904,8 +908,8 @@ client.once('clientReady', async () => {
   console.log('============================================================');
   console.log('[DONE] Command sync completed');
   console.log('[STATS] SYNC SUMMARY:');
-  console.log(`  Successful: ${client.guilds.cache.size}/${client.guilds.cache.size}`);
-  console.log('  Failed: 0/14'); // Static as per user's request for mock look
+  console.log(`  Successful: ${syncOk}/${client.guilds.cache.size}`);
+  console.log(`  Failed: ${syncFailed}/${client.guilds.cache.size}`);
   console.log('============================================================');
   console.log('');
 

@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from 'discord.js';
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { isAdmin } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
@@ -33,3 +34,10 @@ export async function execute(interaction) {
     });
   }
 }
+
+// Configuration is administrator work. This hides the command from members
+// who cannot Manage Server, so the command picker is not 60% options they
+// cannot run. Day-to-day staff commands are deliberately left visible: the
+// bot's own Staff table is not expressible as a Discord permission, so
+// hiding those would break staff added with /staff add.
+data.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);

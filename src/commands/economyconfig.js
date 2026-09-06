@@ -1,19 +1,34 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { getEconomySetupMenu } from '../handlers/economyHandler.js';
-import { checkStaffPermission } from '../utils/permissions.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('economyconfig')
-  .setDescription('Configure the economy system (Staff/Admin)');
+  .setDescription('Moved — use /config economy instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command.')],
-      flags: 64,
-    });
-  }
-  // /config economy is the canonical way to reach this menu going forward.
-  return interaction.reply(getEconomySetupMenu());
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/economyconfig` is now `/config economy`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
 }

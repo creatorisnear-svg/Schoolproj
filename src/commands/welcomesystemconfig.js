@@ -1,71 +1,34 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkStaffPermission } from '../utils/permissions.js';
-import Welcome from '../models/Welcome.js';
-import Config from '../models/Config.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('welcomesystemconfig')
-  .setDescription('Configure the welcome system for new members (Admin/Staff)');
+  .setDescription('Moved — use /config welcome instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      flags: 64,
-    });
-  }
-
-  const access = await checkFeatureAccess(interaction.guildId, 'welcome');
-  if (!access.allowed) {
-    return interaction.reply({
-      embeds: [buildPremiumEmbed('Welcome System')],
-      flags: 64,
-    });
-  }
-
-  const config = await Config.findOne({ guildId: interaction.guildId });
-
-  if (!config || !config.logChannelId) {
-    return interaction.reply({
-      embeds: [errorEmbed('You must set a log channel first using `/setlogchannel` before setting up the welcome system.')],
-      flags: 64,
-    });
-  }
-
-  const welcome = await Welcome.findOne({ guildId: interaction.guildId });
-  
-  if (!welcome || !welcome.enabled) {
-    return interaction.reply({
-      embeds: [errorEmbed('Welcome System Not Enabled', 'Use `/enablecommands` → Enable Features → Welcome System')],
-      flags: 64,
-    });
-  }
-
-  const steps = [
-    { id: 'select_welcome_channel_setup', label: 'Select Welcome Channel' },
-    { id: 'set_welcome_message_setup', label: 'Set Welcome Message' },
-    { id: 'set_welcome_dm_setup', label: 'Set Welcome DM' },
-  ];
-
-  const menu = new ActionRowBuilder()
-    .addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('welcome_setup_menu')
-        .setPlaceholder('Choose a setup option...')
-        .addOptions(
-          steps.map(step => ({
-            label: step.label,
-            value: step.id,
-            description: `Configure ${step.label.toLowerCase()}`,
-          }))
-        )
-    );
-
   return interaction.reply({
-    content: '**Welcome System Setup**\n\nSelect an option below to configure your welcome system:\n\n-# Tip: use `/config welcome` for all setup options in one place.',
-    components: [menu],
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/welcomesystemconfig` is now `/config welcome`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
     flags: 64,
   });
 }

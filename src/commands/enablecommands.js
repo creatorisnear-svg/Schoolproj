@@ -1,73 +1,34 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { isAdmin, checkStaffPermission } from '../utils/permissions.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
-import Config from '../models/Config.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('enablecommands')
-  .setDescription('Enable or disable all bot features (Admin/Staff only)');
+  .setDescription('Moved — use /config features instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  const isAdminUser = await isAdmin(interaction.member);
-  const isStaffUser = await checkStaffPermission(interaction);
-
-  if (!isAdminUser && !isStaffUser) {
-    return interaction.reply({
-      embeds: [errorEmbed('This command is restricted to staff and administrators.')],
-      flags: 64,
-    });
-  }
-
-  try {
-    const config = await Config.findOne({ guildId: interaction.guildId });
-    
-    if (!config || !config.logChannelId) {
-      const embed = new EmbedBuilder()
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('Setup Required')
+        .setTitle('This command moved')
         .setDescription(
-          'Before managing features, complete initial setup.\n\n' +
-          '`1.` Run `/setlogchannel` to set a log channel\n' +
-          '`2.` Run `/staff add` to add staff members\n' +
-          '`3.` Return here to manage features'
+          '`/enablecommands` is now `/config features`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
         )
-        .setFooter({ text: 'RPM' });
-      
-      return interaction.reply({
-        embeds: [embed],
-        flags: 64,
-      });
-    }
-
-    const embed = new EmbedBuilder()
-      .setColor('#2d2d2d')
-      .setTitle('Feature Management')
-      .setDescription('Select an action below.')
-      .setFooter({ text: 'RPM' });
-
-    const choiceRow = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('choice_enable')
-          .setLabel('Enable Features')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('choice_disable')
-          .setLabel('Disable Features')
-          .setStyle(ButtonStyle.Danger)
-      );
-
-    return interaction.reply({
-      embeds: [embed],
-      components: [choiceRow],
-      flags: 64,
-    });
-
-  } catch (error) {
-    console.error('Error in enablecommands:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('Something went wrong. Please try again.')],
-      flags: 64,
-    });
-  }
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
 }

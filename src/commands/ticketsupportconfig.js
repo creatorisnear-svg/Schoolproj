@@ -1,63 +1,34 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import TicketConfig from '../models/TicketConfig.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('ticketsupportconfig')
-  .setDescription('Setup the ticket support system (Admin/Staff)');
+  .setDescription('Moved — use /config tickets instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      flags: 64,
-    });
-  }
-
-  const access = await checkFeatureAccess(interaction.guildId, 'ticket');
-  if (!access.allowed) {
-    return interaction.reply({
-      embeds: [buildPremiumEmbed('Ticket Support')],
-      flags: 64,
-    });
-  }
-
-  try {
-    const ticketConfig = await TicketConfig.findOne({ guildId: interaction.guildId });
-
-    if (!ticketConfig || !ticketConfig.enabled) {
-      return interaction.reply({
-        embeds: [errorEmbed('Ticket Support Not Enabled', 'Use `/enablecommands` → Enable Features → Ticket Support')],
-        flags: 64,
-      });
-    }
-
-    const menu = new ActionRowBuilder()
-      .addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('ticketsupport_setup_menu')
-          .setPlaceholder('Choose a setup option...')
-          .addOptions(
-            { label: 'Select Panel Channel', value: 'select_channel' },
-            { label: 'Add Ticket Type', value: 'add_type' },
-            { label: 'View Ticket Types', value: 'view_types' },
-            { label: 'Send Panel', value: 'send_panel' },
-            { label: 'Done - Close Setup', value: 'setup_done' }
-          )
-      );
-
-    await interaction.reply({
-      content: '**Ticket Support Setup**\n\nSelect an option below to configure your ticket system:\n\n-# Tip: use `/config tickets` for all setup options in one place.',
-      components: [menu],
-      flags: 64,
-    });
-  } catch (error) {
-    console.error('Error in ticket setup command:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred.')],
-      flags: 64,
-    });
-  }
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/ticketsupportconfig` is now `/config tickets`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
 }

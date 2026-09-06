@@ -1,61 +1,34 @@
-import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, ChannelType } from 'discord.js';
-import RoleplayCalendar from '../models/RoleplayCalendar.js';
-import { errorEmbed } from '../utils/embedBuilder.js';
-import { isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('roleplaycalenderconfig')
-  .setDescription('Set up the roleplay calendar system (Admin/Staff)');
+  .setDescription('Moved — use /config calendar instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  try {
-    const isAdminOrMgr = await isAdminOrManager(interaction);
-    const isStaffUser = await checkStaffPermission(interaction);
-    
-    if (!isAdminOrMgr && !isStaffUser) {
-      return interaction.reply({
-        embeds: [errorEmbed('You do not have permission to use this command. Only administrators can configure the roleplay calendar.')],
-        flags: 64,
-      });
-    }
-
-    const access = await checkFeatureAccess(interaction.guildId, 'calendar');
-    if (!access.allowed) {
-      return interaction.reply({
-        embeds: [buildPremiumEmbed('RP Calendar')],
-        flags: 64,
-      });
-    }
-
-    const calendar = await RoleplayCalendar.findOne({ guildId: interaction.guildId });
-
-    if (!calendar || !calendar.enabled) {
-      return interaction.reply({
-        embeds: [errorEmbed('Roleplay Calendar Not Enabled', 'Use `/enablecommands` → Enable Features → Roleplay Calendar')],
-        flags: 64,
-      });
-    }
-
-    // Show channel selector
-    const menu = new ActionRowBuilder()
-      .addComponents(
-        new ChannelSelectMenuBuilder()
-          .setCustomId('roleplaycalendarsetup_channel')
-          .setPlaceholder('Select the channel for the roleplay calendar...')
-          .setChannelTypes(ChannelType.GuildText)
-      );
-
-    return interaction.reply({
-      content: 'Select a channel where the roleplay calendar will be posted:\n\n-# Tip: use `/config calendar` for all setup options in one place.',
-      components: [menu],
-      flags: 64,
-    });
-  } catch (error) {
-    console.error('Error in roleplay calendar setup:', error);
-    return interaction.reply({
-      embeds: [errorEmbed('An error occurred while setting up the roleplay calendar.')],
-      flags: 64,
-    });
-  }
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/roleplaycalenderconfig` is now `/config calendar`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
+    flags: 64,
+  });
 }

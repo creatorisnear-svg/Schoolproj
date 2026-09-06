@@ -1,12 +1,10 @@
 {
-  "version": "1.3.4",
-  "title": "A clearer setup screen and dashboard",
+  "version": "1.3.5",
+  "title": "A shorter command list",
   "changes": [
-    "/setup and the dashboard now list every feature, including Blacklist, Sticky Messages, Reaction Roles and Civilian Jobs - these existed but were missing from setup, so most servers never knew they were available",
-    "Both now separate features that are ready from features that are switched on but unfinished, and tell you exactly what each one is still missing",
-    "The dashboard's feature counter shows how many features are actually working instead of how many switches are flipped",
-    "/help now lists all 77 commands and every feature - it had been hand-written and was missing business accounts, loans, civilian jobs, sticky messages and reaction roles entirely",
-    "Premium badges now appear consistently across the site, dashboard and bot instead of only after you were refused",
-    "/setup no longer refuses to help until you add yourself as a staff member - administrators already had access"
+    "Regular members no longer see the 23 admin-only setup commands in their command picker - those are hidden from anyone without Manage Server",
+    "The old per-feature config commands (/verifysystemconfig, /economyconfig and 14 others) now point you to /config instead, so there is one place to set anything up rather than two that disagreed",
+    "Heads up: if you added staff with /staff add who do not have Manage Server, they will no longer see the setup commands in the picker. Give them Manage Server, or have them use the dashboard. Day-to-day staff commands like /strike and /clear are unaffected and stay visible",
+    "The startup log now reports how many servers actually received commands instead of always claiming success"
   ]
 }

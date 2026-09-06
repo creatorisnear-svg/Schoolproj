@@ -1,42 +1,34 @@
-import { SlashCommandBuilder, ChannelSelectMenuBuilder, ActionRowBuilder, ChannelType } from 'discord.js';
-import Config from '../models/Config.js';
-import Staff from '../models/Staff.js';
-import { successEmbed, errorEmbed } from '../utils/embedBuilder.js';
-import { checkStaffPermission } from '../utils/permissions.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
+/**
+ * Deprecated shim.
+ *
+ * This command was one of ~16 that duplicated a /config subcommand. config.js
+ * has said it "replaces all individual xxxconfig commands" since it was
+ * written, but nothing was ever deleted, so admins saw two of everything and
+ * the two halves enforced different rules - the legacy commands still demanded
+ * /setlogchannel and /enablecommands first, which /config had dropped.
+ *
+ * Kept for one release so the old name redirects instead of vanishing.
+ * Safe to delete after that, which frees a slot against the 100/guild cap.
+ */
 export const data = new SlashCommandBuilder()
   .setName('setlogchannel')
-  .setDescription('Set the channel where logs and moderation events are posted (Admin/Staff)');
+  .setDescription('Moved — use /config general instead (Admin)')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({
-      embeds: [errorEmbed('You do not have permission to use this command. This is a staff-only command.')],
-      flags: 64,
-    });
-  }
-
-  // Check if at least one staff member has been added
-  const staffCount = await Staff.countDocuments({ guildId: interaction.guildId });
-  
-  if (staffCount === 0) {
-    return interaction.reply({
-      embeds: [errorEmbed('You must add at least one staff member first using `/staff add` before setting up the log channel.')],
-      flags: 64,
-    });
-  }
-
-  const menu = new ActionRowBuilder()
-    .addComponents(
-      new ChannelSelectMenuBuilder()
-        .setCustomId('setlogchannel_select')
-        .setPlaceholder('Select the log channel...')
-        .setChannelTypes(ChannelType.GuildText)
-    );
-
   return interaction.reply({
-    content: 'Select a text channel to receive all moderation logs and reports:',
-    components: [menu],
+    embeds: [
+      new EmbedBuilder()
+        .setColor('#2d2d2d')
+        .setTitle('This command moved')
+        .setDescription(
+          '`/setlogchannel` is now `/config general`.\n\n' +
+          'Every feature is set up from that one command now. Run `/setup` to see what is already configured and what still needs finishing.'
+        )
+        .setFooter({ text: 'RPM' }),
+    ],
     flags: 64,
   });
 }
