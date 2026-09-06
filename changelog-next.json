@@ -1,12 +1,14 @@
 {
-  "version": "1.9.0",
-  "title": "Cleaner commands, a browsable /help, and /verify works again",
+  "version": "1.10.0",
+  "title": "Five features that were not actually working, and an easier setup",
   "changes": [
-    "Fixed: /verify was broken. Members who ran it got the form, filled it in, and were told the interaction failed. The panel button was never affected, so if your members verify through the panel nothing changed for you. /verify now opens the same form the panel button does",
-    "Every command has been cleaned up. No emoji anywhere, no stray dashes, and the wording is plainer throughout",
-    "/help is now a menu instead of one very long message. Pick a category and read just that, rather than scrolling past every feature and all 78 commands to find one thing",
-    "Screens you work in, like the databases, the setup pages and /help, now carry Open CAD and Website buttons underneath. Short confirmations and errors stay plain",
-    "The Fire Department database now looks like the civilian and LEO ones instead of a line of bold text",
-    "The /setup list stopped saying everything twice. It now only spells out what is still missing"
+    "Fixed: reaction roles never worked. Reacting to a panel did nothing, on every server, since the feature shipped. If you set one up and quietly gave up on it, it works now",
+    "Fixed: strike timeouts and bans never happened. The bot said the punishment was set and then did nothing at that strike level. Kick and No Action were fine. Worth checking your strike settings and re-picking the punishment",
+    "Fixed: Anti-Promoting said it needed no setup while being switched off. Its own page now shows whether it is on and lets you turn it on there",
+    "Fixed: the verify button was posted as soon as you picked the channel, before you had chosen the role to give people. Anyone who used it in that gap was told they were verified and got no role. The button now waits until both are set",
+    "Fixed: ticket support reported itself as finished when no panel had been posted, so members had no button anywhere. It now tells you the panel is still missing",
+    "Setup no longer sends you away. Picking General Settings used to tell you to go run another command and start over. It just works now",
+    "Back to Setup stays on every screen, so setting up three features no longer means typing /setup three times",
+    "The verification menu shows what you have already done, instead of looking identical whether you had finished a step or not"
   ]
 }
