@@ -96,8 +96,18 @@ export async function fixPlateIndexes(db, opts = {}) {
   // Refuse rather than fail halfway: if two characters in the same guild already
   // share a plate, the new unique index cannot build, and dropping the old one
   // first would leave the collection with no plate constraint at all.
+  // Normalise the one value the partial filter would accept but nobody means:
+  // an empty-string plate is a string, so $type:'string' indexes it, and two of
+  // them would collide. Legacy and imported rows can carry these.
+  if (!dryRun) {
+    await col.updateMany({ licensePlate: '' }, { $unset: { licensePlate: 1 } });
+  }
+
+  // This must match the index's partialFilterExpression exactly. It used to say
+  // $nin: [null, ''], which let empty-string duplicates slip past the check and
+  // then fail the index build after the old indexes had already been dropped.
   const dupes = await col.aggregate([
-    { $match: { licensePlate: { $nin: [null, ''] } } },
+    { $match: { licensePlate: { $type: 'string' } } },
     { $group: { _id: { guildId: '$guildId', plate: '$licensePlate' }, n: { $sum: 1 } } },
     { $match: { n: { $gt: 1 } } },
     { $limit: 20 },
@@ -112,25 +122,48 @@ export async function fixPlateIndexes(db, opts = {}) {
   const dropped = [];
   const created = [];
 
+  // Create before dropping wherever possible. If a create fails - a duplicate
+  // the pre-check missed, or a conflict with the index mongoose autoIndex is
+  // building at the same moment - dropping first would leave the collection with
+  // no plate constraint at all, and the failure only reaches a log line.
+  for (const { name, keys, options } of missing) {
+    if (dryRun) { log(`[PlateIndex] would create ${name}`); continue; }
+    await col.createIndex(keys, { ...options, name });
+    created.push(name);
+    log(`[PlateIndex] created ${name}${options.unique ? ' (unique per guild, plate must be a string)' : ''}`);
+  }
+
+  // A rebuild has no choice but to drop first, because the name is taken. Put
+  // the old one back if the replacement will not build.
+  for (const wanted of outdated) {
+    if (dryRun) { log(`[PlateIndex] would rebuild ${wanted.name} (wrong shape)`); continue; }
+
+    const previous = byName.get(wanted.name);
+    await col.dropIndex(wanted.name);
+    dropped.push(wanted.name);
+    log(`[PlateIndex] dropped ${wanted.name} - it was sparse, which rejected plateless characters`);
+
+    try {
+      await col.createIndex(wanted.keys, { ...wanted.options, name: wanted.name });
+      created.push(wanted.name);
+      log(`[PlateIndex] created ${wanted.name} (unique per guild, plate must be a string)`);
+    } catch (err) {
+      log(`[PlateIndex] FAILED to create ${wanted.name}: ${err.message} - restoring the previous index`);
+      await col.createIndex(previous.key, {
+        name: previous.name,
+        unique: previous.unique,
+        sparse: previous.sparse,
+      }).catch((e) => log(`[PlateIndex] could not restore ${previous.name}: ${e.message}`));
+      dropped.splice(dropped.indexOf(wanted.name), 1);
+      throw err;
+    }
+  }
+
   for (const name of stale) {
     if (dryRun) { log(`[PlateIndex] would drop global index ${name}`); continue; }
     await col.dropIndex(name);
     dropped.push(name);
     log(`[PlateIndex] dropped global index ${name}`);
-  }
-
-  for (const wanted of outdated) {
-    if (dryRun) { log(`[PlateIndex] would rebuild ${wanted.name} (wrong shape)`); continue; }
-    await col.dropIndex(wanted.name);
-    dropped.push(wanted.name);
-    log(`[PlateIndex] dropped ${wanted.name} - it was sparse, which rejected plateless characters`);
-  }
-
-  for (const { name, keys, options } of [...outdated, ...missing]) {
-    if (dryRun) { log(`[PlateIndex] would create ${name}`); continue; }
-    await col.createIndex(keys, { ...options, name });
-    created.push(name);
-    log(`[PlateIndex] created ${name}${options.unique ? ' (unique per guild, plate must be a string)' : ''}`);
   }
 
   return { changed: dropped.length + created.length > 0, dropped, created };

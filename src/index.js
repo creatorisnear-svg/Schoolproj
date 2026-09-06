@@ -313,10 +313,16 @@ app.get('/auth/site/callback', async (req, res) => {
   const { code, state } = req.query;
 
   // Validate state is a safe redirect target before any redirect — prevents open redirect.
+  // Built at request time, not hard-coded: if the CAD is ever moved to its own
+  // subdomain, a state pointing there would otherwise be rejected as untrusted
+  // and the token sent to the dashboard instead - an unbreakable sign-in loop.
+  // Still an exact-origin comparison; a suffix match would reopen the redirect.
   const ALLOWED_REDIRECT_ORIGINS = [
     'https://roleplaymanager.xyz',
     'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app',
-  ];
+    process.env.CAD_DOMAIN ? `https://${process.env.CAD_DOMAIN}` : null,
+    process.env.SITE_ORIGIN || null,
+  ].filter(Boolean);
   const DEFAULT_REDIRECT = 'https://roleplaymanager.xyz/dashboard/';
   let safeRedirect = DEFAULT_REDIRECT;
   if (state) {

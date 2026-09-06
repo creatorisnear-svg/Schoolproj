@@ -3,6 +3,8 @@ import CADCharacter from '../../../models/CADCharacter.js';
 import EmergencyCall from '../../../models/EmergencyCall.js';
 import TrafficTicket from '../../../models/TrafficTicket.js';
 import OfficerStatus from '../../../models/OfficerStatus.js';
+import EconomyBalance from '../../../models/EconomyBalance.js';
+import EconomyConfig from '../../../models/EconomyConfig.js';
 import BOLO from '../../../models/BOLO.js';
 import { getGuildLimits } from '../../../utils/premiumCheck.js';
 import { announceWeb911, generateCallId, updateCallMessage } from '../../cadBridge.js';
@@ -146,8 +148,12 @@ export function createCivilianRouter(client) {
     const hit = await overLimit(req.guildId, 'vehicles');
     if (hit) return limitError(res, 'vehicles', hit);
 
+    // No exclusion here, unlike the edit path. A brand new vehicle has to
+    // collide with every plate in the server INCLUDING its owner's other ones -
+    // excluding the character let someone register two vehicles on one plate,
+    // and a plate search would then return whichever happened to match first.
     const wanted = plate(req.body.licensePlate);
-    const { plate: licensePlate, taken } = await resolvePlate(req.guildId, wanted, character._id);
+    const { plate: licensePlate, taken } = await resolvePlate(req.guildId, wanted);
     if (taken) return duplicatePlate(res);
 
     character.vehicles.push({
@@ -213,6 +219,15 @@ export function createCivilianRouter(client) {
 
   // ── 911 ────────────────────────────────────────────────────────────────────
   router.post('/911', async (req, res) => {
+    // A server that switched 911 off in Discord must not still take calls
+    // through the website.
+    if (!req.cadContext.rpConfig?.use911) {
+      return res.status(403).json({
+        error: '911_disabled',
+        message: 'This server has not turned on 911 reporting.',
+      });
+    }
+
     const issue = str(req.body.issue, 1000);
     const location = str(req.body.location, 300);
     if (!issue || !location) {
@@ -301,18 +316,72 @@ export function createCivilianRouter(client) {
     res.json({ fines, outstanding });
   });
 
+  /**
+   * Paying a fine moves money, exactly as /civiliandatabase does.
+   *
+   * This route used to just flip `paid` to true, which made every fine free on
+   * the website - somebody who could not afford one in Discord could clear it
+   * here in a click, and the whole ticketing system stopped meaning anything.
+   */
   router.post('/fines/:ticketId/pay', async (req, res) => {
-    const mine = await CADCharacter.find(own(req), '_id').lean();
+    const mine = await CADCharacter.find(own(req), '_id characterName').lean();
     const ids = mine.map((c) => String(c._id));
+    const names = mine.map((c) => c.characterName);
 
     const ticket = await TrafficTicket.findOne({ guildId: req.guildId, ticketId: req.params.ticketId });
-    if (!ticket || !ids.includes(String(ticket.characterId))) return notFound(res, 'Fine');
+    // Match on name as well as id, as Discord does: a rebuilt character would
+    // otherwise leave its owner unable to pay their own fine.
+    const owned = ticket && (ids.includes(String(ticket.characterId)) || names.includes(ticket.characterName));
+    if (!owned) return notFound(res, 'Fine');
     if (ticket.paid) return badRequest(res, 'That fine is already paid.');
 
-    ticket.paid = true;
-    ticket.paidAt = new Date();
-    await ticket.save();
-    res.json({ ticket });
+    const [balance, econConfig] = await Promise.all([
+      EconomyBalance.findOne({ guildId: req.guildId, userId: req.cadUser.userId }),
+      EconomyConfig.findOne({ guildId: req.guildId }).lean(),
+    ]);
+    const symbol = econConfig?.currencySymbol || '$';
+    const amount = ticket.fine || 0;
+
+    if (!balance) {
+      return res.status(400).json({
+        error: 'no_economy_account',
+        message: 'You do not have an economy account on this server.',
+      });
+    }
+    if (balance.bank < amount) {
+      return res.status(400).json({
+        error: 'insufficient_funds',
+        message: 'You need ' + symbol + amount.toLocaleString()
+          + ' in the bank and have ' + symbol + balance.bank.toLocaleString() + '.',
+        required: amount,
+        bank: balance.bank,
+        symbol,
+      });
+    }
+
+    // Claim the ticket in one guarded write before touching the money. Checking
+    // `paid` and then setting it are two steps, and a double-clicked button can
+    // pass both - which would debit the account twice for one fine.
+    const claimed = await TrafficTicket.findOneAndUpdate(
+      { guildId: req.guildId, ticketId: req.params.ticketId, paid: false },
+      { $set: { paid: true, paidAt: new Date() } },
+      { new: true }
+    );
+    if (!claimed) return badRequest(res, 'That fine is already paid.');
+
+    try {
+      balance.bank -= amount;
+      await balance.save();
+    } catch (err) {
+      // Give the fine back rather than leaving it cleared for free.
+      await TrafficTicket.updateOne(
+        { _id: claimed._id },
+        { $set: { paid: false, paidAt: null } }
+      ).catch(() => {});
+      throw err;
+    }
+
+    res.json({ ticket: claimed, bank: balance.bank, symbol, paid: amount });
   });
 
   // ── Public boards ──────────────────────────────────────────────────────────
