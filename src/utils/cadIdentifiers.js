@@ -38,6 +38,18 @@ export function randomLicenseNumber() {
   return 'DL-' + pick(DL_DIGITS, 7);
 }
 
+/**
+ * A social security number, e.g. `947-88-9317`.
+ *
+ * Deliberately in the familiar shape but not a valid real-world SSN: the area
+ * number starts at 900, a range the US never issues, so a number generated here
+ * can never collide with a real person's.
+ */
+export function randomSSN() {
+  const area = 900 + Math.floor(Math.random() * 100);
+  return `${area}-${pick(DL_DIGITS, 2)}-${pick(DL_DIGITS, 4)}`;
+}
+
 /** A firearm serial, e.g. `SN-8H2K4M9`. */
 export function randomSerial() {
   return 'SN-' + pick(PLATE_LETTERS + DL_DIGITS, 7);

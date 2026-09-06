@@ -9,6 +9,7 @@ import DispatchConfig from '../../models/DispatchConfig.js';
 import { isStaff as isStaffMember } from '../../utils/permissions.js';
 import { createCivilianRouter } from './cad/civilian.js';
 import { createLeoRouter } from './cad/leo.js';
+import { createResponderRouter, requireResponder } from './cad/responder.js';
 import { eventsHandler } from './cad/events.js';
 
 /**
@@ -180,6 +181,13 @@ export function createCadApiRouter(client) {
       },
       premium: req.cadContext.premium,
       hasDispatch: req.cadContext.hasDispatch,
+      // Which optional systems this server actually turned on, so the CAD can
+      // hide what is not set up rather than offering a button that always fails.
+      social: {
+        twitter: !!(req.cadContext.rpConfig?.useTwitter && req.cadContext.rpConfig?.twitterChannel),
+        anon: !!(req.cadContext.rpConfig?.useAnon && req.cadContext.rpConfig?.anonChannel),
+        emergency: !!req.cadContext.rpConfig?.use911,
+      },
       limits,
     });
   });
@@ -193,8 +201,12 @@ export function createCadApiRouter(client) {
     res.json({ ticket: issueStreamTicket(req.cadUser, req.guildId) });
   });
 
-  // LEO is mounted first: the civilian router is mounted on the bare guild prefix,
-  // so it would otherwise see /leo/* paths and have to fall through for each one.
+  // Mounted before the civilian router, which sits on the bare guild prefix and
+  // would otherwise see these paths and have to fall through for each one.
+  //
+  // The 911 queue is shared: the fire department works the same calls and writes
+  // the same fields as law enforcement, so one implementation serves both.
+  router.use('/:guildId/calls', requireResponder, createResponderRouter(client));
   router.use('/:guildId/leo', requireLeo, createLeoRouter(client));
   router.use('/:guildId', createCivilianRouter(client));
 

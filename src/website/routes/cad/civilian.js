@@ -7,8 +7,8 @@ import EconomyBalance from '../../../models/EconomyBalance.js';
 import EconomyConfig from '../../../models/EconomyConfig.js';
 import BOLO from '../../../models/BOLO.js';
 import { getGuildLimits } from '../../../utils/premiumCheck.js';
-import { announceWeb911, generateCallId, updateCallMessage } from '../../cadBridge.js';
-import { resolvePlate, randomLicenseNumber, randomSerial } from '../../../utils/cadIdentifiers.js';
+import { announceWeb911, generateCallId, updateCallMessage, postTweet, postAnonymous } from '../../cadBridge.js';
+import { resolvePlate, randomLicenseNumber, randomSerial, randomSSN } from '../../../utils/cadIdentifiers.js';
 import { str, num, plate, limitError, notFound, badRequest, duplicatePlate } from './shared.js';
 
 /**
@@ -81,6 +81,13 @@ export function createCivilianRouter(client) {
         phoneNumber: str(req.body.phoneNumber, 40),
         licensePlate,
         driversLicense: str(req.body.driversLicense, 40) || randomLicenseNumber(),
+        // Issued, never asked for. It exists so law enforcement has an
+        // identifier to run; the person it belongs to does not need to invent it.
+        socialSecurityNumber: randomSSN(),
+        veteranStatus: ['veteran', 'organ_donor', 'none'].includes(req.body.veteranStatus)
+          ? req.body.veteranStatus : 'none',
+        distinguishingFeatures: str(req.body.distinguishingFeatures, 500),
+        scarsAndTattoos: str(req.body.scarsAndTattoos, 500),
         medicalInfo: str(req.body.medicalInfo, 500),
         emergencyContact: str(req.body.emergencyContact, 200),
       });
@@ -97,7 +104,8 @@ export function createCivilianRouter(client) {
   const CIVILIAN_EDITABLE = [
     'characterName', 'age', 'gender', 'hairColor', 'eyeColor', 'height', 'build',
     'distinguishingFeatures', 'scarsAndTattoos', 'address', 'occupation',
-    'phoneNumber', 'licensePlate', 'driversLicense', 'medicalInfo', 'emergencyContact',
+    'phoneNumber', 'licensePlate', 'driversLicense', 'medicalInfo',
+    'emergencyContact', 'veteranStatus',
   ];
 
   router.patch('/characters/:id', async (req, res) => {
@@ -123,6 +131,7 @@ export function createCivilianRouter(client) {
       character[field] = str(req.body[field], 500);
     }
     if (!character.driversLicense) character.driversLicense = randomLicenseNumber();
+    if (!character.socialSecurityNumber) character.socialSecurityNumber = randomSSN();
     if (!character.characterName) return badRequest(res, 'A character name is required.');
 
     try {
@@ -144,6 +153,12 @@ export function createCivilianRouter(client) {
   router.post('/characters/:id/vehicles', async (req, res) => {
     const character = await CADCharacter.findOne({ _id: req.params.id, ...own(req) });
     if (!character) return notFound(res, 'Character');
+
+    // A vehicle with no make or model renders as a bare "Vehicle" on an
+    // officer's screen, which helps nobody on a traffic stop.
+    if (!str(req.body.make, 60) && !str(req.body.model, 60)) {
+      return badRequest(res, 'Give the vehicle at least a make or a model.');
+    }
 
     const hit = await overLimit(req.guildId, 'vehicles');
     if (hit) return limitError(res, 'vehicles', hit);
@@ -382,6 +397,52 @@ export function createCivilianRouter(client) {
     }
 
     res.json({ ticket: claimed, bank: balance.bank, symbol, paid: amount });
+  });
+
+  // ── In-character social ────────────────────────────────────────────────────
+  router.post('/social/tweet', async (req, res) => {
+    const rp = req.cadContext.rpConfig;
+    if (!rp?.useTwitter || !rp?.twitterChannel) {
+      return res.status(403).json({
+        error: 'twitter_disabled',
+        message: 'This server has not set up the Twitter feed.',
+      });
+    }
+
+    const message = str(req.body.message, 1000);
+    if (!message) return badRequest(res, 'Write something to post.');
+
+    const result = await postTweet(req.guild, rp, {
+      message,
+      author: req.cadMember.displayName || req.cadUser.username,
+      avatarUrl: req.cadUser.avatar
+        ? `https://cdn.discordapp.com/avatars/${req.cadUser.userId}/${req.cadUser.avatar}.png`
+        : null,
+    });
+
+    if (!result.posted) {
+      return res.status(502).json({ error: 'post_failed', message: 'Could not reach the Twitter channel.' });
+    }
+    res.status(201).json({ posted: true });
+  });
+
+  router.post('/social/anon', async (req, res) => {
+    const rp = req.cadContext.rpConfig;
+    if (!rp?.useAnon || !rp?.anonChannel) {
+      return res.status(403).json({
+        error: 'anon_disabled',
+        message: 'This server has not set up anonymous posting.',
+      });
+    }
+
+    const message = str(req.body.message, 1000);
+    if (!message) return badRequest(res, 'Write something to post.');
+
+    const result = await postAnonymous(req.guild, rp, { message });
+    if (!result.posted) {
+      return res.status(502).json({ error: 'post_failed', message: 'Could not reach the anonymous channel.' });
+    }
+    res.status(201).json({ posted: true });
   });
 
   // ── Public boards ──────────────────────────────────────────────────────────

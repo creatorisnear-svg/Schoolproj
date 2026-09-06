@@ -128,6 +128,60 @@ export async function updateCallMessage(guild, call, note) {
   }
 }
 
+/**
+ * Posts an in-character tweet, as /civiliandatabase does.
+ *
+ * The author is shown - that is the point of a public feed, and it matches the
+ * embed the Discord version builds.
+ */
+export async function postTweet(guild, rpConfig, { message, author, avatarUrl }) {
+  const channel = await resolveChannel(guild, rpConfig?.twitterChannel);
+  if (!channel) return { posted: false, reason: 'no_channel' };
+
+  const embed = new EmbedBuilder()
+    .setColor('#1DA1F2')
+    .setTitle('Twitter Post')
+    .setDescription(message)
+    .setAuthor(avatarUrl ? { name: author, iconURL: avatarUrl } : { name: author })
+    .setFooter({ text: 'RPM' })
+    .setTimestamp();
+
+  try {
+    await channel.send({ embeds: [embed] });
+    return { posted: true };
+  } catch (err) {
+    console.error('[CAD] tweet failed:', err.message);
+    return { posted: false, reason: 'send_failed' };
+  }
+}
+
+/**
+ * Posts an anonymous message.
+ *
+ * No author, no avatar, nothing identifying - same as the Discord version. Note
+ * this hides the poster from other players, not from Discord: the bot sent it,
+ * so staff cannot trace it back either.
+ */
+export async function postAnonymous(guild, rpConfig, { message }) {
+  const channel = await resolveChannel(guild, rpConfig?.anonChannel);
+  if (!channel) return { posted: false, reason: 'no_channel' };
+
+  const embed = new EmbedBuilder()
+    .setColor('#808080')
+    .setTitle('Anonymous Message')
+    .setDescription(message)
+    .setFooter({ text: 'RPM' })
+    .setTimestamp();
+
+  try {
+    await channel.send({ embeds: [embed] });
+    return { posted: true };
+  } catch (err) {
+    console.error('[CAD] anonymous post failed:', err.message);
+    return { posted: false, reason: 'send_failed' };
+  }
+}
+
 /** Refreshes the Discord status board after a web status change. */
 export async function refreshStatusBoard(guild) {
   try {

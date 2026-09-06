@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import CADCharacter from '../../../models/CADCharacter.js';
-import EmergencyCall from '../../../models/EmergencyCall.js';
 import TrafficTicket from '../../../models/TrafficTicket.js';
 import OfficerStatus from '../../../models/OfficerStatus.js';
 import BOLO from '../../../models/BOLO.js';
 import { getGuildLimits } from '../../../utils/premiumCheck.js';
 import { TEN_CODES } from '../../../handlers/dispatchHandler.js';
-import { refreshStatusBoard, setOfficerStatus, updateCallMessage } from '../../cadBridge.js';
+import { refreshStatusBoard, setOfficerStatus } from '../../cadBridge.js';
 import { str, num, plate, escapeRegex, badRequest, notFound, limitError } from './shared.js';
 
 /**
@@ -142,11 +141,23 @@ export function createLeoRouter(client) {
       characterName: character.characterName,
       reason,
       description: str(req.body.description, 1000) || '',
-      // Attach the character's own vehicles so patrol has something to look for.
-      vehicles: (character.vehicles || []).map((v) => ({
-        make: v.make, model: v.model, color: v.color,
-        licensePlate: v.licensePlate, year: v.year, notes: null,
-      })),
+      // The character's registered vehicles, plus anything the officer describes
+      // by hand. A getaway car is very often not registered to the suspect, and
+      // a BOLO that can only name registered vehicles is no use in that case.
+      vehicles: [
+        ...(character.vehicles || []).map((v) => ({
+          make: v.make, model: v.model, color: v.color,
+          licensePlate: v.licensePlate, year: v.year, notes: 'Registered to suspect',
+        })),
+        ...(Array.isArray(req.body.vehicles) ? req.body.vehicles : []).slice(0, 5).map((v) => ({
+          make: str(v.make, 60),
+          model: str(v.model, 60),
+          color: str(v.color, 40),
+          licensePlate: plate(v.licensePlate),
+          year: str(v.year, 10),
+          notes: str(v.notes, 200) || 'Seen, not registered',
+        })).filter((v) => v.make || v.model || v.licensePlate || v.color),
+      ],
       issuedBy: req.cadUser.userId,
       active: true,
       // Matches the Discord handler: BOLOs lapse after a day and are swept away.
@@ -187,14 +198,6 @@ export function createLeoRouter(client) {
     });
 
     res.status(201).json({ ticket });
-  });
-
-  router.get('/tickets', async (req, res) => {
-    const tickets = await TrafficTicket.find({ guildId: req.guildId })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
-    res.json({ tickets });
   });
 
   // ── Status and 10-codes ────────────────────────────────────────────────────
@@ -248,82 +251,86 @@ export function createLeoRouter(client) {
     });
   });
 
-  // ── 911 queue ──────────────────────────────────────────────────────────────
-  router.get('/calls', async (req, res) => {
-    const calls = await EmergencyCall.find({ guildId: req.guildId, status: 'active' })
-      .sort({ timestamp: -1 })
+  // ── Firearms ───────────────────────────────────────────────────────────────
+  /**
+   * Revoke a registered firearm, as /leodatabase does.
+   *
+   * The firearm is removed from the record rather than flagged, matching the
+   * Discord behaviour. The reason is returned so the caller can log it; there is
+   * nowhere on CADCharacter to persist it, which is a gap on the Discord side
+   * too - worth a field of its own rather than being invented here.
+   */
+  router.post('/records/:id/revoke-firearm', async (req, res) => {
+    const character = await CADCharacter.findOne({ _id: req.params.id, guildId: req.guildId });
+    if (!character) return notFound(res, 'Record');
+
+    const gunId = str(req.body.gunId, 40);
+    const name = str(req.body.name, 100);
+    if (!gunId && !name) return badRequest(res, 'Say which firearm to revoke.');
+
+    const index = gunId
+      ? character.guns.findIndex((g) => String(g._id) === gunId)
+      : character.guns.findIndex((g) => (g.name || '').toLowerCase() === name.toLowerCase());
+
+    if (index === -1) return notFound(res, 'Firearm');
+
+    const [removed] = character.guns.splice(index, 1);
+    await character.save();
+
+    res.json({
+      character,
+      revoked: { name: removed.name, serialNumber: removed.serialNumber },
+      reason: str(req.body.reason, 300),
+    });
+  });
+
+  // ── Ticket book ────────────────────────────────────────────────────────────
+  /**
+   * Every ticket the server has issued.
+   *
+   * Officers could previously only reach a ticket through a successful record
+   * search, and nobody could see what a server had issued at all.
+   */
+  router.get('/tickets', async (req, res) => {
+    const query = { guildId: req.guildId };
+    if (req.query.paid === 'false') query.paid = false;
+    if (req.query.paid === 'true') query.paid = true;
+
+    const characterId = str(req.query.characterId, 40);
+    if (characterId) query.characterId = characterId;
+
+    const tickets = await TrafficTicket.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100)
       .lean();
-    res.json({ calls });
+
+    const outstanding = tickets.filter((t) => !t.paid).reduce((sum, t) => sum + (t.fine || 0), 0);
+    res.json({ tickets, outstanding });
   });
 
-  /** Loads an active call, or answers 404 - used by every action below. */
-  async function activeCall(req, res) {
-    const call = await EmergencyCall.findOne({
+  /**
+   * Find a person to act on, without needing an exact match first.
+   *
+   * Discord lets an officer type a name straight into the ticket modal. This is
+   * the equivalent: a short list to pick from, so issuing a ticket does not
+   * depend on spelling a character's name perfectly.
+   */
+  router.get('/lookup', async (req, res) => {
+    const query = str(req.query.q, 100);
+    if (!query || query.length < 2) return res.json({ matches: [] });
+
+    const loose = new RegExp(escapeRegex(query), 'i');
+    const asPlate = plate(query);
+
+    const matches = await CADCharacter.find({
       guildId: req.guildId,
-      callId: req.params.callId,
-      status: 'active',
-    });
-    if (!call) { notFound(res, 'Call'); return null; }
-    return call;
-  }
+      $or: [
+        { characterName: loose },
+        ...(asPlate ? [{ licensePlate: asPlate }, { 'vehicles.licensePlate': asPlate }] : []),
+      ],
+    }, '_id characterName licensePlate status').limit(15).lean();
 
-  router.post('/calls/:callId/respond', async (req, res) => {
-    const call = await activeCall(req, res);
-    if (!call) return;
-
-    if (call.respondingLeoId && call.respondingLeoId !== req.cadUser.userId) {
-      return res.status(409).json({
-        error: 'already_assigned',
-        message: `${call.respondingLeoUsername || 'Another officer'} is already primary on this call.`,
-      });
-    }
-
-    call.respondingLeoId = req.cadUser.userId;
-    call.respondingLeoUsername = req.cadMember.displayName;
-    await call.save();
-
-    await setOfficerStatus(req.guildId, req.cadUser.userId, req.cadMember.displayName, {
-      tenCode: '10-76',
-      subject: `Responding to ${call.callId}`,
-      location: call.location || null,
-    });
-
-    await updateCallMessage(req.guild, call, `**PRIMARY RESPONDER:** ${req.cadMember.displayName}`);
-    refreshStatusBoard(req.guild).catch(() => {});
-    res.json({ call });
-  });
-
-  router.post('/calls/:callId/attach', async (req, res) => {
-    const call = await activeCall(req, res);
-    if (!call) return;
-
-    if (!call.attachedLeoIds.includes(req.cadUser.userId)) {
-      call.attachedLeoIds.push(req.cadUser.userId);
-      await call.save();
-    }
-
-    await setOfficerStatus(req.guildId, req.cadUser.userId, req.cadMember.displayName, {
-      tenCode: '10-97',
-      subject: `Attached to ${call.callId}`,
-      location: call.location || null,
-    });
-
-    refreshStatusBoard(req.guild).catch(() => {});
-    res.json({ call });
-  });
-
-  router.post('/calls/:callId/close', async (req, res) => {
-    const call = await activeCall(req, res);
-    if (!call) return;
-
-    call.status = 'closed';
-    call.closedAt = new Date();
-    call.closedBy = req.cadUser.userId;
-    await call.save();
-
-    await updateCallMessage(req.guild, call, `Call closed by ${req.cadMember.displayName}.`);
-    refreshStatusBoard(req.guild).catch(() => {});
-    res.json({ call });
+    res.json({ matches });
   });
 
   return router;

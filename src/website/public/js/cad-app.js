@@ -294,6 +294,7 @@
     { id: 'characters', label: 'My Characters' },
     { id: 'call911', label: 'Call 911' },
     { id: 'fines', label: 'My Fines' },
+    { id: 'social', label: 'Social' },
     { id: 'board', label: 'On Duty' },
     { id: 'alerts', label: 'Public Alerts' },
   ];
@@ -302,10 +303,33 @@
     { id: 'calls', label: 'Active Calls', badge: 'calls' },
     { id: 'search', label: 'Records' },
     { id: 'bolos', label: 'BOLOs' },
+    { id: 'tickets', label: 'Ticket Book' },
     { id: 'units', label: 'Units' },
   ];
 
-  function nav() { return state.mode === 'leo' ? LEO_NAV : CIVILIAN_NAV; }
+  // The fire department works the same 911 queue as law enforcement and keeps
+  // its own characters, but has no records access, no ticket book and no
+  // 10-code board - matching what /firedepartmentdatabase offers.
+  var FIRE_NAV = [
+    { id: 'calls', label: 'Active Calls', badge: 'calls' },
+    { id: 'characters', label: 'My Characters' },
+    { id: 'board', label: 'On Duty' },
+  ];
+
+  function nav() {
+    if (state.mode === 'leo') return LEO_NAV;
+    if (state.mode === 'fire') return FIRE_NAV;
+    return CIVILIAN_NAV;
+  }
+
+  /** Which modes this member may switch into on this server. */
+  function availableModes() {
+    var member = (state.context && state.context.member) || {};
+    var modes = [{ id: 'civilian', label: 'Civilian' }];
+    if (member.isLeo) modes.push({ id: 'leo', label: 'Law Enforcement' });
+    if (member.isFd) modes.push({ id: 'fire', label: 'Fire / EMS' });
+    return modes;
+  }
 
   function renderNav() {
     var items = nav().map(function (item) {
@@ -347,13 +371,18 @@
     $('premium-badge').hidden = !ctx.premium;
     $('dispatch-badge').hidden = !ctx.hasDispatch;
 
-    var canLeo = ctx.member && ctx.member.isLeo;
-    Array.prototype.forEach.call($('mode-toggle').querySelectorAll('button'), function (btn) {
-      btn.setAttribute('aria-pressed', btn.dataset.mode === state.mode ? 'true' : 'false');
-      if (btn.dataset.mode === 'leo') {
-        btn.disabled = !canLeo;
-        btn.title = canLeo ? '' : 'You do not have a law enforcement role on this server.';
-      }
+    // Built from the member's roles rather than hard-coded, so somebody with no
+    // second role sees one plain label instead of a control they cannot use.
+    var modes = availableModes();
+    var toggle = $('mode-toggle');
+    toggle.hidden = modes.length < 2;
+    toggle.innerHTML = modes.map(function (m) {
+      return '<button type="button" data-mode="' + esc(m.id) + '" aria-pressed="'
+        + (m.id === state.mode ? 'true' : 'false') + '">' + esc(m.label) + '</button>';
+    }).join('');
+
+    Array.prototype.forEach.call(toggle.querySelectorAll('button'), function (btn) {
+      btn.addEventListener('click', function () { setMode(btn.dataset.mode); });
     });
   }
 
@@ -381,7 +410,8 @@
   }
 
   function setMode(mode) {
-    if (mode === 'leo' && !(state.context && state.context.member && state.context.member.isLeo)) return;
+    var allowed = availableModes().some(function (m) { return m.id === mode; });
+    if (!allowed) return;
     state.mode = mode;
     store(LAST_MODE_KEY, mode);
     renderTopbar();
@@ -399,7 +429,8 @@
       state.data = {};
 
       var wanted = recall(LAST_MODE_KEY);
-      state.mode = (wanted === 'leo' && ctx.member.isLeo) ? 'leo' : 'civilian';
+      var canUse = availableModes().some(function (m) { return m.id === wanted; });
+      state.mode = canUse ? wanted : 'civilian';
 
       renderTopbar();
       connectStream(guildId);
@@ -468,8 +499,8 @@
   }
 
   function refreshCallCount() {
-    if (state.mode !== 'leo') return;
-    api('/' + state.guildId + '/leo/calls').then(function (res) {
+    if (state.mode === 'civilian') return;
+    api('/' + state.guildId + '/calls').then(function (res) {
       state.data.calls = res.calls || [];
       renderNav();
     }).catch(function () { /* the badge is not worth an error */ });
@@ -654,8 +685,22 @@
     { name: 'occupation', label: 'Occupation', max: 100 },
     { name: 'address', label: 'Address', max: 200 },
     { name: 'phoneNumber', label: 'Phone number', max: 40 },
-    { name: 'licensePlate', label: 'License plate', max: 16 },
-    { name: 'driversLicense', label: "Driver's licence number", max: 40 },
+    { name: 'distinguishingFeatures', label: 'Distinguishing features', type: 'textarea', max: 500 },
+    { name: 'scarsAndTattoos', label: 'Scars and tattoos', type: 'textarea', max: 500 },
+    { name: 'medicalInfo', label: 'Medical information', type: 'textarea', max: 500 },
+    { name: 'emergencyContact', label: 'Emergency contact', max: 200 },
+    {
+      name: 'veteranStatus', label: 'Status', type: 'select',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'veteran', label: 'Veteran' },
+        { value: 'organ_donor', label: 'Organ donor' },
+      ],
+    },
+    // Left last and left blank on purpose: leaving it empty issues one. Nobody
+    // should have to invent a plate, and a blank plate is what the database
+    // index used to collide on.
+    { name: 'licensePlate', label: 'License plate (leave blank to be issued one)', max: 16 },
   ];
 
   function withValues(fields, source) {
@@ -848,14 +893,21 @@
       var fines = res.fines || [];
       var rows = fines.length
         ? fines.map(function (f) {
-            return '<div class="row">'
-              + '<span>' + esc(f.violation) + '</span>'
-              + '<span class="muted">' + esc(f.characterName) + '</span>'
+            return '<div class="card" style="padding:12px">'
+              + '<div class="card-head" style="margin-bottom:6px">'
+              + '<h3 style="font-size:14px">' + esc(f.violation) + '</h3>'
               + '<span class="spacer"></span>'
               + '<span>' + esc(money(f.fine)) + '</span>'
               + (f.paid
                 ? '<span class="status-pill available">Paid</span>'
                 : '<button class="btn btn-sm btn-primary" data-pay="' + esc(f.ticketId) + '">Pay</button>')
+              + '</div>'
+              + '<div class="server-meta">' + esc(f.characterName) + ' · '
+              + esc(f.ticketId) + ' · ' + esc(timeAgo(f.createdAt))
+              + (f.paid && f.paidAt ? ' · paid ' + esc(timeAgo(f.paidAt)) : '') + '</div>'
+              + (f.description
+                ? '<p style="font-size:13px;color:var(--text-muted);margin-top:6px">' + esc(f.description) + '</p>'
+                : '')
               + '</div>';
           }).join('')
         : '<div class="empty">No fines on record. Keep it that way.</div>';
@@ -864,12 +916,30 @@
         + panelHead('My Fines', res.outstanding
             ? money(res.outstanding) + ' outstanding'
             : 'Nothing outstanding')
-        + '<div class="card">' + rows + '</div></div>';
+        // Paying comes out of the bank, as it does in Discord, so say so before
+        // somebody clicks Pay expecting it to be free.
+        + (res.outstanding
+          ? '<div class="notice">Fines are paid from your bank balance.</div>'
+          : '')
+        + rows + '</div>';
 
       bind('[data-pay]', function (el) {
+        el.disabled = true;
         api('/' + state.guildId + '/fines/' + el.dataset.pay + '/pay', { method: 'POST' })
-          .then(function () { toast('Fine paid.', 'ok'); go('fines'); })
-          .catch(fail);
+          .then(function (r) {
+            toast('Paid ' + money(r.paid) + '. Bank: ' + (r.symbol || '$') + Number(r.bank).toLocaleString(), 'ok');
+            go('fines');
+          })
+          .catch(function (err) {
+            el.disabled = false;
+            // These two are the whole reason a payment gets refused, and a bare
+            // "something went wrong" would leave people stuck.
+            if (err && err.code === 'insufficient_funds') return toast(err.message, 'error');
+            if (err && err.code === 'no_economy_account') {
+              return toast('You have no economy account on this server yet.', 'error');
+            }
+            fail(err);
+          });
       });
     });
   };
@@ -932,7 +1002,7 @@
   // ── LEO views ────────────────────────────────────────────────────────────
 
   VIEWS.calls = function () {
-    return api('/' + state.guildId + '/leo/calls').then(function (res) {
+    return api('/' + state.guildId + '/calls').then(function (res) {
       state.data.calls = res.calls || [];
       renderNav();
 
@@ -946,7 +1016,9 @@
 
       bind('[data-respond]', function (el) { callAction(el.dataset.respond, 'respond'); });
       bind('[data-attach]', function (el) { callAction(el.dataset.attach, 'attach'); });
+      bind('[data-detach]', function (el) { callAction(el.dataset.detach, 'detach'); });
       bind('[data-close-call]', function (el) { callAction(el.dataset.closeCall, 'close'); });
+      bind('[data-ticket-caller]', function (el) { ticketFromLookup(el.dataset.ticketCaller); });
     });
   };
 
@@ -970,23 +1042,32 @@
       + '<dl class="kv">' + facts.map(function (p) {
           return '<div><dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd></div>';
         }).join('') + '</dl>'
+      // Names, not a count. "3 attached" tells an officer nothing about whether
+      // they are needed on this call.
       + (c.respondingLeoId
-        ? '<div class="notice" style="margin-top:12px">Primary: ' + esc(c.respondingLeoUsername || 'Unknown')
-          + ((c.attachedLeoIds || []).length ? ' · ' + c.attachedLeoIds.length + ' attached' : '') + '</div>'
+        ? '<div class="notice" style="margin-top:12px">Primary: <strong>'
+          + esc(c.respondingLeoUsername || 'Unknown unit') + '</strong>'
+          + ((c.attachedNames || []).length
+            ? '<br>Attached: ' + c.attachedNames.map(esc).join(', ')
+            : '')
+          + '</div>'
         : '')
       + '<div class="call-actions">'
       + (isPrimary
         ? '<button class="btn btn-sm" disabled>You are primary</button>'
         : '<button class="btn btn-sm btn-danger" data-respond="' + esc(c.callId) + '">Respond 10-76</button>')
       + (isAttached
-        ? '<button class="btn btn-sm" disabled>Attached</button>'
+        ? '<button class="btn btn-sm" data-detach="' + esc(c.callId) + '">Clear from call</button>'
         : '<button class="btn btn-sm" data-attach="' + esc(c.callId) + '">Attach 10-97</button>')
+      + (state.mode === 'leo' && c.reporterUsername
+        ? '<button class="btn btn-sm" data-ticket-caller="' + esc(c.reporterUsername) + '">Issue ticket</button>'
+        : '')
       + '<button class="btn btn-sm" data-close-call="' + esc(c.callId) + '">Close call</button>'
       + '</div></div>';
   }
 
   function callAction(callId, action) {
-    api('/' + state.guildId + '/leo/calls/' + callId + '/' + action, { method: 'POST' })
+    api('/' + state.guildId + '/calls/' + callId + '/' + action, { method: 'POST' })
       .then(function () { go('calls'); })
       .catch(fail);
   }
@@ -1018,6 +1099,10 @@
           bind('[data-ticket]', function (el) { newTicket(el.dataset.ticket); });
           bind('[data-arrest]', function (el) { newArrest(el.dataset.arrest); });
           bind('[data-wanted]', function (el) { toggleWanted(el.dataset.wanted); });
+          bind('[data-licence]', function (el) { toggleLicence(el.dataset.licence); });
+          bind('[data-revoke]', function (el) {
+            revokeFirearm(el.dataset.char, el.dataset.revoke, el.dataset.gunName);
+          });
         })
         .catch(function (err) {
           $('results').innerHTML = '<div class="notice error">' + esc(err.message) + '</div>';
@@ -1036,8 +1121,15 @@
       ['Age', c.age], ['Gender', c.gender], ['Height', c.height], ['Build', c.build],
       ['Hair', c.hairColor], ['Eyes', c.eyeColor], ['Address', c.address],
       ['Phone', c.phoneNumber], ['Plate', c.licensePlate],
-      ["Licence", c.driversLicense], ['Licence status', c.driverLicenseStatus],
-      ['Occupation', c.occupation], ['Medical', c.medicalInfo],
+      // Identifiers an officer runs, and which were not shown at all before.
+      ['SSN', c.socialSecurityNumber],
+      ['Licence', c.driversLicense], ['Licence status', c.driverLicenseStatus],
+      ['Occupation', c.occupation],
+      ['Veteran / donor', c.veteranStatus && c.veteranStatus !== 'none'
+        ? c.veteranStatus.replace('_', ' ') : null],
+      ['Distinguishing features', c.distinguishingFeatures],
+      ['Scars and tattoos', c.scarsAndTattoos],
+      ['Medical', c.medicalInfo],
       ['Emergency contact', c.emergencyContact],
     ].filter(function (p) { return p[1]; });
 
@@ -1079,7 +1171,10 @@
       + ((c.guns || []).length
         ? '<div class="subhead">Registered firearms</div>' + c.guns.map(function (g) {
             return '<div class="row"><span>' + esc(g.name) + '</span><span class="spacer"></span>'
-              + '<span class="mono muted">' + esc(g.serialNumber || '') + '</span></div>';
+              + '<span class="mono muted">' + esc(g.serialNumber || '') + '</span>'
+              + '<button class="btn btn-sm btn-danger" data-revoke="' + esc(g._id) + '"'
+              + ' data-char="' + esc(c._id) + '" data-gun-name="' + esc(g.name) + '">Revoke</button>'
+              + '</div>';
           }).join('')
         : '')
       + (bolos ? '<div class="subhead">Active BOLOs</div>' + bolos : '')
@@ -1091,6 +1186,8 @@
       + '<button class="btn btn-sm" data-bolo="' + esc(c._id) + '">Create BOLO</button>'
       + '<button class="btn btn-sm ' + (c.status === 'wanted' ? '' : 'btn-danger') + '" data-wanted="' + esc(c._id) + '">'
       + (c.status === 'wanted' ? 'Clear wanted' : 'Flag wanted') + '</button>'
+      + '<button class="btn btn-sm" data-licence="' + esc(c._id) + '">'
+      + (c.driverLicenseStatus === 'invalid' ? 'Reinstate licence' : 'Suspend licence') + '</button>'
       + '</div></div>';
   }
 
@@ -1174,6 +1271,35 @@
     });
   }
 
+  function revokeFirearm(characterId, gunId, gunName) {
+    dialog({
+      title: 'Revoke ' + (gunName || 'this firearm') + '?',
+      sub: 'It is removed from the record entirely, the same as in Discord.',
+      fields: [{ name: 'reason', label: 'Reason', max: 300 }],
+      confirm: 'Revoke',
+      danger: true,
+      onSubmit: function (values) {
+        return api('/' + state.guildId + '/leo/records/' + characterId + '/revoke-firearm', {
+          method: 'POST', body: { gunId: gunId, reason: values.reason },
+        }).then(function () { toast('Firearm revoked.', 'ok'); rerunSearch(); });
+      },
+    });
+  }
+
+  function toggleLicence(characterId) {
+    var record = findRecord(characterId);
+    if (!record) return;
+    var suspended = record.character.driverLicenseStatus === 'invalid';
+
+    api('/' + state.guildId + '/leo/records/' + characterId, {
+      method: 'PATCH',
+      body: { driverLicenseStatus: suspended ? 'valid' : 'invalid' },
+    }).then(function () {
+      toast(suspended ? 'Licence reinstated.' : 'Licence suspended.', 'ok');
+      rerunSearch();
+    }).catch(fail);
+  }
+
   function rerunSearch() {
     var button = $('run-search');
     if (button) button.click();
@@ -1254,6 +1380,126 @@
         }).then(function () { toast('Status updated.', 'ok'); go('units'); }).catch(fail);
       });
     });
+  };
+
+  VIEWS.tickets = function () {
+    var outstandingOnly = state.data.ticketFilter === 'unpaid';
+    var query = outstandingOnly ? '?paid=false' : '';
+
+    return api('/' + state.guildId + '/leo/tickets' + query).then(function (res) {
+      var tickets = res.tickets || [];
+
+      var rows = tickets.length
+        ? tickets.map(function (t) {
+            return '<div class="row">'
+              + '<span class="status-pill' + (t.paid ? ' available' : ' busy') + '">'
+              + (t.paid ? 'Paid' : 'Unpaid') + '</span>'
+              + '<span>' + esc(t.violation) + '</span>'
+              + '<span class="muted">' + esc(t.characterName) + '</span>'
+              + '<span class="spacer"></span>'
+              + '<span>' + esc(money(t.fine)) + '</span>'
+              + '<span class="muted">' + esc(timeAgo(t.createdAt)) + '</span>'
+              + '</div>';
+          }).join('')
+        : '<div class="empty">No tickets have been issued on this server yet.</div>';
+
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Ticket Book',
+            money(res.outstanding) + ' outstanding across ' + tickets.length + ' ticket'
+              + (tickets.length === 1 ? '' : 's'),
+            '<button class="btn" id="filter-tickets">'
+            + (outstandingOnly ? 'Show all' : 'Unpaid only') + '</button>'
+            + '<button class="btn btn-primary" id="new-ticket">New ticket</button>')
+        + '<div class="card">' + rows + '</div></div>';
+
+      $('filter-tickets').addEventListener('click', function () {
+        state.data.ticketFilter = outstandingOnly ? 'all' : 'unpaid';
+        go('tickets');
+      });
+      // Issuing no longer depends on finding somebody by exact name first.
+      $('new-ticket').addEventListener('click', function () { ticketFromLookup(''); });
+    });
+  };
+
+  /**
+   * Pick a person, then write the ticket.
+   *
+   * Tickets used to be reachable only from inside a successful Records search,
+   * so an officer had to spell a character's name exactly before they could
+   * write anything.
+   */
+  function ticketFromLookup(prefill) {
+    dialog({
+      title: 'Who is the ticket for?',
+      sub: 'Search by name or plate.',
+      fields: [{ name: 'q', label: 'Name or plate', required: true, max: 100, value: prefill || '' }],
+      confirm: 'Search',
+      onSubmit: function (values) {
+        return api('/' + state.guildId + '/leo/lookup?q=' + encodeURIComponent(values.q))
+          .then(function (res) {
+            var matches = res.matches || [];
+            if (!matches.length) { toast('Nobody found for "' + values.q + '".', 'error'); return; }
+            if (matches.length === 1) { newTicket(matches[0]._id); return; }
+
+            dialog({
+              title: 'Which person?',
+              fields: [{
+                name: 'characterId', label: 'Match', type: 'select',
+                options: matches.map(function (m) {
+                  return {
+                    value: m._id,
+                    label: m.characterName + (m.licensePlate ? ' (' + m.licensePlate + ')' : ''),
+                  };
+                }),
+              }],
+              confirm: 'Continue',
+              onSubmit: function (picked) { newTicket(picked.characterId); },
+            });
+          });
+      },
+    });
+  }
+
+  VIEWS.social = function () {
+    var rp = (state.context && state.context.social) || {};
+
+    function composer(kind, title, blurb, enabled) {
+      if (!enabled) {
+        return '<div class="card"><div class="card-head"><h3>' + esc(title) + '</h3></div>'
+          + '<div class="empty" style="padding:18px">This server has not set up '
+          + esc(title.toLowerCase()) + '.</div></div>';
+      }
+      return '<div class="card"><div class="card-head"><h3>' + esc(title) + '</h3></div>'
+        + '<p class="server-meta" style="margin-bottom:10px">' + esc(blurb) + '</p>'
+        + '<div class="field"><textarea id="msg-' + kind + '" maxlength="1000" '
+        + 'placeholder="What do you want to say?"></textarea></div>'
+        + '<button class="btn btn-primary" style="margin-top:10px" data-post="' + kind + '">Post</button>'
+        + '</div>';
+    }
+
+    $('main').innerHTML = '<div class="panel">'
+      + panelHead('Social', 'In-character posts, sent to your server.')
+      + composer('tweet', 'Twitter', 'Posted publicly under your name.', rp.twitter)
+      + composer('anon', 'Anonymous', 'Posted with no name attached. Nobody, including staff, can trace it back.', rp.anon)
+      + '</div>';
+
+    bind('[data-post]', function (el) {
+      var kind = el.dataset.post;
+      var box = $('msg-' + kind);
+      var message = box ? box.value.trim() : '';
+      if (!message) return toast('Write something first.', 'error');
+
+      el.disabled = true;
+      api('/' + state.guildId + '/social/' + (kind === 'tweet' ? 'tweet' : 'anon'), {
+        method: 'POST', body: { message: message },
+      }).then(function () {
+        toast('Posted.', 'ok');
+        if (box) box.value = '';
+        el.disabled = false;
+      }).catch(function (err) { el.disabled = false; fail(err); });
+    });
+
+    return Promise.resolve();
   };
 
   function confirmPanic() {
