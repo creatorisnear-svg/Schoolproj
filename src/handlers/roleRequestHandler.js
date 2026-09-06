@@ -235,6 +235,15 @@ export async function handleSelectApproverMembers(interaction) {
 
     const role = await interaction.guild.roles.fetch(requestedRoleId);
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+
+    {
+      const { getGuildLimits, limitReply } = await import('../utils/premiumCheck.js');
+      const limits = await getGuildLimits(interaction.guildId);
+      if ((config?.roles?.length || 0) >= limits.roleRequestRoles) {
+        return interaction.editReply(limitReply('requestable roles', limits.roleRequestRoles));
+      }
+    }
+
     const roleRequestId = uuidv4();
 
     config.roles.push({
@@ -316,6 +325,15 @@ export async function handleSkipApproverMembers(interaction) {
 
     const role = await interaction.guild.roles.fetch(requestedRoleId);
     const config = await RoleRequestConfig.findOne({ guildId: interaction.guildId });
+
+    {
+      const { getGuildLimits, limitReply } = await import('../utils/premiumCheck.js');
+      const limits = await getGuildLimits(interaction.guildId);
+      if ((config?.roles?.length || 0) >= limits.roleRequestRoles) {
+        return interaction.reply({ ...limitReply('requestable roles', limits.roleRequestRoles), flags: 64 });
+      }
+    }
+
     const roleRequestId = uuidv4();
 
     config.roles.push({

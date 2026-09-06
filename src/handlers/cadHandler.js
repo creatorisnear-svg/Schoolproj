@@ -531,10 +531,10 @@ export async function handleCADCharacterCreateModal(interaction) {
     const limits = await getGuildLimits(interaction.guildId);
     const charCount = await CADCharacter.countDocuments({ guildId: interaction.guildId });
     if (charCount >= limits.characters) {
-      return interaction.reply({
-        embeds: [errorEmbed('Character Limit Reached', `This server has reached the maximum of **${limits.characters} characters**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited characters.`)],
-        flags: 64,
-      });
+      {
+        const { limitReply } = await import('../utils/premiumCheck.js');
+        return interaction.reply({ ...limitReply("characters", limits.characters), flags: 64 });
+      }
     }
 
     const existing = await CADCharacter.findOne({ guildId: interaction.guildId, userId: interaction.user.id, characterName });
@@ -884,10 +884,10 @@ export async function handleCADVehicleAddModal(interaction) {
     const allChars = await CADCharacter.find({ guildId: interaction.guildId }, 'vehicles');
     const vehicleCount = allChars.reduce((sum, c) => sum + (c.vehicles?.length || 0), 0);
     if (vehicleCount >= limits.vehicles) {
-      return interaction.reply({
-        embeds: [errorEmbed('Vehicle Limit Reached', `This server has reached the maximum of **${limits.vehicles} vehicles**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited vehicles.`)],
-        flags: 64,
-      });
+      {
+        const { limitReply } = await import('../utils/premiumCheck.js');
+        return interaction.reply({ ...limitReply("vehicles", limits.vehicles), flags: 64 });
+      }
     }
 
     await CADCharacter.updateOne(
@@ -957,10 +957,10 @@ export async function handleCADGunAddModal(interaction) {
     const allChars = await CADCharacter.find({ guildId: interaction.guildId }, 'guns');
     const gunCount = allChars.reduce((sum, c) => sum + (c.guns?.length || 0), 0);
     if (gunCount >= limits.firearms) {
-      return interaction.reply({
-        embeds: [errorEmbed('Firearm Limit Reached', `This server has reached the maximum of **${limits.firearms} firearms**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited firearms.`)],
-        flags: 64,
-      });
+      {
+        const { limitReply } = await import('../utils/premiumCheck.js');
+        return interaction.reply({ ...limitReply("firearms", limits.firearms), flags: 64 });
+      }
     }
 
     await CADCharacter.updateOne(

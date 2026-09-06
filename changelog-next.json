@@ -1,17 +1,10 @@
 {
-  "version": "1.7.0",
-  "title": "Web CAD, free 911 voice announcements, and a Premium trial",
+  "version": "1.8.0",
+  "title": "Free plan limits, and the blacklist joins Premium",
   "changes": [
-    "New: there is a full CAD you can use in a browser at roleplaymanager.xyz/cad. Sign in with Discord, pick your server, and you get the same records the bot already uses. A character made on the site is the one officers find when they run your name",
-    "Civilians can register characters, vehicles and firearms, call 911, and pay fines. Officers get a live call queue, records search by plate or name, tickets, BOLOs, 10 codes and a panic button",
-    "New: 911 calls are now read out in your patrol voice channel on every server, free. The bot joins when a call comes in, announces it, and leaves again. The AI dispatcher that listens and talks back is still Premium",
-    "New: Premium has a 7 day free trial and you no longer need to vote for it. Run /activatetrial to start",
-    "New: /cad gives anyone the link to the web CAD",
-    "Plates, licence numbers, social security numbers, vehicle VINs and firearm serials are all issued automatically now, so nobody has to invent one",
-    "Fixed: you could not create a second character on a server. The plate check was rejecting anyone who had not set a plate, which was most people",
-    "Fixed: paying a fine on the website did not take the money out of your bank account",
-    "Fixed: the AI dispatcher had stopped replying to everything, because the model it ran on was retired. It now moves to a working one by itself",
-    "Fixed: asking dispatch to run a name never worked, only plates. Dispatch also says what somebody is wanted for now, instead of only that they are",
-    "Fixed: servers on the Premium trial were getting no AI voice dispatch at all"
+    "The blacklist system is now part of Premium. If your server already has it turned on it keeps working and nothing changes for you. This only affects servers switching it on for the first time",
+    "The free plan now covers 100 shop items, 5 civilian jobs and 5 requestable roles. If you already have more than that you keep every one of them, you just cannot add new ones without Premium",
+    "Every limit now offers the 7 day free trial on a button instead of sending you to a price list. Press it and everything unlocks right away, no card and no signup",
+    "/premium now starts the free trial from a button, and lists what you actually get"
   ]
 }

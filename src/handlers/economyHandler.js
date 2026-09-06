@@ -1592,14 +1592,10 @@ export async function handleEconomyModal(interaction) {
       const { getGuildLimits } = await import('../utils/premiumCheck.js');
       const limits = await getGuildLimits(interaction.guildId);
       if (config2.roleIncome.length >= limits.roleIncomeRoles) {
-        return interaction.reply({
-          embeds: [errorEmbed(
-            'Role Income Limit Reached',
-            `This server can have up to **${limits.roleIncomeRoles} role income** entries on the free plan.\n` +
-            `[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited role income entries.`
-          )],
-          flags: 64,
-        });
+        {
+          const { limitReply } = await import('../utils/premiumCheck.js');
+          return interaction.reply({ ...limitReply('role income entries', limits.roleIncomeRoles), flags: 64 });
+        }
       }
     }
     if (ex) { ex.amount = amount; ex.cooldown = cooldownH; } else config2.roleIncome.push({ roleId, amount, cooldown: cooldownH });
@@ -1627,6 +1623,17 @@ export async function handleEconomyModal(interaction) {
     const desc  = interaction.fields.getTextInputValue('description');
     if (isNaN(price) || price < 1) return interaction.reply({ embeds: [errorEmbed('Invalid price.')], flags: 64 });
     if (await EconomyStore.findOne({ guildId, name: { $regex: new RegExp(`^${name}$`, 'i') } })) return interaction.reply({ embeds: [errorEmbed(`**${name}** already exists.`)], flags: 64 });
+
+    // Counted rather than stored, so a server already over the cap keeps every
+    // item it has and is only stopped from adding more.
+    {
+      const { getGuildLimits, limitReply } = await import('../utils/premiumCheck.js');
+      const limits = await getGuildLimits(guildId);
+      const used = await EconomyStore.countDocuments({ guildId });
+      if (used >= limits.shopItems) {
+        return interaction.reply({ ...limitReply('shop items', limits.shopItems), flags: 64 });
+      }
+    }
     const item = await EconomyStore.create({ guildId, name, price, description: desc, usable: false, sellable: true });
     const itemId = item._id.toString();
     return interaction.reply({
@@ -1672,6 +1679,14 @@ export async function handleEconomyModal(interaction) {
     let jobConfig = await CivilianJobConfig.findOne({ guildId });
     if (!jobConfig) jobConfig = new CivilianJobConfig({ guildId });
     if ((jobConfig.jobs?.length || 0) >= 25) return interaction.reply({ embeds: [errorEmbed('Maximum of 25 jobs per server.')], flags: 64 });
+
+    {
+      const { getGuildLimits, limitReply } = await import('../utils/premiumCheck.js');
+      const limits = await getGuildLimits(guildId);
+      if ((jobConfig.jobs?.length || 0) >= limits.civilianJobs) {
+        return interaction.reply({ ...limitReply('civilian jobs', limits.civilianJobs), flags: 64 });
+      }
+    }
     const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     jobConfig.jobs.push({ jobId, name, description, roleId, durationHours });
     jobConfig.markModified('jobs');

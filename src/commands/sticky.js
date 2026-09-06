@@ -73,13 +73,11 @@ export async function execute(interaction) {
       const existingInChannel = await Sticky.findOne({ guildId, channelId: channel.id });
       if (!existingInChannel) {
         const limits = await getGuildLimits(guildId);
-        const stickyLimit = limits.characters === Infinity ? Infinity : 5;
+        const stickyLimit = limits.stickyMessages;
         const stickyCount = await Sticky.countDocuments({ guildId });
         if (stickyCount >= stickyLimit) {
-          return interaction.reply({
-            embeds: [errorEmbed('Sticky Limit Reached', `This server has reached the maximum of **${stickyLimit} sticky messages**.\n[Get Premium →](https://roleplaymanager.xyz/pricing) for unlimited stickies.`)],
-            flags: 64,
-          });
+          const { limitReply } = await import('../utils/premiumCheck.js');
+          return interaction.reply({ ...limitReply('sticky messages', stickyLimit), flags: 64 });
         }
       }
 

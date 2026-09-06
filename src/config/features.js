@@ -148,7 +148,12 @@ export const FEATURES = [
     enabledPath: "enabled",
     required: [],
     configSubcommand: "blacklist",
-    premiumDefault: false,
+    // Premium, but servers already running it keep it. Taking a working
+    // moderation feature away from somebody mid use means banned members walk
+    // back in, and they would rightly remove the bot rather than pay for it.
+    // See grandfatheredBlacklist in premiumCheck.js.
+    premiumDefault: true,
+    freeTier: "servers already using it keep it",
     botGated: true,
   },
 
