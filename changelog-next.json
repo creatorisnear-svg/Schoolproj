@@ -9,6 +9,8 @@
     "Fixed: ticket support reported itself as finished when no panel had been posted, so members had no button anywhere. It now tells you the panel is still missing",
     "Setup no longer sends you away. Picking General Settings used to tell you to go run another command and start over. It just works now",
     "Back to Setup stays on every screen, so setting up three features no longer means typing /setup three times",
-    "The verification menu shows what you have already done, instead of looking identical whether you had finished a step or not"
+    "The verification menu shows what you have already done, instead of looking identical whether you had finished a step or not",
+    "Every feature listed by /setup can now be opened from its menu. Blacklist, Sticky Messages, Reaction Roles and Civilian Jobs were in the checklist but missing from the dropdown, with no explanation",
+    "The dashboard link on this bot host now takes you to the real dashboard. The copy it used to serve was well out of date and was missing business accounts, blacklist management, sticky messages and reaction roles entirely"
   ]
 }

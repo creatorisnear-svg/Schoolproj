@@ -483,6 +483,103 @@ export const moduleResponses = {
     });
   },
 
+  // ── The four that /setup listed but would not open ───────────────────────
+  //
+  // The status list is built from the whole registry and the dropdown was
+  // filtered by SUPPORTED_MODULES, which is the keys of this object. These four
+  // were missing from it, so an owner read "OFF Blacklist System" in the
+  // checklist, opened the menu to fix it, and the row was not there. A
+  // checklist item you are not allowed to click is the clearest "this bot is
+  // broken" signal in the flow. They all had working /config screens; the
+  // wizard just never offered them.
+
+  async blacklist(interaction) {
+    const access = await checkFeatureAccess(interaction.guildId, 'blacklist');
+    if (!access.allowed) return interaction.update(premiumReply('Blacklist System'));
+
+    const { default: BlacklistConfig } = await import('../models/BlacklistConfig.js');
+    const { default: Blacklist } = await import('../models/Blacklist.js');
+    const cfg = await ensureEnabled(BlacklistConfig, interaction.guildId);
+    const count = await Blacklist.countDocuments({ guildId: interaction.guildId, active: true });
+
+    return interaction.update({
+      embeds: [menuEmbed(
+        'Blacklist System Setup',
+        '**What this does:** Keeps a ban list that is checked at verification, so somebody you have removed cannot rejoin on a new account and get back in.\n\n' +
+        `**Panel channel: ${cfg?.panelChannelId ? `<#${cfg.panelChannelId}>` : 'not set yet'} · People on the list: ${count}**\n\n` +
+        '`1.` Pick the channel where the live blacklist panel is kept up to date\n' +
+        '`2.` Add people with `/blacklist`, remove them with `/removeblacklist`'
+      )],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId('blacklist_panel_channel_select')
+            .setPlaceholder('Select the blacklist panel channel...')
+            .setChannelTypes(ChannelType.GuildText)
+        ),
+      ],
+    });
+  },
+
+  async civjobs(interaction) {
+    const { default: CivilianJobConfig } = await import('../models/CivilianJobConfig.js');
+    const config = await ensureEnabled(CivilianJobConfig, interaction.guildId);
+    const jobCount = config?.jobs?.length ?? 0;
+
+    return interaction.update({
+      embeds: [menuEmbed(
+        'Civilian Jobs Setup',
+        '**What this does:** Posts a job board in a channel. Members check in to a job and get a role for the length of their shift, and the role comes off automatically when it expires.\n\n' +
+        `**Job board channel: ${config?.channelId ? `<#${config.channelId}>` : 'not set yet'} · Jobs configured: ${jobCount}**\n\n` +
+        '`1.` Pick a job board channel below, the bot posts the panel there\n' +
+        '`2.` Add jobs with `/civilianjobs`, or on the dashboard under Civilian Jobs\n\n' +
+        '-# The panel will not post until at least one job exists.'
+      )],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId('economy_civjobs_channel_select')
+            .setPlaceholder('Select the job board channel...')
+            .setChannelTypes(ChannelType.GuildText)
+        ),
+      ],
+    });
+  },
+
+  async sticky(interaction) {
+    const { default: Sticky } = await import('../models/Sticky.js');
+    const count = await Sticky.countDocuments({ guildId: interaction.guildId });
+
+    return interaction.update({
+      embeds: [menuEmbed(
+        'Sticky Messages Setup',
+        '**What this does:** Reposts a message after every new one in a channel, so rules or a join link always stay at the bottom instead of scrolling away.\n\n' +
+        `**Active stickies: ${count}**\n\n` +
+        'There is nothing to configure here. Set them up per channel:\n' +
+        '`/sticky create`: add one to a channel\n' +
+        '`/sticky delete`: remove one\n' +
+        '`/stickylist`: see all of them'
+      )],
+      components: [],
+    });
+  },
+
+  async reactionroles(interaction) {
+    const { default: ReactionRole } = await import('../models/ReactionRole.js');
+    const count = await ReactionRole.countDocuments({ guildId: interaction.guildId });
+
+    return interaction.update({
+      embeds: [menuEmbed(
+        'Reaction Roles Setup',
+        '**What this does:** Members react to a message with an emoji and get a role for it, and lose the role when they take the reaction off. Up to 5 pairs per message.\n\n' +
+        `**Active reaction role messages: ${count}**\n\n` +
+        'There is nothing to configure here. Make one with:\n' +
+        '`/reactionrolemessage`: create a reaction role message in any channel'
+      )],
+      components: [],
+    });
+  },
+
   async features(interaction) {
     return interaction.update({
       embeds: [

@@ -65,7 +65,15 @@ export async function buildSetupPayload(guildId) {
   })();
 
   const hasLog = !!config?.logChannelId;
-  const counts = summarize(statuses);
+
+  // Counted over what the screen actually lists. The sections below skip the
+  // Foundation group, so counting the whole registry made the footer disagree
+  // with the rows above it: a fresh server read "0 ready, 0 need finishing,
+  // 19 off" over 17 visible lines.
+  const listedStatuses = Object.fromEntries(
+    Object.entries(statuses).filter(([key]) => getFeature(key)?.group !== 'Foundation')
+  );
+  const counts = summarize(listedStatuses);
 
   // ── Next step ──────────────────────────────────────────────────────────────
   // No /staff gate here. checkStaffPermission already passes any administrator,

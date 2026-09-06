@@ -311,11 +311,15 @@ app.get('/pricing', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz
 app.get('/tos', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/tos'));
 app.get('/privacy', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/privacy'));
 
-app.get('/dashboard', (req, res) => {
-  const token = req.cookies?.dash_token;
-  if (!token) return res.redirect('/dashboard/login');
-  res.send(readFileSync(resolve('src/website/views/dashboard.html'), 'utf8'));
-});
+// One dashboard, on the site, for the same reason as the Terms and the pricing
+// page. The copy served from here was a generation behind: 57 functions missing,
+// including business accounts, blacklist management, sticky messages and
+// reaction roles, and a cookie login the site version replaced. Nothing in the
+// product links here, so the only people landing on it were following an old
+// bookmark into a worse app. /dashboard/callback is left mounted below so the
+// OAuth redirect URI registered with Discord does not 404.
+app.get('/dashboard', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/dashboard'));
+app.get('/dashboard/login', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/dashboard'));
 
 app.use('/dashboard', createAuthRouter());
 // Rate limited like everything else. Without this the dev routes were the one
