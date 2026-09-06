@@ -9,7 +9,12 @@
  * reasons - was typed by a user of the server. It is escaped on the way into the
  * DOM without exception. `esc()` is not optional politeness; skipping it once
  * turns a character name into script that runs for every officer who looks the
- * person up.
+ * person up - and since the access token lives in localStorage, that is exactly
+ * what an attacker would be reaching for.
+ *
+ * The page is served both from roleplaymanager.xyz and from the API host itself,
+ * so the API origin is injected by the page as window.CAD_API rather than
+ * guessed from the URL.
  */
 (function () {
   'use strict';
@@ -17,6 +22,12 @@
   var REQUEST_TIMEOUT_MS = 20000;
   var LAST_SERVER_KEY = 'rpm_cad_server';
   var LAST_MODE_KEY = 'rpm_cad_mode';
+  var TOKEN_KEY = 'rpm_cad_token';
+
+  // Empty string when the page and API share an origin; the absolute API origin
+  // when the page is served from Cloudflare Pages.
+  var API = (typeof window !== 'undefined' && window.CAD_API) || '';
+  var CLIENT_ID = (typeof window !== 'undefined' && window.CAD_CLIENT_ID) || '1441306995641683978';
 
   var state = {
     user: null,
@@ -76,6 +87,37 @@
     try { return localStorage.getItem(key); } catch (e) { return null; }
   }
 
+  /**
+   * The Discord access token.
+   *
+   * Arrives in the URL fragment after sign-in, which never reaches the server,
+   * then moves to localStorage so a refresh does not sign the user out again.
+   */
+  function captureToken() {
+    var hash = location.hash || '';
+    if (!hash) return null;
+
+    var token = /[#&]token=([^&]+)/.exec(hash);
+    var error = /[#&]error=([^&]+)/.exec(hash);
+
+    // Clear it either way - a token in the address bar outlives the tab in
+    // browser history, and a stale error would reappear on every refresh.
+    if (token || error) history.replaceState({}, '', location.pathname);
+
+    if (token) { store(TOKEN_KEY, decodeURIComponent(token[1])); return null; }
+    return error ? decodeURIComponent(error[1]) : null;
+  }
+
+  function token() { return recall(TOKEN_KEY); }
+
+  function signOut() {
+    store(TOKEN_KEY, null);
+    store(LAST_SERVER_KEY, null);
+    if (state.stream) { state.stream.close(); state.stream = null; }
+    state.user = null;
+    showLogin();
+  }
+
   function toast(message, kind) {
     var el = document.createElement('div');
     el.className = 'toast' + (kind ? ' ' + kind : '');
@@ -93,24 +135,27 @@
 
     var init = {
       method: options.method || 'GET',
-      credentials: 'same-origin',
       signal: controller.signal,
       headers: {},
     };
+    var bearer = token();
+    if (bearer) init.headers.Authorization = 'Bearer ' + bearer;
     if (options.body) {
       init.headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(options.body);
     }
 
-    return fetch('/api/cad' + path, init)
+    return fetch(API + '/api/cad' + path, init)
       .then(function (res) {
         clearTimeout(timer);
         return res.json().catch(function () { return {}; }).then(function (body) {
           if (res.ok) return body;
 
-          // A dead session must send the user back to sign in rather than
-          // showing an error they cannot act on.
+          // A dead token must send the user back to sign in rather than
+          // showing an error they cannot act on. Clearing it matters: otherwise
+          // every later request retries with the same rejected token.
           if (res.status === 401) {
+            store(TOKEN_KEY, null);
             state.user = null;
             show('view-login');
             throw { handled: true };
@@ -151,22 +196,37 @@
   // ── Sign in ──────────────────────────────────────────────────────────────
 
   var LOGIN_ERRORS = {
-    no_code: 'Discord did not send anything back. Please try again.',
-    bad_state: 'That sign-in link expired. Please try again.',
     auth_failed: 'Discord sign-in failed. Please try again.',
+    no_domain: 'The server is not configured for sign-in yet.',
   };
 
-  function showLogin() {
-    var params = new URLSearchParams(location.search);
-    var error = params.get('error');
+  /**
+   * Signs in through the same callback the dashboard uses.
+   *
+   * That callback is already registered with Discord and already asks for the
+   * `guilds` scope the server picker needs, so the CAD adds no new setup. It
+   * hands the token back in the fragment of whatever URL is passed as state.
+   */
+  function loginUrl() {
+    return 'https://discord.com/api/oauth2/authorize'
+      + '?client_id=' + encodeURIComponent(CLIENT_ID)
+      // API is empty when the page and API share an origin, but Discord
+      // requires an absolute redirect_uri, so fall back to this page's origin.
+      + '&redirect_uri=' + encodeURIComponent((API || location.origin) + '/auth/site/callback')
+      + '&response_type=code&scope=identify%20guilds'
+      + '&state=' + encodeURIComponent(location.origin + location.pathname);
+  }
+
+  function showLogin(errorCode) {
     var box = $('login-error');
-    if (error) {
-      box.textContent = LOGIN_ERRORS[error] || 'Sign-in failed. Please try again.';
+    if (errorCode) {
+      box.textContent = LOGIN_ERRORS[errorCode] || 'Sign-in failed. Please try again.';
       box.hidden = false;
-      // Strip the error query without moving the user off the path they are on -
-      // the CAD is served at / on its own subdomain and /cad on the Koyeb URL.
-      history.replaceState({}, '', location.pathname);
+    } else {
+      box.hidden = true;
     }
+    var link = $('login-link');
+    if (link) link.href = loginUrl();
     show('view-login');
   }
 
@@ -360,7 +420,18 @@
     if (state.stream) { state.stream.close(); state.stream = null; }
     if (typeof EventSource === 'undefined') return;
 
-    var stream = new EventSource('/api/cad/' + guildId + '/events');
+    // EventSource cannot send an Authorization header, so ask for a one-shot
+    // ticket and put that in the query string. Putting the access token there
+    // would write a real credential into every access log.
+    api('/' + guildId + '/events/ticket')
+      .then(function (res) { openStream(guildId, res.ticket); })
+      .catch(function () { /* the CAD still works, just without live updates */ });
+  }
+
+  function openStream(guildId, ticket) {
+    if (state.guildId !== guildId) return;
+
+    var stream = new EventSource(API + '/api/cad/' + guildId + '/events?ticket=' + encodeURIComponent(ticket));
     state.stream = stream;
 
     stream.addEventListener('changed', function (event) {
@@ -385,8 +456,15 @@
       if (shouldRefresh && !state.loading) go(state.view);
     });
 
-    // EventSource reconnects on its own; nothing to do but stop shouting.
-    stream.onerror = function () { /* handled by the browser */ };
+    // A ticket is single use, so the browser's own retry would reconnect with a
+    // spent one and loop. Close it and fetch a fresh ticket instead.
+    stream.onerror = function () {
+      stream.close();
+      if (state.stream === stream) state.stream = null;
+      setTimeout(function () {
+        if (state.guildId === guildId && !state.stream) connectStream(guildId);
+      }, 5000);
+    };
   }
 
   function refreshCallCount() {
@@ -1200,6 +1278,14 @@
   // ── Boot ─────────────────────────────────────────────────────────────────
 
   function init() {
+    var authError = captureToken();
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-signout]'), function (el) {
+      el.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
+    });
+
+    if (authError || !token()) return showLogin(authError);
+
     $('btn-switch-server').addEventListener('click', function () {
       if (state.stream) { state.stream.close(); state.stream = null; }
       state.guildId = null;
@@ -1228,10 +1314,10 @@
       }
     }).catch(function (err) {
       if (err && err.handled) return;
-      if (err && err.code === 'discord_token_expired') {
-        location.href = '/cad/login';
-        return;
-      }
+      // Discord rejected the token even though our own check passed - the only
+      // way out is a fresh sign-in.
+      if (err && err.code === 'discord_token_expired') return signOut();
+
       showLogin();
       var box = $('login-error');
       box.textContent = err.message || 'Could not load the CAD.';

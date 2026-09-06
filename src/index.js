@@ -17,7 +17,6 @@ import { createPortalRouter } from './website/routes/portal.js';
 import { createPortalApiRouter } from './website/routes/portalApi.js';
 import { createCheckoutRouter } from './website/routes/checkout.js';
 import { createWebhooksRouter } from './website/routes/webhooks.js';
-import { createCadAuthRouter } from './website/routes/cadAuth.js';
 import { createCadApiRouter } from './website/routes/cadApi.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
@@ -384,7 +383,6 @@ app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
 app.get('/cad', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/cad.html'), 'utf8'));
 });
-app.use('/cad', createCadAuthRouter());
 app.use('/api/cad', apiRateLimit, createCadApiRouter(client));
 
 app.get('/callback', async (req, res) => {

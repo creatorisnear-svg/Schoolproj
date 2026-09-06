@@ -1,182 +1,146 @@
-import { Router } from 'express';
-import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import axios from 'axios';
 
 /**
- * Discord login for the web CAD.
+ * Authentication for the web CAD.
  *
- * Deliberately separate from the dashboard login (which stores a raw Discord
- * token in localStorage) and from the old portal login (which requested only the
- * `identify` scope and so could never list a user's servers).
+ * The CAD page is served from roleplaymanager.xyz (Cloudflare Pages) while this
+ * API runs on Koyeb, so the two are cross-site. A session cookie cannot bridge
+ * that: it would be a third-party cookie, which Safari blocks outright and
+ * Chrome is phasing out. So the CAD carries a Discord access token in an
+ * Authorization header, exactly as the dashboard already does.
  *
- * The CAD needs `guilds` to build its server picker, and it is served from the
- * same origin as the API, so an httpOnly signed cookie is both possible and
- * better than a token the page's own JavaScript can read.
+ * That also means no new OAuth redirect URI has to be registered - the CAD signs
+ * in through the same /auth/site/callback the dashboard uses, which is already
+ * registered and already requests the `guilds` scope the server picker needs.
+ *
+ * The trade-off, taken deliberately: the token lives in localStorage where page
+ * JavaScript can read it, rather than in an httpOnly cookie. Every value the CAD
+ * renders is escaped and the API sets a CSP, but this is the reason that
+ * escaping is not optional.
  */
 
-const COOKIE = 'cad_session';
-const STATE_COOKIE = 'cad_oauth_state';
-const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
-const STATE_MS = 10 * 60 * 1000;
+const IDENTITY_TTL = 5 * 60 * 1000;
+const TICKET_TTL = 60 * 1000;
+
+/** token -> { user, exp }. Avoids a Discord round trip on every request. */
+const identityCache = new Map();
+
+/** ticket -> { userId, username, guildId, exp }. Single use. */
+const streamTickets = new Map();
+
+const sweeper = setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of identityCache) if (v.exp < now) identityCache.delete(k);
+  for (const [k, v] of streamTickets) if (v.exp < now) streamTickets.delete(k);
+}, 60 * 1000);
+if (typeof sweeper.unref === 'function') sweeper.unref();
+
+function bearer(req) {
+  const header = req.headers.authorization;
+  if (header && header.startsWith('Bearer ')) return header.slice(7).trim() || null;
+  return null;
+}
+
+/** Resolves a Discord access token to the account it belongs to. */
+async function identify(token) {
+  const cached = identityCache.get(token);
+  if (cached && cached.exp > Date.now()) return cached.user;
+
+  const res = await axios.get('https://discord.com/api/users/@me', {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 10000,
+  });
+
+  const user = {
+    userId: res.data.id,
+    username: res.data.global_name || res.data.username,
+    avatar: res.data.avatar,
+    accessToken: token,
+  };
+  identityCache.set(token, { user, exp: Date.now() + IDENTITY_TTL });
+  return user;
+}
+
+/** Drops a token's cached identity, e.g. once Discord has rejected it. */
+export function forgetToken(token) {
+  if (token) identityCache.delete(token);
+}
 
 /**
- * The old portal fell back to a hardcoded literal when no secret was set, which
- * makes every session forgeable by anyone who has read the source. Fail closed
- * instead - an unsigned session is worse than no login.
+ * Issues a one-shot ticket for the event stream.
+ *
+ * EventSource cannot send an Authorization header, and putting the access token
+ * in the query string would write a real credential into every access log. A
+ * ticket is not a credential: it is single use, expires in a minute, and opens
+ * nothing but a read-only stream for one guild.
  */
-function secret() {
-  const s = process.env.CAD_SECRET || process.env.PORTAL_SECRET || process.env.DISCORD_CLIENT_SECRET;
-  if (!s) throw new Error('No CAD_SECRET / PORTAL_SECRET / DISCORD_CLIENT_SECRET set - refusing to sign sessions');
-  return s;
+export function issueStreamTicket(user, guildId) {
+  const ticket = randomBytes(24).toString('base64url');
+  streamTickets.set(ticket, {
+    userId: user.userId,
+    username: user.username,
+    guildId,
+    exp: Date.now() + TICKET_TTL,
+  });
+  return ticket;
 }
 
-export function createCadSession(data) {
-  const payload = Buffer.from(JSON.stringify({ ...data, exp: Date.now() + SESSION_MS })).toString('base64url');
-  const sig = createHmac('sha256', secret()).update(payload).digest('hex');
-  return `${payload}.${sig}`;
-}
+function redeemStreamTicket(ticket, guildId) {
+  if (!ticket || typeof ticket !== 'string') return null;
 
-export function verifyCadSession(token) {
-  if (!token || typeof token !== 'string') return null;
-  const cut = token.lastIndexOf('.');
-  if (cut < 1) return null;
+  const entry = streamTickets.get(ticket);
+  if (!entry) return null;
+  streamTickets.delete(ticket);          // single use, redeemed or not
 
-  const payload = token.slice(0, cut);
-  const sig = token.slice(cut + 1);
+  if (entry.exp < Date.now()) return null;
 
-  let expected;
-  try {
-    expected = createHmac('sha256', secret()).update(payload).digest('hex');
-  } catch {
-    return null;
-  }
-
-  // Constant-time compare so a forged cookie cannot be tuned byte by byte.
-  const a = Buffer.from(sig, 'hex');
-  const b = Buffer.from(expected, 'hex');
+  // Constant-time compare of the guild so a ticket for one server cannot be
+  // replayed against another.
+  const a = Buffer.from(String(entry.guildId));
+  const b = Buffer.from(String(guildId));
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
 
-  try {
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (!data.exp || data.exp < Date.now()) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-/** The origin this request arrived on, so one deployment can serve several hosts. */
-function originOf(req) {
-  const host = process.env.CAD_DOMAIN || req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
-  const local = host.startsWith('localhost') || host.startsWith('127.0.0.1');
-  const proto = local ? 'http' : (req.headers['x-forwarded-proto'] || 'https');
-  return `${proto}://${host}`;
+  return { userId: entry.userId, username: entry.username, avatar: null, accessToken: null };
 }
 
 /**
- * Where the CAD lives on the host this request arrived on.
- *
- * On its own subdomain the CAD is the root; on the raw Koyeb URL, where the
- * marketing page owns the root, it is /cad. Redirects have to agree with
- * whichever one served the page or the user bounces between them.
+ * Accepts a stream ticket in place of a bearer token, for the SSE route only.
+ * Runs before cadAuth, which then sees an already-authenticated request.
  */
-function home(req) {
-  const domain = process.env.CAD_DOMAIN;
-  if (!domain) return '/cad';
-  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0];
-  return host.toLowerCase() === domain.toLowerCase() ? '/' : '/cad';
-}
+export function cadStreamAuth(req, res, next) {
+  if (req.cadUser) return next();
 
-function cookieOpts(req) {
-  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
-  const local = host.startsWith('localhost') || host.startsWith('127.0.0.1');
-  return { httpOnly: true, secure: !local, sameSite: 'lax', path: '/' };
-}
+  const user = redeemStreamTicket(req.query?.ticket, req.params?.guildId);
+  if (!user) return next();
 
-/** Rejects the request unless it carries a valid CAD session. */
-export function cadAuth(req, res, next) {
-  const session = verifyCadSession(req.cookies?.[COOKIE]);
-  if (!session) {
-    res.clearCookie(COOKIE, { path: '/' });
-    return res.status(401).json({ error: 'not_authenticated' });
-  }
-  req.cadUser = session;
+  req.cadUser = user;
   next();
 }
 
-export function createCadAuthRouter() {
-  const router = Router();
+/** Rejects the request unless it carries a usable Discord token. */
+export async function cadAuth(req, res, next) {
+  if (req.cadUser) return next();
 
-  router.get('/login', (req, res) => {
-    const clientId = process.env.DISCORD_CLIENT_ID;
-    if (!clientId) return res.status(500).send('DISCORD_CLIENT_ID is not configured');
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ error: 'not_authenticated' });
 
-    const state = randomBytes(16).toString('hex');
-    res.cookie(STATE_COOKIE, state, { ...cookieOpts(req), maxAge: STATE_MS });
-
-    // `guilds` is the whole point - without it there is no way to know which
-    // servers the user is in, and therefore no server picker.
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: `${originOf(req)}/cad/callback`,
-      response_type: 'code',
-      scope: 'identify guilds',
-      state,
-    });
-    res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
-  });
-
-  router.get('/callback', async (req, res) => {
-    const { code, state } = req.query;
-    const expected = req.cookies?.[STATE_COOKIE];
-    res.clearCookie(STATE_COOKIE, { path: '/' });
-
-    if (!code) return res.redirect(home(req) + '?error=no_code');
-    if (!state || !expected || state !== expected) return res.redirect(home(req) + '?error=bad_state');
-
-    try {
-      const redirectUri = `${originOf(req)}/cad/callback`;
-      const tokenRes = await axios.post(
-        'https://discord.com/api/oauth2/token',
-        new URLSearchParams({
-          client_id: process.env.DISCORD_CLIENT_ID,
-          client_secret: process.env.DISCORD_CLIENT_SECRET,
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: redirectUri,
-        }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10000 }
-      );
-
-      const accessToken = tokenRes.data.access_token;
-      const me = await axios.get('https://discord.com/api/users/@me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        timeout: 10000,
-      });
-
-      // The access token rides in the signed httpOnly cookie so /servers can ask
-      // Discord which guilds this user is in. It is never exposed to page JS.
-      const session = createCadSession({
-        userId: me.data.id,
-        username: me.data.global_name || me.data.username,
-        avatar: me.data.avatar,
-        accessToken,
-      });
-
-      res.cookie(COOKIE, session, { ...cookieOpts(req), maxAge: SESSION_MS });
-      res.redirect(home(req));
-    } catch (err) {
-      console.error('[CAD Auth] callback failed:', err.response?.data || err.message);
-      res.redirect(home(req) + '?error=auth_failed');
+  try {
+    req.cadUser = await identify(token);
+    next();
+  } catch (err) {
+    if (err.response?.status === 401) {
+      forgetToken(token);
+      return res.status(401).json({ error: 'not_authenticated' });
     }
-  });
-
-  router.get('/logout', (req, res) => {
-    res.clearCookie(COOKIE, { path: '/' });
-    res.redirect(home(req));
-  });
-
-  return router;
+    // Discord being unreachable is not the caller's fault, and answering 401
+    // would sign everyone out during an outage.
+    console.error('[CAD Auth] could not verify token:', err.message);
+    res.status(503).json({ error: 'discord_unavailable' });
+  }
 }
 
-export { COOKIE as CAD_COOKIE };
+/** Test seam: lets a test inject an identity without calling Discord. */
+export function __seedIdentity(token, user) {
+  identityCache.set(token, { user: { ...user, accessToken: token }, exp: Date.now() + IDENTITY_TTL });
+}

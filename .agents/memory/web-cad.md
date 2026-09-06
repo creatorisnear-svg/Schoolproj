@@ -5,12 +5,13 @@ description: Multi-tenant CAD at /cad; tenancy via resolveGuild; call IDs must e
 
 # Web CAD
 
-Served by the bot process (not Cloudflare Pages) so the browser is same-origin
-with the API — that is what makes the session cookie and the SSE stream work
-without touching the single-origin CORS check in `src/index.js`.
+The page is on Cloudflare Pages at roleplaymanager.xyz/cad
+(`site/cad/index.html`) and also on Koyeb at /cad (`src/website/views/cad.html`).
+The two differ only in the `window.CAD_API` they set, and both load the CSS and
+JS from the Koyeb origin — one copy of the front end, not two.
 
-- `routes/cadAuth.js` — Discord OAuth2, scope `identify guilds`, HMAC-signed
-  httpOnly `cad_session` cookie holding the Discord access token.
+- `routes/cadAuth.js` — bearer-token auth. **Not a cookie**: the page and API are
+  cross-site, so a cookie would be third-party and Safari blocks those outright.
 - `routes/cadApi.js` — router assembly, `resolveGuild`, `/servers`, `/context`.
 - `routes/cad/{civilian,leo,events,shared}.js` — the route groups.
 - `cadBridge.js` — every Discord side effect.
@@ -57,10 +58,26 @@ Roles are cached per user+guild for 5 minutes; `guildMemberUpdate` in
 `src/index.js` calls `clearCadCaches(userId)` so a newly granted role applies at
 once. See [[interval-db-guards]] for the SSE poller's `readyState` guard.
 
+## Sign-in needs no new setup
+
+The CAD signs in through **`/auth/site/callback`** — the dashboard's callback,
+already registered with Discord and already requesting `identify guilds`. Adding
+a redirect URI is therefore never necessary. The token returns in the fragment of
+the URL passed as `state`, which `src/index.js` checks against an origin
+allow-list before redirecting.
+
+The token then lives in localStorage, readable by page JavaScript. That is the
+cost of working cross-site, and the reason the escaping above is not optional.
+
+## SSE cannot use a header
+
+`EventSource` sends no Authorization header, and the access token must not go in
+a query string where it would land in every access log. So the browser asks for a
+one-shot ticket first: single use, 60 seconds, bound to one guild, and it opens
+nothing but a read-only stream. Because redemption spends it, the browser's own
+retry is suppressed and a fresh ticket is fetched instead.
+
 ## Environment
 
-`CAD_DOMAIN` — when set, the CAD is served at the root path on that host and the
-OAuth redirect URI is built from it. `CAD_SECRET` — signs sessions; falls back to
-`PORTAL_SECRET` then `DISCORD_CLIENT_SECRET`, and **fails closed** if none is
-set. `<origin>/cad/callback` must be registered in the Discord Developer Portal
-for every origin the CAD is reachable on.
+None required. `CAD_DOMAIN` is optional, and only matters if the CAD is ever
+given its own subdomain — it is then served at that host's root path.

@@ -394,15 +394,28 @@ The multi-tenant CAD. Any server that has the bot with Roleplay Commands enabled
 can use it; a member signs in with Discord, picks a server, and works as a
 civilian or (with a LEO role) as law enforcement.
 
-- **Hosting**: served by the bot process, so the browser is same-origin with the
-  API. On `CAD_DOMAIN` the CAD is the root path; everywhere else it is `/cad`.
-  Same-origin is what makes the session cookie and the SSE stream work without
-  touching the single-origin CORS check in `src/index.js`.
-- **Auth** (`routes/cadAuth.js`): Discord OAuth2 with scope `identify guilds` —
-  `guilds` is required or there is no server picker. HMAC-signed httpOnly
-  `cad_session` cookie carrying the Discord access token, plus a one-shot
-  `cad_oauth_state` cookie. **Refuses to sign a session if no secret is set**
-  rather than falling back to a literal.
+- **Hosting**: the page lives in two places from one source —
+  `site/cad/index.html` on Cloudflare Pages (roleplaymanager.xyz/cad) and
+  `src/website/views/cad.html` on Koyeb (/cad). They differ only in the
+  `window.CAD_API` they set; both pull the CSS and JS from the Koyeb origin, so
+  there is one copy of the front end rather than two that drift.
+- **Auth** (`routes/cadAuth.js`): a Discord access token in an `Authorization:
+  Bearer` header, validated against `/users/@me` and cached for 5 minutes.
+  - A cookie cannot be used: roleplaymanager.xyz and the Koyeb host are
+    cross-site, so it would be a third-party cookie — blocked outright in Safari.
+  - Sign-in goes through **`/auth/site/callback`, the dashboard's existing
+    callback**, which is already registered with Discord and already requests
+    `identify guilds`. The CAD therefore needs no new redirect URI. The token
+    comes back in the fragment of whatever URL is passed as `state` (allow-listed
+    in `src/index.js`), and the page moves it to localStorage.
+  - The trade-off, taken deliberately: page JavaScript can read the token. This
+    is why every rendered value is escaped without exception.
+- **SSE auth**: `EventSource` cannot send an Authorization header, and the access
+  token must not go in a query string where it lands in every access log. So the
+  browser asks for a **one-shot ticket** (`GET /:guildId/events/ticket`) — single
+  use, 60s, bound to one guild, opening nothing but a read-only stream. A ticket
+  is spent on redemption, so the browser's own EventSource retry is suppressed
+  and a fresh ticket is fetched instead.
 - **Tenancy** (`routes/cadApi.js`): every data route is under `/:guildId` behind
   `resolveGuild`, which proves the bot is in the guild, the caller is a member,
   and resolves live roles into `isLeo` / `isFd` / `isStaff`. A Discord outage
@@ -427,10 +440,8 @@ civilian or (with a LEO role) as law enforcement.
 - **Role cache**: `resolveGuild` caches a member's roles for 5 minutes;
   `guildMemberUpdate` in `src/index.js` calls `clearCadCaches(userId)` so a
   newly granted LEO role takes effect at once.
-- **Env**: `CAD_DOMAIN` (optional, enables root-path serving and fixes the OAuth
-  redirect URI), `CAD_SECRET` (falls back to `PORTAL_SECRET` /
-  `DISCORD_CLIENT_SECRET`). The redirect URI `<origin>/cad/callback` must be
-  registered in the Discord Developer Portal.
+- **Env**: none required. `CAD_DOMAIN` is optional and only used if the CAD is
+  ever given its own subdomain, in which case it is served at that host's root.
 
 ---
 

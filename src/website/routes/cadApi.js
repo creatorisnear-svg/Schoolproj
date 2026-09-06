@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PermissionsBitField } from 'discord.js';
 import axios from 'axios';
-import { cadAuth } from './cadAuth.js';
+import { cadAuth, cadStreamAuth, issueStreamTicket } from './cadAuth.js';
 import { isPremiumGuild, getGuildLimits } from '../../utils/premiumCheck.js';
 import CADConfig from '../../models/CADConfig.js';
 import RoleplayCommands from '../../models/RoleplayCommands.js';
@@ -89,6 +89,10 @@ function roleIdsOf(member) {
 
 export function createCadApiRouter(client) {
   const router = Router();
+
+  // The only route that may authenticate with a ticket rather than a token.
+  router.get('/:guildId/events', cadStreamAuth, cadAuth, resolveGuild(client), eventsHandler);
+
   router.use(cadAuth);
 
   // ── Who am I ───────────────────────────────────────────────────────────────
@@ -181,7 +185,13 @@ export function createCadApiRouter(client) {
   });
 
   // Live updates. Sits above the route groups so it is not caught by any of them.
-  router.get('/:guildId/events', eventsHandler);
+  //
+  // EventSource cannot send an Authorization header, so the browser asks for a
+  // one-shot ticket first and puts that in the query string instead. cadStreamAuth
+  // redeems it before cadAuth runs; a request with neither still gets a 401.
+  router.get('/:guildId/events/ticket', resolveGuild(client), (req, res) => {
+    res.json({ ticket: issueStreamTicket(req.cadUser, req.guildId) });
+  });
 
   // LEO is mounted first: the civilian router is mounted on the bare guild prefix,
   // so it would otherwise see /leo/* paths and have to fall through for each one.
