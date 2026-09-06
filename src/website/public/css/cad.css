@@ -436,6 +436,14 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 /* Officers use this on a phone while they are actually roleplaying, so the nav
    becomes a horizontal strip rather than a drawer that has to be opened. */
+/* Below this the server name has to go too - a 320px phone cannot hold the
+   name, three modes and a sign-out button at once. The button keeps its icon and
+   stays tappable, and the server name is in the panel heading regardless. */
+@media (max-width: 400px) {
+  .topbar .server-switch .label { display: none; }
+  .topbar .server-switch { min-width: 0; padding: 5px 8px; }
+}
+
 /* Badges are the first thing to go: they repeat what the panel already says,
    and the controls beside them do not. */
 @media (max-width: 780px) {
