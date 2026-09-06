@@ -1,10 +1,8 @@
 {
-  "version": "1.5.1",
-  "title": "911 and panic alerts no longer get lost",
+  "version": "1.6.0",
+  "title": "License plates are per-server now",
   "changes": [
-    "Fixed: 911 calls were not always announced over dispatch radio. A call raised while the bot was not connected to a patrol channel was marked as announced and then silently dropped, so it never went out at all - it now waits and announces as soon as the bot is live",
-    "Fixed the same problem for 10-99 panic alerts, which could be swallowed entirely if the bot was not already in a voice channel. A panic older than 5 minutes is skipped instead, so you do not get a stale alert",
-    "Unanswered 911 calls are now reminded about once instead of twice - the reminder still stops the moment any officer responds or attaches",
-    "Dispatch logs now say when a call is waiting for a voice connection, so it is clear what is happening"
+    "Fixed: CAD license plates were unique across every server using the bot, not just yours. If another server had already registered a plate, nobody else could ever use it. Plates are now unique within your own server only",
+    "This is groundwork for the upcoming web CAD, where servers will each need their own plate numbering"
   ]
 }

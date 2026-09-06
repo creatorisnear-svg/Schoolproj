@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Fixed 911 and 10-99 panic voice announcements being silently dropped (both pollers set their announced flag before playback; playDispatchVoice returns silently with no voice connection), added hasLiveVoice() with a 5-minute staleness bound on panics, reduced MAX_REMINDERS from 2 to 1, and fixed the reminderCounts map growing unbounded.
+- **Completed:** Phase 0 of the web CAD - CAD license plates were globally unique (one server registering ABC123 blocked every other server forever). Removed the global unique flags from CADCharacter, added per-guild compound indexes, and added src/utils/plateIndexMigration.js which runs on startup to drop the old indexes (production has no shell). Aborts if duplicate plates would block the new index.
 
 ## AI Handoff Protocol — Read Before Responding
 

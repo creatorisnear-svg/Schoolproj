@@ -61,10 +61,12 @@ const cadCharacterSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  // Uniqueness is enforced per guild by the compound index at the bottom of this
+  // file, not here. A bare `unique: true` made plates unique across every server
+  // on the platform, so one server registering ABC123 permanently blocked every
+  // other server from using it.
   licensePlate: {
     type: String,
-    unique: true,
-    sparse: true,
   },
   driversLicense: {
     type: String,
@@ -85,10 +87,9 @@ const cadCharacterSchema = new mongoose.Schema({
       make: String,
       model: String,
       color: String,
+      // Same as above - scoped per guild by the compound index below.
       licensePlate: {
         type: String,
-        unique: true,
-        sparse: true,
       },
       year: String,
       condition: String,
@@ -133,6 +134,18 @@ const cadCharacterSchema = new mongoose.Schema({
 });
 
 cadCharacterSchema.index({ guildId: 1, userId: 1 });
+
+// Plates are unique within a server, not across the platform.
+//
+// Both licensePlate fields used to carry `unique: true`, which builds a global
+// index: once any server registered ABC123, every other server was permanently
+// blocked from using it. Harmless while a single server used the CAD, and a
+// guaranteed source of unexplainable errors the moment a second one did.
+//
+// Mongoose will not drop the old global indexes on an existing database - run
+// scripts/fix-plate-indexes.js once against production before relying on these.
+cadCharacterSchema.index({ guildId: 1, licensePlate: 1 }, { unique: true, sparse: true });
+cadCharacterSchema.index({ guildId: 1, 'vehicles.licensePlate': 1 }, { unique: true, sparse: true });
 
 const CADCharacter = mongoose.models.CADCharacter || mongoose.model('CADCharacter', cadCharacterSchema);
 

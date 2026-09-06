@@ -1412,6 +1412,22 @@ async function refreshAllVerifyPanels(discordClient) {
 }
 
 connectDatabase().then(async () => {
+  // One-time index migration. CAD license plates used to be unique across every
+  // server on the platform, so one server registering ABC123 permanently blocked
+  // all others. Runs here rather than as a manual script because production has
+  // no shell; it is idempotent and does nothing once the old indexes are gone.
+  try {
+    const { fixPlateIndexes } = await import('./utils/plateIndexMigration.js');
+    const result = await fixPlateIndexes(mongoose.connection.db);
+    if (result.changed) {
+      console.log(`[PlateIndex] Migration applied - dropped ${result.dropped.length}, created ${result.created.length}`);
+    } else {
+      console.log(`[PlateIndex] No migration needed (${result.reason})`);
+    }
+  } catch (err) {
+    console.error('[PlateIndex] Migration error:', err.message);
+  }
+
   client.login(process.env.DISCORD_TOKEN).catch((error) => {
     console.error('[DISCORD ERROR] Login failed:', error.message);
   });
