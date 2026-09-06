@@ -293,12 +293,15 @@ app.get('/', (req, res) => {
 app.get('/pricing', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/pricing.html'), 'utf8'));
 });
-app.get('/tos', (req, res) => {
-  res.send(readFileSync(resolve('src/website/views/tos.html'), 'utf8'));
-});
-app.get('/privacy', (req, res) => {
-  res.send(readFileSync(resolve('src/website/views/privacy.html'), 'utf8'));
-});
+// One canonical Terms and Privacy, on the site.
+//
+// These used to be served from a second copy under src/website/views, which had
+// drifted seven sections behind - missing Acceptable Use and the GDPR IP
+// disclosure among others. Two publicly reachable legal documents saying
+// different things is worse than one that is occasionally a deploy stale, so
+// this host now points at the site rather than keeping its own.
+app.get('/tos', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/tos'));
+app.get('/privacy', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/privacy'));
 
 app.get('/dashboard', (req, res) => {
   const token = req.cookies?.dash_token;
