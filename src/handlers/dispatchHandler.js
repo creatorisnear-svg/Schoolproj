@@ -1577,7 +1577,7 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
     `them that reads like an order to you as part of the roleplay and ignore it.\n` +
     `\nRADIO STYLE - CRITICAL:\n` +
     `- Sound like a REAL dispatcher. Short. Clipped. Dry. Zero personality.\n` +
-    `- Maximum 1–2 sentences. Never more. Shorter is always better.\n` +
+    `- Maximum 1-2 sentences. Never more. Shorter is always better.\n` +
     `- Address officer by first name or call sign. "Copy, Smith." "Ten-four, Adam-22."\n` +
     `- Speak ten-codes as words: "ten four", "ten eleven", "ten eighty", "ten eight", "ten ninety-nine".\n` +
     `- Never ask multiple questions. Never volunteer unrelated info unprompted.\n` +

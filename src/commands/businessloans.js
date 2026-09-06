@@ -3,7 +3,7 @@ import BusinessLoan from '../models/BusinessLoan.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import Config from '../models/Config.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()
@@ -62,12 +62,12 @@ export async function execute(interaction) {
     return interaction.reply({ embeds: [errEmbed(`No ${statusFilter !== 'all' ? statusFilter + ' ' : ''}loans found for **${account.name}**.`)], flags: 64 });
   }
 
-  const statusEmoji = { active: '🟡', paid: '✅', defaulted: '🔴' };
+  const statusLabel = { active: 'Active', paid: 'Paid', defaulted: 'Defaulted' };
 
   const lines = loans.map(l => {
     const remaining = l.totalOwed - l.amountPaid;
     return (
-      `${statusEmoji[l.status] || '❓'} **${l.type === 'property' ? 'Property' : 'Personal'}** · <@${l.borrowerUserId}>\n` +
+      `**${statusLabel[l.status] || 'Unknown'}** · **${l.type === 'property' ? 'Property' : 'Personal'}** · <@${l.borrowerUserId}>\n` +
       `-# ${sym}${fmt(l.principal)} principal · ${sym}${fmt(remaining)} remaining · ${l.interestRate}% · Due <t:${Math.floor(l.dueAt.getTime() / 1000)}:d>`
     );
   });
@@ -78,7 +78,7 @@ export async function execute(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x2d2d2d)
-      .setTitle(`${account.name} — Loan Portfolio`)
+      .setTitle(`${account.name} · Loan Portfolio`)
       .setDescription(lines.join('\n\n'))
       .setFooter({ text: `${active} active · ${sym}${fmt(totalOwed)} outstanding · RPM` })],
     flags: 64,

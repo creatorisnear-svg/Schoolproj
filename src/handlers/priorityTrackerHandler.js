@@ -93,7 +93,7 @@ export async function handlePriorityTrackerMessageModal(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_priority_menu')
-          .setLabel('← Back to Menu')
+          .setLabel('Back to Menu')
           .setStyle(ButtonStyle.Primary)
       );
 

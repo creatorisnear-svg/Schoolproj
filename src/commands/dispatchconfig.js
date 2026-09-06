@@ -14,7 +14,7 @@ import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.
  */
 export const data = new SlashCommandBuilder()
   .setName('dispatchconfig')
-  .setDescription('Moved — use /config dispatch instead (Admin)')
+  .setDescription('Moved. Use /config dispatch instead (Admin)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {

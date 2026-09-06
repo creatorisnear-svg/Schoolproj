@@ -14,7 +14,7 @@ import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.
  */
 export const data = new SlashCommandBuilder()
   .setName('blacklistconfig')
-  .setDescription('Moved — use /config blacklist instead (Admin)')
+  .setDescription('Moved. Use /config blacklist instead (Admin)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {

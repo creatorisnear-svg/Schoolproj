@@ -63,9 +63,9 @@ export async function execute(interaction) {
       `${TRIAL_DAYS}-Day Trial Active`,
       `Every Premium feature is unlocked on this server until ${expires}.\n\n` +
       '### What you just unlocked\n' +
-      '- **AI Voice Dispatch** — the bot joins patrol channels, transcribes your officers and replies as a dispatcher\n' +
-      '- **Priority Tracker** — a live priority board with cooldowns and staff controls\n' +
-      '- **Applications** — custom application panels with a DM question flow\n' +
+      '- **AI Voice Dispatch**: the bot joins patrol channels, transcribes your officers and replies as a dispatcher\n' +
+      '- **Priority Tracker**: a live priority board with cooldowns and staff controls\n' +
+      '- **Applications**: custom application panels with a DM question flow\n' +
       '- Every free-tier limit removed\n\n' +
       'Run `/setup` to turn them on.\n\n' +
       '-# One free trial per server. [See pricing](https://roleplaymanager.xyz/pricing)'

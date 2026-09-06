@@ -175,7 +175,7 @@ export function buildPremiumEmbed(featureName) {
     .setDescription(
       `**${featureName}** is a Premium feature.\n\n` +
       `### Try it free for ${TRIAL_DAYS} days\n` +
-      `Press the button below and it unlocks immediately — no card, no signup, ` +
+      `Press the button below and it unlocks immediately, no card, no signup, ` +
       `nothing to install. Every Premium feature is included.\n\n` +
       `### Or buy Premium\n` +
       `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n` +

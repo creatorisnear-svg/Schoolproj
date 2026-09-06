@@ -698,7 +698,7 @@ async function handlePrioritySetupMenu(interaction) {
         .setChannelTypes(ChannelType.GuildText);
       const row = new ActionRowBuilder().addComponents(channelSelect);
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
       );
       return interaction.update({
         embeds: [infoEmbed('Priority Tracker - Channel', 'Select the channel where the priority tracker panel will be posted.')],
@@ -711,7 +711,7 @@ async function handlePrioritySetupMenu(interaction) {
         embeds: [infoEmbed('Set Cooldown', 'Use the `/prioritycooldown` command to set and manage the priority cooldown directly.')],
         content: '',
         components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+          new ButtonBuilder().setCustomId('back_to_priority_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
         )],
       });
     }
@@ -741,7 +741,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         .setChannelTypes(ChannelType.GuildText);
       const row = new ActionRowBuilder().addComponents(channelSelect);
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
       );
       return interaction.update({
         embeds: [infoEmbed('Roleplay Calendar - Channel', 'Select the channel where the calendar will be posted and kept up to date.')],
@@ -754,7 +754,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         embeds: [infoEmbed('Add Event', 'Use the `/setrp` command to add a new weekly event to the roleplay calendar.')],
         content: '',
         components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
         )],
       });
     }
@@ -764,7 +764,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
           embeds: [infoEmbed('No Events', 'There are no scheduled events to remove.')],
           content: '',
           components: [new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
           )],
         });
       }
@@ -780,7 +780,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
           .addOptions(options)
       );
       const backButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
       );
       return interaction.update({
         embeds: [infoEmbed('Remove Event', 'Select the event you want to remove from the calendar.')],
@@ -794,7 +794,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
           embeds: [infoEmbed('Roleplay Calendar', 'No events are currently scheduled.')],
           content: '',
           components: [new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
           )],
         });
       }
@@ -805,7 +805,7 @@ async function handleRoleplayCalendarSetupMenu(interaction) {
         embeds: [infoEmbed('Scheduled Events', eventList)],
         content: '',
         components: [new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('← Back').setStyle(ButtonStyle.Secondary)
+          new ButtonBuilder().setCustomId('back_to_calendar_menu').setLabel('Back').setStyle(ButtonStyle.Secondary)
         )],
       });
     }
@@ -837,7 +837,7 @@ async function handleVerifySetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -858,7 +858,7 @@ async function handleVerifySetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -878,7 +878,7 @@ async function handleVerifySetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -936,7 +936,7 @@ async function handleVerifySetupMenu(interaction) {
           .addComponents(
             new ButtonBuilder()
               .setCustomId('back_to_verify_menu')
-              .setLabel('← Back')
+              .setLabel('Back')
               .setStyle(ButtonStyle.Secondary)
           );
 
@@ -965,7 +965,7 @@ async function handleVerifySetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -988,7 +988,7 @@ async function handleVerifySetupMenu(interaction) {
 
       const backButton = new ButtonBuilder()
         .setCustomId('back_to_verify_menu')
-        .setLabel('← Back')
+        .setLabel('Back')
         .setStyle(ButtonStyle.Secondary);
 
       const row1 = new ActionRowBuilder().addComponents(approveButton, rejectButton);
@@ -2067,7 +2067,7 @@ async function handleReactionRoleSelect(interaction) {
     pendingEmojiRoles.delete(tempKey);
     
     return interaction.update({
-      content: `${emoji} → ${role.name}`,
+      content: `${emoji} gives ${role.name}`,
       components: [],
     });
   } catch (error) {
@@ -2131,7 +2131,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_antipromotingsetup_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -2160,7 +2160,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_antipromotingsetup_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -2190,7 +2190,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_antipromotingsetup_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -2218,7 +2218,7 @@ async function handleAntiPromotingSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_antipromotingsetup_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -2345,7 +2345,7 @@ async function handleApprovalToggle(interaction, enabled) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_verify_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -2423,7 +2423,7 @@ async function handleVerificationApprove(interaction) {
             .setTitle('Missing Permissions')
             .setDescription(
               `The bot cannot assign the **${verifiedRole.name}** role because it is positioned higher than or equal to the bot's own role in the server's role list.\n\n` +
-              `**How to fix:** Go to **Server Settings → Roles** and drag the **RPM** bot role above the **${verifiedRole.name}** role, then try approving again.`
+              `**How to fix:** Go to **Server Settings**, then **Roles** and drag the **RPM** bot role above the **${verifiedRole.name}** role, then try approving again.`
             )
             .setFooter({ text: 'RPM' })
           ],
@@ -2475,7 +2475,7 @@ async function handleVerificationApprove(interaction) {
         .setTitle(isMissingPerms ? 'Missing Permissions' : 'Error')
         .setDescription(
           isMissingPerms
-            ? 'The bot is missing permissions to assign the verified role.\n\n**How to fix:** Go to **Server Settings → Roles** and drag the **RPM** bot role above the verified role, then try again.'
+            ? 'The bot is missing permissions to assign the verified role.\n\n**How to fix:** Go to **Server Settings**, then **Roles** and drag the **RPM** bot role above the verified role, then try again.'
             : 'An error occurred while approving. Please try again.'
         )
         .setFooter({ text: 'RPM' })

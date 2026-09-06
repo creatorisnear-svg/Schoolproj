@@ -191,18 +191,18 @@ export async function runGive(interaction, targetUser, amount) {
   targetBal.cash = Math.min(targetBal.cash + amount, config.maxBalance);
   await Promise.all([bal.save(), targetBal.save()]);
 
-  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `/give — ${interaction.user.tag} sent ${sym}${fmt(amount)} to ${targetUser.tag}`);
+  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `/give, ${interaction.user.tag} sent ${sym}${fmt(amount)} to ${targetUser.tag}`);
 
   // DM the recipient
   try {
     await targetUser.send({
       embeds: [new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('💰 Payment Received')
+        .setTitle('Payment Received')
         .setDescription(`**${interaction.user.username}** sent you **${sym}${fmt(amount)}** in **${interaction.guild.name}**.\n**New Cash Balance:** ${sym}${fmt(targetBal.cash)}`)
         .setFooter({ text: `${interaction.guild.name} • RPM` })],
     });
-  } catch { /* DMs closed or user not reachable — non-fatal */ }
+  } catch { /* DMs closed or user not reachable, non-fatal */ }
 
   return interaction.reply({ embeds: [successEmbed('Money Given', `You gave ${sym}${fmt(amount)} to ${targetUser}.\n**Your Cash:** ${sym}${fmt(bal.cash)}`)], flags: 64 });
 }
@@ -471,7 +471,7 @@ export async function handleShopCategoryButton(interaction) {
   const sym = config?.currencySymbol || '$';
   const guildItems = await EconomyStore.find({ guildId });
   const backRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('economy_shop_main').setLabel('← Categories').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('economy_shop_main').setLabel('Categories').setStyle(ButtonStyle.Secondary)
   );
 
   if (cat === 'Custom') {
@@ -864,7 +864,7 @@ async function sendFlagAlert(interaction, config, title, description) {
     await ch.send({
       embeds: [new EmbedBuilder()
         .setColor(0xed4245)
-        .setTitle(`🚩 ${title}`)
+        .setTitle(`${title}`)
         .setDescription(description)
         .setTimestamp()
         .setFooter({ text: 'RPM • Fraud Watch' })],
@@ -943,7 +943,7 @@ export async function handleBusinessPayMemberButton(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle(`Pay Member — ${account.name}`)
+      .setTitle(`Pay Member, ${account.name}`)
       .setDescription(`### Balance\n${sym}${fmt(account.balance)}\nSelect a member below to send them money from this business account.`)
       .setFooter({ text: 'RPM' })],
     components: [row],
@@ -1005,7 +1005,7 @@ export async function handleBusinessPayMemberAmountModal(interaction) {
   }
 
   await Promise.all([account.save(), targetBal.save(), logTx(account, 'pay', amount, { id: targetUserId, username: targetTag }, `Paid to ${targetTag}${paidSelf ? ' (SELF)' : ''}`)]);
-  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `business pay-member — ${account.name} → ${targetTag}`);
+  flagIfUnrealisticBalance(interaction, config, targetBal.cash + targetBal.bank, `business pay-member, ${account.name} to ${targetTag}`);
 
   // DM the recipient
   try {
@@ -1013,11 +1013,11 @@ export async function handleBusinessPayMemberAmountModal(interaction) {
     await targetUser.send({
       embeds: [new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('💼 Payment Received')
+        .setTitle('Payment Received')
         .setDescription(`You received **${sym}${fmt(amount)}** from **${account.name}**.\n**New Cash Balance:** ${sym}${fmt(targetBal.cash)}`)
         .setFooter({ text: `${interaction.guild.name} • RPM` })],
     });
-  } catch { /* DMs closed or user not reachable — non-fatal */ }
+  } catch { /* DMs closed or user not reachable, non-fatal */ }
 
   return interaction.reply({
     embeds: [new EmbedBuilder()
@@ -1190,7 +1190,7 @@ export async function handleBusinessInventory(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle(`${account.name} — Inventory`)
+      .setTitle(`${account.name} · Inventory`)
       .setDescription(desc)
       .setFooter({ text: 'RPM' })],
     components: buildBusinessButtons(accountId),
@@ -1205,7 +1205,7 @@ export async function handleBusinessShop(interaction) {
   const accountId = interaction.customId.replace('business_shop_', '');
   const modal = new ModalBuilder()
     .setCustomId(`business_shop_search_${accountId}`)
-    .setTitle('Shop — Search Items')
+    .setTitle('Shop, Search Items')
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -1355,7 +1355,7 @@ export async function handleBusinessGiveItem(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle(`${account.name} — Give Item`)
+      .setTitle(`${account.name} · Give Item`)
       .setDescription('Select an item from the business inventory to give to a member.')
       .setFooter({ text: 'RPM' })],
     components: [row],
@@ -1445,7 +1445,7 @@ export async function handleBusinessLedger(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
-      .setTitle(`${account.name} — Ledger`)
+      .setTitle(`${account.name} · Ledger`)
       .setDescription(desc)
       .setFooter({ text: `Balance: ${sym}${fmt(account.balance)} · RPM` })],
     components: buildBusinessButtons(accountId),
@@ -1496,7 +1496,7 @@ export async function handleBusinessGiveQtyModal(interaction) {
         .setDescription(`You received **${resolvedName}** x${qty} from **${account.name}**.`)
         .setFooter({ text: `${interaction.guild.name} • RPM` })],
     });
-  } catch { /* DMs closed — non-fatal */ }
+  } catch { /* DMs closed, non-fatal */ }
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor('#2d2d2d')
@@ -1522,7 +1522,7 @@ export async function runBusinessLeaderboard(interaction) {
   const sorted = accounts.slice().sort((a, b) => b.balance - a.balance);
   const lines = sorted.map((a, i) => {
     const income = a.incomeAmount ? ` · +${sym}${fmt(a.incomeAmount)}/${a.incomeCooldownHours}h` : '';
-    return `**${i + 1}.** ${a.name} — ${sym}${fmt(a.balance)}${income}`;
+    return `**${i + 1}.** ${a.name}, ${sym}${fmt(a.balance)}${income}`;
   });
   return interaction.reply({
     embeds: [new EmbedBuilder()
@@ -1717,14 +1717,14 @@ export async function runBusinessAdjust(interaction) {
   const isSelfBenefiting = account.roleId && memberRoleIds.includes(account.roleId) && action !== 'remove';
   if (isSelfBenefiting) {
     console.warn(
-      `[ECONOMY FLAG] Staff self-benefit — ${interaction.user.tag} (${interaction.user.id}) used /businessadjust to ${action} ` +
+      `[ECONOMY FLAG] Staff self-benefit, ${interaction.user.tag} (${interaction.user.id}) used /businessadjust to ${action} ` +
       `${sym}${fmt(amount)} on "${account.name}", a business they belong to (guild ${interaction.guildId}).`
     );
   }
 
   await account.save();
   await logTx(account, 'adjust', Math.abs(account.balance - before) || amount, interaction.user, `Staff ${action} by ${interaction.user.username}`);
-  flagIfUnrealisticBalance(interaction, config, account.balance, `/businessadjust — ${interaction.user.tag} ${action} on "${account.name}"`);
+  flagIfUnrealisticBalance(interaction, config, account.balance, `/businessadjust, ${interaction.user.tag} ${action} on "${account.name}"`);
 
   return interaction.reply({
     embeds: [new EmbedBuilder()

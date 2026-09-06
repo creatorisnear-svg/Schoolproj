@@ -14,7 +14,7 @@ import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.
  */
 export const data = new SlashCommandBuilder()
   .setName('enablecommands')
-  .setDescription('Moved — use /config features instead (Admin)')
+  .setDescription('Moved. Use /config features instead (Admin)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {

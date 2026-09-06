@@ -5,7 +5,7 @@ import BusinessTransaction from '../models/BusinessTransaction.js';
 import EconomyBalance from '../models/EconomyBalance.js';
 import Config from '../models/Config.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()
@@ -33,7 +33,7 @@ export async function autocomplete(interaction) {
     .map(l => {
       const remaining = l.totalOwed - l.amountPaid;
       const bankName = accountMap[l.lenderAccountId] || 'Bank';
-      const label = `${bankName} — ${l.type === 'property' ? 'Property' : 'Personal'} — ${sym}${fmt(remaining)} remaining`;
+      const label = `${bankName}, ${l.type === 'property' ? 'Property' : 'Personal'}, ${sym}${fmt(remaining)} remaining`;
       return { name: label.slice(0, 100), value: l.loanId };
     })
     .filter(c => c.name.toLowerCase().includes(focused))
@@ -94,7 +94,7 @@ export async function execute(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor(isPaidOff ? 0x43b581 : 0x2d2d2d)
-      .setTitle(isPaidOff ? '🎉 Loan Paid Off!' : 'Payment Made')
+      .setTitle(isPaidOff ? 'Loan Paid Off!' : 'Payment Made')
       .setDescription(
         isPaidOff
           ? `Your **${loan.type} loan** with **${account.name}** has been fully paid off!\n\n**Paid:** ${sym}${fmt(amount)}`

@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import BusinessLoanConfig from '../models/BusinessLoanConfig.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()
@@ -76,11 +76,11 @@ export async function execute(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x2d2d2d)
-      .setTitle(`${account.name} — Loan Config`)
+      .setTitle(`${account.name} · Loan Config`)
       .setDescription(
         `**Review Channel:** ${loanConfig.reviewChannelId ? `<#${loanConfig.reviewChannelId}>` : 'Not set'}\n` +
-        `**Personal Loans:** ${loanConfig.personalLoansEnabled ? `✅ Enabled (max $${fmt(loanConfig.personalLoanMax)})` : '❌ Disabled'}\n` +
-        `**Property Loans:** ${loanConfig.propertyLoansEnabled ? `✅ Enabled (max $${fmt(loanConfig.propertyLoanMax)})` : '❌ Disabled'}\n` +
+        `**Personal Loans:** ${loanConfig.personalLoansEnabled ? `Enabled (max $${fmt(loanConfig.personalLoanMax)})` : 'Disabled'}\n` +
+        `**Property Loans:** ${loanConfig.propertyLoansEnabled ? `Enabled (max $${fmt(loanConfig.propertyLoanMax)})` : 'Disabled'}\n` +
         `**Default Rate:** ${loanConfig.defaultInterestRate}% annual\n` +
         `**Panel Banner:** ${loanConfig.panelImageUrl ? loanConfig.panelImageUrl : 'None'}\n` +
         `**Ping Roles:** ${loanConfig.reviewPingRoleIds.length ? loanConfig.reviewPingRoleIds.map(r => `<@&${r}>`).join(', ') : 'None'}\n\n` +

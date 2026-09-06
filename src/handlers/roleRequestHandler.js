@@ -23,7 +23,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -41,7 +41,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_rolerequest_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
       return interaction.update({
@@ -68,7 +68,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -86,7 +86,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_rolerequest_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
       return interaction.update({
@@ -112,7 +112,7 @@ export async function handleRoleRequestSetupMenu(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -158,7 +158,7 @@ export async function handleSelectRoleForRequest(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -200,7 +200,7 @@ export async function handleSelectApproverRoles(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -267,7 +267,7 @@ export async function handleSelectApproverMembers(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back to Menu')
+          .setLabel('Back to Menu')
           .setStyle(ButtonStyle.Primary)
       );
 
@@ -386,7 +386,7 @@ export async function handleDeleteRoleRequestType(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_rolerequest_menu')
-          .setLabel('← Back to Menu')
+          .setLabel('Back to Menu')
           .setStyle(ButtonStyle.Primary)
       );
 
@@ -865,7 +865,7 @@ async function showGlobalRoleLinksMenu(interaction, isUpdate = false) {
           { label: 'Add Global Role Link', value: 'add_link', description: 'Link a role in this server to a role in another server' },
           { label: 'Remove Global Role Link', value: 'remove_link', description: 'Remove an existing global role link' },
           { label: 'View Global Role Links', value: 'view_links', description: 'See all current global role links' },
-          { label: '← Back to Setup', value: 'back_to_setup' },
+          { label: 'Back to Setup', value: 'back_to_setup' },
         )
     );
 
@@ -964,7 +964,7 @@ export async function handleGlobalRoleLinksSetupMenu(interaction) {
     let desc = '';
     for (const link of links) {
       const sourceRole = config.roles.find(r => r.roleId === link.sourceRoleId);
-      desc += `**${sourceRole?.roleName || 'Unknown Role'}** → **${link.targetRoleName}** in ${link.targetGuildName}\n`;
+      desc += `**${sourceRole?.roleName || 'Unknown Role'}** grants **${link.targetRoleName}** in ${link.targetGuildName}\n`;
       desc += `-# Added by <@${link.addedBy}>\n\n`;
     }
 
@@ -994,7 +994,7 @@ export async function handleGlobalRoleLinksSetupMenu(interaction) {
     const options = links.map(link => {
       const sourceRole = config.roles.find(r => r.roleId === link.sourceRoleId);
       return {
-        label: `${sourceRole?.roleName || 'Unknown'} → ${link.targetRoleName}`,
+        label: `${sourceRole?.roleName || 'Unknown'} grants ${link.targetRoleName}`,
         value: link.id,
         description: `In ${link.targetGuildName}`
       };
@@ -1026,7 +1026,7 @@ export async function handleGlobalRoleLinkSelectSource(interaction) {
     const guildInput = new TextInputBuilder()
       .setCustomId('target_guild_id')
       .setLabel('Target Server ID')
-      .setPlaceholder('Right-click the server → Copy Server ID')
+      .setPlaceholder('Right-click the server, then Copy Server ID')
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
       .setMaxLength(20);
@@ -1034,7 +1034,7 @@ export async function handleGlobalRoleLinkSelectSource(interaction) {
     const roleInput = new TextInputBuilder()
       .setCustomId('target_role_id')
       .setLabel('Target Role ID')
-      .setPlaceholder('Server Settings → Roles → right-click → Copy Role ID')
+      .setPlaceholder('Server Settings, Roles, right-click, Copy Role ID')
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
       .setMaxLength(20);
@@ -1061,10 +1061,10 @@ export async function handleGlobalRoleLinkAddModal(interaction) {
 
     // Validate target guild ID is a valid snowflake
     if (!/^\d{17,20}$/.test(targetGuildId)) {
-      return interaction.editReply({ embeds: [errorEmbed('Invalid server ID. Server IDs are 17–20 digit numbers.')] });
+      return interaction.editReply({ embeds: [errorEmbed('Invalid server ID. Server IDs are 17-20 digit numbers.')] });
     }
     if (!/^\d{17,20}$/.test(targetRoleId)) {
-      return interaction.editReply({ embeds: [errorEmbed('Invalid role ID. Role IDs are 17–20 digit numbers.')] });
+      return interaction.editReply({ embeds: [errorEmbed('Invalid role ID. Role IDs are 17-20 digit numbers.')] });
     }
 
     // Prevent linking to the same server
@@ -1099,7 +1099,7 @@ export async function handleGlobalRoleLinkAddModal(interaction) {
       targetRole = null;
     }
     if (!targetRole) {
-      return interaction.editReply({ embeds: [errorEmbed(`Role ID \`${targetRoleId}\` was not found in **${targetGuild.name}**.\n\n-# Make sure you copied the role ID from the correct server. Right-click the role in Server Settings → Roles, then Copy Role ID.`)] });
+      return interaction.editReply({ embeds: [errorEmbed(`Role ID \`${targetRoleId}\` was not found in **${targetGuild.name}**.\n\n-# Make sure you copied the role ID from the correct server. Right-click the role in Server Settings, then Roles, then Copy Role ID.`)] });
     }
 
     // Load config and find the source role type
@@ -1167,7 +1167,7 @@ export async function handleGlobalRoleLinkRemoveSelect(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#2d2d2d')
       .setTitle('Global Role Link Removed')
-      .setDescription(`The link from **${sourceRole?.roleName || 'Unknown Role'}** → **${removed.targetRoleName}** in **${removed.targetGuildName}** has been removed.`)
+      .setDescription(`The link from **${sourceRole?.roleName || 'Unknown Role'}** to **${removed.targetRoleName}** in **${removed.targetGuildName}** has been removed.`)
       .setFooter({ text: 'RPM' });
 
     await interaction.update({ embeds: [embed], components: [_backToGlobalLinksRow()] });
@@ -1184,7 +1184,7 @@ function _backToGlobalLinksRow() {
     .addComponents(
       new ButtonBuilder()
         .setCustomId('back_to_global_links_menu')
-        .setLabel('← Back')
+        .setLabel('Back')
         .setStyle(ButtonStyle.Secondary)
     );
 }

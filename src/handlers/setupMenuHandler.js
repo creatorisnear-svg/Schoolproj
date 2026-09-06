@@ -48,7 +48,7 @@ export async function handleBackToMenu(interaction) {
               { label: 'Add Global Role Link', value: 'add_link' },
               { label: 'Remove Global Role Link', value: 'remove_link' },
               { label: 'View Global Role Links', value: 'view_links' },
-              { label: '← Back to Setup', value: 'back_to_setup' },
+              { label: 'Back to Setup', value: 'back_to_setup' },
             )
         );
       await interaction.update({

@@ -14,7 +14,7 @@ import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.
  */
 export const data = new SlashCommandBuilder()
   .setName('economyconfig')
-  .setDescription('Moved — use /config economy instead (Admin)')
+  .setDescription('Moved. Use /config economy instead (Admin)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {

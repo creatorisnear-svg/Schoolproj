@@ -48,7 +48,7 @@ export async function handleFireDepartmentMenu(interaction) {
           .addComponents(
             new ButtonBuilder()
               .setCustomId('back_to_fd_menu')
-              .setLabel('← Back')
+              .setLabel('Back')
               .setStyle(ButtonStyle.Secondary)
           );
 
@@ -100,7 +100,7 @@ export async function handleFireDepartmentMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_fd_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -185,7 +185,7 @@ export async function handleFireDepartmentMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_fd_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -362,7 +362,7 @@ export async function handleFDRespondCall(interaction) {
 
     const backBtn = new ButtonBuilder()
       .setCustomId('back_to_fd_menu')
-      .setLabel('← Back')
+      .setLabel('Back')
       .setStyle(ButtonStyle.Secondary);
 
     const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);

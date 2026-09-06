@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 import BusinessAccount from '../models/BusinessAccount.js';
 import BusinessLoanConfig from '../models/BusinessLoanConfig.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 
 export const data = new SlashCommandBuilder()
   .setName('businessloanpanel')
@@ -52,7 +52,7 @@ export async function execute(interaction) {
 
   const panelEmbed = new EmbedBuilder()
     .setColor(0x2d2d2d)
-    .setTitle(`${account.name} — Loan Services`)
+    .setTitle(`${account.name} · Loan Services`)
     .setDescription(
       (types.length ? `**Available:** ${types.join(' · ')}\n` : '') +
       `Apply for a loan directly through this panel.\n` +
@@ -67,7 +67,7 @@ export async function execute(interaction) {
       .setCustomId(`loan_apply_${account.accountId}`)
       .setLabel('Apply for a Loan')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('📋'),
+      
   );
 
   // Delete old panel message if it exists
@@ -91,7 +91,7 @@ export async function execute(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x2d2d2d)
-      .setDescription(`✅ Loan panel for **${account.name}** posted in <#${channel.id}>.`)
+      .setDescription(`Loan panel for **${account.name}** posted in <#${channel.id}>.`)
       .setFooter({ text: 'RPM' })],
     flags: 64,
   });

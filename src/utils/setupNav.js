@@ -18,7 +18,7 @@ export function backRow() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(SETUP_HUB_ID)
-      .setLabel('← Back to Setup')
+      .setLabel('Back to Setup')
       .setStyle(ButtonStyle.Secondary)
   );
 }

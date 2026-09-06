@@ -14,7 +14,7 @@ import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from 'discord.
  */
 export const data = new SlashCommandBuilder()
   .setName('strikesystemconfig')
-  .setDescription('Moved — use /config strikes instead (Admin)')
+  .setDescription('Moved. Use /config strikes instead (Admin)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {

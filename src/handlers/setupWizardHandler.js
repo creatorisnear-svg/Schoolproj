@@ -34,7 +34,7 @@ function menuEmbed(title, desc) {
     .setColor('#2d2d2d')
     .setTitle(title)
     .setDescription(desc)
-    .setFooter({ text: 'RPM — run /setup to go back' });
+    .setFooter({ text: 'RPM · run /setup to go back' });
 }
 
 async function ensureEnabled(Model, guildId) {
@@ -70,8 +70,8 @@ const moduleResponses = {
       : 'Not set yet';
     return interaction.update({
       embeds: [menuEmbed(
-        'General Settings — Log Channel',
-        `**The log channel is where the bot records everything** — verifications, strikes, ticket opens, bans, etc. Only staff should be able to see it.\n\n` +
+        'General Settings, Log Channel',
+        `**The log channel is where the bot records everything**: verifications, strikes, ticket opens, bans, etc. Only staff should be able to see it.\n\n` +
         `**${logStatus}**\n\n` +
         'Pick a text channel below:'
       )],
@@ -93,10 +93,10 @@ const moduleResponses = {
         'Verification Setup',
         '**What this does:** Members click a button and fill out a short form. You (or the bot) approves them and they get access to the server.\n\n' +
         '**Set these up in order:**\n' +
-        '`1.` Verify Channel — the channel where members go to click the verify button\n' +
-        '`2.` Verified Role — the role members get when approved (e.g. "Member")\n' +
-        '`3.` Unverified Role — the role members have before they verify (e.g. "Unverified")\n' +
-        '`4.` Verified Channels — categories members can see after verification\n\n' +
+        '`1.` Verify Channel: the channel where members go to click the verify button\n' +
+        '`2.` Verified Role: the role members get when approved (e.g. "Member")\n' +
+        '`3.` Unverified Role: the role members have before they verify (e.g. "Unverified")\n' +
+        '`4.` Verified Channels: categories members can see after verification\n\n' +
         '-# Custom question, RP tag, and staff approval are optional extras.'
       )],
       components: [
@@ -129,9 +129,9 @@ const moduleResponses = {
         'Ticket Setup',
         '**What this does:** Members click a button to open a private support channel with staff. Great for reports, ban appeals, and questions.\n\n' +
         '**Set these up in order:**\n' +
-        '`1.` Select Panel Channel — the channel where the "Open a Ticket" button lives\n' +
-        '`2.` Add Ticket Type — create one or more categories (e.g. "Report a Player")\n' +
-        '`3.` Send Panel — posts the button to the channel you chose\n\n' +
+        '`1.` Select Panel Channel: the channel where the "Open a Ticket" button lives\n' +
+        '`2.` Add Ticket Type: create one or more categories (e.g. "Report a Player")\n' +
+        '`3.` Send Panel: posts the button to the channel you chose\n\n' +
         '-# Up to 5 ticket types free, unlimited with Premium.'
       )],
       components: [
@@ -162,9 +162,9 @@ const moduleResponses = {
       embeds: [menuEmbed(
         'Strike System Setup',
         '**What this does:** Staff issue strikes to rule-breakers with `/strike @user`. At each level the bot can automatically timeout, kick, or ban them.\n\n' +
-        '**Both options below are optional** — you can use strikes without automatic punishments:\n\n' +
-        '`1.` Set Strike Level Roles — give members a visible role at each strike count\n' +
-        '`2.` Set Strike Actions — what the bot does automatically at each level'
+        '**Both options below are optional**: you can use strikes without automatic punishments:\n\n' +
+        '`1.` Set Strike Level Roles: give members a visible role at each strike count\n' +
+        '`2.` Set Strike Actions: what the bot does automatically at each level'
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -188,9 +188,9 @@ const moduleResponses = {
         'Welcome System Setup',
         '**What this does:** When a new member joins your server, the bot automatically sends a greeting message to a channel and/or a DM to them.\n\n' +
         '**Set up what you need (all optional):**\n' +
-        '`1.` Welcome Channel — the channel where the greeting is posted\n' +
-        '`2.` Welcome Message — what the message says (use `{user}` to mention them)\n' +
-        '`3.` Welcome DM — a private message sent directly to the new member'
+        '`1.` Welcome Channel: the channel where the greeting is posted\n' +
+        '`2.` Welcome Message: what the message says (use `{user}` to mention them)\n' +
+        '`3.` Welcome DM: a private message sent directly to the new member'
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -212,10 +212,10 @@ const moduleResponses = {
     return interaction.update({
       embeds: [menuEmbed(
         'Anti-Promoting Setup',
-        '**What this does:** Automatically deletes Discord invite links that members post — so nobody advertises other servers in yours.\n\n' +
+        '**What this does:** Automatically deletes Discord invite links that members post, so nobody advertises other servers in yours.\n\n' +
         '**Works automatically with no setup required.** Use the options below to customize:\n\n' +
-        '`1.` Add Whitelisted Link — allow your own server invite so it is never deleted\n' +
-        '`2.` Toggle Staff Bypass — choose if staff can post any invite without it being deleted'
+        '`1.` Add Whitelisted Link: allow your own server invite so it is never deleted\n' +
+        '`2.` Toggle Staff Bypass: choose if staff can post any invite without it being deleted'
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -244,7 +244,7 @@ const moduleResponses = {
         'Role Request Setup',
         '**What this does:** Members click a button to request a role (e.g. "Civilian Whitelist"). Staff approve or deny each request.\n\n' +
         '**Set these up in order:**\n' +
-        '`1.` Add Role Request Type — create a role members can request\n' +
+        '`1.` Add Role Request Type: create a role members can request\n' +
         '`2.` The panel appears automatically in the channel you set up'
       )],
       components: [
@@ -271,7 +271,7 @@ const moduleResponses = {
       embeds: [menuEmbed(
         'Priority Tracker Setup',
         `**What this does:** Posts a live board in a channel showing whether a priority event is currently active. Staff use \`/activepriority\` and \`/deactivatepriority\` to control it.\n\n` +
-        `**Just pick a channel below** — that is all you need to do.${currentChannel}`
+        `**Just pick a channel below**: that is all you need to do.${currentChannel}`
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -292,7 +292,7 @@ const moduleResponses = {
       embeds: [menuEmbed(
         'RP Calendar Setup',
         `**What this does:** Posts a weekly roleplay schedule in a channel. Staff schedule sessions with \`/setrp\` and members can see when to show up.\n\n` +
-        `**Just pick a channel below** — that is all you need to do.${currentChannel}`
+        `**Just pick a channel below**: that is all you need to do.${currentChannel}`
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -311,16 +311,16 @@ const moduleResponses = {
     const config = await ensureEnabled(MemberMovementConfig, interaction.guildId);
     const chCount = (config?.allowedChannelIds || []).length;
     const panelStatus = config?.panelChannelId
-      ? `Panel is in <#${config.panelChannelId}>${config.panelMessageId ? '' : ' — not sent yet'}`
+      ? `Panel is in <#${config.panelChannelId}>${config.panelMessageId ? '' : ', not sent yet'}`
       : 'Panel not sent yet';
     return interaction.update({
       embeds: [menuEmbed(
         'Voice Mover Setup',
-        `**What this does:** Posts a panel in a text channel with a dropdown. Members pick a voice channel from the list and the bot moves them into it — no need for staff to drag people manually.\n\n` +
+        `**What this does:** Posts a panel in a text channel with a dropdown. Members pick a voice channel from the list and the bot moves them into it, no need for staff to drag people manually.\n\n` +
         `**Current status:** ${panelStatus} · Allowed channels: ${chCount > 0 ? `${chCount} configured` : 'all voice channels'}\n\n` +
         '**Set these up in order:**\n' +
-        '`1.` Add Allowed Channels — choose which voice channels appear in the dropdown (or skip to allow all)\n' +
-        '`2.` Send Panel — posts the dropdown panel to any text channel'
+        '`1.` Add Allowed Channels: choose which voice channels appear in the dropdown (or skip to allow all)\n' +
+        '`2.` Send Panel: posts the dropdown panel to any text channel'
       )],
       components: [
         new ActionRowBuilder().addComponents(
@@ -347,10 +347,10 @@ const moduleResponses = {
       embeds: [menuEmbed(
         'Roleplay Commands Setup',
         '**What this does:** Enables in-character commands your members can use:\n' +
-        '- `/me` — describe an action (e.g. "/me waves hello")\n' +
-        '- `/do` — describe something happening in the scene\n' +
-        '- `/try` — attempt an action (bot randomly says if it succeeds)\n' +
-        '- `911` — members send emergency calls that LEO and FD can respond to\n\n' +
+        '- `/me`: describe an action (e.g. "/me waves hello")\n' +
+        '- `/do`: describe something happening in the scene\n' +
+        '- `/try`: attempt an action (bot randomly says if it succeeds)\n' +
+        '- `911`: members send emergency calls that LEO and FD can respond to\n\n' +
         '**Set each one up below:**'
       )],
       components: [
@@ -388,9 +388,9 @@ const moduleResponses = {
             `**Application types:** ${typeCount}\n\n` +
             '### Configure on the Dashboard\n' +
             'Create application types, set questions, and manage panels at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
-            '-# Dashboard → Applications — full setup available there.'
+            '-# Full setup is available on the dashboard, under Applications.'
           )
-          .setFooter({ text: 'RPM — run /setup to go back' }),
+          .setFooter({ text: 'RPM · run /setup to go back' }),
       ],
       components: [],
     });
@@ -466,10 +466,10 @@ const moduleResponses = {
           .setTitle('Enable / Disable Features')
           .setDescription(
             '**Enable** a feature to turn it on.\n' +
-            '**Disable** a feature to turn it off — your settings are saved and you can re-enable anytime.\n\n' +
+            '**Disable** a feature to turn it off, your settings are saved and you can re-enable anytime.\n\n' +
             '-# Tip: `/config <feature>` automatically enables a feature when you configure it.'
           )
-          .setFooter({ text: 'RPM — run /setup to go back' }),
+          .setFooter({ text: 'RPM · run /setup to go back' }),
       ],
       components: [
         new ActionRowBuilder().addComponents(

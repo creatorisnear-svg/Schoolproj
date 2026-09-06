@@ -113,7 +113,7 @@ export async function handleTicketSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_ticket_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -191,7 +191,7 @@ export async function handleTicketSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_ticket_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -238,7 +238,7 @@ export async function handleTicketSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_ticket_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 

@@ -3,7 +3,7 @@ import BusinessLoanApplication from '../models/BusinessLoanApplication.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import Config from '../models/Config.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()

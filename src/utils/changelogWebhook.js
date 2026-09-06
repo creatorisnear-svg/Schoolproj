@@ -13,7 +13,7 @@ export async function sendChangelogWebhook(changelog, { isUpdate = false } = {})
 
   const embed = {
     color: 0x5865f2,
-    title: `${isUpdate ? 'Updated' : 'New'} — v${changelog.version}: ${changelog.title}`,
+    title: `${isUpdate ? 'Updated' : 'New'}, v${changelog.version}: ${changelog.title}`,
     description: changeList || null,
     footer: { text: 'RPM' },
     timestamp: new Date().toISOString(),

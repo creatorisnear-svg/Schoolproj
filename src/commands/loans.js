@@ -3,7 +3,7 @@ import BusinessLoan from '../models/BusinessLoan.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import Config from '../models/Config.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()
@@ -44,7 +44,7 @@ export async function execute(interaction) {
   const accounts = await BusinessAccount.find({ accountId: { $in: accountIds } }).lean();
   const accountMap = Object.fromEntries(accounts.map(a => [a.accountId, a.name]));
 
-  const statusEmoji = { active: '🟡', paid: '✅', defaulted: '🔴' };
+  const statusLabel = { active: 'Active', paid: 'Paid', defaulted: 'Defaulted' };
 
   const lines = loans.map(l => {
     const remaining = l.totalOwed - l.amountPaid;
@@ -52,7 +52,7 @@ export async function execute(interaction) {
     const pct = Math.round((l.amountPaid / l.totalOwed) * 100);
     const dueStr = l.status === 'active' ? ` · Due <t:${Math.floor(l.dueAt.getTime() / 1000)}:R>` : '';
     return (
-      `${statusEmoji[l.status] || '❓'} **${l.type === 'property' ? 'Property' : 'Personal'} Loan** — ${bankName}\n` +
+      `**${statusLabel[l.status] || 'Unknown'}** · **${l.type === 'property' ? 'Property' : 'Personal'} Loan** · ${bankName}\n` +
       `-# Principal: ${sym}${fmt(l.principal)} · Owed: ${sym}${fmt(remaining)} · ${pct}% paid${dueStr}`
     );
   });

@@ -176,7 +176,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
               .setCustomId('char_placeholder_2')
               .setLabel('Next Step')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('→ Click "Submit" below')
+              .setPlaceholder('Click "Submit" below')
               .setRequired(false)
               .setMaxLength(1)
               .setValue(' ')
@@ -211,7 +211,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_civilian_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -247,7 +247,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_civilian_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -284,7 +284,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_civilian_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -372,7 +372,7 @@ export async function handleCivilianDatabaseMenu(interaction) {
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_civilian_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         )
       );
@@ -452,7 +452,7 @@ export async function handleCivilianManageCharacterSelect(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_civilian_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 

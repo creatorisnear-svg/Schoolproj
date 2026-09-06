@@ -14,9 +14,9 @@ import Config from '../models/Config.js';
 
 export const data = new SlashCommandBuilder()
   .setName('setup')
-  .setDescription('Step-by-step setup guide — start here if you just added the bot (Admin/Staff)');
+  .setDescription('Step-by-step setup guide, start here if you just added the bot (Admin/Staff)');
 
-const MARK = { ready: '`✓`', incomplete: '`!`', off: '`✗`', unknown: '`?`' };
+const MARK = { ready: '`ON `', incomplete: '`SET`', off: '`OFF`', unknown: '`?  `' };
 
 /** Turn required field names into something an owner can act on. */
 function missingText(missing) {
@@ -24,7 +24,7 @@ function missingText(missing) {
   const pretty = missing
     .map((f) => f.replace(/Ids?$/, '').replace(/([A-Z])/g, ' $1').trim().toLowerCase())
     .join(', ');
-  return ` — needs ${pretty}`;
+  return `: needs ${pretty}`;
 }
 
 /**
@@ -82,7 +82,7 @@ export async function buildSetupPayload(guildId) {
 
   if (!hasLog) {
     color = '#fee75c';
-    nextStepTitle = 'Start here — set a log channel';
+    nextStepTitle = 'Start here, set a log channel';
     nextStepText =
       'The bot records verifications, strikes, tickets and bans in one staff-only channel.\n\n' +
       '**Right now:** pick **General Settings** below, then choose a channel like `#bot-logs`.';
@@ -97,7 +97,7 @@ export async function buildSetupPayload(guildId) {
     color = '#5865f2';
     nextStepTitle = 'Turn on your first feature';
     nextStepText =
-      'Your foundation is set. Pick what you want to use — **Verification** and **Welcome Messages** are good first picks.';
+      'Your foundation is set. Pick what you want to use, **Verification** and **Welcome Messages** are good first picks.';
   }
 
   // ── Status, grouped exactly as the registry orders it ───────────────────────
@@ -111,7 +111,7 @@ export async function buildSetupPayload(guildId) {
         : s.status === 'incomplete' ? `on${missingText(s.missing)}`
         : s.status === 'unknown' ? 'unavailable'
         : 'off';
-      return `${MARK[s.status] || MARK.off} **${f.label}**${premium} — ${detail}`;
+      return `${MARK[s.status] || MARK.off} **${f.label}**${premium}, ${detail}`;
     });
     sections.push(`### ${group}\n${lines.join('\n')}`);
   }
@@ -123,7 +123,7 @@ export async function buildSetupPayload(guildId) {
   }
   descParts.push(
     '### Foundation\n' +
-    `${hasLog ? MARK.ready : MARK.off} **Log channel** — ${hasLog ? `<#${config.logChannelId}>` : 'not set — pick "General Settings" below'}`
+    `${hasLog ? MARK.ready : MARK.off} **Log channel**: ${hasLog ? `<#${config.logChannelId}>` : 'not set, pick "General Settings" below'}`
   );
   descParts.push(...sections);
   descParts.push(
@@ -143,7 +143,7 @@ export async function buildSetupPayload(guildId) {
     .setColor(color)
     .setTitle('Server Setup')
     .setDescription(descParts.join('\n\n').slice(0, 4000))
-    .setFooter({ text: 'RPM — run /setup anytime to check your status' });
+    .setFooter({ text: 'RPM · run /setup anytime to check your status' });
 
   // ── Menu, built from the registry ──────────────────────────────────────────
   // Filtered by what the wizard can actually handle, so an option can never fall

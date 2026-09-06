@@ -93,7 +93,7 @@ export async function execute(interaction) {
             `**Removed by:** ${interaction.user.username}\n` +
             `**Reason:** ${reason}\n` +
             `**Removed:** ${removeAmount}\n` +
-            `**Level:** ${previousLevel}/4 → ${newLevel}/4`
+            `**Level:** ${previousLevel}/4 down to ${newLevel}/4`
           )
           .setTimestamp()
           .setFooter({ text: 'RPM' });

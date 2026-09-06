@@ -23,7 +23,7 @@ import Config                  from '../models/Config.js';
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 const fmt      = n => Number(n).toLocaleString();
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const okEmbed  = msg => new EmbedBuilder().setColor(0x2d2d2d).setDescription(msg).setFooter({ text: 'RPM' });
 
 async function _getConfig(guildId) {
@@ -44,16 +44,16 @@ async function _logTx(account, type, amount, user, note = null) {
 
 function _buildQuestions(loanType, max, sym) {
   const base = [
-    `💰 **How much are you requesting?**\n-# Maximum: **${sym}${fmt(max)}** — reply with a number only`,
-    `📅 **What repayment term would you like?**\n-# Enter a number of days between **1 and 7**`,
+    `**How much are you requesting?**\n-# Maximum: **${sym}${fmt(max)}**: reply with a number only`,
+    `**What repayment term would you like?**\n-# Enter a number of days between **1 and 7**`,
   ];
   if (loanType === 'personal') {
-    return [...base, `📝 **What will you use this loan for?**`];
+    return [...base, `**What will you use this loan for?**`];
   }
   return [
     ...base,
-    `🏠 **Describe the property you are financing.**`,
-    `💎 **Do you have any collateral to offer?**\n-# Type \`none\` if you have none`,
+    `**Describe the property you are financing.**`,
+    `**Do you have any collateral to offer?**\n-# Type \`none\` if you have none`,
   ];
 }
 
@@ -148,7 +148,7 @@ export async function handleLoanApply(interaction) {
   return interaction.reply({
     embeds: [new EmbedBuilder()
       .setColor(0x2d2d2d)
-      .setTitle(`${account.name} — Loan Application`)
+      .setTitle(`${account.name} · Loan Application`)
       .setDescription('Select the type of loan you would like to apply for.\n-# A short Q&A will be sent to your DMs.')
       .setFooter({ text: 'RPM' })],
     components: [row],
@@ -199,7 +199,7 @@ export async function handleLoanTypeSelect(interaction) {
     await interaction.user.send({
       embeds: [new EmbedBuilder()
         .setColor(0x2d2d2d)
-        .setTitle(`${account.name} — ${loanType === 'personal' ? 'Personal' : 'Property'} Loan Application`)
+        .setTitle(`${account.name} · ${loanType === 'personal' ? 'Personal' : 'Property'} Loan Application`)
         .setDescription(questions[0])
         .setFooter({ text: `Question 1 of ${questions.length} · Type "cancel" to cancel` })],
     });
@@ -236,7 +236,7 @@ export async function handleLoanTypeSelect(interaction) {
   console.log('[LoanHandler] handleLoanTypeSelect completed in ' + (Date.now() - t0) + 'ms');
 
   return interaction.editReply({
-    embeds: [okEmbed('✅ Application started! Check your DMs to continue.')],
+    embeds: [okEmbed('Application started! Check your DMs to continue.')],
     components: [],
   });
 }
@@ -395,7 +395,7 @@ export function buildLoanReviewEmbed(application, sym = '$') {
 
   const embed = new EmbedBuilder()
     .setColor(0x2d2d2d)
-    .setTitle(`Loan Application — ${application.type === 'property' ? 'Property' : 'Personal'}`)
+    .setTitle(`Loan Application, ${application.type === 'property' ? 'Property' : 'Personal'}`)
     .setDescription(
       `**Applicant:** <@${application.applicantUserId}> (${application.applicantUsername})\n` +
       `**Amount:** ${sym}${fmt2(application.requestedAmount)}\n` +
@@ -410,13 +410,11 @@ export function buildLoanReviewEmbed(application, sym = '$') {
       new ButtonBuilder()
         .setCustomId(`loan_approve_${application.applicationId}`)
         .setLabel('Approve')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('✅'),
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId(`loan_deny_${application.applicationId}`)
         .setLabel('Deny')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('❌'),
     ),
   ];
 
@@ -541,7 +539,7 @@ export async function handleLoanApproveModal(interaction) {
         await msg.edit({
           embeds: [new EmbedBuilder()
             .setColor(0x43b581)
-            .setTitle(`✅ Approved — ${application.type === 'property' ? 'Property' : 'Personal'} Loan`)
+            .setTitle(`Approved, ${application.type === 'property' ? 'Property' : 'Personal'} Loan`)
             .setDescription(
               `**Applicant:** <@${application.applicantUserId}>\n` +
               `**Principal:** ${sym}${fmt(application.requestedAmount)}\n` +
@@ -562,7 +560,7 @@ export async function handleLoanApproveModal(interaction) {
     await borrower.send({
       embeds: [new EmbedBuilder()
         .setColor(0x43b581)
-        .setTitle('🎉 Loan Approved!')
+        .setTitle('Loan Approved!')
         .setDescription(
           `Your **${application.type} loan** from **${account.name}** has been approved!\n\n` +
           `**Amount received:** ${sym}${fmt(application.requestedAmount)}\n` +
@@ -578,7 +576,7 @@ export async function handleLoanApproveModal(interaction) {
     embeds: [new EmbedBuilder()
       .setColor(0x43b581)
       .setDescription(
-        `✅ Loan approved. **${sym}${fmt(application.requestedAmount)}** transferred from **${account.name}** to **${application.applicantUsername}**.`,
+        `Loan approved. **${sym}${fmt(application.requestedAmount)}** transferred from **${account.name}** to **${application.applicantUsername}**.`,
       )
       .setFooter({ text: 'RPM' })],
     flags: 64,
@@ -615,7 +613,7 @@ export async function handleLoanDeny(interaction) {
           .setLabel('Reason (shown to applicant)')
           .setStyle(TextInputStyle.Paragraph)
           .setRequired(false)
-          .setPlaceholder('Optional — leave blank to send a generic denial'),
+          .setPlaceholder('Optional, leave blank to send a generic denial'),
       ),
     );
 
@@ -650,7 +648,7 @@ export async function handleLoanDenyModal(interaction) {
         await msg.edit({
           embeds: [new EmbedBuilder()
             .setColor(0xf04747)
-            .setTitle(`❌ Denied — ${application.type === 'property' ? 'Property' : 'Personal'} Loan`)
+            .setTitle(`Denied, ${application.type === 'property' ? 'Property' : 'Personal'} Loan`)
             .setDescription(
               `**Applicant:** <@${application.applicantUserId}>\n` +
               `**Amount Requested:** $${fmt(application.requestedAmount)}\n` +
@@ -680,7 +678,7 @@ export async function handleLoanDenyModal(interaction) {
   } catch { /* DMs closed */ }
 
   return interaction.reply({
-    embeds: [okEmbed(`❌ Application from **${application.applicantUsername}** denied.`)],
+    embeds: [okEmbed(`Application from **${application.applicantUsername}** denied.`)],
     flags: 64,
   });
 }
@@ -729,7 +727,7 @@ export async function checkLoanReminders(client) {
           .setFooter({ text: 'RPM' })],
       });
       await BusinessLoan.updateOne({ loanId: loan.loanId }, { reminderSent: true });
-    } catch { /* DMs closed — non-fatal */ }
+    } catch { /* DMs closed, non-fatal */ }
   }
 }
 

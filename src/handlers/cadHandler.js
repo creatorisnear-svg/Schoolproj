@@ -50,7 +50,7 @@ export async function handleCADSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_cad_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -72,7 +72,7 @@ export async function handleCADSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_cad_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -94,7 +94,7 @@ export async function handleCADSetupMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_cad_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -258,7 +258,7 @@ export async function handleCADCharacterMenu(interaction) {
               .setCustomId('char_placeholder_2')
               .setLabel('Next Step')
               .setStyle(TextInputStyle.Short)
-              .setPlaceholder('→ Click "Submit" below')
+              .setPlaceholder('Click "Submit" below')
               .setRequired(false)
               .setMaxLength(1)
               .setValue(' ')
@@ -650,7 +650,7 @@ export async function handleCharacterContinue(interaction, characterId) {
             .setCustomId('char_placeholder_2')
             .setLabel('Next Step')
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('→ Fill in then submit')
+            .setPlaceholder('Fill in then submit')
             .setRequired(false)
             .setMaxLength(1)
             .setValue(' ')
@@ -660,7 +660,7 @@ export async function handleCharacterContinue(interaction, characterId) {
             .setCustomId('char_placeholder_3')
             .setLabel('Continue')
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('→ Choose status/license')
+            .setPlaceholder('Choose status/license')
             .setRequired(false)
             .setMaxLength(1)
             .setValue(' ')

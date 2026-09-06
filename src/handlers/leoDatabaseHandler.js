@@ -133,7 +133,7 @@ export async function handleLEODatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -154,7 +154,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .addComponents(
             new ButtonBuilder()
               .setCustomId('back_to_leo_menu')
-              .setLabel('← Back')
+              .setLabel('Back')
               .setStyle(ButtonStyle.Secondary)
           );
 
@@ -182,7 +182,7 @@ export async function handleLEODatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -321,7 +321,7 @@ export async function handleLEODatabaseMenu(interaction) {
           .addComponents(
             new ButtonBuilder()
               .setCustomId('back_to_leo_menu')
-              .setLabel('← Back')
+              .setLabel('Back')
               .setStyle(ButtonStyle.Secondary)
           );
 
@@ -361,7 +361,7 @@ export async function handleLEODatabaseMenu(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -413,7 +413,7 @@ export async function handleLEOSearchPlateModal(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -468,7 +468,7 @@ export async function handleLEOSearchPlateModal(interaction) {
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -585,7 +585,7 @@ export async function handleLEORespondCall(interaction) {
 
     const backBtn = new ButtonBuilder()
       .setCustomId('back_to_leo_menu')
-      .setLabel('← Back')
+      .setLabel('Back')
       .setStyle(ButtonStyle.Secondary);
 
     const row = new ActionRowBuilder().addComponents(respondBtn, attachBtn);
@@ -772,7 +772,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
         .addComponents(
           new ButtonBuilder()
             .setCustomId('back_to_leo_menu')
-            .setLabel('← Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
         );
 
@@ -881,7 +881,7 @@ export async function handleLEOSearchCharacterModal(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -1276,7 +1276,7 @@ export async function handleLEOViewCharacterProfile(interaction) {
       .addComponents(
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -1338,7 +1338,7 @@ export async function handleLEOManageBolosSelect(interaction) {
           .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
           .setCustomId('back_to_leo_menu')
-          .setLabel('← Back')
+          .setLabel('Back')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -1371,7 +1371,7 @@ export async function handleLEODeleteBOLO(interaction) {
     if (!bolo) {
       const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = await import('discord.js');
       const backRow = new ARB().addComponents(
-        new BB().setCustomId('back_to_leo_menu').setLabel('← Back').setStyle(BS.Secondary)
+        new BB().setCustomId('back_to_leo_menu').setLabel('Back').setStyle(BS.Secondary)
       );
       return interaction.update({
         embeds: [errorEmbed('BOLO not found or already deleted.')],
@@ -1381,7 +1381,7 @@ export async function handleLEODeleteBOLO(interaction) {
 
     const { ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = await import('discord.js');
     const backRow = new ARB().addComponents(
-      new BB().setCustomId('back_to_leo_menu').setLabel('← Back to Menu').setStyle(BS.Secondary)
+      new BB().setCustomId('back_to_leo_menu').setLabel('Back to Menu').setStyle(BS.Secondary)
     );
 
     return interaction.update({

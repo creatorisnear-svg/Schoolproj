@@ -244,7 +244,7 @@ function backBtn(type = 'economy') {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(type === 'setup' ? 'economysetup_back_to_main' : 'economy_back_to_main')
-      .setLabel(type === 'setup' ? '← Setup Menu' : '← Economy Menu')
+      .setLabel(type === 'setup' ? 'Setup Menu' : 'Economy Menu')
       .setStyle(ButtonStyle.Secondary)
   );
 }
@@ -269,7 +269,7 @@ function civJobsSetupMenu(config) {
             { label: 'Add Job',             value: 'add_job',      description: 'Add a new civilian job to the panel' },
             { label: 'Remove Job',          value: 'remove_job',   description: 'Remove an existing job from the panel' },
             { label: 'Post / Update Panel', value: 'post_panel',   description: 'Send or refresh the jobs panel now' },
-            { label: '← Back to Setup',    value: 'back',         description: 'Return to economy setup menu' },
+            { label: 'Back to Setup',    value: 'back',         description: 'Return to economy setup menu' },
           ])
       ),
     ],
@@ -293,7 +293,7 @@ function buildStoreMenu(items, sym, mode, query = null) {
       description: (item.description || 'No description').slice(0, 100),
     });
   });
-  opts.push({ label: '← Back to Economy', value: '__back__', description: 'Return to economy menu' });
+  opts.push({ label: 'Back to Economy', value: '__back__', description: 'Return to economy menu' });
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder('Select an item...').addOptions(opts)
   );
@@ -492,7 +492,7 @@ export async function handleEconomyMenu(interaction) {
       components: [
         new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId(`economy_buy_now_${item._id}`).setLabel(buyLabel).setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('economy_back_to_store').setLabel('← Back to Store').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('economy_back_to_store').setLabel('Back to Store').setStyle(ButtonStyle.Secondary),
         ),
       ],
       content: '',
@@ -571,11 +571,11 @@ export async function handleEconomyMenu(interaction) {
       const desc =
         `### Status\n**Enabled:** ${config.enabled ? 'Yes' : 'No'}\n\n` +
         `### Currency\n**Symbol:** ${sym}  **Starting:** ${sym}${config.startingBalance}  **Max:** ${sym}${config.maxBalance}\n\n` +
-        `### Work\n**Enabled:** ${config.work.enabled}  **Cooldown:** ${config.work.cooldown}m  **Pay:** ${sym}${config.work.minPayout}–${sym}${config.work.maxPayout}\n\n` +
+        `### Work\n**Enabled:** ${config.work.enabled}  **Cooldown:** ${config.work.cooldown}m  **Pay:** ${sym}${config.work.minPayout}-${sym}${config.work.maxPayout}\n\n` +
         `### Crime\n**Enabled:** ${config.crime.enabled}  **Cooldown:** ${config.crime.cooldown}m  **Success:** ${config.crime.successRate}%\n\n` +
         `### Rob\n**Enabled:** ${config.rob.enabled}  **Cooldown:** ${config.rob.cooldown}m  **Success:** ${config.rob.successRate}%\n\n` +
-        `### Gambling\n**Enabled:** ${config.gambling.enabled}  **Bet:** ${sym}${config.gambling.minBet}–${sym}${config.gambling.maxBet}\n\n` +
-        `### Chat Money\n**Enabled:** ${config.chatMoney.enabled}  **Amount:** ${sym}${config.chatMoney.minAmount}–${sym}${config.chatMoney.maxAmount}  **Cooldown:** ${config.chatMoney.cooldown}s\n\n` +
+        `### Gambling\n**Enabled:** ${config.gambling.enabled}  **Bet:** ${sym}${config.gambling.minBet}-${sym}${config.gambling.maxBet}\n\n` +
+        `### Chat Money\n**Enabled:** ${config.chatMoney.enabled}  **Amount:** ${sym}${config.chatMoney.minAmount}-${sym}${config.chatMoney.maxAmount}  **Cooldown:** ${config.chatMoney.cooldown}s\n\n` +
         `### Role Income\n${config.roleIncome.length ? config.roleIncome.map(r => `<@&${r.roleId}>: ${sym}${r.amount} every ${r.cooldown}h`).join('\n') : 'None configured.'}\n\n` +
         `### Role Deductions\n${(config.roleDeductions || []).length ? config.roleDeductions.map(r => `<@&${r.roleId}>: -${sym}${r.amount} every ${r.cooldown}h (${r.label})`).join('\n') : 'None configured.'}\n\n` +
         `### Income Tax\n**Rate:** ${config.incomeTax || 0}%${config.incomeChannelId ? `  **Board Channel:** <#${config.incomeChannelId}>` : ''}`;
@@ -651,7 +651,7 @@ export async function handleEconomyMenu(interaction) {
       gambling:  { title: 'Gambling Settings',   id: 'economysetup_gambling_modal',  fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.gambling.enabled ? 'yes' : 'no' }, { id: 'minbet', label: 'Minimum Bet', val: String(config.gambling.minBet) }, { id: 'maxbet', label: 'Maximum Bet', val: String(config.gambling.maxBet) }, { id: 'cooldown', label: 'Cooldown (minutes)', val: String(config.gambling.cooldown) }] },
       chatmoney: { title: 'Chat Money Settings', id: 'economysetup_chatmoney_modal', fields: [{ id: 'enabled',     label: 'Enabled? (yes/no)',            val: config.chatMoney.enabled ? 'yes' : 'no' }, { id: 'min', label: 'Min per message', val: String(config.chatMoney.minAmount) }, { id: 'max', label: 'Max per message', val: String(config.chatMoney.maxAmount) }, { id: 'cooldown', label: 'Cooldown (seconds)', val: String(config.chatMoney.cooldown) }] },
       incometax:    { title: 'Income Tax',       id: 'economysetup_incometax_modal',    fields: [{ id: 'rate', label: 'Tax Rate % (0 = disabled)', val: String(config.incomeTax || 0) }] },
-      sellsettings: { title: 'Sell Settings',   id: 'economysetup_sellsettings_modal', fields: [{ id: 'percent', label: 'Sell-Back % (0–100, default 50)', val: String(config.sellPercent ?? 50) }] },
+      sellsettings: { title: 'Sell Settings',   id: 'economysetup_sellsettings_modal', fields: [{ id: 'percent', label: 'Sell-Back % (0-100, default 50)', val: String(config.sellPercent ?? 50) }] },
       storeadd:  { title: 'Add Store Item',      id: 'economysetup_storeadd_modal',  fields: [{ id: 'name', label: 'Item Name', val: '' }, { id: 'price', label: 'Price', val: '' }, { id: 'description', label: 'Description', val: '', style: TextInputStyle.Paragraph }] },
       storeremove: null,
       storeedit: null,
@@ -1508,7 +1508,7 @@ export async function handleEconomyModal(interaction) {
     if (!isNaN(min)) config2.work.minPayout = min;
     if (!isNaN(max)) config2.work.maxPayout = max;
     config2.markModified('work'); await config2.save();
-    return interaction.reply({ embeds: [successEmbed('Work Updated', `**Enabled:** ${config2.work.enabled}\n**Cooldown:** ${config2.work.cooldown}m\n**Pay:** ${sym}${config2.work.minPayout}–${sym}${config2.work.maxPayout}`)], flags: 64 });
+    return interaction.reply({ embeds: [successEmbed('Work Updated', `**Enabled:** ${config2.work.enabled}\n**Cooldown:** ${config2.work.cooldown}m\n**Pay:** ${sym}${config2.work.minPayout}-${sym}${config2.work.maxPayout}`)], flags: 64 });
   }
 
   if (customId === 'economysetup_crime_modal') {
@@ -1549,7 +1549,7 @@ export async function handleEconomyModal(interaction) {
     if (!isNaN(max)) config2.gambling.maxBet   = max;
     if (!isNaN(cd))  config2.gambling.cooldown = cd;
     config2.markModified('gambling'); await config2.save();
-    return interaction.reply({ embeds: [successEmbed('Gambling Updated', `**Enabled:** ${config2.gambling.enabled}\n**Bet:** ${sym}${config2.gambling.minBet}–${sym}${config2.gambling.maxBet}`)], flags: 64 });
+    return interaction.reply({ embeds: [successEmbed('Gambling Updated', `**Enabled:** ${config2.gambling.enabled}\n**Bet:** ${sym}${config2.gambling.minBet}-${sym}${config2.gambling.maxBet}`)], flags: 64 });
   }
 
   if (customId === 'economysetup_chatmoney_modal') {
@@ -1562,7 +1562,7 @@ export async function handleEconomyModal(interaction) {
     if (!isNaN(max)) config2.chatMoney.maxAmount = max;
     if (!isNaN(cd))  config2.chatMoney.cooldown  = cd;
     config2.markModified('chatMoney'); await config2.save();
-    return interaction.reply({ embeds: [successEmbed('Chat Money Updated', `**Enabled:** ${config2.chatMoney.enabled}\n**Amount:** ${sym}${config2.chatMoney.minAmount}–${sym}${config2.chatMoney.maxAmount}\n**Cooldown:** ${config2.chatMoney.cooldown}s`)], flags: 64 });
+    return interaction.reply({ embeds: [successEmbed('Chat Money Updated', `**Enabled:** ${config2.chatMoney.enabled}\n**Amount:** ${sym}${config2.chatMoney.minAmount}-${sym}${config2.chatMoney.maxAmount}\n**Cooldown:** ${config2.chatMoney.cooldown}s`)], flags: 64 });
   }
 
   if (customId === 'economysetup_incometax_modal') {

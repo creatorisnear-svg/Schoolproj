@@ -401,7 +401,7 @@ export async function handleAppyCancelPending(interaction, client) {
   }
 
   if (!submission) {
-    return interaction.update({ embeds: [_errEmbed('Application not found — it may have already been reviewed or cancelled.')], components: [] });
+    return interaction.update({ embeds: [_errEmbed('Application not found, it may have already been reviewed or cancelled.')], components: [] });
   }
   if (submission.userId !== interaction.user.id) {
     return interaction.reply({ embeds: [_errEmbed('You cannot cancel someone else\'s application.')], flags: 64 });

@@ -88,7 +88,7 @@ export async function handleMovemeSetupMenu(interaction) {
     } else {
       listText = ids.map(id => {
         const ch = interaction.guild.channels.cache.get(id);
-        return `> 🔊 **${ch ? ch.name : `Unknown (${id})`}**`;
+        return `> **${ch ? ch.name : `Unknown (${id})`}**`;
       }).join('\n');
     }
     return interaction.update({
@@ -103,7 +103,7 @@ export async function handleMovemeSetupMenu(interaction) {
     config.markModified('allowedChannelIds');
     await config.save();
     return interaction.update({
-      content: statusLine(config) + '\n\n> ✅ Channel filter cleared - all voice channels will now show in the panel.',
+      content: statusLine(config) + '\n\n> Channel filter cleared - all voice channels will now show in the panel.',
       components: [setupMenu()],
     });
   }
@@ -125,7 +125,7 @@ export async function handleMovemeSetupMenu(interaction) {
 
   /* setup_done */
   if (value === 'setup_done') {
-    return interaction.update({ content: '✅ Voice Mover setup closed.', components: [] });
+    return interaction.update({ content: 'Voice Mover setup closed.', components: [] });
   }
 }
 
@@ -144,7 +144,7 @@ export async function handleMovemeAddVC(interaction) {
 
   if (config.allowedChannelIds.includes(vc)) {
     return interaction.update({
-      content: statusLine(config) + `\n\n> ⚠️ **${ch?.name ?? vc}** is already in the allowed list.`,
+      content: statusLine(config) + `\n\n> **${ch?.name ?? vc}** is already in the allowed list.`,
       components: [setupMenu()],
     });
   }
@@ -154,7 +154,7 @@ export async function handleMovemeAddVC(interaction) {
   await config.save();
 
   return interaction.update({
-    content: statusLine(config) + `\n\n> ✅ **${ch?.name ?? vc}** added to the allowed list. Re-send the panel to update it in Discord.`,
+    content: statusLine(config) + `\n\n> **${ch?.name ?? vc}** added to the allowed list. Re-send the panel to update it in Discord.`,
     components: [setupMenu()],
   });
 }
@@ -177,7 +177,7 @@ export async function handleMovemeRemoveVC(interaction) {
 
   const remaining = config.allowedChannelIds.length;
   return interaction.update({
-    content: statusLine(config) + `\n\n> ✅ **${ch?.name ?? vcId}** removed. ${remaining > 0 ? `${remaining} channel(s) remain.` : 'No filter set - all channels will now show.'}`,
+    content: statusLine(config) + `\n\n> **${ch?.name ?? vcId}** removed. ${remaining > 0 ? `${remaining} channel(s) remain.` : 'No filter set - all channels will now show.'}`,
     components: [setupMenu()],
   });
 }
@@ -193,7 +193,7 @@ export async function handleMovemePanelChannel(interaction) {
   const channel = interaction.guild.channels.cache.get(channelId);
   if (!channel) {
     return interaction.update({
-      content: statusLine(null) + '\n\n> ❌ Channel not found.',
+      content: statusLine(null) + '\n\n> Channel not found.',
       components: [setupMenu()],
     });
   }
@@ -223,7 +223,7 @@ export async function handleMovemePanelChannel(interaction) {
     }
     if (options.length === 0) {
       return interaction.update({
-        content: statusLine(config) + '\n\n> ❌ None of the configured allowed channels exist. Add valid channels first.',
+        content: statusLine(config) + '\n\n> None of the configured allowed channels exist. Add valid channels first.',
         components: [setupMenu()],
       });
     }
@@ -260,13 +260,13 @@ export async function handleMovemePanelChannel(interaction) {
 
     const chCount = allowedIds.length;
     return interaction.update({
-      content: statusLine(config) + `\n\n> ✅ Panel posted in <#${channel.id}>. ${chCount > 0 ? `Showing ${chCount} restricted channel(s).` : 'Showing all voice channels.'}`,
+      content: statusLine(config) + `\n\n> Panel posted in <#${channel.id}>. ${chCount > 0 ? `Showing ${chCount} restricted channel(s).` : 'Showing all voice channels.'}`,
       components: [setupMenu()],
     });
   } catch (err) {
     console.error('[MemberMovement] Failed to send panel:', err.message);
     return interaction.update({
-      content: statusLine(config) + '\n\n> ❌ Failed to send panel - check that I have permission to post in that channel.',
+      content: statusLine(config) + '\n\n> Failed to send panel - check that I have permission to post in that channel.',
       components: [setupMenu()],
     });
   }

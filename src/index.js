@@ -30,6 +30,7 @@ import { handleSelectMenu } from './handlers/selectMenuHandler.js';
 import { handleSetupConfigSelect } from './handlers/setupWizardHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
 import { isMaintenanceMode } from './utils/maintenanceMode.js';
+import { attachLinks } from './utils/replyLinks.js';
 
 dotenv.config();
 
@@ -1199,6 +1200,12 @@ client.on('interactionCreate', async interaction => {
       return;
     }
 
+    // Everything past this point sends messages, so it gets the CAD and
+    // website buttons. Done here rather than at the reply sites because there
+    // are over 1300 of them and the one that got missed would be the one
+    // somebody noticed. Autocomplete returns above and is unaffected.
+    attachLinks(interaction);
+
     // ── Maintenance mode: block ALL interactions for non-admins ─────────────
     if (isMaintenanceMode()) {
       const isAdmin = interaction.member?.permissions?.has('Administrator');
@@ -1227,7 +1234,10 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu() || interaction.isUserSelectMenu()) {
       console.log(`[SELECT MENU] ${interaction.user.tag} used ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'setup_config_select') {
+      if (interaction.customId === 'help_category') {
+        const { handleHelpCategory } = await import('./commands/01_help.js');
+        await handleHelpCategory(interaction);
+      } else if (interaction.customId === 'setup_config_select') {
         await handleSetupConfigSelect(interaction);
       } else if (interaction.customId === 'blacklist_config_menu') {
         const { handleBlacklistConfigMenu } = await import('./handlers/blacklistHandler.js');

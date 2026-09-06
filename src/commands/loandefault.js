@@ -3,7 +3,7 @@ import BusinessLoan from '../models/BusinessLoan.js';
 import BusinessAccount from '../models/BusinessAccount.js';
 import Config from '../models/Config.js';
 
-const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`❌ ${msg}`).setFooter({ text: 'RPM' });
+const errEmbed = msg => new EmbedBuilder().setColor(0xf04747).setDescription(`${msg}`).setFooter({ text: 'RPM' });
 const fmt = n => Number(n).toLocaleString();
 
 export const data = new SlashCommandBuilder()
@@ -21,7 +21,7 @@ export async function autocomplete(interaction) {
   const choices = loans
     .map(l => {
       const bankName = accountMap[l.lenderAccountId] || 'Bank';
-      const label = `${bankName} → <@${l.borrowerUserId}> — ${l.type} — $${fmt(l.totalOwed - l.amountPaid)} remaining`;
+      const label = `${bankName} to <@${l.borrowerUserId}> · ${l.type} · $${fmt(l.totalOwed - l.amountPaid)} remaining`;
       return { name: label.slice(0, 100), value: l.loanId };
     })
     .filter(c => c.name.toLowerCase().includes(focused))
@@ -59,7 +59,7 @@ export async function execute(interaction) {
     await borrower.send({
       embeds: [new EmbedBuilder()
         .setColor(0xf04747)
-        .setTitle('⚠️ Loan Defaulted')
+        .setTitle('Loan Defaulted')
         .setDescription(
           `Your **${loan.type} loan** with **${account?.name || 'the bank'}** has been marked as **defaulted**.\n\n` +
           `**Outstanding:** ${sym}${fmt(remaining)}\n` +

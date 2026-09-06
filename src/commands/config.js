@@ -60,10 +60,10 @@ function verifyMenu() {
       'Verification Setup',
       '**What this does:** Members click a button and fill out a short form. You (or the bot) approves them and they get access to your server.\n\n' +
       '**Set these up in order:**\n' +
-      '`1.` Verify Channel — the channel where members click the button to start\n' +
-      '`2.` Verified Role — the role members get once approved (e.g. "Member")\n' +
-      '`3.` Unverified Role — the role members have before they verify (e.g. "Unverified")\n' +
-      '`4.` Verified Channels — categories or channels members can see after verification\n\n' +
+      '`1.` Verify Channel: the channel where members click the button to start\n' +
+      '`2.` Verified Role: the role members get once approved (e.g. "Member")\n' +
+      '`3.` Unverified Role: the role members have before they verify (e.g. "Unverified")\n' +
+      '`4.` Verified Channels: categories or channels members can see after verification\n\n' +
       '-# The rest (custom question, RP tag, staff approval) are optional extras.'
     )],
     components: [
@@ -94,9 +94,9 @@ function ticketsMenu() {
       'Ticket Setup',
       '**What this does:** Members click a button to open a private support channel with staff. Great for reports, appeals, and questions.\n\n' +
       '**Set these up in order:**\n' +
-      '`1.` Select Panel Channel — the channel where the "Open a ticket" button lives\n' +
-      '`2.` Add Ticket Type — create one or more categories (e.g. "Report a Player", "Ban Appeal")\n' +
-      '`3.` Send Panel — posts the button panel to the channel you chose\n\n' +
+      '`1.` Select Panel Channel: the channel where the "Open a ticket" button lives\n' +
+      '`2.` Add Ticket Type: create one or more categories (e.g. "Report a Player", "Ban Appeal")\n' +
+      '`3.` Send Panel: posts the button panel to the channel you chose\n\n' +
       '-# You can add up to 5 ticket types for free, unlimited with Premium.'
     )],
     components: [
@@ -122,9 +122,9 @@ function strikesMenu() {
     embeds: [menuEmbed(
       'Strike System Setup',
       '**What this does:** Staff can issue strikes to members who break rules. At each strike level (1, 2, 3, 4) the bot can automatically timeout, kick, or ban them.\n\n' +
-      '**Both options are optional — you can use strikes without automatic punishments.**\n\n' +
-      '`1.` Set Strike Level Roles — give members a visible role at each strike count (e.g. "1 Strike" role)\n' +
-      '`2.` Set Strike Actions — what happens automatically at each level (timeout / kick / ban)'
+      '**Both options are optional, you can use strikes without automatic punishments.**\n\n' +
+      '`1.` Set Strike Level Roles: give members a visible role at each strike count (e.g. "1 Strike" role)\n' +
+      '`2.` Set Strike Actions: what happens automatically at each level (timeout / kick / ban)'
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -148,9 +148,9 @@ function welcomeMenu() {
       'Welcome System Setup',
       '**What this does:** When a new member joins your server, the bot automatically sends a greeting message in a channel and/or a DM to the member.\n\n' +
       '**Set these up (all optional, use what you need):**\n' +
-      '`1.` Welcome Channel — the channel where the welcome message is posted\n' +
-      '`2.` Welcome Message — what the message says (you can mention the user with `{user}`)\n' +
-      '`3.` Welcome DM — a private message sent directly to the new member'
+      '`1.` Welcome Channel: the channel where the welcome message is posted\n' +
+      '`2.` Welcome Message: what the message says (you can mention the user with `{user}`)\n' +
+      '`3.` Welcome DM: a private message sent directly to the new member'
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -174,9 +174,9 @@ function antipromoMenu() {
     embeds: [menuEmbed(
       'Anti-Promoting Setup',
       '**What this does:** Automatically deletes Discord invite links that members post in your server. You can whitelist specific links (like your own server\'s invite) so they are never deleted.\n\n' +
-      '**Works automatically once enabled — no required setup.** Use the options below to fine-tune it.\n\n' +
-      '`1.` Add Whitelisted Link — allow a specific invite link to stay (e.g. your own server)\n' +
-      '`2.` Toggle Staff Bypass — choose if staff can post any invite without it being deleted'
+      '**Works automatically once enabled, no required setup.** Use the options below to fine-tune it.\n\n' +
+      '`1.` Add Whitelisted Link: allow a specific invite link to stay (e.g. your own server)\n' +
+      '`2.` Toggle Staff Bypass: choose if staff can post any invite without it being deleted'
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -200,17 +200,17 @@ function antipromoMenu() {
 function movemeMenu(config) {
   const chCount = (config?.allowedChannelIds || []).length;
   const panelStatus = config?.panelChannelId
-    ? `Panel is in <#${config.panelChannelId}>${config.panelMessageId ? '' : ' — not sent yet'}`
+    ? `Panel is in <#${config.panelChannelId}>${config.panelMessageId ? '' : ', not sent yet'}`
     : 'Panel not sent yet';
 
   return {
     embeds: [menuEmbed(
       'Voice Mover Setup',
-      `**What this does:** Posts a panel with a dropdown in a text channel. Members select a voice channel from the list and the bot moves them into it — no need for staff to do it manually.\n\n` +
+      `**What this does:** Posts a panel with a dropdown in a text channel. Members select a voice channel from the list and the bot moves them into it, no need for staff to do it manually.\n\n` +
       `**Current status:** ${panelStatus} · Allowed channels: ${chCount > 0 ? `${chCount} configured` : 'all voice channels'}\n\n` +
       '**Set these up in order:**\n' +
-      '`1.` Add Allowed Channels — choose which voice channels appear in the dropdown (optional — skip to allow all)\n' +
-      '`2.` Send Panel — posts the panel to any text channel you choose'
+      '`1.` Add Allowed Channels: choose which voice channels appear in the dropdown (optional, skip to allow all)\n' +
+      '`2.` Send Panel: posts the panel to any text channel you choose'
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -237,8 +237,8 @@ function rolesMenu() {
       'Role Request Setup',
       '**What this does:** Members can request specific roles from a panel. Staff approve or deny each request. Great for department roles, whitelist roles, etc.\n\n' +
       '**Set these up in order:**\n' +
-      '`1.` Add Role Request Type — create a requestable role (e.g. "Civilian Whitelist")\n' +
-      '`2.` Once you have types, the panel will appear automatically in the designated channel'
+      '`1.` Add Role Request Type: create a requestable role (e.g. "Civilian Whitelist")\n' +
+      '`2.` Once you have types: the panel will appear automatically in the designated channel'
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -263,10 +263,10 @@ function roleplayMenu() {
     embeds: [menuEmbed(
       'Roleplay Commands Setup',
       '**What this does:** Enables roleplay-style commands your members can use in-character:\n' +
-      '- `/me` — describe an action (e.g. "/me waves hello")\n' +
-      '- `/do` — describe something happening in the scene\n' +
-      '- `/try` — attempt an action (bot randomly says if it succeeds)\n' +
-      '- `911` — members can send emergency calls that LEO and FD can respond to\n\n' +
+      '- `/me`: describe an action (e.g. "/me waves hello")\n' +
+      '- `/do`: describe something happening in the scene\n' +
+      '- `/try`: attempt an action (bot randomly says if it succeeds)\n' +
+      '- `911`: members can send emergency calls that LEO and FD can respond to\n\n' +
       '**Set each one up below:**'
     )],
     components: [
@@ -293,13 +293,13 @@ function dispatchMenuEmbed(warning = '') {
         .setColor('#2d2d2d')
         .setTitle('AI Voice Dispatch Setup')
         .setDescription(
-          '**What this does (Premium):** The bot joins voice channels where your LEO officers patrol. It listens, transcribes their speech with AI, and responds as a dispatcher — updating a live status board, handling 10-codes, and announcing 911 calls.\n\n' +
+          '**What this does (Premium):** The bot joins voice channels where your LEO officers patrol. It listens, transcribes their speech with AI, and responds as a dispatcher, updating a live status board, handling 10-codes, and announcing 911 calls.\n\n' +
           '**Set these up in order:**\n' +
-          '`1.` Set Dispatch Channel — text channel for dispatch logs\n' +
-          '`2.` Set Status Board Channel — text channel for the live officer status board\n' +
-          '`3.` Add Patrol Voice Channel — voice channel(s) to listen to\n' +
-          '`4.` Set LEO Role(s) — without this the bot listens to everyone in the channel\n' +
-          '`5.` Enable / Disable System — turn it on when ready' +
+          '`1.` Set Dispatch Channel: text channel for dispatch logs\n' +
+          '`2.` Set Status Board Channel: text channel for the live officer status board\n' +
+          '`3.` Add Patrol Voice Channel: voice channel(s) to listen to\n' +
+          '`4.` Set LEO Role(s), without this the bot listens to everyone in the channel\n' +
+          '`5.` Enable / Disable System: turn it on when ready' +
           warning
         )
         .setFooter({ text: 'RPM' }),
@@ -332,8 +332,8 @@ function blacklistMenu() {
     embeds: [menuEmbed(
       'Blacklist System Setup (Premium)',
       '**What this does:** Blocks banned members at the verification wall using fuzzy name and gamertag matching. A live panel auto-updates in a channel whenever someone is blacklisted or removed.\n\n' +
-      '`1.` Set Panel Channel — the channel where the live blacklist panel is posted and kept up to date\n' +
-      '`2.` Post / Refresh Panel — send or update the panel\n\n' +
+      '`1.` Set Panel Channel: the channel where the live blacklist panel is posted and kept up to date\n' +
+      '`2.` Post / Refresh Panel: send or update the panel\n\n' +
       '-# Use `/blacklist @user` to add members and `/removeblacklist` to remove them.'
     )],
     components: [
@@ -361,8 +361,8 @@ function featuresMenu() {
         .setTitle('Enable / Disable Features')
         .setDescription(
           '**Enable** a feature to turn it on for your server.\n' +
-          '**Disable** a feature to turn it off — your settings are saved, you can re-enable it later.\n\n' +
-          '-# Tip: You can configure a feature directly with `/config <feature>` — it auto-enables it for you.'
+          '**Disable** a feature to turn it off, your settings are saved, you can re-enable it later.\n\n' +
+          '-# Tip: You can configure a feature directly with `/config <feature>`: it auto-enables it for you.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -379,14 +379,14 @@ function featuresMenu() {
 function generalMenu(config) {
   const logStatus = config?.logChannelId
     ? `Currently set to <#${config.logChannelId}>`
-    : 'Not set yet — pick a channel below';
+    : 'Not set yet, pick a channel below';
   return {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('General Settings')
         .setDescription(
-          '**Log channel** — this is where the bot records events like verifications, strikes, ticket opens, and more. Only staff should be able to see it.\n\n' +
+          '**Log channel**: this is where the bot records events like verifications, strikes, ticket opens, and more. Only staff should be able to see it.\n\n' +
           `**${logStatus}**\n\n` +
           'Pick a text channel below to set (or update) the log channel:'
         )
@@ -459,7 +459,7 @@ async function handlePriority(interaction) {
     embeds: [menuEmbed(
       'Priority Tracker Setup',
       `**What this does:** Posts a live embed in a channel that shows whether a priority event is active in your server. Staff can start/stop priority events with \`/activepriority\` and \`/deactivatepriority\`.\n\n` +
-      `**Just pick a channel below** — the bot handles the rest.${currentChannel}`
+      `**Just pick a channel below**: the bot handles the rest.${currentChannel}`
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -481,7 +481,7 @@ async function handleCalendar(interaction) {
     embeds: [menuEmbed(
       'RP Calendar Setup',
       `**What this does:** Posts a weekly roleplay schedule in a channel. Staff add events with \`/setrp\` and members can see when sessions are happening.\n\n` +
-      `**Just pick a channel below** — the bot handles the rest.${currentChannel}`
+      `**Just pick a channel below**: the bot handles the rest.${currentChannel}`
     )],
     components: [
       new ActionRowBuilder().addComponents(
@@ -514,7 +514,7 @@ async function handleAppys(interaction) {
           `**Application types:** ${typeCount}\n\n` +
           '### Configure on the Dashboard\n' +
           'Create application types, set questions, and manage panels at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
-          '-# Dashboard → Applications — full setup available there.'
+          '-# Full setup is available on the dashboard, under Applications.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -560,10 +560,10 @@ async function handleCivjobs(interaction) {
   return interaction.reply({
     embeds: [menuEmbed(
       'Civilian Jobs Setup',
-      `**What this does:** Posts a job board in a channel. Members check in to civilian jobs and get a role for the duration of their shift — the role is removed automatically when the shift expires.\n\n` +
+      `**What this does:** Posts a job board in a channel. Members check in to civilian jobs and get a role for the duration of their shift, the role is removed automatically when the shift expires.\n\n` +
       `**${channelStatus} · Jobs configured: ${jobCount}**\n\n` +
-      '`1.` Pick a job board channel below — the bot posts the panel there\n' +
-      '`2.` Add and manage jobs at **roleplaymanager.xyz/dashboard** → Civilian Jobs\n\n' +
+      '`1.` Pick a job board channel below: the bot posts the panel there\n' +
+      '`2.` Add and manage jobs at **roleplaymanager.xyz/dashboard**, under Civilian Jobs\n\n' +
       '-# After setting the channel, add at least one job on the dashboard before the panel will post.'
     )],
     components: [
@@ -590,10 +590,10 @@ async function handleSticky(interaction) {
           '**What this does:** After every new message in a channel, the bot reposts a pinned message so it always stays at the bottom. Great for rules, join links, or active announcements.\n\n' +
           `**Active stickies: ${count}**\n\n` +
           '**Discord commands:**\n' +
-          '`/sticky create` — add a sticky to a channel\n' +
-          '`/sticky delete` — remove a sticky from a channel\n' +
-          '`/stickylist` — view all active stickies\n\n' +
-          '-# Full management also available at **roleplaymanager.xyz/dashboard** → Sticky Messages.'
+          '`/sticky create`: add a sticky to a channel\n' +
+          '`/sticky delete`: remove a sticky from a channel\n' +
+          '`/stickylist`: view all active stickies\n\n' +
+          '-# Full management is also available at **roleplaymanager.xyz/dashboard**, under Sticky Messages.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -610,11 +610,11 @@ async function handleReactionRoles(interaction) {
         .setColor('#2d2d2d')
         .setTitle('Reaction Roles Setup')
         .setDescription(
-          '**What this does:** Members react to a designated message with an emoji to automatically receive or remove a Discord role. Up to 5 emoji–role pairs per message.\n\n' +
+          '**What this does:** Members react to a designated message with an emoji to automatically receive or remove a Discord role. Up to 5 emoji-role pairs per message.\n\n' +
           `**Active reaction role messages: ${count}**\n\n` +
           '**Discord command:**\n' +
-          '`/reactionrolemessage` — create a new reaction role message in any channel\n\n' +
-          '-# To remove reaction role messages, use **roleplaymanager.xyz/dashboard** → Reaction Roles.'
+          '`/reactionrolemessage`: create a new reaction role message in any channel\n\n' +
+          '-# To remove reaction role messages, use **roleplaymanager.xyz/dashboard**, under Reaction Roles.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -634,10 +634,10 @@ async function handleBusiness(interaction) {
           '**What this does:** Creates shared business bank accounts in your server economy. Members deposit or withdraw money, pay employees, and earn passive income on a cooldown. Each business has its own balance and transaction history.\n\n' +
           `**Active business accounts: ${count}**\n\n` +
           '**Discord command:**\n' +
-          '`/business` — access a business account (deposit, withdraw, pay members)\n\n' +
+          '`/business`: access a business account (deposit, withdraw, pay members)\n\n' +
           '### Configure on the Dashboard\n' +
           'Create accounts, set income rates, and manage everything at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
-          '-# Dashboard → Economy → Business Accounts.'
+          '-# On the dashboard, under Economy, then Business Accounts.'
         )
         .setFooter({ text: 'RPM' }),
     ],
@@ -650,36 +650,36 @@ async function handleHelp(interaction) {
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('⚙️ Config — Quick Reference')
+        .setTitle('Config, Quick Reference')
         .setDescription(
-          '**Run any of these to set up that feature — it enables automatically.**\n\n' +
-          '**🔧 Start here**\n' +
-          '`/config general` — Set your log channel *(do this first)*\n' +
-          '`/staff add @you` — Add yourself as staff *(required before general)*\n' +
-          '`/config features` — Enable or disable individual features\n\n' +
-          '**🎮 Roleplay & Operations**\n' +
-          '`/config roleplay` — /me, /do, /try, 911 calls & CAD\n' +
-          '`/config priority` — Live priority event tracker\n' +
-          '`/config calendar` — Weekly RP session schedule\n\n' +
-          '**🛡️ Moderation**\n' +
-          '`/config verify` — Member verification gate\n' +
-          '`/config strikes` — Strike system with auto-punishments\n' +
-          '`/config antipromo` — Auto-delete Discord invite links\n' +
-          '`/config blacklist` — Block banned members at verification *(Premium)*\n\n' +
-          '**🌐 Community**\n' +
-          '`/config tickets` — Support ticket panels\n' +
-          '`/config welcome` — Welcome messages for new members\n' +
-          '`/config roles` — Role request panels\n' +
-          '`/config moveme` — Voice channel mover panel\n' +
-          '`/config sticky` — Auto-reposting sticky messages\n' +
-          '`/config reactionroles` — Emoji reaction role messages\n\n' +
-          '**💰 Economy**\n' +
-          '`/config economy` — Currency, work, crime, shops\n' +
-          '`/config civjobs` — Civilian job board with shift roles\n' +
-          '`/config business` — Shared business bank accounts\n\n' +
-          '**⭐ Premium Only**\n' +
-          '`/config appys` — Application panels with DM Q&A\n' +
-          '`/config dispatch` — AI voice dispatch\n\n' +
+          '**Run any of these to set up that feature, it enables automatically.**\n\n' +
+          '**Start here**\n' +
+          '`/config general`: Set your log channel *(do this first)*\n' +
+          '`/staff add @you`: Add yourself as staff *(required before general)*\n' +
+          '`/config features`: Enable or disable individual features\n\n' +
+          '**Roleplay & Operations**\n' +
+          '`/config roleplay`: /me, /do, /try, 911 calls & CAD\n' +
+          '`/config priority`: Live priority event tracker\n' +
+          '`/config calendar`: Weekly RP session schedule\n\n' +
+          '**Moderation**\n' +
+          '`/config verify`: Member verification gate\n' +
+          '`/config strikes`: Strike system with auto-punishments\n' +
+          '`/config antipromo`: Auto-delete Discord invite links\n' +
+          '`/config blacklist`: Block banned members at verification *(Premium)*\n\n' +
+          '**Community**\n' +
+          '`/config tickets`: Support ticket panels\n' +
+          '`/config welcome`: Welcome messages for new members\n' +
+          '`/config roles`: Role request panels\n' +
+          '`/config moveme`: Voice channel mover panel\n' +
+          '`/config sticky`: Auto-reposting sticky messages\n' +
+          '`/config reactionroles`: Emoji reaction role messages\n\n' +
+          '**Economy**\n' +
+          '`/config economy`: Currency, work, crime, shops\n' +
+          '`/config civjobs`: Civilian job board with shift roles\n' +
+          '`/config business`: Shared business bank accounts\n\n' +
+          '**Premium Only**\n' +
+          '`/config appys`: Application panels with DM Q&A\n' +
+          '`/config dispatch`: AI voice dispatch\n\n' +
           '-# You can also configure everything at **roleplaymanager.xyz/dashboard**'
         )
         .setFooter({ text: 'RPM • /config help' }),
@@ -743,27 +743,27 @@ const subcommandHandlers = {
 export const data = new SlashCommandBuilder()
   .setName('config')
   .setDescription('Configure any bot feature (Admin/Staff)')
-  .addSubcommand(s => s.setName('general').setDescription('Set the log channel — do this before anything else'))
+  .addSubcommand(s => s.setName('general').setDescription('Set the log channel, do this before anything else'))
   .addSubcommand(s => s.setName('features').setDescription('Enable or disable features'))
-  .addSubcommand(s => s.setName('verify').setDescription('Verification — members fill a form to join your server'))
-  .addSubcommand(s => s.setName('tickets').setDescription('Tickets — members open support tickets with a button'))
-  .addSubcommand(s => s.setName('economy').setDescription('Economy — currency, work, crime, shops'))
-  .addSubcommand(s => s.setName('strikes').setDescription('Strikes — warn rule-breakers, auto-punish at each level'))
-  .addSubcommand(s => s.setName('welcome').setDescription('Welcome — greet new members automatically'))
-  .addSubcommand(s => s.setName('antipromo').setDescription('Anti-promoting — auto-delete invite links'))
-  .addSubcommand(s => s.setName('roles').setDescription('Role requests — members apply for specific roles'))
-  .addSubcommand(s => s.setName('priority').setDescription('Priority tracker — track active priority events'))
-  .addSubcommand(s => s.setName('calendar').setDescription('RP Calendar — schedule and display roleplay sessions'))
-  .addSubcommand(s => s.setName('moveme').setDescription('Voice mover — panel for members to move between voice channels'))
-  .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands — /me, /do, /try, 911 calls'))
-  .addSubcommand(s => s.setName('appys').setDescription('Applications — custom application panels for any purpose (Premium)'))
-  .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch — AI-powered patrol dispatch (Premium)'))
+  .addSubcommand(s => s.setName('verify').setDescription('Verification, members fill a form to join your server'))
+  .addSubcommand(s => s.setName('tickets').setDescription('Tickets, members open support tickets with a button'))
+  .addSubcommand(s => s.setName('economy').setDescription('Economy, currency, work, crime, shops'))
+  .addSubcommand(s => s.setName('strikes').setDescription('Strikes, warn rule-breakers, auto-punish at each level'))
+  .addSubcommand(s => s.setName('welcome').setDescription('Welcome, greet new members automatically'))
+  .addSubcommand(s => s.setName('antipromo').setDescription('Anti-promoting, auto-delete invite links'))
+  .addSubcommand(s => s.setName('roles').setDescription('Role requests, members apply for specific roles'))
+  .addSubcommand(s => s.setName('priority').setDescription('Priority tracker, track active priority events'))
+  .addSubcommand(s => s.setName('calendar').setDescription('RP Calendar, schedule and display roleplay sessions'))
+  .addSubcommand(s => s.setName('moveme').setDescription('Voice mover, panel for members to move between voice channels'))
+  .addSubcommand(s => s.setName('roleplay').setDescription('Roleplay commands, /me, /do, /try, 911 calls'))
+  .addSubcommand(s => s.setName('appys').setDescription('Applications, custom application panels for any purpose (Premium)'))
+  .addSubcommand(s => s.setName('dispatch').setDescription('AI Voice Dispatch, AI-powered patrol dispatch (Premium)'))
   .addSubcommand(s => s.setName('help').setDescription('Show all available config commands and what they do'))
-  .addSubcommand(s => s.setName('blacklist').setDescription('Blacklist — block banned members at the verification wall (Premium)'))
-  .addSubcommand(s => s.setName('civjobs').setDescription('Civilian Jobs — job board with timed shift roles'))
-  .addSubcommand(s => s.setName('sticky').setDescription('Sticky Messages — auto-reposting messages that stay visible'))
-  .addSubcommand(s => s.setName('reactionroles').setDescription('Reaction Roles — members react to a message to get a role'))
-  .addSubcommand(s => s.setName('business').setDescription('Business Accounts — shared economy accounts in your server'));
+  .addSubcommand(s => s.setName('blacklist').setDescription('Blacklist, block banned members at the verification wall (Premium)'))
+  .addSubcommand(s => s.setName('civjobs').setDescription('Civilian Jobs, job board with timed shift roles'))
+  .addSubcommand(s => s.setName('sticky').setDescription('Sticky Messages, auto-reposting messages that stay visible'))
+  .addSubcommand(s => s.setName('reactionroles').setDescription('Reaction Roles, members react to a message to get a role'))
+  .addSubcommand(s => s.setName('business').setDescription('Business Accounts, shared economy accounts in your server'));
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {
