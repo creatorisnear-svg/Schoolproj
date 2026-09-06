@@ -3326,14 +3326,45 @@ export function createApiRouter(client) {
     }
   });
 
-  /* ── Internal panic endpoint - called by the portal when an officer hits the panic button ── */
+  /*
+   * Panic relay for the old portal.
+   *
+   * This was open on production. The check read "if a secret is configured and
+   * it does not match, reject", so with PORTAL_INTERNAL_SECRET unset there was
+   * no check at all, and anybody who found the URL could make the bot join a
+   * voice channel in any of the servers it is in, play a siren, and speak text
+   * they supplied, because officerName goes straight into what is read out.
+   *
+   * Fails closed now. The only caller is the dead fork under portal/, so if
+   * that is deleted this endpoint should go with it.
+   */
   router.post('/internal/panic', async (req, res) => {
-    const secret = req.headers['x-internal-secret'];
     const expected = process.env.PORTAL_INTERNAL_SECRET;
-    if (expected && secret !== expected) return res.status(401).json({ error: 'Unauthorized' });
+    if (!expected) {
+      return res.status(503).json({ error: 'Internal panic relay is not configured.' });
+    }
+    const secret = req.headers['x-internal-secret'];
+    if (typeof secret !== 'string' || secret !== expected) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    const { guildId, officerName, location } = req.body;
-    if (!guildId) return res.status(400).json({ error: 'guildId required' });
+    const { guildId } = req.body;
+    if (typeof guildId !== 'string' || !/^\d{17,20}$/.test(guildId)) {
+      return res.status(400).json({ error: 'guildId required' });
+    }
+    if (!client.guilds.cache.has(guildId)) {
+      return res.status(404).json({ error: 'Guild not found' });
+    }
+
+    // Spoken aloud, so it is capped and stripped of anything that is not part
+    // of a name or a place.
+    const clean = (v, max) => String(v == null ? '' : v)
+      .replace(/[^\p{L}\p{N} .,'-]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max);
+    const officerName = clean(req.body.officerName, 60) || 'Unknown';
+    const location = clean(req.body.location, 80);
 
     res.json({ success: true });
 

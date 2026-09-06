@@ -46,9 +46,9 @@ export const FEATURES = [
     label: "General Settings",
     group: "Foundation",
     order: 10,
-    short: "Core setup — the log channel every feature writes to",
+    short: "Core setup: the log channel every feature writes to",
     long:
-      "The foundation every other feature builds on. Pick one staff-only channel and the bot records verifications, strikes, tickets, applications and bans there — a single audit trail your moderators can actually review.",
+      "The foundation every other feature builds on. Pick one staff-only channel and the bot records verifications, strikes, tickets, applications and bans there, giving your moderators a single audit trail they can actually review.",
     modelFile: "models/Config.js",
     modelImport: "default",
     enabledPath: "",
@@ -64,7 +64,7 @@ export const FEATURES = [
     label: "Staff Management",
     group: "Foundation",
     order: 20,
-    short: "Who can run bot commands — add yourself and your admins",
+    short: "Who can run bot commands. Add yourself and your admins",
     long:
       "Grant trusted members and roles access to bot commands without handing out Administrator. Add users or whole roles, and every config, moderation, and economy command opens up to them instantly.",
     modelFile: "models/Staff.js",
@@ -88,7 +88,7 @@ export const FEATURES = [
     order: 30,
     short: "Members fill out a form to join your server",
     long:
-      "Gates your server behind a customizable intake form — PSN/Xbox tag, your own custom questions, optional staff approval — then automatically grants the verified role and removes the unverified one so approved members get channel access instantly.",
+      "Gates your server behind a customizable intake form: PSN/Xbox tag, your own custom questions, optional staff approval. It then automatically grants the verified role and removes the unverified one so approved members get channel access instantly.",
     modelFile: "models/Verification.js",
     modelImport: "default",
     enabledPath: "enabled",
@@ -266,7 +266,7 @@ export const FEATURES = [
     order: 120,
     short: "Greet new members with a channel message or DM",
     long:
-      "Automatically greets every new member the moment they join — an embedded welcome message with their avatar posted in your chosen channel, plus an optional private DM. Supports {user}, {server}, {username} and {memberCount} placeholders.",
+      "Automatically greets every new member the moment they join, with an embedded welcome message carrying their avatar posted in your chosen channel, plus an optional private DM. Supports {user}, {server}, {username} and {memberCount} placeholders.",
     modelFile: "models/Welcome.js",
     modelImport: "default",
     enabledPath: "enabled",
@@ -284,7 +284,7 @@ export const FEATURES = [
     order: 130,
     short: "Members request roles; approvers approve or deny by DM",
     long:
-      "Lets members request specific roles — department, whitelist, or rank — without chasing staff. Each request goes straight to an assigned approver's DMs with Approve and Deny buttons, and approval grants the role instantly.",
+      "Lets members request specific roles, whether department, whitelist or rank, without chasing staff. Each request goes straight to an assigned approver's DMs with Approve and Deny buttons, and approval grants the role instantly.",
     modelFile: "models/RoleRequestConfig.js",
     modelImport: "default",
     enabledPath: "enabled",
@@ -302,7 +302,7 @@ export const FEATURES = [
     order: 140,
     short: "Members move themselves between voice channels",
     long:
-      "Posts a dropdown panel in any text channel. Members pick a voice channel and the bot moves them into it instantly — no staff dragging people around. Restrict the list to specific channels, or allow them all.",
+      "Posts a dropdown panel in any text channel. Members pick a voice channel and the bot moves them into it instantly, so no staff member has to drag people around. Restrict the list to specific channels, or allow them all.",
     modelFile: "models/MemberMovementConfig.js",
     modelImport: "default",
     enabledPath: "enabled",
@@ -320,7 +320,7 @@ export const FEATURES = [
     order: 150,
     short: "Custom application panels with a DM Q&A flow",
     long:
-      "Lets members apply for anything — staff, whitelist, events — through custom panels. The bot DMs them your questions one at a time, then drops submissions in a review channel with Accept/Deny buttons and automatic role assignment on approval.",
+      "Lets members apply for anything, whether staff, whitelist or events, through custom panels. The bot DMs them your questions one at a time, then drops submissions in a review channel with Accept/Deny buttons and automatic role assignment on approval.",
     modelFile: "models/AppyConfig.js",
     modelImport: "default",
     enabledPath: "enabled",
@@ -338,7 +338,7 @@ export const FEATURES = [
     order: 160,
     short: "Auto-reposting messages that stay at the bottom of a channel",
     long:
-      "Keeps your most important message pinned to the bottom of a channel. The bot reposts it every few messages so rules, join links, and announcements never scroll away — configured per channel from Discord or the dashboard.",
+      "Keeps your most important message pinned to the bottom of a channel. The bot reposts it every few messages so rules, join links, and announcements never scroll away. Configured per channel from Discord or the dashboard.",
     modelFile: "models/Sticky.js",
     modelImport: "default",
     enabledPath: "",
@@ -396,7 +396,7 @@ export const FEATURES = [
     order: 190,
     short: "Job board with shift-based roles that expire automatically",
     long:
-      "Posts a job board where members pick a civilian job and instantly receive its role. Each shift runs for a set number of hours, then the bot removes the role automatically — no staff cleanup.",
+      "Posts a job board where members pick a civilian job and instantly receive its role. Each shift runs for a set number of hours, then the bot removes the role automatically, with no staff cleanup.",
     modelFile: "models/CivilianJobConfig.js",
     modelImport: "default",
     enabledPath: "enabled",

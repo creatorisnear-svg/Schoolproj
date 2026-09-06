@@ -9,16 +9,16 @@ export function createWebhooksRouter(client) {
   });
 
   router.post('/topgg', async (req, res) => {
+    // Fails closed. This used to accept every request when no secret was set,
+    // which let anybody post votes on behalf of any user id they chose.
     const secret = process.env.TOPGG_WEBHOOK_SECRET;
-    const incomingAuth = req.headers['authorization'] || '(none)';
-
-    if (secret) {
-      if (incomingAuth !== secret) {
-        console.warn(`[TopGG Webhook] Auth FAILED - expected secret, got: "${incomingAuth}"`);
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-    } else {
-      console.log('[TopGG Webhook] No secret set - accepting all requests');
+    if (!secret) {
+      console.warn('[TopGG Webhook] Rejected: TOPGG_WEBHOOK_SECRET is not set.');
+      return res.status(503).json({ error: 'Webhook is not configured.' });
+    }
+    if (req.headers['authorization'] !== secret) {
+      console.warn('[TopGG Webhook] Auth failed.');
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const body = req.body || {};

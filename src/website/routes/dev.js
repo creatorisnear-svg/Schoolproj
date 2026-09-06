@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import multer from 'multer';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
@@ -31,7 +31,21 @@ const ALL_FEATURES = FEATURES
   .filter((f) => f.group !== 'Foundation')
   .map((f) => ({ feature: f.key, label: f.label }));
 
-const DEV_PASSWORD = process.env.DEV_PASSWORD || '67678967';
+// No fallback. This is a public repository, so a default here is a published
+// password for anybody who deploys without setting the variable.
+const DEV_PASSWORD = process.env.DEV_PASSWORD || null;
+if (!DEV_PASSWORD) {
+  console.warn('[DEV] DEV_PASSWORD is not set. The dev panel is disabled.');
+}
+
+/** Constant time, so the password cannot be recovered a character at a time. */
+function sameSecret(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 const sessions = new Set();
 
 // Brute-force protection for dev login
@@ -62,19 +76,37 @@ function recordLoginFail(req) {
     entry.count++;
   }
 }
+function isLockedOut(req) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const entry = _loginAttempts.get(ip);
+  return !!(entry && Date.now() < entry.resetAt && entry.count >= LOGIN_MAX);
+}
 function clearLoginFail(req) {
   const ip = req.ip || req.connection?.remoteAddress || 'unknown';
   _loginAttempts.delete(ip);
 }
 
 function devAuth(req, res, next) {
+  if (!DEV_PASSWORD) return res.status(503).json({ error: 'Dev panel is not configured.' });
+
   const token = req.cookies?.dev_session;
   if (token && sessions.has(token)) return next();
 
+  // The header route used to skip the lockout entirely, so the login form was
+  // throttled to 5 tries per 15 minutes while `Authorization: Bearer x` on any
+  // other dev route could be guessed without limit.
   const auth = req.headers.authorization;
-  if (auth && auth === `Bearer ${DEV_PASSWORD}`) return next();
+  if (auth) {
+    if (isLockedOut(req)) return res.status(429).json({ error: 'Too many attempts.' });
+    if (auth.startsWith('Bearer ') && sameSecret(auth.slice(7), DEV_PASSWORD)) {
+      clearLoginFail(req);
+      return next();
+    }
+    recordLoginFail(req);
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
-  if (req.method === 'GET' && !req.headers.authorization) return res.redirect('/dev/login');
+  if (req.method === 'GET') return res.redirect('/dev/login');
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
@@ -130,8 +162,9 @@ export function createDevRouter(client) {
   });
 
   router.post('/auth', loginRateLimit, (req, res) => {
+    if (!DEV_PASSWORD) return res.status(503).send('Dev panel is not configured.');
     const { password } = req.body;
-    if (password !== DEV_PASSWORD) {
+    if (!sameSecret(password, DEV_PASSWORD)) {
       recordLoginFail(req);
       return res.redirect('/dev/login?error=1');
     }

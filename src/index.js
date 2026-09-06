@@ -311,7 +311,9 @@ app.get('/dashboard', (req, res) => {
 });
 
 app.use('/dashboard', createAuthRouter());
-app.use('/dev', createDevRouter(client));
+// Rate limited like everything else. Without this the dev routes were the one
+// part of the app an attacker could hit as fast as they liked.
+app.use('/dev', apiRateLimit, createDevRouter(client));
 
 app.get('/auth/site/callback', async (req, res) => {
   const { code, state } = req.query;
