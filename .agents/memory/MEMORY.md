@@ -9,3 +9,4 @@
 - [Voice UDP Bypass — Never Remove](voice-udp-bypass.md) - Synthetic UDP bypass in voiceListener.js is required on Replit; inbound UDP blocked; @discordjs/voice must stay ≥0.19.2 for DAVE.
 - [Portal Architecture](portal-architecture.md) - Express SPA at /portal on Koyeb; HMAC cookie auth; Civilian/LEO modes; priority polls every 5s; panic via OfficerStatus upsert.
 - [Scheduled DB Query Guards](interval-db-guards.md) - every setInterval touching MongoDB needs a `readyState !== 1` guard; lists which 8 intervals are DB-backed vs which 5 are in-memory only; notes the missing guildDelete timer cleanup.
+- [Verification Permissions Are Owner-Managed](verification-permissions.md) - the bot never writes channel permissions; a live function used to delete owner-set overwrites on disable. Do not re-add a permission engine.
