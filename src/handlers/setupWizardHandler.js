@@ -16,7 +16,7 @@ import {
 import { checkStaffPermission } from '../utils/permissions.js';
 import { withBackRow, withSetupNav } from '../utils/setupNav.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkFeatureAccess, premiumReply } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, premiumReply, TRIAL_DAYS } from '../utils/premiumCheck.js';
 import { getEconomySetupMenu } from './economyHandler.js';
 import Priority from '../models/Priority.js';
 import Verification from '../models/Verification.js';
@@ -407,7 +407,8 @@ const moduleResponses = {
     const tierNote = access.allowed
       ? '**Premium is active.** The bot joins your patrol channels, listens, and replies as an AI dispatcher, keeping a live status board and handling 10-codes.\n\n'
       : '**Included free:** the bot joins your patrol channel and reads out 911 calls as they come in.\n\n'
-        + '**With Premium:** it also listens and replies as an AI dispatcher, keeps a live status board, and handles 10-codes. [Get Premium](https://roleplaymanager.xyz/pricing)\n\n';
+        + '**With Premium:** it also listens and replies as an AI dispatcher, keeps a live status board, and handles 10-codes.\n'
+        + 'You can have all of that free for ' + TRIAL_DAYS + ' days. There is a button below.\n\n';
 
     return interaction.update({
       embeds: [
@@ -427,6 +428,15 @@ const moduleResponses = {
           .setFooter({ text: 'RPM · run /setup to go back' }),
       ],
       components: [
+        // The trial button sits on the page they are already on, at the moment
+        // they are trying to use the thing. Sending them to a price list here
+        // asks for a decision they have no reason to make yet.
+        ...(access.allowed ? [] : [new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('premium_start_trial')
+            .setLabel('Try it free for ' + TRIAL_DAYS + ' days')
+            .setStyle(ButtonStyle.Success)
+        )]),
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId('dispatch_setup_menu')

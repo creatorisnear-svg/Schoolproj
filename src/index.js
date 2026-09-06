@@ -530,6 +530,7 @@ client.on('guildCreate', async (guild) => {
         `**Priority tracker** · track active priority events\n` +
         `**AI Voice Dispatch** · AI listens to patrol channels *(Premium)*\n` +
         `**Applications** · custom application panels for any purpose *(Premium)*\n` +
+        `\n**The Premium ones are free for 7 days.** Run \`/activatetrial\` and they switch on now, no card.\n` +
         `Run \`/help\` for the full list`
       )
       .addFields(

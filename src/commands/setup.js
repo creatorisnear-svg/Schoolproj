@@ -1,4 +1,4 @@
-import { PermissionFlagsBits } from 'discord.js';
+import { PermissionFlagsBits, ButtonBuilder, ButtonStyle } from 'discord.js';
 import {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -43,6 +43,26 @@ export async function buildSetupPayload(guildId) {
     Config.findOne({ guildId }),
     getAllFeatureStatus(guildId),
   ]);
+
+  // Whether this server can still take the free week. Asked here because
+  // /setup lists three features tagged (Premium) and never mentions that a
+  // trial exists, which is the screen every administrator passes through.
+  const trialOffer = await (async () => {
+    try {
+      const { isPremiumGuild, isGuildOnTrial, TRIAL_DAYS } = await import('../utils/premiumCheck.js');
+      const { default: GuildTrial } = await import('../models/GuildTrial.js');
+      const [paying, onTrial, used] = await Promise.all([
+        isPremiumGuild(guildId),
+        isGuildOnTrial(guildId),
+        GuildTrial.exists({ guildId }),
+      ]);
+      if (paying || onTrial || used) return null;
+      return { days: TRIAL_DAYS };
+    } catch {
+      // Never let an upsell break the setup screen.
+      return null;
+    }
+  })();
 
   const hasLog = !!config?.logChannelId;
   const counts = summarize(statuses);
@@ -111,6 +131,14 @@ export async function buildSetupPayload(guildId) {
     'Pick anything below to set it up, or use the dashboard at roleplaymanager.xyz/dashboard.'
   );
 
+  if (trialOffer) {
+    descParts.push(
+      `### The three Premium features are free for ${trialOffer.days} days\n` +
+      'AI Voice Dispatch, the Priority Tracker and Applications, with nothing to pay ' +
+      'and no card. Press the button below and they switch on now.'
+    );
+  }
+
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle('Server Setup')
@@ -146,7 +174,17 @@ export async function buildSetupPayload(guildId) {
       .addOptions(menuOptions.slice(0, 25))
   );
 
-  return { embeds: [embed], components: [configRow] };
+  const rows = [configRow];
+  if (trialOffer) {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('premium_start_trial')
+        .setLabel(`Start the free ${trialOffer.days} day trial`)
+        .setStyle(ButtonStyle.Success)
+    ));
+  }
+
+  return { embeds: [embed], components: rows };
 }
 
 export async function execute(interaction) {
