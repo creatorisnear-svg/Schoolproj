@@ -30,6 +30,19 @@
       .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
     }
 
+    /* The free week. Anybody still reading this page has not decided yet, and
+       this is the only thing on it they can say yes to without a card. */
+    .trial-banner {
+      max-width: 720px; margin: 0 auto 40px; padding: 22px 26px;
+      border: 1px solid rgba(88,101,242,.35); border-radius: 14px;
+      background: rgba(88,101,242,.07); text-align: center;
+    }
+    .trial-banner h2 { font-size: 1.15rem; margin: 0 0 8px; }
+    .trial-banner p { margin: 0; opacity: .82; line-height: 1.6; font-size: .95rem; }
+    .trial-banner code {
+      padding: 2px 7px; border-radius: 5px; background: rgba(255,255,255,.08);
+      font-size: .9em;
+    }
     .plan-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -248,7 +261,16 @@
     <div class="container">
       <div class="pricing-header">
         <h1>Simple pricing</h1>
-        <p>One server, one subscription. Premium unlocks AI Voice Dispatch, Priority Tracker, Applications, and higher limits.</p>
+        <p>One server, one subscription. The bot itself is free, and stays free.</p>
+      </div>
+
+      <div class="trial-banner">
+        <h2>Try all of it free for 7 days first</h2>
+        <p>
+          Run <code>/premium</code> in your server and press the button. Every Premium feature
+          switches on straight away, with no card and no signup. When the week is up your
+          settings stay exactly as you left them, so nothing you built is lost either way.
+        </p>
       </div>
 
       <div class="pricing-grid">
@@ -260,16 +282,16 @@
             <span class="plan-price-amount">$0</span>
             <span class="plan-price-period">forever</span>
           </div>
-          <div class="plan-desc">Everything you need to run a roleplay community.</div>
+          <div class="plan-desc">Enough to run a roleplay community, with no time limit.</div>
           <ul class="plan-features">
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> CAD Database</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Emergency System (911)</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Verification System</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Strike System</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Economy System</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Ticket Support</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Full CAD, in Discord and the browser</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> 911 calls read out in your patrol voice channel</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Verification, strikes, tickets and economy</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> 100 characters, 200 vehicles, 100 firearms</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> 100 shop items, 5 civilian jobs, 5 requestable roles</li>
             <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> AI Voice Dispatch</li>
-            <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> 100 character limit</li>
+            <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Blacklist system</li>
+            <li class="muted"><span class="cross"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Priority Tracker and Applications</li>
           </ul>
           <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="plan-cta secondary">Add to Server</a>
         </div>
@@ -286,7 +308,10 @@
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blacklist system</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker and Applications</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blackjack and Roulette</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No limits on anything</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
           </ul>
           <button class="plan-cta primary" onclick="openCheckout('monthly')">Get Premium</button>
@@ -303,7 +328,10 @@
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blacklist system</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker and Applications</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blackjack and Roulette</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No limits on anything</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Save $1 vs monthly</li>
           </ul>
@@ -315,13 +343,16 @@
           <div class="plan-name">Lifetime</div>
           <div class="plan-price">
             <span class="plan-price-amount">$48.99</span>
-            <span class="plan-price-period">one-time</span>
+            <span class="plan-price-period">once</span>
           </div>
           <div class="plan-desc">Pay once, never again. All sales final. No refunds.</div>
           <ul class="plan-features">
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Everything in Free</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> AI Voice Dispatch</li>
-            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Unlimited characters &amp; vehicles</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blacklist system</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority Tracker and Applications</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Blackjack and Roulette</li>
+            <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No limits on anything</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> Priority support</li>
             <li><span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span> No recurring charges</li>
           </ul>
@@ -335,13 +366,36 @@
         <h2>Frequently asked questions</h2>
 
         <div class="faq-item">
+          <div class="faq-q">Is there a free trial?</div>
+          <div class="faq-a">Yes. Run <code>/premium</code> in your server and press the button, and every Premium
+          feature turns on for 7 days. No card, no signup, one trial per server. When it ends nothing is
+          deleted: your characters, tickets, shop and settings all stay exactly where they are, and they
+          come straight back if you subscribe later.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">I already use the blacklist system. Do I lose it?</div>
+          <div class="faq-a">No. The blacklist became a Premium feature, but any server that already had it
+          switched on keeps it permanently at no cost. It only applies to servers turning it on for the
+          first time. Nothing was taken away from anyone already relying on it.</div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What are the free plan limits?</div>
+          <div class="faq-a">100 characters, 200 vehicles, 100 firearms, 100 shop items, 20 BOLOs, 5 civilian
+          jobs, 5 requestable roles, 5 ticket types, 5 sticky messages, 2 role income roles and a top 10
+          leaderboard. Premium removes all of them. If you are already over a limit you keep everything you
+          have set up, you just cannot add more without Premium.</div>
+        </div>
+
+        <div class="faq-item">
           <div class="faq-q">What is the refund policy?</div>
           <div class="faq-a">All sales are final. No refunds are issued under any circumstances, including if you change your mind, forget to cancel, or the Service is discontinued. See our <a href="/tos">Terms of Service</a> for full details.</div>
         </div>
 
         <div class="faq-item">
           <div class="faq-q">What is the difference between the plans?</div>
-          <div class="faq-a">All paid plans include the same premium features. Monthly is $5/month on a recurring charge. 3-Month is $14 every 3 months - saves $1 vs monthly. Lifetime is a one-time $48.99 payment with no recurring charges ever. Monthly and 3-Month can be cancelled at any time from your dashboard.</div>
+          <div class="faq-a">All paid plans include the same premium features. Monthly is $5/month on a recurring charge. 3-Month is $14 every 3 months, which saves $1 against monthly. Lifetime is a one-time $48.99 payment with no recurring charges ever. Monthly and 3-Month can be cancelled at any time from your dashboard.</div>
         </div>
 
         <div class="faq-item">
@@ -366,7 +420,7 @@
 
         <div class="faq-item">
           <div class="faq-q">What payment methods are accepted?</div>
-          <div class="faq-a">All major credit and debit cards via Stripe. Payment processing is handled securely by Stripe - we never see or store your card details.</div>
+          <div class="faq-a">All major credit and debit cards via Stripe. Payment processing is handled securely by Stripe, and we never see or store your card details.</div>
         </div>
       </div>
 
@@ -424,10 +478,10 @@
       var sub = document.getElementById('modal-sub');
       if (plan === 'monthly') {
         title.textContent = 'Get Premium Monthly';
-        sub.textContent = 'Monthly plan \u2014 $5.00/month. Recurring charge. Cancel any time.';
+        sub.textContent = 'Monthly plan, $5.00 a month. Recurring charge. Cancel any time.';
       } else if (plan === 'quarterly') {
         title.textContent = 'Get Premium 3-Month';
-        sub.textContent = '3-month plan \u2014 $14.00 every 3 months. Recurring charge. Cancel any time.';
+        sub.textContent = '3 month plan, $14.00 every 3 months. Recurring charge. Cancel any time.';
       } else {
         title.textContent = 'Get Lifetime Access';
         sub.textContent = 'One-time payment \u2014 $48.99. No recurring charges. All sales final.';

@@ -168,6 +168,11 @@
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
   align-items: start;
 }
+/* The limits card is a table, not a feature list, so it takes the whole row
+   rather than sitting orphaned beside two empty columns. The narrower
+   breakpoints below already do the same at 2 and 1 columns. */
+.lp-premium-card-limits { grid-column: span 3; }
+.lp-premium-card-limits .lp-limits-table { width: 100%; max-width: 560px; margin: 0 auto; }
 .lp-premium-card {
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 28px;

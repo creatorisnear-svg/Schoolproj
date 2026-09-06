@@ -290,9 +290,10 @@ app.get('/', (req, res) => {
   const page = isCadHost(req) ? 'cad.html' : 'landing.html';
   res.send(readFileSync(resolve('src/website/views/' + page), 'utf8'));
 });
-app.get('/pricing', (req, res) => {
-  res.send(readFileSync(resolve('src/website/views/pricing.html'), 'utf8'));
-});
+// Pricing lives on the site, for the same reason the Terms do. The copy that
+// used to be served here had already drifted, and a second page quoting prices
+// is the version of that problem that costs money.
+app.get('/pricing', (req, res) => res.redirect(301, 'https://roleplaymanager.xyz/pricing'));
 // One canonical Terms and Privacy, on the site.
 //
 // These used to be served from a second copy under src/website/views, which had
