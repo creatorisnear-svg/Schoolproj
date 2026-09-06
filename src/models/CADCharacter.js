@@ -137,15 +137,36 @@ cadCharacterSchema.index({ guildId: 1, userId: 1 });
 
 // Plates are unique within a server, not across the platform.
 //
-// Both licensePlate fields used to carry `unique: true`, which builds a global
-// index: once any server registered ABC123, every other server was permanently
-// blocked from using it. Harmless while a single server used the CAD, and a
-// guaranteed source of unexplainable errors the moment a second one did.
+// Both fields used to carry a bare `unique: true`, which builds a GLOBAL index:
+// once any server registered ABC123, every other server was permanently blocked
+// from using it.
 //
-// Mongoose will not drop the old global indexes on an existing database - run
-// scripts/fix-plate-indexes.js once against production before relying on these.
-cadCharacterSchema.index({ guildId: 1, licensePlate: 1 }, { unique: true, sparse: true });
-cadCharacterSchema.index({ guildId: 1, 'vehicles.licensePlate': 1 }, { unique: true, sparse: true });
+// The first per-guild fix used `unique + sparse`, which does not mean what it
+// looks like. Sparse omits a document only when EVERY indexed field is missing -
+// and guildId is always present. So two characters with no plate both keyed on
+// (guildId, null), and the second one was rejected. That is why people could not
+// create a second character.
+//
+// partialFilterExpression is the right tool: index the document only when the
+// plate is actually a string.
+cadCharacterSchema.index(
+  { guildId: 1, licensePlate: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { licensePlate: { $type: 'string' } },
+    name: 'guildId_1_licensePlate_1',
+  }
+);
+
+// Deliberately NOT unique. An index over an array field is multikey, and once a
+// document matches the partial filter every entry is indexed - nulls included -
+// so one character owning both a plated and a plateless vehicle would block any
+// other character in the same shape. Vehicle plate uniqueness is enforced in
+// src/utils/cadIdentifiers.js instead, over plates that are never null.
+cadCharacterSchema.index(
+  { guildId: 1, 'vehicles.licensePlate': 1 },
+  { name: 'guildId_1_vehicles.licensePlate_1' }
+);
 
 const CADCharacter = mongoose.models.CADCharacter || mongoose.model('CADCharacter', cadCharacterSchema);
 
