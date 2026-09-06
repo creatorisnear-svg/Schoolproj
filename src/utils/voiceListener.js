@@ -169,6 +169,32 @@ export function hasLiveVoice(guildId) {
  * this poller ONLY handles the AI voice announcement, since that requires the
  * live voice connection that only exists in the bot process.
  */
+/**
+ * A patrol channel with an officer in it, or null.
+ *
+ * Only used on the free tier, where the bot is not already connected and has
+ * to pick somewhere to go. Reading a call out to an empty channel would be
+ * pointless, so an empty one is not a candidate.
+ */
+function _patrolChannelWithLeo(guildId) {
+  const state = dispatchState.get(guildId);
+  const guild = state?.guild;
+  if (!guild) return null;
+
+  for (const channelId of state.patrolChannelIds) {
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel?.members) continue;
+
+    const leoRoleIds = state.leoRoleIds || [];
+    const hasLeo = leoRoleIds.length === 0
+      ? channel.members.some((m) => !m.user.bot)
+      : channel.members.some((m) => m.roles.cache.some((r) => leoRoleIds.includes(r.id)));
+
+    if (hasLeo) return channel;
+  }
+  return null;
+}
+
 async function _run911Poll(guildId) {
   try {
     const { default: EmergencyCall } = await import('../models/EmergencyCall.js');
@@ -202,6 +228,18 @@ async function _run911Poll(guildId) {
       // playDispatchVoice, and was never retried - the call simply never went
       // out over the radio. Leaving the flag alone means the next poll picks it
       // up as soon as the bot is live; the 10-minute call cleanup bounds it.
+      // On the free tier nothing is connected until there is something to say,
+      // so join now rather than waiting for a connection that will never come.
+      const state = dispatchState.get(guildId);
+      if (!hasLiveVoice(guildId) && state?.announceOnly) {
+        const channel = _patrolChannelWithLeo(guildId);
+        if (channel) {
+          console.log(`[Dispatch 911 Poller] Joining #${channel.name} to announce call ${call.callId}`);
+          await moveToChannel(channel).catch((err) =>
+            console.error(`[Dispatch 911 Poller] Could not join #${channel.name}:`, err.message));
+        }
+      }
+
       if (!hasLiveVoice(guildId)) {
         if (!pending911Warned.has(call.callId)) {
           pending911Warned.add(call.callId);
@@ -221,6 +259,18 @@ async function _run911Poll(guildId) {
         await playDispatchVoice(guildId, ttsBuffer, { urgent: true });
       } catch (ttsErr) {
         console.error('[Dispatch 911 Poller] TTS generation failed:', ttsErr.message);
+      }
+
+      // Free tier: said what it came to say, so go. urgent playback resolves
+      // when the audio finishes, and the short pause keeps the disconnect from
+      // clipping the tail of it.
+      const tierState = dispatchState.get(guildId);
+      if (tierState?.announceOnly) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (!tierState.audioPlaying) {
+          disconnectDispatchChannel(guildId);
+          console.log(`[Dispatch 911 Poller] Left the channel after announcing ${call.callId}`);
+        }
       }
     }
   } catch (err) {
@@ -252,8 +302,12 @@ export function stop911Poller(guildId) {
  * Call this on startup / when config is first loaded.
  */
 /**
- * @param {object} [tier] - { panicPoller } - false on the free tier, where
- *   only 911 announcements are included and a 10-99 would never be spoken.
+ * @param {object} [tier] - shape of the service for this guild.
+ *   panicPoller: false on the free tier, where a 10-99 is never spoken.
+ *   announceOnly: true on the free tier. The bot does not sit in the channel;
+ *     it joins to read a 911 out and leaves again.
+ *   guild, leoRoleIds: needed to find a channel to join on demand, since on
+ *     the free tier there is no connection to inherit them from.
  */
 export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAudioBuffer = null, tier = {}) {
   const existing = dispatchState.get(guildId);
@@ -272,6 +326,11 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
       joinAudioPlayed: false,
     });
   }
+
+  const state = dispatchState.get(guildId);
+  state.announceOnly = !!tier.announceOnly;
+  state.leoRoleIds = tier.leoRoleIds || [];
+  if (tier.guild) state.guild = tier.guild;
   // Distress alerts are part of the premium AI layer. A free server still gets
   // 911 announcements, which is started separately by the caller.
   if (tier.panicPoller !== false) _startPanicPoller(guildId);
@@ -1040,6 +1099,16 @@ export function getDispatchState(guildId) {
 }
 
 /** True if the given channelId is in this guild's patrol list. */
+/**
+ * Does this guild keep the bot in the channel, or only visit to announce?
+ *
+ * Free servers are announce only: the bot joins when there is a 911 to read
+ * out and leaves afterwards, so nothing else should be pulling it in.
+ */
+export function isAnnounceOnly(guildId) {
+  return !!dispatchState.get(guildId)?.announceOnly;
+}
+
 export function isPatrolChannel(guildId, channelId) {
   return dispatchState.get(guildId)?.patrolChannelIds.has(channelId) ?? false;
 }

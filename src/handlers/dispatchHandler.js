@@ -4738,32 +4738,43 @@ export async function initDispatchForGuild(guild, client) {
 
     // The premium line invites people to talk to it. On the free tier that would
     // be a lie, because it is not listening.
-    const joinLine = fullDispatch
-      ? 'Dispatch active. To talk to me, your sentence must begin with dispatch.'
-      : 'Dispatch online. Emergency calls will be announced on this channel.';
-
+    // No join announcement on the free tier: the bot arrives only to read a
+    // call out, and a greeting first would delay the thing people are waiting
+    // for. It also saves generating speech nobody hears.
     let joinAudioBuffer = null;
-    try {
-      joinAudioBuffer = await generateDispatchTTS(joinLine);
-      console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
-    } catch (err) {
-      console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
+    if (fullDispatch) {
+      try {
+        joinAudioBuffer = await generateDispatchTTS('Dispatch active. To talk to me, your sentence must begin with dispatch.');
+        console.log(`[Dispatch] Pre-generated join TTS (${joinAudioBuffer.length} bytes) for ${guild.name}`);
+      } catch (err) {
+        console.error(`[Dispatch] Failed to pre-generate join TTS for ${guild.name}:`, err.message);
+      }
     }
 
-    setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer, { panicPoller: fullDispatch });
+    setupDispatchForGuild(guild.id, config.patrolChannelIds, options, joinAudioBuffer, {
+      panicPoller: fullDispatch,
+      announceOnly: !fullDispatch,
+      guild,
+      leoRoleIds,
+    });
 
-    for (const channelId of config.patrolChannelIds) {
-      const channel = guild.channels.cache.get(channelId) ||
-        await guild.channels.fetch(channelId).catch(() => null);
-      if (!channel) continue;
+    // Only the paid tier takes up residence. On the free tier the bot joins
+    // when there is a 911 to read out and leaves again afterwards, so there is
+    // nothing to do here.
+    if (fullDispatch) {
+      for (const channelId of config.patrolChannelIds) {
+        const channel = guild.channels.cache.get(channelId) ||
+          await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel) continue;
 
-      const hasLeo = leoRoleIds.length === 0
-        ? channel.members.some(m => !m.user.bot)
-        : channel.members.some(m => m.roles.cache.some(r => leoRoleIds.includes(r.id)));
+        const hasLeo = leoRoleIds.length === 0
+          ? channel.members.some(m => !m.user.bot)
+          : channel.members.some(m => m.roles.cache.some(r => leoRoleIds.includes(r.id)));
 
-      if (hasLeo) {
-        await moveToChannel(channel);
-        break;
+        if (hasLeo) {
+          await moveToChannel(channel);
+          break;
+        }
       }
     }
 

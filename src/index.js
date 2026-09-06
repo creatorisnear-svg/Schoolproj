@@ -774,7 +774,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
   try {
-    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel, clearExtendedStay, getExtendedStay } = await import('./utils/voiceListener.js');
+    const { isPatrolChannel, getCurrentChannelId, moveToChannel, getDispatchState, disconnectDispatchChannel, clearExtendedStay, getExtendedStay, isAnnounceOnly } = await import('./utils/voiceListener.js');
 
     const currentBotChannelId = getCurrentChannelId(guild.id);
 
@@ -791,7 +791,10 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       const isLeo = leoRoleIds.length === 0 ||
         newState.member?.roles.cache.some(r => leoRoleIds.includes(r.id));
 
-      if (isLeo) {
+      // Not on the free tier. There the bot only turns up to read a 911 out and
+      // leaves again, so following an officer in would leave it sitting silently
+      // in the channel, which is the thing that was being fixed.
+      if (isLeo && !isAnnounceOnly(guild.id)) {
         const channel = newState.channel;
         if (channel) await moveToChannel(channel);
       }
