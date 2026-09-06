@@ -4,6 +4,7 @@
   "changes": [
     "Fixed: 911 calls were not always announced over dispatch radio. A call raised while the bot was not connected to a patrol channel was marked as announced and then silently dropped, so it never went out at all - it now waits and announces as soon as the bot is live",
     "Fixed the same problem for 10-99 panic alerts, which could be swallowed entirely if the bot was not already in a voice channel. A panic older than 5 minutes is skipped instead, so you do not get a stale alert",
+    "Unanswered 911 calls are now reminded about once instead of twice - the reminder still stops the moment any officer responds or attaches",
     "Dispatch logs now say when a call is waiting for a voice connection, so it is clear what is happening"
   ]
 }

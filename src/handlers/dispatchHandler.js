@@ -4446,9 +4446,9 @@ const lastReminderAt = new Map();
 const reminderCounts = new Map();
 const REPEAT_DELAY_MS = 2 * 60 * 1000;
 const REMINDER_INTERVAL_MS = 2 * 60 * 1000;
-// Only repeat an unanswered 911 call reminder twice, then go silent on it
-// until someone responds - officers found endless reminders annoying.
-const MAX_REMINDERS = 2;
+// Repeat an unanswered 911 call once, then go silent until someone responds -
+// officers found repeated reminders annoying.
+const MAX_REMINDERS = 1;
 const repeatIntervals = new Map();
 // Guards against back-to-back reminder TTS overlapping/stacking when several
 // calls become due for a reminder in the same check cycle - all calls that
@@ -4539,9 +4539,16 @@ async function checkUnrespondedCalls(guild, client) {
       }
     }
 
-    for (const [callId] of lastReminderAt) {
-      const stillActive = unrespondedCalls.some(c => c.callId === callId);
-      if (!stillActive) lastReminderAt.delete(callId);
+    // Drop bookkeeping for calls that are no longer unresponded - they were
+    // answered, attached to, closed, or aged out by the 10-minute cleanup.
+    // reminderCounts used to be left behind here, so it grew by one entry per
+    // 911 call for the lifetime of the process and was never reclaimed.
+    const stillOpen = new Set(unrespondedCalls.map((c) => c.callId));
+    for (const callId of lastReminderAt.keys()) {
+      if (!stillOpen.has(callId)) lastReminderAt.delete(callId);
+    }
+    for (const callId of reminderCounts.keys()) {
+      if (!stillOpen.has(callId)) reminderCounts.delete(callId);
     }
   } catch (err) {
     console.error(`[Dispatch] checkUnrespondedCalls error:`, err.message);
