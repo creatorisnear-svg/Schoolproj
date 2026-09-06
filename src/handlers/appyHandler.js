@@ -123,19 +123,14 @@ export async function handleAppyOpen(interaction, client) {
   const guildId = interaction.guildId;
   if (!guildId) return;
 
-  const access = await checkFeatureAccess(guildId, 'appys');
-  if (!access.allowed) {
-    return interaction.reply({ embeds: [_errEmbed('Applications require an active premium subscription.')], flags: 64 });
-  }
-
+  // No wall. Free servers get two application types; the cap is applied to
+  // the list rather than to the door.
   let config, types;
   try {
     config = await AppyConfig.findOne({ guildId });
     if (!config?.enabled) return interaction.reply({ embeds: [_errEmbed('Applications are currently disabled.')], flags: 64 });
-    types = await AppyPanel.find({ guildId }).sort({ createdAt: 1 });
-    if (config.activeTypeIds && config.activeTypeIds.length > 0) {
-      types = types.filter(t => config.activeTypeIds.includes(t.typeId));
-    }
+    const { allowedTypes } = await import('../utils/appyLimits.js');
+    types = await allowedTypes(guildId, config.activeTypeIds);
     if (!types || types.length === 0) return interaction.reply({ embeds: [_errEmbed('No application types are configured yet.')], flags: 64 });
   } catch (err) {
     console.error('[Appys] handleAppyOpen DB error:', err.message);
@@ -166,6 +161,25 @@ export async function handleAppyOpen(interaction, client) {
 export async function handleAppyTypeSelect(interaction, client) {
   const typeId = interaction.values[0];
   const guildId = interaction.guildId;
+
+  // The check that closes the loop.
+  //
+  // A panel message carries the dropdown options it was built with, so one sent
+  // while a server had more types than its plan allows would keep offering them
+  // afterwards. Making two types, posting a panel, deleting them and making two
+  // more is the same trick spread across two messages. Whatever a panel says,
+  // the type has to be one this server is allowed to be running now.
+  try {
+    const { isTypeAllowed } = await import('../utils/appyLimits.js');
+    if (!await isTypeAllowed(guildId, typeId)) {
+      return interaction.reply({
+        embeds: [_errEmbed('That application is not open any more. Ask a member of staff to check the panel.')],
+        flags: 64,
+      });
+    }
+  } catch (err) {
+    console.error('[Appys] type allowance check failed:', err.message);
+  }
 
   if (_activeSessions.has(interaction.user.id)) {
     const cancelBtn = new ButtonBuilder()

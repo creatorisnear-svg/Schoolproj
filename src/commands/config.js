@@ -561,22 +561,33 @@ async function handleCalendar(interaction) {
 }
 
 async function handleAppys(interaction) {
+  // No wall: two application types are free. The count comes from the types
+  // that exist, not from activeTypeIds, which is the guild's own display
+  // filter and reads zero on a server that has never set one.
   const access = await checkFeatureAccess(interaction.guildId, 'appys');
-  if (!access.allowed) return interaction.reply({ ...premiumReply('Applications'), flags: 64 });
-  const config = await AppyConfig.findOne({ guildId: interaction.guildId });
+  const { default: AppyPanel } = await import('../models/AppyPanel.js');
+  const { getGuildLimits } = await import('../utils/premiumCheck.js');
+  const [config, typeCount, limits] = await Promise.all([
+    AppyConfig.findOne({ guildId: interaction.guildId }),
+    AppyPanel.countDocuments({ guildId: interaction.guildId }),
+    getGuildLimits(interaction.guildId),
+  ]);
+  const typeLimit = limits.appyTypes === Infinity ? 'unlimited' : limits.appyTypes;
   const reviewCh = config?.reviewChannelId ? `<#${config.reviewChannelId}>` : 'not set';
   const panelCh = config?.panelChannelId ? `<#${config.panelChannelId}>` : 'not set';
-  const typeCount = config?.activeTypeIds?.length ?? 0;
   return interaction.reply({
     embeds: [
       new EmbedBuilder()
         .setColor('#2d2d2d')
-        .setTitle('Applications (Premium)')
+        .setTitle('Applications')
         .setDescription(
           '**What this does:** Members can apply for staff positions or whitelist roles through a bot-guided Q&A in their DMs. Staff see submissions and can approve or deny.\n\n' +
           `**Review channel:** ${reviewCh}\n` +
           `**Panel channel:** ${panelCh}\n` +
-          `**Application types:** ${typeCount}\n\n` +
+          `**Application types:** ${typeCount} of ${typeLimit}\n\n` +
+          (access.allowed
+            ? '**Premium is active.** Add as many application types as you want.\n\n'
+            : `**Included free:** up to ${typeLimit} application types.\n\n**With Premium:** as many as you like.\n\n`) +
           '### Configure on the Dashboard\n' +
           'Create application types, set questions, and manage panels at **[roleplaymanager.xyz/dashboard](https://roleplaymanager.xyz/dashboard)**.\n\n' +
           '-# Full setup is available on the dashboard, under Applications.'

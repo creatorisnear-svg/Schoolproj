@@ -145,6 +145,7 @@ export const LIMITS = {
     roleRequestRoles: 5,
     shopItems: 100,
     civilianJobs: 5,
+    appyTypes: 2,
   },
   premium: {
     characters: Infinity,
@@ -158,6 +159,7 @@ export const LIMITS = {
     roleRequestRoles: Infinity,
     shopItems: Infinity,
     civilianJobs: Infinity,
+    appyTypes: Infinity,
   },
 };
 

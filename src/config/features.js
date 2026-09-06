@@ -356,6 +356,7 @@ export const FEATURES = [
     required: ["reviewChannelId", "panelChannelId"],
     configSubcommand: "appys",
     premiumDefault: true,
+    freeTier: "2 application types",
     botGated: true,
   },
   {

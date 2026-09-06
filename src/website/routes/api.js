@@ -1905,9 +1905,16 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
-    const { checkFeatureAccess: _cfaAppysPost } = await import('../../utils/premiumCheck.js');
-    const _appysPostAccess = await _cfaAppysPost(req.params.id, 'appys');
-    if (!_appysPostAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
+    // Free servers get two types rather than none. The cap is counted from
+    // what exists rather than stored, so a server that drops off Premium
+    // keeps every type it made and simply stops being offered the extras.
+    const { canAddType } = await import('../../utils/appyLimits.js');
+    const _appyRoom = await canAddType(req.params.id);
+    if (!_appyRoom.allowed) {
+      return res.status(403).json({
+        error: `The free plan includes ${_appyRoom.limit} application types and this server has both. Premium removes the limit.`,
+      });
+    }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
     const { name, description, questions, acceptRoleId, acceptMessage, reviewChannelId, reviewPingRoleIds } = req.body;
@@ -1986,9 +1993,7 @@ export function createApiRouter(client) {
       const isAdmin = await verifyAdminAccess(token, req.params.id);
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
-    const { checkFeatureAccess: _cfaAppysPanel } = await import('../../utils/premiumCheck.js');
-    const _appysPanelAccess = await _cfaAppysPanel(req.params.id, 'appys');
-    if (!_appysPanelAccess.allowed) return res.status(403).json({ error: 'Applications require a premium subscription.' });
+
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
     const { channelId, panelHeader, panelBody, panelImageUrl, activeTypeIds, reviewChannelId } = req.body;
@@ -2017,10 +2022,11 @@ export function createApiRouter(client) {
       if (!ac) return res.status(404).json({ error: 'Applications not configured' });
 
       // Fetch application types to populate dropdown
-      let types = await AppyPanel.find({ guildId: req.params.id }).sort({ createdAt: 1 });
-      if (ac.activeTypeIds && ac.activeTypeIds.length > 0) {
-        types = types.filter(t => ac.activeTypeIds.includes(t.typeId));
-      }
+      // Only what the plan allows goes into the dropdown. The options are
+      // baked into the message at this moment, so a panel sent now must not
+      // carry more than the server is entitled to offer.
+      const { allowedTypes } = await import('../../utils/appyLimits.js');
+      const types = await allowedTypes(req.params.id, ac.activeTypeIds);
       if (!types || types.length === 0) {
         return res.status(400).json({ error: 'No application types configured. Add at least one type before sending the panel.' });
       }
