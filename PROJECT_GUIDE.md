@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Premium conversion work - removed the Top.gg vote requirement from activateTrialForGuild, extended TRIAL_DAYS 3 to 7, added premiumReply() with a Start Free Trial button wired to a premium_start_trial handler in index.js, repointed all 18 premium walls at it, and updated every surface that still described the old vote-gated 3-day trial.
+- **Completed:** Fixed 911 and 10-99 panic voice announcements being silently dropped - both pollers set their announced flag before attempting playback, and playDispatchVoice returns silently with no voice connection, so any alert raised while the bot was not in a patrol channel was marked handled and never spoken. Added hasLiveVoice() and deferred the flag until delivery is possible, with a 5-minute staleness bound on panics.
 
 ## AI Handoff Protocol — Read Before Responding
 

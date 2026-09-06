@@ -1,10 +1,9 @@
 {
-  "version": "1.5.0",
-  "title": "Free 7-day trial, no strings",
+  "version": "1.5.1",
+  "title": "911 and panic alerts no longer get lost",
   "changes": [
-    "The free Premium trial no longer requires voting on Top.gg. Run /activatetrial in your server and everything unlocks straight away - no card, no signup, nothing to install",
-    "Trials now last 7 days instead of 3, so you get a full week to actually use AI Voice Dispatch, the Priority Tracker and Applications",
-    "Every Premium feature now has a Start Free Trial button right where you hit it, instead of just telling you the feature is locked",
-    "Voting on Top.gg still helps other RP servers find the bot, it is just no longer required for anything"
+    "Fixed: 911 calls were not always announced over dispatch radio. A call raised while the bot was not connected to a patrol channel was marked as announced and then silently dropped, so it never went out at all - it now waits and announces as soon as the bot is live",
+    "Fixed the same problem for 10-99 panic alerts, which could be swallowed entirely if the bot was not already in a voice channel. A panic older than 5 minutes is skipped instead, so you do not get a stale alert",
+    "Dispatch logs now say when a call is waiting for a voice connection, so it is clear what is happening"
   ]
 }

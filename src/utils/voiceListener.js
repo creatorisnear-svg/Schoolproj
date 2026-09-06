@@ -61,6 +61,12 @@ const logThrottleCounts = new Map();
 /** Per-guild panic poller intervals - detect 10-99 from DB without needing BOT_INTERNAL_URL */
 const panicPollers = new Map();
 
+/** Panic alerts we have already logged as waiting, so the 5s poll does not spam. */
+const pendingPanicWarned = new Set();
+
+/** How long a 10-99 may wait for a voice connection before it is too stale to announce. */
+const PANIC_MAX_DEFER_MS = 5 * 60 * 1000;
+
 /**
  * Poll MongoDB every 5s for unannounced 10-99 panics in this guild.
  * Fires TTS through the active voice connection, then marks them announced.
@@ -74,8 +80,30 @@ async function _runPanicPoll(guildId) {
     const { generateDispatchTTSPublic, PANIC_SOUND_BUFFER } = await import('../handlers/dispatchHandler.js');
 
     for (const p of panics) {
-      // Mark announced first to prevent double-firing if TTS takes time
+      // A 10-99 is an officer-in-distress alert, so losing one is the worst
+      // failure this file can have. panicAnnounced used to be set here, before
+      // any audio was attempted - and playDispatchVoice returns silently when
+      // the bot has no voice connection, which is the normal state until an
+      // officer is in a patrol channel. The alert was marked handled and never
+      // spoken. Claim it only once it can actually be delivered.
+      if (!hasLiveVoice(guildId)) {
+        const raisedAt = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+        if (Date.now() - raisedAt > PANIC_MAX_DEFER_MS) {
+          // Too old to shout about - announcing it now would be misleading.
+          await OfficerStatus.updateOne({ _id: p._id }, { $set: { panicAnnounced: true } });
+          console.log(`[Dispatch Panic Poller] Dropping stale 10-99 for ${p.username} in guild ${guildId} - no voice connection within ${PANIC_MAX_DEFER_MS / 60000} minutes`);
+          continue;
+        }
+        if (!pendingPanicWarned.has(String(p._id))) {
+          pendingPanicWarned.add(String(p._id));
+          if (pendingPanicWarned.size > 500) pendingPanicWarned.clear();
+          console.log(`[Dispatch Panic Poller] 10-99 for ${p.username} is waiting for a live voice connection`);
+        }
+        continue;
+      }
+
       await OfficerStatus.updateOne({ _id: p._id }, { $set: { panicAnnounced: true } });
+      pendingPanicWarned.delete(String(p._id));
 
       const loc = p.location ? ` at ${p.location}` : '';
       const ttsText = `Attention all units, 10-99, officer ${p.username} is in distress${loc}. All units respond immediately. This is not a drill.`;
@@ -120,6 +148,21 @@ function _stopPanicPoller(guildId) {
 /** Per-guild 911 poller intervals - announce portal-submitted 911 calls over AI voice */
 const call911Pollers = new Map();
 
+/** Call IDs we have already logged as waiting, so the 5s poll does not spam. */
+const pending911Warned = new Set();
+
+/**
+ * True when this guild has a voice connection that is actually able to play.
+ *
+ * playDispatchVoice returns silently when there is no dispatch state, and
+ * _drainAudioQueue bails when there is no connection - so without checking
+ * first, "announcing" a call can be a no-op that leaves no trace.
+ */
+export function hasLiveVoice(guildId) {
+  const state = dispatchState.get(guildId);
+  return state?.connection?.state?.status === VoiceConnectionStatus.Ready;
+}
+
 /**
  * Poll MongoDB every 5s for active 911 calls that haven't been voice-announced yet.
  * The portal already posts the text embed via REST when the call is submitted -
@@ -143,13 +186,33 @@ async function _run911Poll(guildId) {
     const aiReady = dispatchCfg?.enabled && dispatchCfg?.aiEnabled && hasAIKey();
 
     for (const call of calls) {
-      // Mark announced first to prevent double-firing if TTS takes time
-      await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
       if (!aiReady) {
+        // No AI configured for this guild. Mark it so the poll does not re-check
+        // the same call every 5 seconds for as long as it stays open.
+        await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
         console.log(`[Dispatch 911 Poller] Skipping voice announcement for call ${call.callId} (guild ${guildId}) - dispatchCfg.enabled=${!!dispatchCfg?.enabled} aiEnabled=${!!dispatchCfg?.aiEnabled} hasAIKey=${hasAIKey()}`);
         continue;
       }
 
+      // Only claim the call once the audio can actually go somewhere.
+      //
+      // This used to set dispatchAnnounced BEFORE playing. The bot only joins a
+      // patrol channel when an officer is present, so a 911 raised while it was
+      // not connected got marked announced, hit the silent early-return in
+      // playDispatchVoice, and was never retried - the call simply never went
+      // out over the radio. Leaving the flag alone means the next poll picks it
+      // up as soon as the bot is live; the 10-minute call cleanup bounds it.
+      if (!hasLiveVoice(guildId)) {
+        if (!pending911Warned.has(call.callId)) {
+          pending911Warned.add(call.callId);
+          if (pending911Warned.size > 500) pending911Warned.clear();
+          console.log(`[Dispatch 911 Poller] Call ${call.callId} is waiting for a live voice connection before it can be announced`);
+        }
+        continue;
+      }
+
+      await EmergencyCall.updateOne({ _id: call._id }, { $set: { dispatchAnnounced: true } });
+      pending911Warned.delete(call.callId);
       console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
       try {
         const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
