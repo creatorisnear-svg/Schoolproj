@@ -157,6 +157,58 @@ function getAIClient() {
   throw new Error('No AI API key configured. Set GROQ_API_KEY (free) or OPENAI_API_KEY.');
 }
 
+/**
+ * Groq models to try, in order.
+ *
+ * The name used to be hardcoded, and when Groq retired it every AI reply
+ * started returning 404, so dispatch went silent for anything that was not a
+ * plain 10 code. Providers retire models on their own schedule, so this is a
+ * list rather than a constant: the first one that answers is remembered, and
+ * anything that 404s is struck off and skipped from then on.
+ *
+ * Set GROQ_MODEL to pin a specific one without waiting for a deploy.
+ */
+const GROQ_MODEL_CANDIDATES = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'openai/gpt-oss-20b',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+];
+
+let resolvedGroqModel = null;
+const retiredModels = new Set();
+
+function groqModel() {
+  if (process.env.GROQ_MODEL) return process.env.GROQ_MODEL;
+  if (resolvedGroqModel) return resolvedGroqModel;
+  return GROQ_MODEL_CANDIDATES.find((m) => !retiredModels.has(m)) || GROQ_MODEL_CANDIDATES[0];
+}
+
+/** Is this the provider saying the model is gone, rather than a transient fault? */
+function isModelRetired(err) {
+  if (err?.status === 404) return true;
+  const message = String(err?.message || '').toLowerCase();
+  return message.includes('does not exist')
+    || message.includes('decommissioned')
+    || message.includes('model_not_found')
+    || message.includes('has been deprecated');
+}
+
+function markModelRetired(model) {
+  // Pinned on purpose, so do not wander off it.
+  if (process.env.GROQ_MODEL) return false;
+  retiredModels.add(model);
+  if (resolvedGroqModel === model) resolvedGroqModel = null;
+
+  const next = GROQ_MODEL_CANDIDATES.find((m) => !retiredModels.has(m));
+  if (next) {
+    console.log('[AI Response] Model ' + model + ' is gone. Falling back to ' + next);
+    return true;
+  }
+  console.error('[AI Response] Every candidate model has been retired. Set GROQ_MODEL to a current one.');
+  return false;
+}
+
 export function hasAIKey() {
   if (!groqKeysLoaded) loadGroqKeys();
   return !!(groqKeys.length > 0 || process.env.OPENAI_API_KEY);
@@ -215,11 +267,18 @@ function detectCADLookup(text) {
   const lower = text.toLowerCase().trim();
   console.log(`[CAD Detect] Checking transcript for CAD lookup: "${lower}"`);
 
+  // Every gap between words has to tolerate punctuation. Transcription writes
+  // commas freely - "run, name, John Doe" - which is why "run name, john doe"
+  // was never recognised while "run license plate POLZ11" was: the old
+  // patterns required bare whitespace exactly where the comma landed.
+  const SEP = '[\\s,:;.]*';
+  const p = (body) => new RegExp(body.split(' ').join(SEP), 'i');
+
   const platePatterns = [
-    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?(?:license\s+)?(?:tag\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9][a-z0-9\s-]*)/i,
-    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:for\s+(?:me\s+)?)?([a-z0-9][a-z0-9\s-]*)/i,
-    /plates?\s+(?:number\s+)?(?:is\s+)?([a-z0-9][a-z0-9\s-]{1,})\s*(?:run|check|look)/i,
-    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?plates?\s+(?:on\s+)?(?:number\s+)?([a-z0-9][a-z0-9\s-]*)/i,
+    p('\\brun\\b (?:this )?(?:a )?(?:the )?(?:license )?(?:tag )?plates? (?:on )?(?:number )?([a-z0-9][a-z0-9\\s-]*)'),
+    p('(?:can you )?\\brun\\b (?:this )?(?:a )?(?:the )?plates? (?:for )?(?:me )?([a-z0-9][a-z0-9\\s-]*)'),
+    p('plates? (?:number )?(?:is )?([a-z0-9][a-z0-9\\s-]{1,})(?:run|check|look)'),
+    p('(?:check|look ?up) (?:this )?(?:a )?(?:the )?plates? (?:on )?(?:number )?([a-z0-9][a-z0-9\\s-]*)'),
   ];
 
   for (const pattern of platePatterns) {
@@ -234,9 +293,11 @@ function detectCADLookup(text) {
   }
 
   const namePatterns = [
-    /run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:on\s+)?(.+)/i,
-    /(?:can\s+you\s+)?run\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:for\s+(?:me\s+)?)?(.+)/i,
-    /(?:check|look\s*up)\s+(?:this\s+)?(?:a\s+)?(?:the\s+)?names?\s+(?:on\s+)?(.+)/i,
+    p('\\brun\\b (?:this )?(?:a )?(?:the )?names? (?:check )?(?:on )?(?:for )?(?:me )?(.+)'),
+    p('(?:can you )?\\brun\\b (?:this )?(?:a )?(?:the )?names? (?:for )?(?:me )?(.+)'),
+    p('(?:check|look ?up) (?:this )?(?:a )?(?:the )?names? (?:on )?(?:for )?(.+)'),
+    // "run John Doe" with no keyword at all, which is how people actually say it.
+    p('\\brun\\b (?:this )?(?:a )?(?:the )?([a-z]+ [a-z]+)$'),
   ];
 
   for (const pattern of namePatterns) {
@@ -804,6 +865,8 @@ async function transcribeAudio(wavBuffer) {
     const maxTries = Math.max(1, groqKeys.length);
     for (let attempt = 0; attempt < maxTries; attempt++) {
       const { client, provider } = getAIClient();
+      // Hardcoded, unlike the chat model. If Groq retires this one it will
+      // fail the same way the chat model did; it would need its own chain.
       const model = provider === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1';
       try {
         const result = await client.audio.transcriptions.create({
@@ -1010,6 +1073,7 @@ async function generateDispatchTTS(text) {
   const maxTries = Math.max(1, groqKeys.length);
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
+    // Hardcoded, unlike the chat model. Same exposure if it is ever retired.
     const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
     const voice = provider === 'groq' ? TTS_VOICE : 'onyx';
     try {
@@ -1636,13 +1700,12 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   ];
 
   let lastErr;
-  const maxTries = Math.max(1, groqKeys.length);
+  // Enough attempts to rotate every key AND walk past every retired model,
+  // otherwise a single key means a single try and the fallback never runs.
+  const maxTries = Math.max(1, groqKeys.length) + GROQ_MODEL_CANDIDATES.length;
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
-    // llama-3.1-8b-instant is Groq's fastest model - dispatch replies are short,
-    // clipped radio chatter so the smaller/faster model keeps up fine and cuts
-    // response latency significantly vs the 70b model. OpenAI fallback unchanged.
-    const model = provider === 'groq' ? 'llama-3.1-8b-instant' : 'gpt-4o-mini';
+    const model = provider === 'groq' ? groqModel() : 'gpt-4o-mini';
     const maxTokens = 60;
     try {
       const response = await client.chat.completions.create({
@@ -1654,6 +1717,10 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         temperature: 0.15,
         frequency_penalty: 0.5,
       });
+      // Remember what answered, so retired models are paid for once rather
+      // than on every call.
+      if (provider === 'groq') resolvedGroqModel = model;
+
       const message = response.choices[0]?.message;
       let rawText = message?.content?.trim() || '';
 
@@ -1724,6 +1791,11 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
       lastErr = err;
       if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
         console.log(`[AI Response] Rate limited on key ${attempt + 1}, trying next key...`);
+        continue;
+      }
+      // A retired model is not a failure of this request, it is a failure of
+      // the name. Rotating keys cannot help; the next model might.
+      if (provider === 'groq' && isModelRetired(err) && markModelRetired(model)) {
         continue;
       }
       throw err;
