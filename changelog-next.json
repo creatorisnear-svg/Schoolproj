@@ -10,6 +10,7 @@
     "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses",
     "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free",
     "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit",
-    "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown, and updates on its own"
+    "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown, and updates on its own",
+    "New: a Staff tab in the web CAD, for anyone with Administrator, one of your CAD staff roles, or an entry in your staff list. It shows what is waiting: who needs verifying, who is carrying strikes, and how many tickets and 911 calls are open. You can approve or deny verifications straight from it"
   ]
 }

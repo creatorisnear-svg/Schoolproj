@@ -10,6 +10,7 @@ import Priority from '../../models/Priority.js';
 import { isStaff as isStaffMember } from '../../utils/permissions.js';
 import { createCivilianRouter } from './cad/civilian.js';
 import { createLeoRouter } from './cad/leo.js';
+import { createStaffRouter } from './cad/staff.js';
 import { createResponderRouter, requireResponder } from './cad/responder.js';
 import { eventsHandler } from './cad/events.js';
 
@@ -240,6 +241,7 @@ export function createCadApiRouter(client) {
   // the same fields as law enforcement, so one implementation serves both.
   router.use('/:guildId/calls', requireResponder, createResponderRouter(client));
   router.use('/:guildId/leo', requireLeo, createLeoRouter(client));
+  router.use('/:guildId/staff', requireStaff, createStaffRouter(client));
   router.use('/:guildId', createCivilianRouter(client));
 
   // Express 5 forwards a rejected async handler here. Without this the app's

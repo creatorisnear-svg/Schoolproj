@@ -320,9 +320,18 @@
     { id: 'board', label: 'On Duty' },
   ];
 
+  // Moderation rather than roleplay: who is waiting to be let in, who is
+  // carrying strikes, what is open right now.
+  var STAFF_NAV = [
+    { id: 'staffoverview', label: 'Overview' },
+    { id: 'staffverify', label: 'Verifications' },
+    { id: 'staffstrikes', label: 'Strikes' },
+  ];
+
   function nav() {
     if (state.mode === 'leo') return LEO_NAV;
     if (state.mode === 'fire') return FIRE_NAV;
+    if (state.mode === 'staff') return STAFF_NAV;
     return CIVILIAN_NAV;
   }
 
@@ -343,6 +352,9 @@
     alerts: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>',
     calls: '<path d="M12 2.5v3"/><path d="M12 18.5v3"/><path d="M5 12H2"/><path d="M22 12h-3"/><path d="M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"/>',
     search: '<path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/><path d="m20 20-4-4"/>',
+    staffoverview: '<path d="M4 13h6V4H4Z"/><path d="M14 20h6v-9h-6Z"/><path d="M4 20h6v-3H4Z"/><path d="M14 7h6V4h-6Z"/>',
+    staffverify: '<path d="M12 3.5 4.5 6.8V12c0 4.6 3.2 7.4 7.5 8.5 4.3-1.1 7.5-3.9 7.5-8.5V6.8Z"/><path d="m9 12 2 2 4-4"/>',
+    staffstrikes: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>',
     bolos: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><path d="M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>',
     tickets: '<path d="M4 7.5h16v3a2 2 0 0 0 0 3v3H4v-3a2 2 0 0 0 0-3z"/><path d="M9.5 7.5v9"/>',
     units: '<path d="M3 16.5h18"/><path d="M5 16.5v-4l2-4h10l2 4v4"/><path d="M7.5 16.5v2"/><path d="M16.5 16.5v2"/>',
@@ -370,6 +382,10 @@
     var modes = [{ id: 'civilian', label: 'Civilian', short: 'Civ' }];
     if (member.isLeo === true) modes.push({ id: 'leo', label: 'Law Enforcement', short: 'LEO' });
     if (member.isFd === true) modes.push({ id: 'fire', label: 'Fire / EMS', short: 'Fire' });
+    // Staff last, because it is the one people switch to on purpose rather
+    // than live in. isStaff is an administrator, a CAD staff role, or an entry
+    // in the Staff collection, worked out server side.
+    if (member.isStaff === true) modes.push({ id: 'staff', label: 'Staff', short: 'Staff' });
     return modes;
   }
 
@@ -1547,6 +1563,111 @@
     var button = $('run-search');
     if (button) button.click();
   }
+
+  // ── Staff ───────────────────────────────────────────────────────────────
+
+  VIEWS.staffoverview = function () {
+    return api('/' + state.guildId + '/staff/overview').then(function (o) {
+      var tiles = [
+        ['Waiting to verify', o.pending, o.pending ? 'alert' : ''],
+        ['Verified members', o.verified, ''],
+        ['Carrying strikes', o.strikes, ''],
+        ['Open tickets', o.openTickets, ''],
+        ['Active 911 calls', o.activeCalls, o.activeCalls ? 'alert' : ''],
+        ['On the blacklist', o.blacklisted, ''],
+      ];
+
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Staff Overview', 'How your server looks right now.')
+        + '<div class="server-grid">'
+        + tiles.map(function (t) {
+            return '<div class="card"><div class="card-head"><h3>' + esc(String(t[1] == null ? 0 : t[1]))
+              + '</h3></div><p style="font-size:13px;color:var(--text-muted)">' + esc(t[0]) + '</p></div>';
+          }).join('')
+        + '</div></div>';
+    });
+  };
+
+  VIEWS.staffverify = function () {
+    return api('/' + state.guildId + '/staff/verifications').then(function (res) {
+      var pending = res.pending || [];
+
+      var body = pending.length
+        ? pending.map(function (v) {
+            return '<div class="card"><div class="card-head">'
+              + '<h3>' + esc(v.username || v.userId) + '</h3>'
+              + '<span class="spacer"></span>'
+              + '<span class="muted">' + esc(timeAgo(v.submittedAt)) + '</span>'
+              + '<button class="btn btn-sm btn-primary" data-approve="' + esc(v.id) + '">Approve</button>'
+              + '<button class="btn btn-sm btn-danger" data-deny="' + esc(v.id) + '">Deny</button>'
+              + '</div>'
+              + (v.psnxbox ? '<p style="font-size:13px"><strong>PSN / Xbox:</strong> ' + esc(v.psnxbox) + '</p>' : '')
+              + (v.answer ? '<p style="font-size:13px;color:var(--text-muted);margin-top:6px">' + esc(v.answer) + '</p>' : '')
+              + '</div>';
+          }).join('')
+        : '<div class="empty">Nobody is waiting. Applications appear here as they come in.</div>';
+
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Verifications', pending.length
+            ? pending.length + ' waiting, oldest first.'
+            : 'Nobody waiting.')
+        + body + '</div>';
+
+      // Approving grants roles and messages the member, so it asks first.
+      bind('[data-approve]', function (btn) {
+        dialog({
+          title: 'Approve this application?',
+          sub: 'They get the verified role and a message from the bot.',
+          confirm: 'Approve',
+          onSubmit: function () {
+            return api('/' + state.guildId + '/staff/verifications/' + btn.dataset.approve + '/approve',
+              { method: 'POST' }).then(function (r) {
+                toast(r.gone ? 'That member has left the server.' : 'Approved.', 'ok');
+                go('staffverify');
+              });
+          },
+        });
+      });
+      bind('[data-deny]', function (btn) {
+        dialog({
+          title: 'Deny this application?',
+          sub: 'They are told it was denied and can apply again.',
+          confirm: 'Deny',
+          danger: true,
+          onSubmit: function () {
+            return api('/' + state.guildId + '/staff/verifications/' + btn.dataset.deny + '/deny',
+              { method: 'POST' }).then(function () {
+                toast('Denied.', 'ok');
+                go('staffverify');
+              });
+          },
+        });
+      });
+    });
+  };
+
+  VIEWS.staffstrikes = function () {
+    return api('/' + state.guildId + '/staff/strikes').then(function (res) {
+      var rows = res.strikes || [];
+
+      var body = rows.length
+        ? rows.map(function (r) {
+            return '<div class="card"><div class="card-head">'
+              + '<h3>' + esc(r.username || ('Member ' + r.userId)) + '</h3>'
+              + '<span class="spacer"></span>'
+              + '<span class="muted">' + (r.action ? esc(r.action) + ' at this level' : 'no automatic action') + '</span>'
+              + '</div>'
+              + '<p style="font-size:13px">Strike ' + esc(String(r.level)) + ' of 4</p></div>';
+          }).join('')
+        : '<div class="empty">Nobody is carrying a strike.</div>';
+
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Strikes', rows.length
+            ? rows.length + ' member' + (rows.length === 1 ? '' : 's') + ' with strikes, highest first. Issue and remove them in Discord.'
+            : 'Nobody has a strike.')
+        + body + '</div>';
+    });
+  };
 
   VIEWS.bolos = function () {
     return api('/' + state.guildId + '/leo/bolos').then(function (res) {
