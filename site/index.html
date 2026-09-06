@@ -708,10 +708,17 @@
     }).catch(function() {});
 
     // ── Feature flags ──
-    fetch(API_BASE + '/api/public/features').then(function(r) { return r.json(); }).then(function(flags) {
+    // Premium state comes from the feature registry, which resolves each feature
+    // server-side (a dev-panel flag, else its premiumDefault). This page used to
+    // carry its own hardcoded dispatch/priority/appys fallback - one of five
+    // copies of that list, two of which had drifted. An empty or failed response
+    // throws into the existing catch below, which restores the documented set.
+    fetch(API_BASE + '/api/public/registry').then(function(r) { return r.json(); }).then(function(payload) {
+      var flags = {};
+      ((payload && payload.features) || []).forEach(function(f) { flags[f.key] = f.premium === true; });
+      if (!Object.keys(flags).length) throw new Error('empty registry');
       function isFlagPremium(feat) {
-        if (feat in flags) return flags[feat] === true;
-        return feat === 'dispatch' || feat === 'priority' || feat === 'appys';
+        return flags[feat] === true;
       }
 
       // Show/hide premium tags on feature cards
