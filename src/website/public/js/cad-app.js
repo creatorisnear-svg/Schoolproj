@@ -322,12 +322,18 @@
     return CIVILIAN_NAV;
   }
 
-  /** Which modes this member may switch into on this server. */
+  /**
+   * Which modes this member may switch into on this server.
+   *
+   * Each carries a short label as well as a full one. On a narrow screen the CSS
+   * swaps to the short form rather than truncating, because "Law Enforce..."
+   * reads worse than "LEO" to the people who actually use it.
+   */
   function availableModes() {
     var member = (state.context && state.context.member) || {};
-    var modes = [{ id: 'civilian', label: 'Civilian' }];
-    if (member.isLeo) modes.push({ id: 'leo', label: 'Law Enforcement' });
-    if (member.isFd) modes.push({ id: 'fire', label: 'Fire / EMS' });
+    var modes = [{ id: 'civilian', label: 'Civilian', short: 'Civ' }];
+    if (member.isLeo) modes.push({ id: 'leo', label: 'Law Enforcement', short: 'LEO' });
+    if (member.isFd) modes.push({ id: 'fire', label: 'Fire / EMS', short: 'Fire' });
     return modes;
   }
 
@@ -378,7 +384,10 @@
     toggle.hidden = modes.length < 2;
     toggle.innerHTML = modes.map(function (m) {
       return '<button type="button" data-mode="' + esc(m.id) + '" aria-pressed="'
-        + (m.id === state.mode ? 'true' : 'false') + '">' + esc(m.label) + '</button>';
+        + (m.id === state.mode ? 'true' : 'false') + '" title="' + esc(m.label) + '">'
+        + '<span class="full">' + esc(m.label) + '</span>'
+        + '<span class="short">' + esc(m.short) + '</span>'
+        + '</button>';
     }).join('');
 
     Array.prototype.forEach.call(toggle.querySelectorAll('button'), function (btn) {

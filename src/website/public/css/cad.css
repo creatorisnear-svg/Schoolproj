@@ -183,15 +183,20 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px; height: 54px; flex-shrink: 0;
   background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+  /* The bar itself must never become the thing that scrolls the page. */
+  min-width: 0; overflow: hidden;
 }
+/* Controls, as opposed to labels, keep their size no matter how narrow it gets.
+   Losing the sign-out button off the right edge is worse than any truncation. */
+.topbar .btn, .topbar .mode-toggle { flex: 0 0 auto; }
 .topbar .server-switch {
   display: flex; align-items: center; gap: 8px; padding: 5px 10px;
   border-radius: var(--radius-sm); border: 1px solid var(--border);
   background: var(--bg-card); cursor: pointer; color: var(--text);
   font-size: 13px; font-weight: 500;
-  /* Shrinkable, and capped, so a long server name cannot push the sign-out
-     button and the mode toggle off the right edge of the bar. */
-  min-width: 0; max-width: min(260px, 34vw); overflow: hidden; flex: 0 1 auto;
+  /* Shrinks, but to a floor. Without a min-width it collapsed to 22px, which is
+     narrower than the icon inside it and told the user nothing. */
+  flex: 0 1 auto; min-width: 92px; max-width: min(260px, 34vw); overflow: hidden;
 }
 .topbar .server-switch:hover { border-color: var(--border-hover); }
 .topbar .server-switch img, .topbar .server-switch .server-icon { width: 20px; height: 20px; border-radius: 5px; font-size: 10px; }
@@ -201,7 +206,19 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .topbar .server-switch #switch-icon { flex: 0 0 auto; display: flex; }
 .topbar .spacer { flex: 1; }
 
-.mode-toggle { display: flex; gap: 2px; padding: 2px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.mode-toggle {
+  display: flex; gap: 2px; padding: 2px; flex: 0 0 auto;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+/* Each mode carries a full label and a short one; only one is ever shown. This
+   is a swap rather than truncation, because "Law Enforce..." reads worse than
+   "LEO" to the people who use it. */
+.mode-toggle .short { display: none; }
+@media (max-width: 900px) {
+  .mode-toggle .full { display: none; }
+  .mode-toggle .short { display: inline; }
+  .mode-toggle button { padding: 5px 10px; }
+}
 .mode-toggle button {
   padding: 5px 14px; border: none; background: transparent; color: var(--text-muted);
   font-size: 12px; font-weight: 550; border-radius: 4px; cursor: pointer;
@@ -419,6 +436,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
 /* Officers use this on a phone while they are actually roleplaying, so the nav
    becomes a horizontal strip rather than a drawer that has to be opened. */
+/* Badges are the first thing to go: they repeat what the panel already says,
+   and the controls beside them do not. */
+@media (max-width: 780px) {
+  .topbar .badge { display: none; }
+  .topbar { gap: 10px; padding: 0 12px; }
+}
+
 @media (max-width: 720px) {
   .shell { flex-direction: column; }
   .sidenav {
@@ -428,8 +452,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   .sidenav button { width: auto; flex-shrink: 0; }
   .sidenav .spacer, .sidenav .count { display: none; }
   .main { padding: 16px 14px; }
-  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar { padding: 0 10px; gap: 8px; }
   .topbar .who span { display: none; }
-  .topbar .server-switch { max-width: 150px; }
+  .topbar .server-switch { max-width: 42vw; min-width: 80px; }
   .picker { padding: 32px 16px; }
 }
