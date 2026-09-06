@@ -1441,9 +1441,13 @@ client.on('interactionCreate', async interaction => {
       }
     } else if (interaction.isModalSubmit()) {
       console.log(`[MODAL] ${interaction.user.tag} submitted ${interaction.customId} in ${interaction.guild?.name}`);
-      if (interaction.customId === 'verify_modal') {
-        await handleVerifyModalSubmit(interaction);
-      } else if (interaction.customId.startsWith('business_password_')) {
+      // There is no verify_modal branch any more. /verify used to open an in
+      // Discord modal whose submit called handleVerifyModalSubmit, a name that
+      // exists nowhere in the repo, so every submission threw a ReferenceError
+      // and the user got "This interaction failed". /verify now uses the same
+      // web flow as the panel button, which is the one that checks the
+      // blacklist. See src/commands/verify.js.
+      if (interaction.customId.startsWith('business_password_')) {
         const { handleBusinessPasswordModal } = await import('./handlers/economyActions.js');
         await handleBusinessPasswordModal(interaction);
       } else if (interaction.customId.startsWith('business_do_deposit_')) {

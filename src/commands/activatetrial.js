@@ -59,6 +59,11 @@ export async function execute(interaction) {
   const expires = `<t:${Math.floor(result.expiresAt.getTime() / 1000)}:F>`;
 
   return interaction.editReply({
+    // All text and no controls, so the wrapper in utils/replyLinks.js would
+    // leave this one bare. Somebody has just unlocked everything and is
+    // deciding what to do with it, which is when the links are most worth
+    // having, so it asks for them.
+    links: true,
     embeds: [embed(
       `${TRIAL_DAYS}-Day Trial Active`,
       `Every Premium feature is unlocked on this server until ${expires}.\n\n` +
