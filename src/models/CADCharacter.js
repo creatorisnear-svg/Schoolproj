@@ -93,6 +93,9 @@ const cadCharacterSchema = new mongoose.Schema({
       },
       year: String,
       condition: String,
+      // Issued, never typed. A plate can be swapped or stolen; the VIN is what
+      // ties a recovered vehicle back to this record.
+      vin: String,
       addedAt: { type: Date, default: Date.now },
     },
   ],

@@ -8,7 +8,7 @@ import EconomyConfig from '../../../models/EconomyConfig.js';
 import BOLO from '../../../models/BOLO.js';
 import { getGuildLimits } from '../../../utils/premiumCheck.js';
 import { announceWeb911, generateCallId, updateCallMessage, postTweet, postAnonymous } from '../../cadBridge.js';
-import { resolvePlate, randomLicenseNumber, randomSerial, randomSSN } from '../../../utils/cadIdentifiers.js';
+import { resolvePlate, randomLicenseNumber, randomSerial, randomSSN, randomVIN } from '../../../utils/cadIdentifiers.js';
 import { str, num, plate, limitError, notFound, badRequest, duplicatePlate } from './shared.js';
 
 /**
@@ -161,6 +161,7 @@ export function createCivilianRouter(client) {
       licensePlate,
       year: str(req.body.year, 10),
       condition: str(req.body.condition, 60),
+      vin: randomVIN(),
     });
 
     try {
@@ -195,10 +196,9 @@ export function createCivilianRouter(client) {
     const hit = await overLimit(req.guildId, 'firearms');
     if (hit) return limitError(res, 'firearms', hit);
 
-    character.guns.push({
-      name,
-      serialNumber: str(req.body.serialNumber, 60) || randomSerial(),
-    });
+    // The serial is issued, not asked for. Inventing one is busywork, and a
+    // blank serial makes a recovered firearm untraceable.
+    character.guns.push({ name, serialNumber: randomSerial() });
     await character.save();
     res.status(201).json({ character });
   });

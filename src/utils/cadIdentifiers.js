@@ -50,6 +50,18 @@ export function randomSSN() {
   return `${area}-${pick(DL_DIGITS, 2)}-${pick(DL_DIGITS, 4)}`;
 }
 
+/**
+ * A vehicle identification number, e.g. `1HGBH41JXMN109186`.
+ *
+ * Seventeen characters in the real format, and deliberately excluding I, O and Q
+ * exactly as a real VIN does - they are indistinguishable from 1 and 0 when read
+ * off a dashboard or repeated over the radio.
+ */
+export function randomVIN() {
+  const VIN_CHARS = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789';
+  return pick(VIN_CHARS, 17);
+}
+
 /** A firearm serial, e.g. `SN-8H2K4M9`. */
 export function randomSerial() {
   return 'SN-' + pick(PLATE_LETTERS + DL_DIGITS, 7);

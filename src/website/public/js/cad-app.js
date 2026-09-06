@@ -641,15 +641,21 @@
       ['Age', c.age], ['Gender', c.gender], ['Height', c.height], ['Build', c.build],
       ['Hair', c.hairColor], ['Eyes', c.eyeColor], ['Occupation', c.occupation],
       ['Address', c.address], ['Phone', c.phoneNumber],
+      // Issued at creation, and the two things an officer will ask for.
       ["Driver's Licence", c.driversLicense],
+      ['SSN', c.socialSecurityNumber],
       // Only on older records: new characters have no plate of their own, their
       // vehicles do.
       ['Plate (legacy)', c.licensePlate],
     ].filter(function (pair) { return pair[1]; });
 
     var vehicles = (c.vehicles || []).map(function (v) {
-      return '<div class="row"><span>' + esc([v.year, v.color, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle') + '</span>'
-        + (v.licensePlate ? '<span class="mono muted">' + esc(v.licensePlate) + '</span>' : '')
+      return '<div class="row">'
+        + '<span>' + esc([v.year, v.color, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle') + '</span>'
+        + (v.licensePlate ? '<span class="mono">' + esc(v.licensePlate) + '</span>' : '')
+        // The VIN is long and rarely needed at a glance, so it sits quietly
+        // under the plate rather than competing with it.
+        + (v.vin ? '<span class="mono muted" title="Vehicle identification number">VIN ' + esc(v.vin) + '</span>' : '')
         + '<span class="spacer"></span>'
         + '<button class="btn btn-sm" data-del-vehicle="' + esc(v._id) + '" data-char="' + esc(c._id) + '">Remove</button>'
         + '</div>';
@@ -657,7 +663,7 @@
 
     var guns = (c.guns || []).map(function (g) {
       return '<div class="row"><span>' + esc(g.name) + '</span>'
-        + (g.serialNumber ? '<span class="mono muted">' + esc(g.serialNumber) + '</span>' : '')
+        + (g.serialNumber ? '<span class="mono">' + esc(g.serialNumber) + '</span>' : '')
         + '<span class="spacer"></span>'
         + '<button class="btn btn-sm" data-del-gun="' + esc(g._id) + '" data-char="' + esc(c._id) + '">Remove</button>'
         + '</div>';
@@ -686,22 +692,34 @@
       + '" style="margin-top:8px" data-add-vehicle="' + esc(c._id) + '">Register Vehicle</button>'
       + '<div class="subhead">Firearms</div>'
       + (guns || '<div class="row muted">No firearms registered.</div>')
-      + '<button class="btn btn-sm" style="margin-top:8px" data-add-gun="' + esc(c._id) + '">Add Firearm</button>'
+      + '<button class="btn btn-sm" style="margin-top:8px" data-add-gun="' + esc(c._id) + '">Register Firearm</button>'
       + '</div>';
   }
 
+  /**
+   * The same questions /civiliandatabase asks, in the same order.
+   *
+   * Discord splits these across a three-step wizard because a modal holds five
+   * fields; there is no such limit here, so they are one short form. Everything
+   * beyond this is optional detail and lives on Edit, which keeps making a
+   * character as quick as it is in Discord.
+   */
   var CHARACTER_FIELDS = [
-    { name: 'characterName', label: 'Full name', required: true, max: 100 },
+    { name: 'characterName', label: 'Character name', required: true, max: 100 },
     { name: 'age', label: 'Age', type: 'number' },
     { name: 'gender', label: 'Gender', max: 40 },
     { name: 'height', label: 'Height', max: 40 },
+    { name: 'distinguishingFeatures', label: 'Race', max: 100 },
+  ];
+
+  /** Creation plus the rest of the record, offered once a character exists. */
+  var CHARACTER_EDIT_FIELDS = CHARACTER_FIELDS.concat([
     { name: 'build', label: 'Build', max: 40 },
     { name: 'hairColor', label: 'Hair colour', max: 40 },
     { name: 'eyeColor', label: 'Eye colour', max: 40 },
     { name: 'occupation', label: 'Occupation', max: 100 },
     { name: 'address', label: 'Address', max: 200 },
     { name: 'phoneNumber', label: 'Phone number', max: 40 },
-    { name: 'distinguishingFeatures', label: 'Distinguishing features', type: 'textarea', max: 500 },
     { name: 'scarsAndTattoos', label: 'Scars and tattoos', type: 'textarea', max: 500 },
     { name: 'medicalInfo', label: 'Medical information', type: 'textarea', max: 500 },
     { name: 'emergencyContact', label: 'Emergency contact', max: 200 },
@@ -713,9 +731,7 @@
         { value: 'organ_donor', label: 'Organ donor' },
       ],
     },
-    // No licence plate. It belongs to a vehicle, and asking for it here made
-    // people think filling it in registered their car.
-  ];
+  ]);
 
   function withValues(fields, source) {
     return fields.map(function (f) {
@@ -729,12 +745,18 @@
   function newCharacter() {
     dialog({
       title: 'New character',
-      sub: 'This is the record law enforcement sees when they run your name or plate.',
+      sub: 'A licence number and social security number are issued automatically. Everything else can be filled in later.',
       fields: withValues(CHARACTER_FIELDS, null),
       confirm: 'Create',
       onSubmit: function (values) {
         return api('/' + state.guildId + '/characters', { method: 'POST', body: values })
-          .then(function () { toast('Character created.', 'ok'); go('characters'); });
+          .then(function (res) {
+            var c = res.character || {};
+            toast(c.socialSecurityNumber
+              ? 'Character created. SSN ' + c.socialSecurityNumber + ', licence ' + c.driversLicense
+              : 'Character created.', 'ok');
+            go('characters');
+          });
       },
     });
   }
@@ -745,7 +767,7 @@
 
     dialog({
       title: 'Edit ' + character.characterName,
-      fields: withValues(CHARACTER_FIELDS, character),
+      fields: withValues(CHARACTER_EDIT_FIELDS, character),
       onSubmit: function (values) {
         return api('/' + state.guildId + '/characters/' + id, { method: 'PATCH', body: values })
           .then(function () { toast('Saved.', 'ok'); go('characters'); });
@@ -772,7 +794,7 @@
   function addVehicle(characterId) {
     dialog({
       title: 'Register vehicle',
-      sub: 'Leave the plate blank and one will be issued for you.',
+      sub: 'A plate and a VIN are issued automatically. Enter a plate only if you want a specific one.',
       fields: [
         // Required, and marked as such on the form rather than only refused
         // after submitting. An officer running a stop needs something to
@@ -802,16 +824,23 @@
 
   function addFirearm(characterId) {
     dialog({
-      title: 'Add firearm',
+      title: 'Register firearm',
+      sub: 'A serial number is issued automatically.',
       fields: [
         { name: 'name', label: 'Firearm', required: true, max: 100 },
-        { name: 'serialNumber', label: 'Serial number', max: 60 },
       ],
-      confirm: 'Add',
+      confirm: 'Register',
       onSubmit: function (values) {
         return api('/' + state.guildId + '/characters/' + characterId + '/firearms',
           { method: 'POST', body: values })
-          .then(function () { toast('Firearm added.', 'ok'); go('characters'); });
+          .then(function (res) {
+            var list = (res.character && res.character.guns) || [];
+            var added = list[list.length - 1];
+            toast(added && added.serialNumber
+              ? 'Firearm registered. Serial: ' + added.serialNumber
+              : 'Firearm registered.', 'ok');
+            go('characters');
+          });
       },
     });
   }
@@ -1005,7 +1034,10 @@
       return '<div class="row"><span>'
         + esc([v.year, v.color, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle') + '</span>'
         + '<span class="spacer"></span>'
-        + (v.licensePlate ? '<span class="mono muted">' + esc(v.licensePlate) + '</span>' : '')
+        // A plate can be swapped or stolen, so an officer checking a recovered
+        // vehicle needs the VIN as well as the plate.
+        + (v.vin ? '<span class="mono muted">VIN ' + esc(v.vin) + '</span>' : '')
+        + (v.licensePlate ? '<span class="mono">' + esc(v.licensePlate) + '</span>' : '')
         + '</div>';
     }).join('');
   }
