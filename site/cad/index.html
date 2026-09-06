@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CAD — RolePlayManager</title>
+  <title>RolePlayManager CAD</title>
   <meta name="description" content="Computer Aided Dispatch for your RolePlayManager server.">
   <meta name="robots" content="noindex">
   <link rel="icon" href="/img/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app/css/cad.css">
 </head>
 <body>
@@ -18,10 +18,9 @@
 <div class="screen centered" id="view-login" hidden>
   <div class="login-card">
     <div class="wordmark" style="justify-content:center;margin-bottom:20px">
-      <span class="mark">RPM</span>
+      <img class="mark" src="/img/logo.png" alt="">
       RolePlay<span class="dim">Manager</span>
     </div>
-    <span class="status-line">Dispatch online</span>
     <h1>Computer Aided Dispatch</h1>
     <p>Sign in with Discord to open the CAD for any server you are in.</p>
     <div class="notice error" id="login-error" hidden></div>
@@ -32,14 +31,13 @@
 <!-- Server picker --------------------------------------------------------- -->
 <div class="screen" id="view-servers" hidden>
   <div class="topbar">
-    <span class="wordmark"><span class="mark">RPM</span>RolePlay<span class="dim">Manager</span></span>
+    <span class="wordmark"><img class="mark" src="/img/logo.png" alt="">RolePlay<span class="dim">Manager</span></span>
     <span class="spacer"></span>
     <div class="who" id="picker-who"></div>
     <button class="btn btn-sm" data-signout>Sign out</button>
   </div>
   <div class="picker">
     <div class="picker-head">
-      <span class="eyebrow">Select unit</span>
       <h1>Choose a server</h1>
       <p>These are the servers you are in that have the CAD switched on.</p>
     </div>

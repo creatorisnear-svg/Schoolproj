@@ -10,26 +10,26 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  /* Cooler and deeper than neutral grey - a faint blue cast throughout, the way
-     a dispatch console looks in a dim room. */
-  --bg: #07090d;
-  --bg-secondary: #0c1016;
-  --bg-card: #121721;
-  --bg-card-hover: #182030;
-  --bg-input: #0c1016;
-  --border: #1e2634;
-  --border-hover: #2f3d52;
-  --text: #e9edf5;
-  --text-muted: #7e8a9e;
-  --text-dim: #556174;
+  /* Dark blue, all the way down. The logo is a white monogram, so navy lets it
+     be used exactly as supplied with no recolouring. */
+  --bg: #050e1e;
+  --bg-secondary: #08162c;
+  --bg-card: #0d2040;
+  --bg-card-hover: #14294e;
+  --bg-input: #08162c;
+  --border: #1b355e;
+  --border-hover: #2b4d80;
+  --text: #ffffff;
+  --text-muted: #93a9c9;
+  --text-dim: #6b82a3;
 
-  /* The signature. Signal blue: used for anything active, live or selected, and
-     for nothing else - so its presence always means something. */
-  --accent: #4d9fff;
-  --accent-dim: #2b6fd4;
-  --accent-bg: rgba(77, 159, 255, 0.10);
-  --accent-border: rgba(77, 159, 255, 0.32);
-  --accent-glow: rgba(77, 159, 255, 0.28);
+  /* White is the accent: anything active, live or selected, and nothing else,
+     so its presence always means something. */
+  --accent: #ffffff;
+  --accent-dim: #d5e2f4;
+  --accent-bg: rgba(255, 255, 255, 0.09);
+  --accent-border: rgba(255, 255, 255, 0.30);
+  --accent-glow: rgba(255, 255, 255, 0.30);
   --green: #34d399;
   --green-bg: rgba(52, 211, 153, 0.08);
   --green-border: rgba(52, 211, 153, 0.2);
@@ -45,11 +45,11 @@
   --radius: 10px;
   --radius-lg: 14px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.65);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
   --ease: cubic-bezier(0.2, 0, 0, 1);
 
-  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* The faint grid a console screen has. Fixed, so it does not scroll with
@@ -58,8 +58,8 @@ body::before {
   content: '';
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(rgba(77, 159, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(77, 159, 255, 0.028) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 40%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 40%, transparent 100%);
@@ -85,7 +85,10 @@ body::before {
 html, body { height: 100%; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* IBM Plex: institutional and technical without being cold, and the sans and
+     mono are designed as one family, which matters on a screen where prose and
+     identifiers sit side by side. */
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -112,14 +115,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* The primary action is the accent, not plain white - it ties every screen back
    to the same signal colour. */
 .btn-primary {
-  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
-  color: #04070d; border-color: var(--accent-dim); font-weight: 650;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 4px 14px rgba(77, 159, 255, 0.22);
+  background: var(--accent); color: #050e1e; border-color: var(--accent);
+  font-weight: 650;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.14);
 }
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #63acff, #3579dc);
-  border-color: #63acff;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.24) inset, 0 6px 20px rgba(77, 159, 255, 0.34);
+  background: #ffffff; border-color: #ffffff;
+  box-shadow: 0 6px 22px rgba(255, 255, 255, 0.22);
 }
 .btn-danger { box-shadow: 0 4px 14px rgba(248, 113, 113, 0.12); }
 .btn-danger { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
@@ -137,7 +139,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   border-color: var(--accent-border);
-  box-shadow: 0 0 0 3px rgba(77, 159, 255, 0.10);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.09);
 }
 .field textarea { resize: vertical; min-height: 72px; }
 .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
@@ -157,13 +159,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   font-size: 15px; font-weight: 700; letter-spacing: -0.3px;
   display: inline-flex; align-items: center; gap: 8px;
 }
+/* The real logo, used as supplied. It is a white monogram on a dark ground,
+   which is exactly what it is sitting on. */
 .wordmark .mark {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 7px;
-  background: linear-gradient(145deg, var(--accent), var(--accent-dim));
-  color: #04070d; font-size: 11px; font-weight: 800; letter-spacing: 0;
-  box-shadow: 0 2px 10px rgba(77, 159, 255, 0.35);
+  width: 26px; height: 26px; border-radius: 50%;
+  object-fit: cover; flex: 0 0 auto;
 }
+.login-card .mark { width: 46px; height: 46px; }
 .wordmark .dim { font-weight: 400; color: var(--text-muted); }
 
 /* ── Login ──────────────────────────────────────────────────────────────── */
@@ -187,33 +189,14 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .login-card h1 {
   font-size: 25px; font-weight: 700; letter-spacing: -0.6px; margin-bottom: 8px;
 }
-/* A live indicator over the sign-in card: this is dispatch software, and it
-   should look switched on before you have even logged in. */
-.login-card .status-line {
-  /* Its own centred row. The wordmark above is inline-flex, so an inline-flex
-     badge simply joined the end of it. */
-  display: flex; width: fit-content; margin-left: auto; margin-right: auto;
-  align-items: center; gap: 7px;
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.4px;
-  text-transform: uppercase; color: var(--accent);
-  padding: 4px 11px; margin-bottom: 20px; border-radius: 20px;
-  background: var(--accent-bg); border: 1px solid var(--accent-border);
-}
-.login-card .status-line::before {
-  content: ''; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 8px var(--accent-glow);
-  animation: pulse 2s ease-in-out infinite;
-}
+
 .login-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
 
 /* ── Server picker ──────────────────────────────────────────────────────── */
 .picker { width: 100%; max-width: 860px; margin: 0 auto; padding: 48px 24px; }
 .picker-head { margin-bottom: 24px; }
 .picker-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.7px; }
-.picker-head .eyebrow {
-  display: block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
-  text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
-}
+
 .picker-head p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
 /* minmax(0, ...) rather than minmax(250px, ...): a 250px floor becomes a floor
@@ -244,7 +227,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .server-card:hover::after { opacity: 1; }
 .server-card:hover {
   background: var(--bg-card-hover); border-color: var(--accent-border);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(77, 159, 255, 0.06);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
 }
 .server-icon {
   width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0;
@@ -296,7 +279,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 0 18px; height: 54px; flex-shrink: 0;
-  background: linear-gradient(180deg, #0e131b, var(--bg-secondary));
+  background: linear-gradient(180deg, #0a1a35, var(--bg-secondary));
   border-bottom: 1px solid var(--border);
   /* The bar itself must never become the thing that scrolls the page. */
   min-width: 0; overflow: hidden;
@@ -351,9 +334,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
    was white, which made it the one active thing on screen not using the
    signature colour. */
 .mode-toggle button[aria-pressed="true"] {
-  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
-  color: #04070d; font-weight: 650;
-  box-shadow: 0 2px 10px rgba(77, 159, 255, 0.28);
+  background: var(--accent); color: #050e1e; font-weight: 650;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.18);
 }
 .mode-toggle button:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -465,9 +447,9 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   font-family: var(--mono);
   font-size: 12px; letter-spacing: 0.4px;
   padding: 1px 7px; border-radius: 5px;
-  background: rgba(77, 159, 255, 0.07);
-  border: 1px solid rgba(77, 159, 255, 0.14);
-  color: #b9d4f7;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: #dce8f8;
 }
 .mono.muted { background: rgba(255, 255, 255, 0.03); border-color: var(--border); color: var(--text-muted); }
 /* Plates, SSNs and licence numbers are read aloud over radio and copied by

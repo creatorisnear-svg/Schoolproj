@@ -196,8 +196,8 @@
   // ── Sign in ──────────────────────────────────────────────────────────────
 
   var LOGIN_ERRORS = {
-    auth_failed: 'Discord sign-in failed. Please try again.',
-    no_domain: 'The server is not configured for sign-in yet.',
+    auth_failed: 'Discord sign in failed. Please try again.',
+    no_domain: 'The server is not configured for sign in yet.',
   };
 
   /**
@@ -220,7 +220,7 @@
   function showLogin(errorCode) {
     var box = $('login-error');
     if (errorCode) {
-      box.textContent = LOGIN_ERRORS[errorCode] || 'Sign-in failed. Please try again.';
+      box.textContent = LOGIN_ERRORS[errorCode] || 'Sign in failed. Please try again.';
       box.hidden = false;
     } else {
       box.hidden = true;
@@ -1569,7 +1569,7 @@
     }
 
     $('main').innerHTML = '<div class="panel">'
-      + panelHead('Social', 'In-character posts, sent to your server.')
+      + panelHead('Social', 'Roleplay posts, sent to your server.')
       + composer('tweet', 'Twitter', 'Posted publicly under your name.', rp.twitter)
       + composer('anon', 'Anonymous', 'Posted with no name attached. Nobody, including staff, can trace it back.', rp.anon)
       + '</div>';
