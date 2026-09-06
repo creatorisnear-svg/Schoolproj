@@ -6,8 +6,8 @@ import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild } from '../../utils/premiumCheck.js';
+import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, getFeatureByMod } from '../../config/features.js';
 
-const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'priority', 'appys'];
 
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
@@ -199,6 +199,35 @@ export function createApiRouter(client) {
       fallback._topggVoteUrl = '';
       res.json(fallback);
     }
+  });
+
+  // The canonical feature registry, served to the web side. site/ is static and
+  // cannot import Node ESM, so this is how the dashboard and marketing page read
+  // the same list the bot uses instead of keeping their own copies.
+  // /public/features above keeps its original flat shape for older cached clients.
+  router.get('/public/registry', async (req, res) => {
+    let flagMap = {};
+    try {
+      const flags = await FeatureFlag.find();
+      flags.forEach((f) => { flagMap[f.feature] = f.premium; });
+    } catch {
+      // Fall through - premiumDefault below still gives a correct answer.
+    }
+    const botId = process.env.TOPGG_BOT_ID || '';
+    res.json({
+      features: FEATURES.map((f) => ({
+        key: f.key,
+        mod: f.mod,
+        label: f.label,
+        group: f.group,
+        order: f.order,
+        short: f.short,
+        long: f.long,
+        botGated: f.botGated,
+        premium: flagMap[f.key] ?? f.premiumDefault,
+      })),
+      topggVoteUrl: botId ? `https://top.gg/bot/${botId}/vote` : '',
+    });
   });
 
   router.get('/me', async (req, res) => {
@@ -1136,11 +1165,14 @@ export function createApiRouter(client) {
       return res.status(400).json({ error: 'No changes provided' });
     }
 
-    // Block saving settings for premium-gated modules when guild lacks premium
-    const PREMIUM_SETTINGS_MODS = ['dispatch', 'appys', 'priority'];
+    // Block saving settings for premium-gated modules when the guild lacks premium.
+    // PREMIUM_SETTINGS_MODS comes from the feature registry, so marking any feature
+    // premium in the dev panel gates its settings route too. checkFeatureAccess takes
+    // a feature KEY, not a mod slug - they differ for strikes/strike, tickets/ticket
+    // and antipromo/antipromote, so translate before calling it.
     if (PREMIUM_SETTINGS_MODS.includes(mod)) {
-      const { checkFeatureAccess } = await import('../../utils/premiumCheck.js');
-      const access = await checkFeatureAccess(guild.id, mod);
+      const feature = getFeatureByMod(mod);
+      const access = await checkFeatureAccess(guild.id, feature ? feature.key : mod);
       if (!access.allowed) {
         return res.status(403).json({ error: 'premium_required' });
       }

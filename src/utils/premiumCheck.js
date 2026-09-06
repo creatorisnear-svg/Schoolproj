@@ -1,6 +1,7 @@
 import PremiumKey from '../models/PremiumKey.js';
 import FeatureFlag from '../models/FeatureFlag.js';
 import { EmbedBuilder } from 'discord.js';
+import { DEFAULT_PREMIUM_FEATURES } from '../config/features.js';
 
 const premiumCache = new Map();
 const featureFlagCache = new Map();
@@ -54,7 +55,7 @@ export async function isFeaturePremiumGated(featureKey) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
   const flag = await FeatureFlag.findOne({ feature: featureKey });
-  const result = flag ? flag.premium : (featureKey === 'dispatch' || featureKey === 'priority' || featureKey === 'appys');
+  const result = flag ? flag.premium : DEFAULT_PREMIUM_FEATURES.includes(featureKey);
   featureFlagCache.set(featureKey, { value: result, ts: Date.now() });
   return result;
 }

@@ -10,6 +10,7 @@ import FeatureFlag from '../../models/FeatureFlag.js';
 import PremiumKey from '../../models/PremiumKey.js';
 import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
+import { FEATURES, DEFAULT_PREMIUM_FEATURES } from '../../config/features.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 import { sendChangelogWebhook } from '../../utils/changelogWebhook.js';
 
@@ -22,27 +23,13 @@ const upload = multer({
   },
 });
 
-const ALL_FEATURES = [
-  { feature: 'roleplay', label: 'Roleplay Commands' },
-  { feature: 'priority', label: 'Priority Tracker' },
-  { feature: 'strike', label: 'Strike System' },
-  { feature: 'calendar', label: 'RP Calendar' },
-  { feature: 'ticket', label: 'Ticket Support' },
-  { feature: 'antipromote', label: 'Anti-Promoting' },
-  { feature: 'rolerequest', label: 'Role Request' },
-  { feature: 'verification', label: 'Verification' },
-  { feature: 'welcome', label: 'Welcome System' },
-  { feature: 'dispatch', label: 'AI Voice Dispatch' },
-  { feature: 'appys', label: 'Applications' },
-  { feature: 'blacklist', label: 'Blacklist System' },
-  { feature: 'moveme', label: 'Voice Mover' },
-  { feature: 'economy', label: 'Economy' },
-  { feature: 'civjobs', label: 'Civilian Jobs' },
-];
-
-// Mirrors the fallback in src/utils/premiumCheck.js — that file is the source of
-// truth. Used only when a feature has no FeatureFlag row yet.
-const DEFAULT_PREMIUM_FEATURES = ['dispatch', 'priority', 'appys'];
+// Derived from the canonical feature registry so the dev panel can never drift
+// out of sync with what the bot and dashboard actually gate on. Foundation
+// features (general settings, staff) are excluded - they are prerequisites, not
+// things it makes sense to put behind Premium.
+const ALL_FEATURES = FEATURES
+  .filter((f) => f.group !== 'Foundation')
+  .map((f) => ({ feature: f.key, label: f.label }));
 
 const DEV_PASSWORD = process.env.DEV_PASSWORD || '67678967';
 const sessions = new Set();
