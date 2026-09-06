@@ -17,10 +17,10 @@
 <!-- Signed out ------------------------------------------------------------ -->
 <div class="screen centered" id="view-login" hidden>
   <div class="login-card">
-    <div class="wordmark" style="justify-content:center;margin-bottom:20px">
+    <a class="wordmark" href="https://roleplaymanager.xyz" title="RolePlayManager website" style="justify-content:center;margin-bottom:20px">
       <img class="mark" src="/img/logo.png" alt="">
       RolePlay<span class="dim">Manager</span>
-    </div>
+    </a>
     <h1>Computer Aided Dispatch</h1>
     <p>Sign in with Discord to open the CAD for any server you are in.</p>
     <div class="notice error" id="login-error" hidden></div>
@@ -31,7 +31,7 @@
 <!-- Server picker --------------------------------------------------------- -->
 <div class="screen" id="view-servers" hidden>
   <div class="topbar">
-    <span class="wordmark"><img class="mark" src="/img/logo.png" alt="">RolePlay<span class="dim">Manager</span></span>
+    <a class="wordmark" href="https://roleplaymanager.xyz" title="RolePlayManager website"><img class="mark" src="/img/logo.png" alt="">RolePlay<span class="dim">Manager</span></a>
     <span class="spacer"></span>
     <div class="who" id="picker-who"></div>
     <button class="btn btn-sm" data-signout>Sign out</button>
@@ -50,6 +50,9 @@
 <!-- The CAD --------------------------------------------------------------- -->
 <div class="screen" id="view-cad" hidden>
   <div class="topbar">
+    <!-- The way back to the website from inside the CAD. The logo alone: the
+         full wordmark would fight the server switch for room. -->
+    <a class="home-mark" href="https://roleplaymanager.xyz" title="RolePlayManager website"><img class="mark" src="/img/logo.png" alt="RolePlayManager" width="26" height="26"></a>
     <button class="server-switch" id="btn-switch-server" title="Switch server">
       <span id="switch-icon"></span>
       <span class="label" id="switch-name">Server</span>
@@ -71,6 +74,17 @@
   <div class="shell">
     <nav class="sidenav" id="sidenav"></nav>
     <main class="main" id="main"></main>
+  </div>
+</div>
+
+<!-- Cookie notice. The script shows it until a choice is made and keeps the
+     choice under the same key the main site uses, so somebody who has already
+     answered on roleplaymanager.xyz is not asked twice. -->
+<div id="cookie-banner" class="cookie-banner" role="region" aria-label="Cookie notice" hidden>
+  <p>The CAD keeps you signed in and remembers the server you were last in, using storage on this browser. Nothing is used for tracking or ads. If you decline, only your sign-in is stored. <a href="https://roleplaymanager.xyz/privacy" target="_blank" rel="noopener">Privacy Policy</a></p>
+  <div class="cookie-actions">
+    <button class="btn btn-sm" id="cookie-decline" type="button">Decline</button>
+    <button class="btn btn-primary btn-sm" id="cookie-accept" type="button">Accept</button>
   </div>
 </div>
 

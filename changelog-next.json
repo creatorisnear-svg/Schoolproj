@@ -1,16 +1,11 @@
 {
-  "version": "1.11.0",
-  "title": "Patrol Hours: see who is actually turning up",
+  "version": "1.12.0",
+  "title": "The web CAD: a Staff tab, priority at a glance, and applications for every server",
   "changes": [
-    "New: the bot now counts how long your officers spend in patrol voice channels. Run /duty to see your own hours, or /patrolboard to see the whole server ranked",
-    "It is already counting. Recording is free on every server and starts as soon as you have patrol channels set, so by the time you look there is real history there rather than an empty page",
-    "The number is meant to survive an argument. Time spent deafened does not count, sitting in a channel on your own does not count at all, and one shift is capped at 6 hours, so nobody tops the board by leaving Discord open overnight",
-    "With Premium: the 30 and 90 day views, every officer instead of the top 10, a board that posts itself in a channel every week, and a list of who has not been on patrol in 14 days",
-    "Nobody on that list gets messaged by the bot. It tells you, and what happens next is your call",
-    "Set it up with /config dutytime, or on the dashboard. It counts from the same patrol channels dispatch already uses",
-    "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free",
-    "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit",
+    "New: a Staff tab in the web CAD, for anyone with Administrator, one of your CAD staff roles, or an entry in your staff list. It shows what is waiting: who needs verifying, who is carrying strikes, and how many tickets and 911 calls are open. You can approve or deny verifications straight from it",
     "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown, and updates on its own",
-    "New: a Staff tab in the web CAD, for anyone with Administrator, one of your CAD staff roles, or an entry in your staff list. It shows what is waiting: who needs verifying, who is carrying strikes, and how many tickets and 911 calls are open. You can approve or deny verifications straight from it"
+    "The RolePlayManager logo and name in the CAD now take you to roleplaymanager.xyz, and the CAD asks about cookies the same way the website does. It only stores what keeps you signed in and which server you were last in, and one answer covers both the site and the CAD",
+    "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit",
+    "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free"
   ]
 }

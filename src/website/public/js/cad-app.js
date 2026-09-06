@@ -23,6 +23,9 @@
   var LAST_SERVER_KEY = 'rpm_cad_server';
   var LAST_MODE_KEY = 'rpm_cad_mode';
   var TOKEN_KEY = 'rpm_cad_token';
+  // Shared with the main site: a choice made on roleplaymanager.xyz covers the
+  // CAD served from the same origin, and the other way round.
+  var CONSENT_KEY = 'rpm_cookie_consent';
 
   // Empty string when the page and API share an origin; the absolute API origin
   // when the page is served from Cloudflare Pages.
@@ -85,6 +88,18 @@
 
   function recall(key) {
     try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  /**
+   * A preference, as opposed to the sign-in token.
+   *
+   * The token is what makes the CAD work at all. The last server and the last
+   * mode are conveniences, and somebody who declined the cookie notice gives
+   * those up. That is what the notice tells them, so it has to be true.
+   */
+  function remember(key, value) {
+    if (recall(CONSENT_KEY) === 'declined') return;
+    store(key, value);
   }
 
   /**
@@ -636,14 +651,14 @@
     var allowed = availableModes().some(function (m) { return m.id === mode; });
     if (!allowed) return;
     state.mode = mode;
-    store(LAST_MODE_KEY, mode);
+    remember(LAST_MODE_KEY, mode);
     renderTopbar();
     go(nav()[0].id);
   }
 
   function openServer(guildId) {
     state.guildId = guildId;
-    store(LAST_SERVER_KEY, guildId);
+    remember(LAST_SERVER_KEY, guildId);
     show('view-cad');
     // No argument: which view is about to open is not decided until the
 
@@ -1984,8 +1999,37 @@
 
   // ── Boot ─────────────────────────────────────────────────────────────────
 
+  /**
+   * The cookie notice.
+   *
+   * Wired before anything else in init, including the signed-out return: the
+   * token is written the moment sign-in completes, so the notice has to be on
+   * the sign-in screen and not only inside the CAD.
+   */
+  function setupCookieBanner() {
+    var banner = $('cookie-banner');
+    if (!banner) return;
+
+    function choose(accepted) {
+      store(CONSENT_KEY, accepted ? 'accepted' : 'declined');
+      if (!accepted) {
+        // Drop what was remembered before they said no. The token stays; the
+        // notice says so, and without it there is no CAD to decline from.
+        store(LAST_SERVER_KEY, null);
+        store(LAST_MODE_KEY, null);
+      }
+      banner.hidden = true;
+    }
+
+    $('cookie-accept').addEventListener('click', function () { choose(true); });
+    $('cookie-decline').addEventListener('click', function () { choose(false); });
+
+    banner.hidden = !!recall(CONSENT_KEY);
+  }
+
   function init() {
     var authError = captureToken();
+    setupCookieBanner();
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-signout]'), function (el) {
       el.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
