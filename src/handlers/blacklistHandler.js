@@ -119,8 +119,16 @@ export async function executeBlacklist(interaction, { targetUser, gamertag, reas
     await updateBlacklistPanel(interaction.client, guildId);
 
     const display = discordId ? `<@${discordId}>` : `\`${resolvedGamertag}\``;
+
+    // The only address on file is the one recorded when they verified. Asking
+    // for an IP ban on somebody who never verified used to report success and
+    // ban nothing, which is worse than saying so.
+    let ipNote = "";
+    if (ipBan && resolvedIp) ipNote = " IP ban applied.";
+    else if (ipBan) ipNote = "\n\nNo IP ban was applied: this account has never verified here, so there is no address on record. They are still blocked by Discord account and gamertag.";
+
     return interaction.editReply({
-      embeds: [successEmbed('Blacklisted', `${display} has been blacklisted.${ipBan ? ' IP ban applied.' : ''}`)],
+      embeds: [successEmbed('Blacklisted', `${display} has been blacklisted.${ipNote}`)],
     });
   } catch (err) {
     console.error('[BLACKLIST] executeBlacklist error:', err.message);

@@ -10,23 +10,8 @@ import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, getFeatureBy
 import { COMMAND_GROUPS, groupForCommand } from '../../config/commandGroups.js';
 
 
-function levenshtein(a, b) {
-  const m = a.length, n = b.length;
-  const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
-  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
-  return dp[m][n];
-}
-
-function isSimilar(input, blacklisted) {
-  const a = input.toLowerCase().trim();
-  const b = blacklisted.toLowerCase().trim();
-  if (a === b) return true;
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return true;
-  const dist = levenshtein(a, b);
-  const similarity = 1 - dist / maxLen;
-  return similarity >= 0.8 || dist <= 2;
-}
+// Blacklist matching moved to utils/blacklistCheck.js, so the wall and the
+// tests share one definition instead of two that can drift apart.
 
 const _adminAccessCache = new Map();
 const _meCache = new Map();
@@ -3111,17 +3096,16 @@ export function createApiRouter(client) {
 
       const activeBlacklist = await Blacklist.find({ guildId, active: true });
 
-      const ipBanEntry = activeBlacklist.find(e => e.ipBanned && e.ipAddress && e.ipAddress === ip);
-      if (ipBanEntry) {
-        console.log(`[VERIFY] IP ban hit for user ${userId} in guild ${guildId} - IP ${ip}`);
-        record.used = true;
-        await record.save();
-        return res.status(403).json({ error: 'You are not permitted to verify on this server.' });
-      }
-
-      const gamertagEntry = activeBlacklist.find(e => e.gamertag && isSimilar(psnxbox.trim(), e.gamertag));
-      if (gamertagEntry) {
-        console.log(`[VERIFY] Gamertag blacklist hit for user ${userId} - submitted "${psnxbox.trim()}", matched "${gamertagEntry.gamertag}" in guild ${guildId}`);
+      // Discord, IP and gamertag, in one place. This used to check only the
+      // last two, so an entry naming a Discord account stopped nobody.
+      const { findBlacklistMatch } = await import('../../utils/blacklistCheck.js');
+      const blacklistHit = findBlacklistMatch(activeBlacklist, {
+        userId,
+        gamertag: psnxbox.trim(),
+        ip,
+      });
+      if (blacklistHit) {
+        console.log(`[VERIFY] Blacklist hit on ${blacklistHit.matchedOn} for user ${userId} in guild ${guildId}`);
         record.used = true;
         await record.save();
         return res.status(403).json({ error: 'You are not permitted to verify on this server.' });
@@ -3292,13 +3276,26 @@ export function createApiRouter(client) {
           if (member) resolvedUsername = member.displayName || member.user.username;
         } catch {}
       }
+      // An IP ban needs an address. The only one on file is the one recorded
+      // when they verified, and without this the flag was set on an entry
+      // with nothing to match, so it reported success and stopped nobody.
+      let resolvedIp = null;
+      let resolvedGamertag = gamertag || null;
+      if (discordId) {
+        const { default: VerifiedUser } = await import('../../models/VerifiedUser.js');
+        const vu = await VerifiedUser.findOne({ guildId: req.params.id, userId: discordId });
+        if (ipBanned && vu?.ipAddress) resolvedIp = vu.ipAddress;
+        if (!resolvedGamertag && vu?.psnxbox) resolvedGamertag = vu.psnxbox;
+      }
+
       await Blacklist.create({
         guildId: req.params.id,
         discordId: discordId || null,
         discordUsername: resolvedUsername,
-        gamertag: gamertag || null,
+        gamertag: resolvedGamertag,
         reason,
         ipBanned: !!ipBanned,
+        ipAddress: resolvedIp,
         addedBy: 'dashboard',
         addedAt: new Date(),
         active: true,
