@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed, premiumReply } from '../utils/premiumCheck.js';
 import { executeRemoveBlacklist } from '../handlers/blacklistHandler.js';
 
 export const data = new SlashCommandBuilder()
@@ -25,7 +25,7 @@ export async function execute(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'blacklist');
   if (!access.allowed) {
     return interaction.reply({
-      embeds: [buildPremiumEmbed('Blacklist System')],
+      ...premiumReply('Blacklist System'),
       flags: 64,
     });
   }

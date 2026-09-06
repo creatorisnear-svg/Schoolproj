@@ -1,10 +1,10 @@
 {
-  "version": "1.4.1",
-  "title": "The website now lists every command",
+  "version": "1.5.0",
+  "title": "Free 7-day trial, no strings",
   "changes": [
-    "The commands section on roleplaymanager.xyz now shows all 61 commands instead of about 60 hand-written ones - the entire business banking and loans system was missing from the site until now",
-    "Command names and descriptions come straight from the bot, so the site can no longer fall out of date when a command is added or changed",
-    "Added a Business & Loans section covering business accounts, payroll, transfers and the full lending system",
-    "Command cards no longer stretch to leave large empty gaps when one group has far fewer commands than its neighbours"
+    "The free Premium trial no longer requires voting on Top.gg. Run /activatetrial in your server and everything unlocks straight away - no card, no signup, nothing to install",
+    "Trials now last 7 days instead of 3, so you get a full week to actually use AI Voice Dispatch, the Priority Tracker and Applications",
+    "Every Premium feature now has a Start Free Trial button right where you hit it, instead of just telling you the feature is locked",
+    "Voting on Top.gg still helps other RP servers find the bot, it is just no longer required for anything"
   ]
 }

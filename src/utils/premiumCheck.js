@@ -1,6 +1,6 @@
 import PremiumKey from '../models/PremiumKey.js';
 import FeatureFlag from '../models/FeatureFlag.js';
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { DEFAULT_PREMIUM_FEATURES } from '../config/features.js';
 
 const premiumCache = new Map();
@@ -9,7 +9,7 @@ const trialCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
 export const TOPGG_VOTE_URL = `https://top.gg/bot/${process.env.TOPGG_BOT_ID || '0'}/vote`;
-const TRIAL_DAYS = 3;
+export const TRIAL_DAYS = 7;
 const VOTE_CREDIT_DAYS = 7;
 
 export async function isPremiumGuild(guildId) {
@@ -108,18 +108,43 @@ export async function getGuildLimits(guildId) {
 export function buildPremiumEmbed(featureName) {
   return new EmbedBuilder()
     .setColor(0x2d2d2d)
-    .setTitle('Premium Required')
+    .setTitle('Premium Feature')
     .setDescription(
-      `**${featureName}** requires an active Premium subscription on this server.\n\n` +
-      `### Purchase Premium\n` +
+      `**${featureName}** is a Premium feature.\n\n` +
+      `### Try it free for ${TRIAL_DAYS} days\n` +
+      `Press the button below and it unlocks immediately — no card, no signup, ` +
+      `nothing to install. Every Premium feature is included.\n\n` +
+      `### Or buy Premium\n` +
       `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n` +
-      `-# Already have a key? Use \`/activatepremium\` to activate it.\n\n` +
-      `### Free 3-Day Trial\n` +
-      `Vote for us on Top.gg to unlock a free 3-day trial for your server.\n` +
-      `[Vote on Top.gg](${TOPGG_VOTE_URL}) then use \`/activatetrial\` here.\n` +
-      `-# One trial per server, ever. Voting takes 10 seconds.`
+      `-# Already have a key? Use \`/activatepremium\`. One free trial per server.`
     )
     .setFooter({ text: 'RPM' });
+}
+
+/**
+ * The premium wall, as a full interaction payload with a Start Free Trial button.
+ *
+ * The wall used to be a dead end - a pricing link plus instructions to go vote on
+ * Top.gg and come back. That asked someone to leave Discord at the exact moment
+ * they had just discovered they wanted the feature. Two servers out of 115 had
+ * ever bought Premium.
+ */
+export function premiumReply(featureName) {
+  return {
+    embeds: [buildPremiumEmbed(featureName)],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('premium_start_trial')
+          .setLabel(`Start free ${TRIAL_DAYS}-day trial`)
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setLabel('See pricing')
+          .setStyle(ButtonStyle.Link)
+          .setURL('https://roleplaymanager.xyz/pricing')
+      ),
+    ],
+  };
 }
 
 export async function recordVote(userId) {
@@ -141,18 +166,12 @@ export async function activateTrialForGuild(guildId, activatedByUserId) {
     return { success: false, reason: 'used' };
   }
 
-  const voteCredit = await VoteTrial.findOne({
-    userId: activatedByUserId,
-    used: false,
-    creditExpiresAt: { $gt: new Date() },
-  });
-  if (!voteCredit) {
-    return { success: false, reason: 'no_vote' };
-  }
-
   const expiresAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   await GuildTrial.create({ guildId, activatedAt: new Date(), expiresAt, activatedBy: activatedByUserId, active: true });
-  await VoteTrial.updateOne({ userId: activatedByUserId }, { used: true, usedForGuildId: guildId, usedAt: new Date() });
+  await VoteTrial.updateOne(
+    { userId: activatedByUserId, used: false },
+    { used: true, usedForGuildId: guildId, usedAt: new Date() }
+  ).catch(() => {});
   trialCache.delete(guildId);
   return { success: true, expiresAt };
 }

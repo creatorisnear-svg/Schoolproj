@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { isPremiumGuild, isGuildOnTrial, TOPGG_VOTE_URL } from '../utils/premiumCheck.js';
+import { isPremiumGuild, isGuildOnTrial } from '../utils/premiumCheck.js';
 import GuildTrial from '../models/GuildTrial.js';
 
 export const data = new SlashCommandBuilder()
@@ -40,9 +40,9 @@ export async function execute(interaction) {
       '### Purchase Premium\n' +
       '[**roleplaymanager.xyz/pricing**](https://roleplaymanager.xyz/pricing)\n' +
       '-# Once you have a key, run `/activatepremium` in this server to activate it.\n\n' +
-      '### Free 3-Day Trial\n' +
-      `[Vote for us on Top.gg](${TOPGG_VOTE_URL || 'https://top.gg'}) - takes 10 seconds. ` +
-      'After voting, run `/activatetrial` in this server to unlock all premium features for 3 days.\n' +
+      '### Free 7-Day Trial\n' +
+      'Run `/activatetrial` in this server and every Premium feature unlocks straight away. ' +
+      'No card, no signup, nothing to install.\n' +
       '-# One trial per server, ever.';
   }
 

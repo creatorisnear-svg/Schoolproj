@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { handlePriorityRequestCommand } from '../handlers/priorityRequestHandler.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed, premiumReply } from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('priorityrequest')
@@ -37,7 +37,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   try {
     const access = await checkFeatureAccess(interaction.guildId, 'priority');
-    if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Priority Tracker')], flags: 64 });
+    if (!access.allowed) return interaction.reply({ ...premiumReply('Priority Tracker'), flags: 64 });
 
     // Check if priority tracker is enabled and has a channel
     const priority = await Priority.findOne({ guildId: interaction.guildId });

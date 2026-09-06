@@ -1,11 +1,22 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
-import { activateTrialForGuild, TOPGG_VOTE_URL } from '../utils/premiumCheck.js';
-import { isPremiumGuild, isGuildOnTrial } from '../utils/premiumCheck.js';
+import {
+  activateTrialForGuild,
+  isPremiumGuild,
+  isGuildOnTrial,
+  clearPremiumCache,
+  TRIAL_DAYS,
+} from '../utils/premiumCheck.js';
 
 export const data = new SlashCommandBuilder()
   .setName('activatetrial')
-  .setDescription('Activate your 3-day free trial using your Top.gg vote credit')
+  .setDescription(`Start this server's free ${TRIAL_DAYS}-day Premium trial`)
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+const embed = (title, description) => new EmbedBuilder()
+  .setColor(0x2d2d2d)
+  .setTitle(title)
+  .setDescription(description)
+  .setFooter({ text: 'RPM' });
 
 export async function execute(interaction) {
   try {
@@ -15,74 +26,49 @@ export async function execute(interaction) {
   }
 
   const guildId = interaction.guildId;
-  const userId = interaction.user.id;
 
-  const alreadyPremium = await isPremiumGuild(guildId);
-  if (alreadyPremium) {
+  if (await isPremiumGuild(guildId)) {
     return interaction.editReply({
-      embeds: [new EmbedBuilder()
-        .setColor(0x2d2d2d)
-        .setTitle('Already Premium')
-        .setDescription('This server already has an active Premium subscription.')
-        .setFooter({ text: 'RPM' })],
+      embeds: [embed('Already Premium', 'This server already has an active Premium subscription.')],
     });
   }
 
-  const alreadyOnTrial = await isGuildOnTrial(guildId);
-  if (alreadyOnTrial) {
+  if (await isGuildOnTrial(guildId)) {
     return interaction.editReply({
-      embeds: [new EmbedBuilder()
-        .setColor(0x2d2d2d)
-        .setTitle('Trial Already Active')
-        .setDescription('This server already has an active free trial running.')
-        .setFooter({ text: 'RPM' })],
+      embeds: [embed('Trial Already Active', 'This server already has a free trial running.')],
     });
   }
 
-  const result = await activateTrialForGuild(guildId, userId);
+  // No vote credit is required any more. Asking someone to leave Discord, find
+  // the bot on a listing site, vote and come back before they could hear AI
+  // dispatch work was the largest barrier between a server and the paid features.
+  const result = await activateTrialForGuild(guildId, interaction.user.id);
 
   if (!result.success) {
-    if (result.reason === 'used') {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor(0x2d2d2d)
-          .setTitle('Trial Already Used')
-          .setDescription(
-            'This server has already claimed its one-time free trial.\n\n' +
-            'To unlock Premium permanently:\n' +
-            '[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)'
-          )
-          .setFooter({ text: 'RPM' })],
-      });
-    }
-    if (result.reason === 'no_vote') {
-      return interaction.editReply({
-        embeds: [new EmbedBuilder()
-          .setColor(0x2d2d2d)
-          .setTitle('No Vote Credit Found')
-          .setDescription(
-            `You need to vote for the bot on Top.gg first, then run this command again.\n\n` +
-            `[Vote on Top.gg](${TOPGG_VOTE_URL})\n\n` +
-            `-# Your vote credit is valid for 7 days after voting. Each server can only claim one trial, ever.`
-          )
-          .setFooter({ text: 'RPM' })],
-      });
-    }
+    return interaction.editReply({
+      embeds: [embed(
+        'Trial Already Used',
+        'This server has already used its one free trial.\n\n' +
+        'To unlock Premium permanently:\n' +
+        '[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)'
+      )],
+    });
   }
 
+  clearPremiumCache(guildId);
   const expires = `<t:${Math.floor(result.expiresAt.getTime() / 1000)}:F>`;
+
   return interaction.editReply({
-    embeds: [new EmbedBuilder()
-      .setColor(0x2d2d2d)
-      .setTitle('3-Day Trial Activated')
-      .setDescription(
-        `Your free trial is now active on this server.\n\n` +
-        `**Expires:** ${expires}\n\n` +
-        `All premium features are unlocked until then. ` +
-        `If you enjoy it, consider supporting the bot:\n` +
-        `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n\n` +
-        `-# This server cannot claim another free trial after this one expires.`
-      )
-      .setFooter({ text: 'RPM' })],
+    embeds: [embed(
+      `${TRIAL_DAYS}-Day Trial Active`,
+      `Every Premium feature is unlocked on this server until ${expires}.\n\n` +
+      '### What you just unlocked\n' +
+      '- **AI Voice Dispatch** — the bot joins patrol channels, transcribes your officers and replies as a dispatcher\n' +
+      '- **Priority Tracker** — a live priority board with cooldowns and staff controls\n' +
+      '- **Applications** — custom application panels with a DM question flow\n' +
+      '- Every free-tier limit removed\n\n' +
+      'Run `/setup` to turn them on.\n\n' +
+      '-# One free trial per server. [See pricing](https://roleplaymanager.xyz/pricing)'
+    )],
   });
 }

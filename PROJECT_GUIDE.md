@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Landing page commands section now renders from GET /api/public/commands instead of hand-written markup - added src/config/commandGroups.js (8 groups, validated complete against the live command list), the endpoint joins it against client.commands and filters deprecated shims, and index.html keeps its per-category icons via a client-side map plus one new briefcase icon for Business & Loans.
+- **Completed:** Premium conversion work - removed the Top.gg vote requirement from activateTrialForGuild, extended TRIAL_DAYS 3 to 7, added premiumReply() with a Start Free Trial button wired to a premium_start_trial handler in index.js, repointed all 18 premium walls at it, and updated every surface that still described the old vote-gated 3-day trial.
 
 ## AI Handoff Protocol — Read Before Responding
 

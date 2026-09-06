@@ -723,10 +723,12 @@ function redeemTrial(btn) {
       if (modal) modal.remove();
       currentGuild.onTrial = true;
       currentGuild.trialExpiresAt = result.expiresAt;
-      toast('3-day trial activated! All premium features are now unlocked.');
+      toast('7-day trial activated. Every Premium feature is now unlocked.');
       renderDashboard();
-    } else if (result && result.error === 'no_vote') {
-      toast('No vote credit found. Vote on Top.gg first, then try again.', 'error');
+    } else {
+      // Any failure now means the server already used its trial, or the request
+      // itself failed - api() has already surfaced the reason as a toast. Just
+      // re-enable the button so it is not left stuck.
       if (btn) btn.disabled = false;
     }
   });
@@ -824,7 +826,7 @@ function renderPremiumSection(g) {
       '<span class="status-badge" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);"><span class="status-dot" style="background:#fbbf24;"></span>Active</span>' +
       '</div>' +
       '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
-      '<div><span class="config-label">3-day trial is active on this server.</span>' +
+      '<div><span class="config-label">Free trial is active on this server.</span>' +
       '<div class="config-sublabel">All premium features are unlocked until <strong>' + trialExpiresStr + '</strong>. Consider upgrading before it expires.</div></div>' +
       '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">Upgrade to Premium</a>' +
       '</div></div>';
@@ -852,13 +854,12 @@ function renderPremiumSection(g) {
     '<button id="activate-premium-btn" class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
     '</div>' +
     '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">' +
-    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 3-Day Trial</div>' +
-    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg, then redeem your trial below - no Discord command needed.</p>' +
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 7-Day Trial</div>' +
+    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Unlock every Premium feature for 7 days. No card, no signup.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary btn-sm">Vote on Top.gg</a>' +
-    '<button class="btn btn-secondary btn-sm" onclick="redeemTrial(this)">Redeem Trial</button>' +
+    '<button class="btn btn-primary btn-sm" onclick="redeemTrial(this)">Start Free Trial</button>' +
     '</div>' +
-    '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">One trial per server, ever. Vote credit valid for 7 days.</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">One trial per server, ever.</div>' +
     '</div>' +
     '</div></div></div>';
 }
@@ -1040,8 +1041,8 @@ function showPremiumModal(featureName) {
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
         '<a href="https://roleplaymanager.xyz/pricing" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
         '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
-          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or get a free 3-day trial</div>' +
-          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Vote for the bot on Top.gg to earn a trial credit, then redeem it here - no Discord command needed.</p>' +
+          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or try it free for 7 days</div>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Unlock every Premium feature for 7 days. No card, no signup.</p>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
           '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" class="btn btn-secondary" style="text-align:center;text-decoration:none;flex:1;">Vote on Top.gg</a>' +
           '<button class="btn btn-secondary" style="flex:1;" onclick="redeemTrial(this)">Redeem Trial</button>' +

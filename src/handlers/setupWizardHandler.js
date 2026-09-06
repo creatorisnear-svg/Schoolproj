@@ -16,7 +16,7 @@ import {
 import { checkStaffPermission } from '../utils/permissions.js';
 import { withBackRow, withSetupNav } from '../utils/setupNav.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, premiumReply } from '../utils/premiumCheck.js';
 import { getEconomySetupMenu } from './economyHandler.js';
 import Priority from '../models/Priority.js';
 import Verification from '../models/Verification.js';
@@ -122,7 +122,7 @@ const moduleResponses = {
 
   async tickets(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'ticket');
-    if (!access.allowed) return interaction.update({ embeds: [buildPremiumEmbed('Ticket Support')], components: [] });
+    if (!access.allowed) return interaction.update(premiumReply('Ticket Support'));
     await ensureEnabled(TicketConfig, interaction.guildId);
     return interaction.update({
       embeds: [menuEmbed(
@@ -237,7 +237,7 @@ const moduleResponses = {
 
   async roles(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'rolerequest');
-    if (!access.allowed) return interaction.update({ embeds: [buildPremiumEmbed('Role Request')], components: [] });
+    if (!access.allowed) return interaction.update(premiumReply('Role Request'));
     await ensureEnabled(RoleRequestConfig, interaction.guildId);
     return interaction.update({
       embeds: [menuEmbed(
@@ -307,7 +307,7 @@ const moduleResponses = {
 
   async moveme(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'moveme');
-    if (!access.allowed) return interaction.update({ embeds: [buildPremiumEmbed('Voice Mover')], components: [] });
+    if (!access.allowed) return interaction.update(premiumReply('Voice Mover'));
     const config = await ensureEnabled(MemberMovementConfig, interaction.guildId);
     const chCount = (config?.allowedChannelIds || []).length;
     const panelStatus = config?.panelChannelId
@@ -371,7 +371,7 @@ const moduleResponses = {
 
   async appys(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'appys');
-    if (!access.allowed) return interaction.update({ embeds: [buildPremiumEmbed('Applications')], components: [] });
+    if (!access.allowed) return interaction.update(premiumReply('Applications'));
     const config = await AppyConfig.findOne({ guildId: interaction.guildId });
     const reviewCh = config?.reviewChannelId ? `<#${config.reviewChannelId}>` : 'not set';
     const panelCh = config?.panelChannelId ? `<#${config.panelChannelId}>` : 'not set';
@@ -398,7 +398,7 @@ const moduleResponses = {
 
   async dispatch(interaction) {
     const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
-    if (!access.allowed) return interaction.update({ embeds: [buildPremiumEmbed('AI Voice Dispatch')], components: [] });
+    if (!access.allowed) return interaction.update(premiumReply('AI Voice Dispatch'));
     const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
     const warning = hasApiKey ? '' : '\n\n-# No AI key set up yet. Set `GROQ_API_KEY` or `OPENAI_API_KEY` to enable transcription.';
     return interaction.update({

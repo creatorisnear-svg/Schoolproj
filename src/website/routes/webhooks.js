@@ -44,9 +44,10 @@ export function createWebhooksRouter(client) {
           .setColor(0x2d2d2d)
           .setTitle('Thanks for Voting')
           .setDescription(
-            `Your vote on Top.gg has been recorded.\n\n` +
-            `You now have a **3-day free trial credit** - use \`/activatetrial\` in the server you want to activate it for.\n\n` +
-            `-# Each server can only claim one free trial, ever. Your credit expires in 7 days if unused.`
+            `Your vote on Top.gg has been recorded - thank you.\n\n` +
+            `Every server can start a free 7-day Premium trial at any time with \`/activatetrial\`, ` +
+            `whether or not anyone votes. Voting just helps other RP servers find the bot.\n\n` +
+            `-# One free trial per server.`
           )
           .setFooter({ text: 'RPM' });
         discordUser.send({ embeds: [embed] }).catch(() => {});

@@ -265,10 +265,10 @@ export async function handleEnableCommandButton(interaction) {
     // premium-gated feature without passing the check every other entry point
     // enforces. Button ids match the canonical feature keys except membermove.
     const featureKey = customId === 'enable_membermove' ? 'moveme' : customId.replace('enable_', '');
-    const { checkFeatureAccess, buildPremiumEmbed } = await import('../utils/premiumCheck.js');
+    const { checkFeatureAccess, premiumReply } = await import('../utils/premiumCheck.js');
     const access = await checkFeatureAccess(guildId, featureKey);
     if (!access.allowed) {
-      return interaction.reply({ embeds: [buildPremiumEmbed(featureName || featureKey)], flags: 64 });
+      return interaction.reply({ ...premiumReply(featureName || featureKey), flags: 64 });
     }
 
     // Save to database

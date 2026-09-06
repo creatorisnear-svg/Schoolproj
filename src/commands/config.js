@@ -16,7 +16,7 @@ import {
 } from 'discord.js';
 import { checkStaffPermission, isAdmin } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { checkFeatureAccess, buildPremiumEmbed } from '../utils/premiumCheck.js';
+import { checkFeatureAccess, buildPremiumEmbed, premiumReply } from '../utils/premiumCheck.js';
 import { getEconomySetupMenu } from '../handlers/economyHandler.js';
 
 // Models
@@ -413,7 +413,7 @@ async function handleVerify(interaction) {
 
 async function handleTickets(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'ticket');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Ticket Support')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('Ticket Support'), flags: 64 });
   await ensureEnabled(TicketConfig, interaction.guildId);
   return interaction.reply(ticketsMenu());
 }
@@ -424,7 +424,7 @@ async function handleEconomy(interaction) {
 
 async function handleDispatch(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'dispatch');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('AI Voice Dispatch')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('AI Voice Dispatch'), flags: 64 });
   const hasApiKey = !!(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY);
   const warning = hasApiKey ? '' : '\n\n-# No AI key set up yet. Ask your server host to set `GROQ_API_KEY` or `OPENAI_API_KEY`.';
   return interaction.reply(dispatchMenuEmbed(warning));
@@ -446,7 +446,7 @@ async function handleAntipromo(interaction) {
 
 async function handleRoles(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'rolerequest');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Role Request')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('Role Request'), flags: 64 });
   await ensureEnabled(RoleRequestConfig, interaction.guildId);
   return interaction.reply(rolesMenu());
 }
@@ -497,7 +497,7 @@ async function handleCalendar(interaction) {
 
 async function handleAppys(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'appys');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Applications')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('Applications'), flags: 64 });
   const config = await AppyConfig.findOne({ guildId: interaction.guildId });
   const reviewCh = config?.reviewChannelId ? `<#${config.reviewChannelId}>` : 'not set';
   const panelCh = config?.panelChannelId ? `<#${config.panelChannelId}>` : 'not set';
@@ -524,7 +524,7 @@ async function handleAppys(interaction) {
 
 async function handleMoveme(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'moveme');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Voice Mover')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('Voice Mover'), flags: 64 });
   const config = await ensureEnabled(MemberMovementConfig, interaction.guildId);
   return interaction.reply(movemeMenu(config));
 }
@@ -540,7 +540,7 @@ async function handleFeatures(interaction) {
 
 async function handleBlacklist(interaction) {
   const access = await checkFeatureAccess(interaction.guildId, 'blacklist');
-  if (!access.allowed) return interaction.reply({ embeds: [buildPremiumEmbed('Blacklist System')], flags: 64 });
+  if (!access.allowed) return interaction.reply({ ...premiumReply('Blacklist System'), flags: 64 });
   const { default: BlacklistConfig } = await import('../models/BlacklistConfig.js');
   await ensureEnabled(BlacklistConfig, interaction.guildId);
   return interaction.reply(blacklistMenu());

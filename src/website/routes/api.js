@@ -2449,9 +2449,6 @@ export function createApiRouter(client) {
         if (result.reason === 'used') {
           return res.status(400).json({ error: 'This server has already used its one-time free trial.' });
         }
-        if (result.reason === 'no_vote') {
-          return res.status(400).json({ error: 'no_vote' });
-        }
         return res.status(400).json({ error: 'Could not activate trial.' });
       }
 

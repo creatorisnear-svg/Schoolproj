@@ -1176,6 +1176,47 @@ client.on('interactionCreate', async interaction => {
         }
       } else if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
+      } else if (interaction.customId === 'premium_start_trial') {
+        // The premium wall used to be a dead end: a pricing link and instructions
+        // to go vote on Top.gg first. This starts the trial in place, at the
+        // moment someone has just found the feature they want.
+        const { checkStaffPermission } = await import('./utils/permissions.js');
+        const { activateTrialForGuild, isPremiumGuild, isGuildOnTrial, clearPremiumCache } =
+          await import('./utils/premiumCheck.js');
+
+        const reply = (title, body) => interaction.reply({
+          embeds: [new EmbedBuilder().setColor('#2d2d2d').setTitle(title).setDescription(body).setFooter({ text: 'RPM' })],
+          flags: 64,
+        });
+
+        if (!await checkStaffPermission(interaction)) {
+          await reply('Staff Only', 'Ask an administrator to start the free trial for this server.');
+          return;
+        }
+        if (await isPremiumGuild(interaction.guildId)) {
+          await reply('Already Premium', 'This server already has Premium. Nothing to activate.');
+          return;
+        }
+        if (await isGuildOnTrial(interaction.guildId)) {
+          await reply('Trial Already Running', 'This server already has an active free trial.');
+          return;
+        }
+
+        const result = await activateTrialForGuild(interaction.guildId, interaction.user.id);
+        if (!result.success) {
+          await reply(
+            'Trial Already Used',
+            'This server has already used its one free trial.\n\n[See pricing](https://roleplaymanager.xyz/pricing)'
+          );
+          return;
+        }
+        clearPremiumCache(interaction.guildId);
+        await reply(
+          'Trial Active',
+          `Every Premium feature is unlocked on this server until <t:${Math.floor(result.expiresAt.getTime() / 1000)}:F>.\n\n` +
+          'Go ahead and set the feature up — run the command again and it will work now.\n\n' +
+          '-# One free trial per server. [See pricing](https://roleplaymanager.xyz/pricing)'
+        );
       } else if (interaction.customId.startsWith('verify_approve_')) {
         const pendingId = interaction.customId.replace('verify_approve_', '');
         await handleVerifyApprove(interaction, pendingId);
@@ -1483,10 +1524,11 @@ connectDatabase().then(async () => {
             .setColor(0x2d2d2d)
             .setTitle('Your Free Trial Has Ended')
             .setDescription(
-              `The 3-day free trial for your server has expired.\n\n` +
-              `Enjoyed the premium features? Consider purchasing a subscription to keep them:\n` +
+              `The free Premium trial for your server has ended.\n\n` +
+              `If AI Voice Dispatch, the Priority Tracker or Applications were useful, ` +
+              `Premium keeps them running from $5 a month:\n` +
               `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n\n` +
-              `-# Thank you for voting and trying out RPM Premium.`
+              `-# Thanks for trying RPM Premium.`
             )
             .setFooter({ text: 'RPM' });
           user.send({ embeds: [embed] }).catch(() => {});
