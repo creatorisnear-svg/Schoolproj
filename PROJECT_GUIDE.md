@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Removed the verification permission engine (two dead functions plus revertVerificationPermissions, which deleted owner-set channel overwrites on disable), corrected four UI strings that claimed the bot manages channel permissions, restored the missing Verified Channels option in the back_to_verify_menu rebuild, and ran npm audit fix to clear 4 advisories (2 high).
+- **Completed:** Dashboard failure handling - added a 20s AbortController timeout to api(), a retryable errorState panel replacing the two `if (!data) return;` bail-outs that left skeleton loaders on screen forever, rememberView/retryLastView so Retry re-runs the current view, an offline banner with auto-retry on reconnect, and window error/unhandledrejection handlers.
 
 ## AI Handoff Protocol — Read Before Responding
 

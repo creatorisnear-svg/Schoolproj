@@ -1,10 +1,10 @@
 {
-  "version": "1.3.8",
-  "title": "Verification permissions and security updates",
+  "version": "1.3.9",
+  "title": "Dashboard handles problems properly",
   "changes": [
-    "Fixed: turning Verification off no longer deletes your channel permissions. The bot was removing the permission overwrites for your verified and unverified roles across every channel - permissions you had set yourself - which could quietly undo your whole setup",
-    "Verification setup no longer claims the bot manages your channel permissions. It assigns and removes the roles; you set which channels those roles can see, and the setup screens now say so",
-    "The verify setup menu was missing its Verified Channels option when you used the back button - it is there now",
-    "Updated dependencies to clear four security advisories, two of them high severity"
+    "If a page fails to load, the dashboard now says so and gives you a Try Again button, instead of sitting on a loading animation forever",
+    "Requests now time out after 20 seconds rather than hanging indefinitely, and the message tells you the bot may still be starting up",
+    "Going offline shows a banner, and the page reloads itself automatically when your connection comes back",
+    "Opening a server that fails to load now explains what happened instead of silently bouncing you back to the server list"
   ]
 }

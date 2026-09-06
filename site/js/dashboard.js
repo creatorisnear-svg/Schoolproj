@@ -28,6 +28,74 @@ function toast(msg, type) {
   setTimeout(function() { toastEl.classList.remove('show'); }, 3500);
 }
 
+/* ── Failure handling ──────────────────────────────────────────────────────────
+ * Requests had no timeout, so a sleeping Koyeb instance left the page on a
+ * skeleton loader indefinitely. And when a request did fail, callers did
+ * `if (!data) return;` - the loader stayed on screen forever and the only
+ * signal was a toast that vanished after 3.5 seconds, with no way to retry
+ * short of reloading the page.
+ */
+var REQUEST_TIMEOUT_MS = 20000;
+var lastView = null;
+
+/** Remember how to re-render the current view, so Retry and reconnect can. */
+function rememberView(fn) { lastView = fn; }
+
+function retryLastView() {
+  if (typeof lastView === 'function') lastView();
+  else window.location.reload();
+}
+
+/** A recoverable error panel. Replaces a stuck loader with something actionable. */
+function errorState(title, message) {
+  return '<div class="dashboard-content" style="padding-top:20px;">' +
+    '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;max-width:460px;margin:40px auto;">' +
+      '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">' + esc(title) + '</div>' +
+      '<div style="color:var(--text-muted);font-size:13px;margin-bottom:16px;line-height:1.5;">' + esc(message) + '</div>' +
+      '<button class="btn btn-primary btn-sm" onclick="retryLastView()">Try Again</button>' +
+    '</div></div>';
+}
+
+function renderErrorView(title, message) {
+  var sidebar = '';
+  try { sidebar = renderSidebar(''); } catch (e) { sidebar = ''; }
+  app.innerHTML = '<div class="dashboard-layout">' + sidebar + errorState(title, message) + '</div>';
+}
+
+/* ── Offline awareness ── */
+function offlineBannerHtml() {
+  return '<div id="offline-banner" style="position:fixed;top:0;left:0;right:0;z-index:9999;' +
+    'background:#f97316;color:#fff;font-size:12px;font-weight:600;text-align:center;padding:6px 12px;">' +
+    'You are offline — changes cannot be saved until the connection returns.</div>';
+}
+
+function setOffline(off) {
+  var existing = document.getElementById('offline-banner');
+  if (off && !existing) {
+    document.body.insertAdjacentHTML('afterbegin', offlineBannerHtml());
+  } else if (!off && existing) {
+    existing.parentNode.removeChild(existing);
+    toast('Back online', 'success');
+    retryLastView();
+  }
+}
+
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('offline', function() { setOffline(true); });
+  window.addEventListener('online', function() { setOffline(false); });
+
+  // Without this a thrown exception leaves a blank or half-drawn page with no
+  // explanation at all. Now it says so and offers a way back.
+  window.addEventListener('error', function(e) {
+    console.error('[dashboard] uncaught', e && e.error);
+    try { toast('Something broke on this page.', 'error'); } catch (_) {}
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    console.error('[dashboard] unhandled rejection', e && e.reason);
+    try { toast('Something broke on this page.', 'error'); } catch (_) {}
+  });
+}
+
 /* ── API wrapper ── */
 function api(path, opts) {
   opts = opts || {};
@@ -36,8 +104,23 @@ function api(path, opts) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
   if (opts.headers) { for (var k in opts.headers) headers[k] = opts.headers[k]; }
   opts.headers = headers;
+
+  // Abort a request that hangs, so the UI can show an error instead of a
+  // loader that never resolves.
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timedOut = false;
+  var timer = null;
+  if (controller) {
+    opts.signal = controller.signal;
+    timer = setTimeout(function() { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
+  }
+  function done(value) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    return value;
+  }
+
   return fetch(API_BASE + '/api' + path, opts).then(function(res) {
-    if (res.status === 401) { clearToken(); showLogin(); return null; }
+    if (res.status === 401) { clearToken(); showLogin(); return done(null); }
     if (!res.ok) {
       return res.json().catch(function() { return {}; }).then(function(err) {
         if (err.error === 'premium_required') {
@@ -48,15 +131,23 @@ function api(path, opts) {
             premSection.style.outline = '2px solid #5865f2';
             setTimeout(function() { premSection.style.outline = ''; }, 2500);
           }
-          return { __premium_required: true };
+          return done({ __premium_required: true });
         }
         toast(err.error || 'Something went wrong', 'error');
-        return null;
+        return done(null);
       });
     }
-    return res.json();
+    return res.json().then(done);
   }).catch(function() {
-    toast('Connection error. Please try again.', 'error');
+    done();
+    if (timedOut) {
+      toast('That took too long. The bot may be starting up — try again in a moment.', 'error');
+    } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setOffline(true);
+      toast('You are offline.', 'error');
+    } else {
+      toast('Connection error. Please try again.', 'error');
+    }
     return null;
   });
 }
@@ -279,7 +370,10 @@ function selectServer(guildId, section) {
     // Real readiness per feature, not just which toggles are on.
     featureStatus = (results[3] && results[3].statuses) || {};
     featureSummary = (results[3] && results[3].summary) || null;
-    if (!data) { clearSession(); renderServerSelect(); return; }
+    if (!data) {
+      renderErrorView('Could not load this server', 'The bot did not respond, or it is no longer in this server.');
+      return;
+    }
     currentGuild = data;
     pendingChanges = {};
     if (section) { renderSettings(section); } else { renderDashboard(); }
@@ -395,6 +489,7 @@ function sidebarToggleBtn(label) {
 
 /* ── Overview / Dashboard ── */
 function renderDashboard() {
+  rememberView(renderDashboard);
   if (currentGuild) saveSession(currentGuild.id, null);
   var g = currentGuild;
   var config = g.config || {};
@@ -776,11 +871,16 @@ function premFeatureItem(text) {
 
 /* ── Billing Page ── */
 function renderBilling() {
+  rememberView(renderBilling);
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar('billing') +
     '<div class="dashboard-content"><div style="color:var(--text-muted);font-size:13px;padding-top:20px;">Loading billing info...</div></div></div>';
 
   api('/guild/' + currentGuild.id + '/premium/billing').then(function(data) {
-    if (!data) return;
+    if (!data) {
+      app.innerHTML = '<div class="dashboard-layout">' + renderSidebar('billing') +
+        errorState('Could not load billing', 'The bot did not respond. It may still be starting up.') + '</div>';
+      return;
+    }
 
     var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($14/3mo)' : data.plan === 'lifetime' ? 'Lifetime ($48.99 one-time)' : 'Manual / Gifted';
     var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? '#fbbf24' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
@@ -958,12 +1058,17 @@ function showPremiumModal(featureName) {
 
 /* ── Settings Page ── */
 function renderSettings(mod) {
+  rememberView(function() { renderSettings(mod); });
   if (currentGuild) saveSession(currentGuild.id, mod);
   app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
     '<div class="dashboard-content" style="padding-top:20px;">' + settingsSkeletonLoader() + '</div></div>';
 
   api('/guild/' + currentGuild.id + '/settings/' + mod).then(function(data) {
-    if (!data) return;
+    if (!data) {
+      app.innerHTML = '<div class="dashboard-layout">' + renderSidebar(mod) +
+        errorState('Could not load these settings', 'The bot did not respond. It may still be starting up.') + '</div>';
+      return;
+    }
     pendingChanges = {};
     _currentSettingsData = data;
 
