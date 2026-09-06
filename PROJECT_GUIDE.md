@@ -24,7 +24,7 @@ RolePlayManager is a Discord bot for multi-server GTA5 RP communities. It handle
 ---
 
 ## Active Change Scope
-- **Completed:** Phase 5 of the setup restructure - dashboard overview regrouped by status (Needs setup / Ready / Not enabled), the registry long descriptions surfaced on not-enabled features and on settings page headers, and the Getting Started guide now persists while anything is incomplete instead of vanishing once a log channel is set.
+- **Completed:** Removed the verification permission engine (two dead functions plus revertVerificationPermissions, which deleted owner-set channel overwrites on disable), corrected four UI strings that claimed the bot manages channel permissions, restored the missing Verified Channels option in the back_to_verify_menu rebuild, and ran npm audit fix to clear 4 advisories (2 high).
 
 ## AI Handoff Protocol — Read Before Responding
 

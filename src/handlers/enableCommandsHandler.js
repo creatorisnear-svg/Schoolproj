@@ -9,7 +9,6 @@ import RoleRequestConfig from '../models/RoleRequestConfig.js';
 import Verification from '../models/Verification.js';
 import Welcome from '../models/Welcome.js';
 import MemberMovementConfig from '../models/MemberMovementConfig.js';
-import { revertVerificationPermissions } from './selectMenuHandler.js';
 import { isAdmin, isAdminOrManager, checkStaffPermission } from '../utils/permissions.js';
 
 export async function handleEnableChoiceButton(interaction) {
@@ -353,20 +352,11 @@ export async function handleDisableCommandButton(interaction) {
       }
     }
 
-    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.\n\nAll channel permissions have been reverted to default.`);
+    const embed = createSuccessEmbed(`${featureName} Disabled`, `${featureName} has been disabled.`);
     await interaction.update({
       embeds: [embed],
     });
 
-    // Revert verification permissions in background (non-blocking)
-    if (customId === 'disable_verification') {
-      const verification = await Verification.findOne({ guildId });
-      if (verification) {
-        revertVerificationPermissions(interaction.guild, verification).catch(error => {
-          console.error('Error reverting verification permissions:', error);
-        });
-      }
-    }
   } catch (error) {
     console.error('Error in disable button handler:', error);
     try {

@@ -1020,7 +1020,7 @@ async function handleVerifySetupMenu(interaction) {
     if (choice === 'verify_setup_done') {
       await interaction.update({
         content: '',
-        embeds: [successEmbed('Verification system setup is complete!\n\n• **Verified members** → Can see: All channels in selected categories + welcome\n• **Unverified members** → Can see: Verify channel + welcome\n• **Staff/Admins** → Can see: All channels')],
+        embeds: [successEmbed('Verification system setup is complete!\n\n**One more step, in Discord itself:** set your channel permissions so the unverified role cannot see your main channels, and the verified role can. The bot assigns and removes the roles - it does not change channel permissions for you.')],
         components: [],
       });
     }
@@ -1478,7 +1478,7 @@ async function handleUnverifiedRoleSelect(interaction) {
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup. Channel permissions will be applied when you finish setup.`)],
+      embeds: [infoEmbed('Unverified Role Set', `Role: ${role}\n\nSelect your next option below to continue setup.\n\n-# Set this role\u2019s channel permissions yourself in Discord - the bot assigns the role but does not change channel permissions.`)],
       components: menuOptions.components,
     });
   } catch (error) {
@@ -1490,167 +1490,21 @@ async function handleUnverifiedRoleSelect(interaction) {
   }
 }
 
-async function setVerificationChannelPermissions(guild, unverifiedRoleId, verification) {
-  try {
-    const { PermissionFlagsBits } = await import('discord.js');
-    const verifyChannelId = verification.verifyChannelId;
-    const welcomeChannelId = verification.welcomeChannelId;
-
-    // Get all channels
-    const allChannels = await guild.channels.fetch();
-
-    for (const channel of allChannels.values()) {
-      // Skip non-text channels
-      if (!channel.isTextBased()) continue;
-
-      // If this is the verify or welcome channel, allow viewing
-      if (channel.id === verifyChannelId || channel.id === welcomeChannelId) {
-        await channel.permissionOverwrites.edit(
-          unverifiedRoleId,
-          {
-            ViewChannel: true,
-            SendMessages: false,
-            ReadMessageHistory: true,
-          },
-          { reason: 'Verification system - allow access to verify/welcome channels' }
-        );
-      } else {
-        // Hide all other channels from unverified role
-        await channel.permissionOverwrites.edit(
-          unverifiedRoleId,
-          {
-            ViewChannel: false,
-          },
-          { reason: 'Verification system - restrict access to other channels' }
-        );
-      }
-    }
-
-    console.log(`Channel permissions configured for unverified role ${unverifiedRoleId}`);
-  } catch (error) {
-    console.error('Error setting channel permissions:', error);
-  }
-}
-
-async function applyAllVerificationPermissions(guild, verification) {
-  try {
-    const allChannels = await guild.channels.fetch();
-
-    // Get all admin/staff roles
-    const adminRoles = guild.roles.cache.filter(role => role.permissions.has('Administrator'));
-    const adminRoleIds = Array.from(adminRoles.keys());
-
-    for (const channel of allChannels.values()) {
-      // Skip non-text channels
-      if (!channel.isTextBased()) continue;
-
-      // 1. Configure unverified role (can ONLY see verify & welcome channels)
-      if (verification.unverifiedRoleId) {
-        const isWelcomeOrVerifyChannel = channel.id === verification.verifyChannelId || channel.id === verification.welcomeChannelId;
-        
-        if (isWelcomeOrVerifyChannel) {
-          // Allow viewing only verify and welcome channels
-          await channel.permissionOverwrites.edit(
-            verification.unverifiedRoleId,
-            {
-              ViewChannel: true,
-              SendMessages: true,
-              ReadMessageHistory: true,
-              UseApplicationCommands: true,
-            },
-            { reason: 'Verification system - unverified access' }
-          ).catch(() => {});
-        } else {
-          // Explicitly DENY all other channels for unverified
-          await channel.permissionOverwrites.edit(
-            verification.unverifiedRoleId,
-            {
-              ViewChannel: false,
-              SendMessages: false,
-              ReadMessageHistory: false,
-            },
-            { reason: 'Verification system - unverified restricted' }
-          ).catch(() => {});
-        }
-      }
-
-      // 2. Configure verified role (can ONLY view selected categories + welcome channel)
-      if (verification.verifiedRoleId) {
-        const isVerifiedCategory = verification.verifiedChannelIds && channel.parentId && verification.verifiedChannelIds.includes(channel.parentId);
-        const isWelcomeChannel = channel.id === verification.welcomeChannelId;
-        
-        if (isVerifiedCategory || isWelcomeChannel) {
-          // Only allow viewing, not sending messages
-          await channel.permissionOverwrites.edit(
-            verification.verifiedRoleId,
-            {
-              ViewChannel: true,
-            },
-            { reason: 'Verification system - verified view access' }
-          ).catch(() => {});
-        } else {
-          await channel.permissionOverwrites.edit(
-            verification.verifiedRoleId,
-            {
-              ViewChannel: false,
-            },
-            { reason: 'Verification system - verified restricted' }
-          ).catch(() => {});
-        }
-      }
-
-      // 3. Configure staff/admin roles (can see all channels)
-      for (const adminRoleId of adminRoleIds) {
-        await channel.permissionOverwrites.edit(
-          adminRoleId,
-          {
-            ViewChannel: true,
-            SendMessages: true,
-            ReadMessageHistory: true,
-            ManageMessages: true,
-          },
-          { reason: 'Verification system - staff full access' }
-        ).catch(() => {});
-      }
-    }
-
-    console.log(`All verification permissions configured for categories (unverified, verified, staff)`);
-  } catch (error) {
-    console.error('Error applying verification permissions:', error);
-  }
-}
-
-export async function revertVerificationPermissions(guild, verification) {
-  try {
-    const allChannels = await guild.channels.fetch();
-
-    for (const channel of allChannels.values()) {
-      // Skip non-text channels
-      if (!channel.isTextBased()) continue;
-
-      // Remove unverified role overwrite
-      if (verification.unverifiedRoleId) {
-        await channel.permissionOverwrites.delete(
-          verification.unverifiedRoleId,
-          'Verification system disabled - reverting permissions'
-        ).catch(() => {});
-      }
-
-      // Remove verified role overwrite
-      if (verification.verifiedRoleId) {
-        await channel.permissionOverwrites.delete(
-          verification.verifiedRoleId,
-          'Verification system disabled - reverting permissions'
-        ).catch(() => {});
-      }
-    }
-
-    console.log(`Verification role permissions reverted (unverified & verified roles)`);
-  } catch (error) {
-    console.error('Error reverting verification permissions:', error);
-  }
-}
-
+// The verification permission engine used to live here: three functions,
+// ~160 lines, that set and later removed channel permission overwrites for the
+// verified and unverified roles.
+//
+// Two of them (setVerificationChannelPermissions, applyAllVerificationPermissions)
+// were never called by anything - the UI claimed permissions had been applied and
+// they never were, so the verification wall only ever worked if the owner set
+// Discord permissions themselves.
+//
+// The third, revertVerificationPermissions, WAS called when verification was
+// disabled, and it walked every text channel deleting those overwrites. Since
+// the bot never created them, the only overwrites it could delete were the
+// owner's own. Disabling verification quietly wiped their manual setup.
+//
+// Server owners manage these permissions themselves, so all three are gone.
 async function handleVerifiedRoleSelect(interaction) {
   try {
     const role = interaction.roles.first();
@@ -1705,7 +1559,7 @@ async function handleVerifiedChannelsSelect(interaction) {
     const menuOptions = createSetupMenu();
     return interaction.update({
       content: '',
-      embeds: [infoEmbed('Verified Categories Set', `Verified members can now see all channels in:\n${categoryMentions}\n\nSelect your next option below to continue setup.`)],
+      embeds: [infoEmbed('Verified Categories Set', `Saved:\n${categoryMentions}\n\n-# Give the verified role access to these in Discord\u2019s channel permissions - the bot records your choice but does not apply it.\n\nSelect your next option below to continue setup.`)],
       components: menuOptions.components,
     });
   } catch (error) {
