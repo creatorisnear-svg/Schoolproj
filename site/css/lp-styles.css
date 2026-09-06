@@ -124,6 +124,10 @@
 /* ── Commands ── */
 .lp-cmd-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  /* Cards size to their contents. Without this the grid stretches every card to
+     its row height, and the groups are very uneven - Roleplay & CAD has 3
+     commands where Economy has 16 - so short cards showed a large empty block. */
+  align-items: start;
 }
 .lp-cmd-card {
   background: var(--bg-card); border: 1px solid var(--border);
