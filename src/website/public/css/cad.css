@@ -347,8 +347,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .mode-toggle button {
   transition: background 0.15s var(--ease), color 0.15s var(--ease);
 }
+/* The selected mode is the accent, like everything else that is selected. It
+   was white, which made it the one active thing on screen not using the
+   signature colour. */
 .mode-toggle button[aria-pressed="true"] {
-  background: var(--text); color: var(--bg); font-weight: 600;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+  color: #04070d; font-weight: 650;
+  box-shadow: 0 2px 10px rgba(77, 159, 255, 0.28);
 }
 .mode-toggle button:disabled { opacity: 0.4; cursor: not-allowed; }
 
