@@ -271,9 +271,13 @@
         + serverIcon(s)
         + '<span class="server-body">'
         + '<span class="server-name">' + esc(s.name) + '</span>'
-        + '<span class="server-meta">' + meta.map(esc).join(' · ') + '</span>'
-        + '</span>'
+        + '<span class="server-meta">'
+        // The badge belongs on this line: beside the name it was squeezing the
+        // one thing people scan the list for.
         + (s.premium ? '<span class="badge badge-premium">Premium</span>' : '')
+        + '<span class="text">' + meta.map(esc).join(' · ') + '</span>'
+        + '</span>'
+        + '</span>'
         + '</button>';
     }).join('') + '</div>';
 

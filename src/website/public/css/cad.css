@@ -146,6 +146,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .screen { min-height: 100vh; display: flex; flex-direction: column; }
 .centered { align-items: center; justify-content: center; padding: 24px; }
 
+/* The CAD fills the viewport exactly and scrolls inside its panel. With
+   min-height alone it came out 20px taller than the window, so the page scrolled
+   as well as the panel - two scrollbars for one list.
+   dvh first, because on a phone 100vh is the height with the browser chrome
+   hidden, which is not the height you actually have. */
+#view-cad { height: 100vh; height: 100dvh; overflow: hidden; }
+
 .wordmark {
   font-size: 15px; font-weight: 700; letter-spacing: -0.3px;
   display: inline-flex; align-items: center; gap: 8px;
@@ -183,7 +190,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* A live indicator over the sign-in card: this is dispatch software, and it
    should look switched on before you have even logged in. */
 .login-card .status-line {
-  display: inline-flex; align-items: center; gap: 7px;
+  /* Its own centred row. The wordmark above is inline-flex, so an inline-flex
+     badge simply joined the end of it. */
+  display: flex; width: fit-content; margin-left: auto; margin-right: auto;
+  align-items: center; gap: 7px;
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.4px;
   text-transform: uppercase; color: var(--accent);
   padding: 4px 11px; margin-bottom: 20px; border-radius: 20px;
@@ -250,10 +260,15 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
 .server-meta {
-  display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-dim); margin-top: 3px;
+  overflow: hidden; max-width: 100%;
 }
-/* The badge must never be the thing that gets squeezed. */
+.server-meta .text {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+/* The badge sits on the meta line rather than beside the name. Alongside it, it
+   was taking width from the one thing people scan the list for. */
 .server-card .badge { flex: 0 0 auto; }
 
 .badge {
@@ -586,6 +601,14 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   .sidenav {
     width: 100%; flex-direction: row; overflow-x: auto; gap: 4px;
     padding: 8px 10px; border-right: none; border-bottom: 1px solid var(--border);
+    /* Swipeable, but without a scrollbar drawn across the navigation. */
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .sidenav::-webkit-scrollbar { display: none; }
+  .sidenav button[aria-current="true"]::before { display: none; }
+  .sidenav button[aria-current="true"] {
+    background: var(--accent-bg);
+    box-shadow: inset 0 -2px 0 var(--accent);
   }
   .sidenav button { width: auto; flex-shrink: 0; }
   .sidenav .spacer, .sidenav .count { display: none; }
