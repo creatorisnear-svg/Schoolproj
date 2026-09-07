@@ -3,8 +3,11 @@
   "title": "The web CAD: a Staff tab, priority at a glance, and applications for every server",
   "changes": [
     "New: a Staff tab in the web CAD, for anyone with Administrator, one of your CAD staff roles, or an entry in your staff list. It shows what is waiting: who needs verifying, who is carrying strikes, and how many tickets and 911 calls are open. You can approve or deny verifications straight from it",
-    "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown, and updates on its own",
+    "If your server uses the Priority Tracker, the web CAD now shows it in the top corner for everyone, civilians and LEO and fire alike. It says whether a priority is running and how long is left on the cooldown. The badge turns red while a priority runs and green while the cooldown counts down, and it changes within seconds of a priority starting or ending in Discord",
+    "The web CAD no longer needs a page refresh. Calls, unit status, BOLOs, fines, characters, verifications, strikes and the priority badge all update on their own within a few seconds of changing, whether the change came from Discord, the dashboard or somebody else in the CAD. A screen you are typing on is left alone until you are done, and a tab you come back to catches up on its own",
     "The RolePlayManager logo and name in the CAD now take you to roleplaymanager.xyz, and the CAD asks about cookies the same way the website does. It only stores what keeps you signed in and which server you were last in, and one answer covers both the site and the CAD",
+    "Fixed: a 911 call closed by AI voice dispatch stayed on the CAD and the status board as active until it was swept away ten minutes later. It now leaves the queue the moment dispatch closes it",
+    "Fixed: the dashboard overview always showed 0 pending applications, whatever was waiting. It now shows the real number",
     "Applications are no longer Premium only. Every server gets 2 application types, and Premium removes the limit",
     "Free servers can set up voice dispatch from /config dispatch again. That screen was turning them away even though /setup and the dashboard both let them through, and the 911 announcements it gates are meant to be free"
   ]

@@ -46,6 +46,8 @@ const ticketSchema = new mongoose.Schema({
 
 ticketSchema.index({ guildId: 1, userId: 1 });
 ticketSchema.index({ guildId: 1, ticketId: 1 });
+// The CAD stream counts a guild's open tickets every few seconds.
+ticketSchema.index({ guildId: 1, status: 1 });
 
 const Ticket = mongoose.models.Ticket || mongoose.model('Ticket', ticketSchema);
 

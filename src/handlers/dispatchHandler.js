@@ -1299,7 +1299,11 @@ async function executeDispatchActions(actions, guild, config, allStatuses, speak
           status: 'active',
         });
         if (call) {
-          call.status = 'resolved';
+          // 'closed' is what the schema allows and what every queue filters
+          // on. 'resolved' failed validation, the save was lost, and the call
+          // sat in the CAD as active until the ten-minute sweeper deleted it.
+          call.status = 'closed';
+          call.closedAt = new Date();
           await call.save();
           console.log(`[Dispatch AI] Closed call #${num}`);
         }

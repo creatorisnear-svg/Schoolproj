@@ -24,4 +24,8 @@ const emergencyCallSchema = new Schema({
   dispatchAnnounced: { type: Boolean, default: false },
 });
 
+// The CAD queue, the dispatch pollers and the CAD stream all read a guild's
+// active calls; this keeps that off the closed ones.
+emergencyCallSchema.index({ guildId: 1, status: 1 });
+
 export default models.EmergencyCall || model('EmergencyCall', emergencyCallSchema);

@@ -753,7 +753,9 @@ export function createApiRouter(client) {
           ];
           try {
             const { default: PendingVerification } = await import('../../models/PendingVerification.js');
-            const pending = await PendingVerification.countDocuments({ guildId: guild.id, status: 'pending' });
+            // Every row in this collection is pending; there is no status field,
+            // and filtering on one made this read zero forever.
+            const pending = await PendingVerification.countDocuments({ guildId: guild.id });
             result.stats = [
               { label: 'Pending Applications', value: pending },
             ];

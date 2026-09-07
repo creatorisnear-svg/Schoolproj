@@ -134,9 +134,17 @@ const cadCharacterSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+}, {
+  // updatedAt only: createdAt is already a field of its own above. The web
+  // CAD's live updates fingerprint a guild's characters by count and newest
+  // edit, and every write path here (save, updateOne, findOneAndUpdate)
+  // bumps this.
+  timestamps: { createdAt: false, updatedAt: true },
 });
 
 cadCharacterSchema.index({ guildId: 1, userId: 1 });
+// The newest-edit lookup the CAD stream makes every few seconds per guild.
+cadCharacterSchema.index({ guildId: 1, updatedAt: -1 });
 
 // Plates are unique within a server, not across the platform.
 //

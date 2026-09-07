@@ -128,9 +128,25 @@
   function signOut() {
     store(TOKEN_KEY, null);
     store(LAST_SERVER_KEY, null);
-    if (state.stream) { state.stream.close(); state.stream = null; }
+    leaveServer();
     state.user = null;
     showLogin();
+  }
+
+  /**
+   * Everything that has to stop when the server on screen is no longer the
+   * one being served: the stream, a ticket still in flight, and anything
+   * waiting to redraw. The timers stay armed but find no guildId and do
+   * nothing.
+   */
+  function leaveServer() {
+    streamGen++;
+    state.connecting = false;
+    if (state.stream) { state.stream.close(); state.stream = null; }
+    state.guildId = null;
+    state.context = null;
+    state.view = null;
+    state.refreshPending = false;
   }
 
   function toast(message, kind) {
@@ -172,8 +188,16 @@
           if (res.status === 401) {
             store(TOKEN_KEY, null);
             state.user = null;
+            // Stop the stream and the timers too: a signed-out tab that kept
+            // its server would keep asking for it, three requests a tick.
+            leaveServer();
             show('view-login');
             throw { handled: true };
+          }
+          // Told to slow down: every background request holds off until then.
+          if (res.status === 429) {
+            var wait = Number(res.headers.get('Retry-After')) || 30;
+            state.backoffUntil = Date.now() + wait * 1000;
           }
           var err = new Error(body.message || body.error || 'Request failed');
           err.status = res.status;
@@ -444,20 +468,16 @@
    * Two facts, because they answer different questions: whether one is running
    * now, and whether another can be started yet.
    */
-  function renderPriority(p) {
-    var el = $('priority-badge');
-    if (!el) return;
-
-    // A server without the tracker set up gets no badge at all, rather than one
-    // reporting "inactive" about something it does not have.
-    if (!p || !p.showing) {
-      el.hidden = true;
-      el.classList.remove('is-active');
-      return;
-    }
+  /**
+   * What the badge should say and how it should look, from the last known
+   * state and the time now. Pure, so the countdown can be checked in a test
+   * without a clock or a DOM.
+   */
+  function priorityView(p, now) {
+    if (!p || !p.showing) return null;
 
     var until = p.cooldownUntil ? new Date(p.cooldownUntil).getTime() : 0;
-    var left = until - Date.now();
+    var left = until - now;
     var cooldown = 'Inactive';
     if (left > 0) {
       var mins = Math.ceil(left / 60000);
@@ -466,39 +486,56 @@
         : mins + 'm';
     }
 
-    el.hidden = false;
-    el.classList.toggle('is-active', !!p.active);
-    el.innerHTML = 'Priority ' + (p.active ? 'Active' : 'Inactive')
-      + '<span class="sep">|</span>Cooldown: ' + esc(cooldown);
-    el.title = p.active
-      ? 'A priority is running right now.'
-      : left > 0
-        ? 'No priority running. Another can be started in ' + cooldown + '.'
-        : 'No priority running, and none on cooldown.';
+    return {
+      active: !!p.active,
+      cooling: left > 0,
+      // Two renderings of the same fact: the full one for a desktop top bar,
+      // and a short one for a phone, where the bar has room for one word. The
+      // colour carries the state there: red says a priority is running, green
+      // says how long until another can start. Idle has no short form at all;
+      // the stylesheet hides the badge on phones in that state.
+      html: '<span class="full">Priority ' + (p.active ? 'Active' : 'Inactive')
+        + '<span class="sep">|</span>Cooldown: ' + esc(cooldown) + '</span>'
+        + '<span class="short">' + (p.active ? 'Priority' : left > 0 ? esc(cooldown) : '') + '</span>',
+      title: p.active
+        ? 'A priority is running right now.'
+        : left > 0
+          ? 'No priority running. Another can be started in ' + cooldown + '.'
+          : 'No priority running, and none on cooldown.',
+    };
   }
 
-  /**
-   * Keep it current without reloading the screen.
-   *
-   * The badge is the one thing on the page that goes stale on its own: nobody
-   * clicks anything when a priority starts somewhere else. A minute is often
-   * enough to be useful and rare enough to be invisible, and the countdown is
-   * recomputed from an absolute time on every tick, so a page left open
-   * overnight ticks down rather than freezing.
-   */
-  var priorityTimer = null;
-  function startPriorityPolling() {
-    if (priorityTimer) clearInterval(priorityTimer);
-    priorityTimer = setInterval(function () {
-      if (!state.guildId) return;
-      // Redraw from what we already have first, so the countdown moves even
-      // when the request is slow or fails.
-      renderPriority(state.context && state.context.priority);
-      api('/' + state.guildId + '/priority').then(function (p) {
-        if (state.context) state.context.priority = p;
-        renderPriority(p);
-      }).catch(function () { /* leave the last known state on screen */ });
-    }, 60000);
+  function renderPriority(p) {
+    var el = $('priority-badge');
+    if (!el) return;
+
+    var view = priorityView(p, Date.now());
+
+    // A server without the tracker set up gets no badge at all, rather than one
+    // reporting "inactive" about something it does not have.
+    if (!view) {
+      el.hidden = true;
+      el.classList.remove('is-active');
+      el.classList.remove('is-cooldown');
+      el.classList.remove('is-idle');
+      el.setAttribute('data-state', '');
+      return;
+    }
+
+    el.hidden = false;
+    // Red while one is running, green while the cooldown after it counts down,
+    // plain when neither. Running wins if both are somehow true at once.
+    el.classList.toggle('is-active', view.active);
+    el.classList.toggle('is-cooldown', !view.active && view.cooling);
+    el.classList.toggle('is-idle', !view.active && !view.cooling);
+
+    // This runs every second. Rewriting identical text would reset a selection
+    // and flicker the tooltip, so only write when something changed.
+    if (el.getAttribute('data-state') !== view.html) {
+      el.innerHTML = view.html;
+      el.title = view.title;
+      el.setAttribute('data-state', view.html);
+    }
   }
 
   function renderTopbar() {
@@ -513,7 +550,6 @@
     $('premium-badge').hidden = !ctx.premium;
     $('dispatch-badge').hidden = !ctx.hasDispatch;
     renderPriority(ctx.priority);
-    startPriorityPolling();
 
     // Built from the member's roles rather than hard-coded, so somebody with no
     // second role sees one plain label instead of a control they cannot use.
@@ -593,6 +629,8 @@
   function go(view, opts) {
     opts = opts || {};
     state.view = view;
+    // Whatever was waiting to be redrawn is about to be drawn fresh.
+    state.refreshPending = false;
     renderNav();
     var handler = VIEWS[view];
     if (!handler) return;
@@ -604,6 +642,12 @@
     if (!opts.silent) loading(view);
 
     handler().then(function () {
+      // The user moved on while this was loading, and the handler has just
+      // painted the old screen over the new one. Put the new one back.
+      if (state.guildId && state.view && state.view !== view) {
+        go(state.view, { silent: true });
+        return;
+      }
       // The handler replaces innerHTML, which drops the scroll position. On a
       // refresh nobody asked for, being sent back to the top is the whole
       // annoyance.
@@ -636,15 +680,35 @@
    * person using it: mid dialog, mid typing, or too soon after the last one.
    */
   function backgroundRefresh() {
+    if (!state.guildId || !state.view) return;
     if (state.loading) return;
     if ($('dialog-root').children.length) return;
+    if (Date.now() < (state.backoffUntil || 0)) return;
 
     var focused = document.activeElement;
     if (focused && /^(INPUT|TEXTAREA|SELECT)$/.test(focused.tagName)) return;
 
+    // A form somebody has started, whether or not a field has focus right now.
+    // Checking focus alone left the moment between two fields, and the retry
+    // loop found it and wiped a half-typed 911 report.
+    if (formDirty()) return;
+
     if (Date.now() - (state.lastRefresh || 0) < REFRESH_COOLDOWN_MS) return;
 
     go(state.view, { silent: true });
+  }
+
+  /** Any field on the screen that no longer holds what it was drawn with. */
+  function formDirty() {
+    var fields = $('main').querySelectorAll('input, textarea, select');
+    return Array.prototype.some.call(fields, function (f) {
+      if (f.tagName === 'SELECT') {
+        var def = Array.prototype.filter.call(f.options, function (o) { return o.defaultSelected; })[0];
+        return f.selectedIndex !== (def ? def.index : 0);
+      }
+      if (f.type === 'checkbox' || f.type === 'radio') return f.checked !== f.defaultChecked;
+      return f.value !== f.defaultValue;
+    });
   }
 
   function setMode(mode) {
@@ -663,6 +727,9 @@
     // No argument: which view is about to open is not decided until the
 
     api('/' + guildId + '/context').then(function (ctx) {
+      // Switched away before this landed: it describes a server that is no
+      // longer on screen, and drawing it would show the wrong one.
+      if (state.guildId !== guildId) return;
       state.context = ctx;
       state.data = {};
 
@@ -675,8 +742,10 @@
       go(nav()[0].id);
     }).catch(function (err) {
       if (err && err.handled) return;
-      // The server is gone, the CAD was switched off, or membership lapsed -
+      if (state.guildId !== guildId) return;
+      // The server is gone, the CAD was switched off, or membership lapsed:
       // none of which the user can fix from inside the CAD.
+      leaveServer();
       store(LAST_SERVER_KEY, null);
       toast(err.message || 'That server is not available.', 'error');
       showServers();
@@ -685,60 +754,196 @@
 
   // ── Live updates ─────────────────────────────────────────────────────────
 
+  /**
+   * Counts connection attempts. A ticket request takes a round trip, and in
+   * that time the retry timer, the fallback poll and a tab coming back could
+   * each start another; only the newest attempt is allowed to open a stream,
+   * and openStream closes whatever it finds before taking its place.
+   */
+  var streamGen = 0;
+
   function connectStream(guildId) {
-    if (state.stream) { state.stream.close(); state.stream = null; }
     if (typeof EventSource === 'undefined') return;
+    var gen = ++streamGen;
+    if (state.stream) { state.stream.close(); state.stream = null; }
+    state.connecting = true;
 
     // EventSource cannot send an Authorization header, so ask for a one-shot
     // ticket and put that in the query string. Putting the access token there
     // would write a real credential into every access log.
     api('/' + guildId + '/events/ticket')
-      .then(function (res) { openStream(guildId, res.ticket); })
-      .catch(function () { /* the CAD still works, just without live updates */ });
+      .then(function (res) { if (gen === streamGen) openStream(guildId, res.ticket); })
+      .catch(function () { /* the CAD still works, just without live updates */ })
+      .then(function () { if (gen === streamGen) state.connecting = false; });
   }
 
   function openStream(guildId, ticket) {
     if (state.guildId !== guildId) return;
+    if (state.stream) state.stream.close();
 
     var stream = new EventSource(API + '/api/cad/' + guildId + '/events?ticket=' + encodeURIComponent(ticket));
     state.stream = stream;
+    state.lastBeat = Date.now();
+
+    // Anything arriving proves the connection is alive. A laptop that slept
+    // wakes up holding a stream the browser still calls open and nothing will
+    // ever come through; the fallback poll notices the silence.
+    function beat() { state.lastBeat = Date.now(); }
+    stream.addEventListener('ready', function () { beat(); state.retryDelay = 0; });
+    stream.addEventListener('ping', beat);
 
     stream.addEventListener('changed', function (event) {
+      beat();
       // Ignore anything that arrives after the user moved on.
       if (state.guildId !== guildId) return;
 
       var changed;
       try { changed = JSON.parse(event.data).changed || []; } catch (e) { return; }
-
-      // Only refresh the section being looked at. A quiet redraw of a form the
-      // user is halfway through typing into is worse than a stale number.
-      var refresh = {
-        calls: ['calls'],
-        officers: ['units', 'board'],
-        bolos: ['bolos', 'alerts'],
-      };
-      var shouldRefresh = changed.some(function (key) {
-        return (refresh[key] || []).indexOf(state.view) !== -1;
-      });
-
-      if (changed.indexOf('calls') !== -1) refreshCallCount();
-      if (shouldRefresh) backgroundRefresh();
+      onChanged(changed);
     });
 
     // A ticket is single use, so the browser's own retry would reconnect with a
-    // spent one and loop. Close it and fetch a fresh ticket instead.
+    // spent one and loop. Close it and fetch a fresh ticket instead, backing
+    // off: every tab retrying a server mid-deploy at once helps nobody.
     stream.onerror = function () {
       stream.close();
       if (state.stream === stream) state.stream = null;
+      state.retryDelay = Math.min((state.retryDelay || 0) * 2 || 5000, 60000);
       setTimeout(function () {
-        if (state.guildId === guildId && !state.stream) connectStream(guildId);
-      }, 5000);
+        if (state.guildId === guildId && !state.stream && !state.connecting) connectStream(guildId);
+      }, state.retryDelay);
     };
   }
 
+  /**
+   * Which server-side sections each view is drawn from.
+   *
+   * The stream says what moved; this says who cares. A view missing from here
+   * never refreshes on its own, so scripts/check-cad-live.mjs (npm run
+   * check:cad) checks that every view is listed. The two with empty lists are
+   * on-demand screens: a records search shows what was asked for, and Social
+   * is a form; nothing redraws those but the user.
+   */
+  var WATCH = {
+    characters: ['characters'],
+    call911: ['calls'],
+    fines: ['tickets'],
+    social: [],
+    board: ['officers'],
+    alerts: ['bolos'],
+    calls: ['calls'],
+    search: [],
+    bolos: ['bolos'],
+    tickets: ['tickets'],
+    units: ['officers'],
+    staffoverview: ['verifications', 'strikes', 'support', 'calls', 'blacklist'],
+    staffverify: ['verifications'],
+    staffstrikes: ['strikes'],
+  };
+
+  function viewWatches(view, changed) {
+    var watch = WATCH[view] || [];
+    return changed.some(function (key) { return watch.indexOf(key) !== -1; });
+  }
+
+  function onChanged(changed) {
+    if (changed.indexOf('priority') !== -1) refreshPriority();
+    if (changed.indexOf('calls') !== -1) refreshCallCount();
+    if (viewWatches(state.view, changed)) requestRefresh();
+  }
+
+  /**
+   * A catch-up refresh for a screen that follows the server, and nothing for
+   * one that does not: redrawing a records search would throw the results
+   * away, and no change on the server could have made that worth it.
+   */
+  function refreshIfLive() {
+    if ((WATCH[state.view] || []).length) requestRefresh();
+  }
+
+  /**
+   * A refresh that waits its turn rather than being dropped.
+   *
+   * backgroundRefresh refuses while a dialog is open, a field has focus, or the
+   * last redraw was moments ago. Refusing used to be the end of it: the change
+   * that prompted it was not shown until the next one came along, which for a
+   * fine paid or a call closed could be never. Now it is tried again every
+   * couple of seconds until it goes through or the person moves on.
+   */
+  var retryTimer = null;
+  function requestRefresh() {
+    state.refreshPending = true;
+    backgroundRefresh();
+    if (!state.refreshPending || retryTimer) return;
+    retryTimer = setInterval(function () {
+      if (state.refreshPending && state.guildId) backgroundRefresh();
+      if (!state.refreshPending || !state.guildId) {
+        clearInterval(retryTimer);
+        retryTimer = null;
+      }
+    }, 2000);
+  }
+
+  // ── Priority badge, kept live ────────────────────────────────────────────
+
+  function refreshPriority() {
+    var guildId = state.guildId;
+    if (!guildId) return;
+    if (Date.now() < (state.backoffUntil || 0)) return;
+    api('/' + guildId + '/priority').then(function (p) {
+      if (state.guildId !== guildId) return;
+      if (state.context) state.context.priority = p;
+      renderPriority(p);
+    }).catch(function () { /* leave the last known state on screen */ });
+  }
+
+  /**
+   * The countdown is recomputed from an absolute time every second, so the
+   * badge flips to Inactive the moment a cooldown ends rather than up to a
+   * minute later, and a page left open overnight ticks down instead of
+   * freezing. renderPriority only touches the DOM when the text changes.
+   */
+  var priorityTimer = null;
+  function startPriorityTicker() {
+    if (priorityTimer) clearInterval(priorityTimer);
+    priorityTimer = setInterval(function () {
+      if (!state.guildId) return;
+      renderPriority(state.context && state.context.priority);
+    }, 1000);
+  }
+
+  /**
+   * The stream is how changes normally arrive. When it is not open, because a
+   * proxy would not hold it, the browser has no EventSource, or the API is
+   * restarting for a deploy, this slow poll keeps the page from sitting stale
+   * forever and keeps trying to get the stream back.
+   */
+  var fallbackTimer = null;
+  function startFallbackPolling() {
+    if (fallbackTimer) clearInterval(fallbackTimer);
+    fallbackTimer = setInterval(function () {
+      if (!state.guildId) return;
+      var open = state.stream && state.stream.readyState === 1;
+      // The server pings every 25s. Three missed is a dead socket, whatever
+      // the browser says about it.
+      var silent = Date.now() - (state.lastBeat || 0) > 75000;
+      if (open && !silent) return;
+      if (!state.connecting) connectStream(state.guildId);
+      refreshPriority();
+      refreshIfLive();
+    }, 30000);
+  }
+
   function refreshCallCount() {
-    if (state.mode === 'civilian') return;
-    api('/' + state.guildId + '/calls').then(function (res) {
+    // The count is only drawn where the nav has it, and the Active Calls view
+    // fetches the same list itself. Civilians and staff would get a 403.
+    if (!nav().some(function (n) { return n.badge === 'calls'; })) return;
+    if (state.view === 'calls') return;
+    if (Date.now() < (state.backoffUntil || 0)) return;
+    var guildId = state.guildId;
+    if (!guildId) return;
+    api('/' + guildId + '/calls').then(function (res) {
+      if (state.guildId !== guildId) return;
       state.data.calls = res.calls || [];
       renderNav();
     }).catch(function () { /* the badge is not worth an error */ });
@@ -2038,10 +2243,23 @@
     if (authError || !token()) return showLogin(authError);
 
     $('btn-switch-server').addEventListener('click', function () {
-      if (state.stream) { state.stream.close(); state.stream = null; }
-      state.guildId = null;
+      leaveServer();
       store(LAST_SERVER_KEY, null);
       showServers();
+    });
+
+    startPriorityTicker();
+    startFallbackPolling();
+
+    // Coming back to a tab, or unlocking a phone: the stream may have been
+    // suspended meanwhile, and whatever happened in between is not on screen.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible' || !state.guildId) return;
+      // Missing even one ping while hidden means the socket may be dead.
+      var stale = Date.now() - (state.lastBeat || 0) > 40000;
+      if ((!state.stream || stale) && !state.connecting) connectStream(state.guildId);
+      refreshPriority();
+      refreshIfLive();
     });
 
     Array.prototype.forEach.call($('mode-toggle').querySelectorAll('button'), function (btn) {

@@ -279,7 +279,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .badge-priority {
   background: var(--surface-2, rgba(255,255,255,0.04));
   color: var(--text-dim); border-color: var(--border);
-  gap: 6px;
+  gap: 6px; white-space: nowrap;
 }
 .badge-priority.is-active {
   background: var(--red-bg, rgba(239,68,68,0.12));
@@ -287,7 +287,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   color: var(--red, #ef4444);
   animation: pulse 2s ease-in-out infinite;
 }
+/* A cooldown running with nothing active: green, so the answer to "can I start
+   one yet" is found without reading. */
+.badge-priority.is-cooldown {
+  background: var(--green-bg); border-color: var(--green-border); color: var(--green);
+}
 .badge-priority .sep { opacity: 0.35; }
+.badge-priority .short { display: none; }
 
 .badge-live {
   background: var(--green-bg); border-color: var(--green-border); color: var(--green);
@@ -617,6 +623,13 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
    and the controls beside them do not. */
 @media (max-width: 780px) {
   .topbar .badge { display: none; }
+  /* Except the priority badge: it repeats nothing on the page, and an officer
+     on a phone is exactly who needs it. Shortened to fit. */
+  .topbar .badge-priority { display: inline-flex; }
+  .badge-priority .full { display: none; }
+  .badge-priority .short { display: inline; }
+  /* Nothing running and nothing cooling is the one state not worth the room. */
+  .topbar .badge-priority.is-idle { display: none; }
   .topbar { gap: 10px; padding: 0 12px; }
 }
 
@@ -650,6 +663,24 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
   .topbar .home-mark { display: none; }
   .topbar .server-switch .label { display: none; }
   .topbar .server-switch { min-width: 0; padding: 5px 8px; }
+  /* The avatar beside Sign out is the next thing to go: with the name already
+     hidden it says nothing the button does not, and its 38px is what lets the
+     priority badge and a three-mode toggle share the bar. */
+  .topbar .who { display: none; }
+  .mode-toggle button { padding-left: 7px; padding-right: 7px; }
+}
+
+/* Somebody with all four modes on a small phone: the badge is the thing to
+   give up, not the Sign out button it would push off the edge. A browser
+   without :has() ignores this and clips a little instead. */
+@media (max-width: 380px) {
+  .topbar:has(.mode-toggle button:nth-child(4)) .badge-priority { display: none; }
+}
+
+/* Below this even the short badge cannot sit beside the mode toggle and the
+   sign-out button; it goes rather than pushing them off the edge. */
+@media (max-width: 359px) {
+  .topbar .badge-priority { display: none; }
 }
 
 /* ── LEO Dashboard ───────────────────────────────────────────────────────── */

@@ -50,6 +50,8 @@ const trafficTicketSchema = new mongoose.Schema({
 
 trafficTicketSchema.index({ guildId: 1, characterId: 1 });
 trafficTicketSchema.index({ guildId: 1, ticketId: 1 });
+// The CAD stream counts a guild's unpaid fines every few seconds.
+trafficTicketSchema.index({ guildId: 1, paid: 1 });
 
 const TrafficTicket = mongoose.models.TrafficTicket || mongoose.model('TrafficTicket', trafficTicketSchema);
 

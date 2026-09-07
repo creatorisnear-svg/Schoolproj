@@ -36,6 +36,10 @@ const pendingVerificationSchema = new mongoose.Schema({
   },
 });
 
+// The CAD's verification queue and its live-update stream count and read a
+// guild's newest row every few seconds; one index serves both.
+pendingVerificationSchema.index({ guildId: 1, createdAt: -1 });
+
 const PendingVerification = mongoose.models.PendingVerification || mongoose.model('PendingVerification', pendingVerificationSchema);
 
 export default PendingVerification;

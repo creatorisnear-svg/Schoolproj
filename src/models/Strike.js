@@ -51,6 +51,10 @@ const strikeConfigSchema = new mongoose.Schema({
   },
 });
 
+// The CAD staff tab and its live-update stream read a guild's strikes every
+// few seconds; without this the whole platform's rows were scanned each time.
+strikeSchema.index({ guildId: 1, currentStrikeLevel: 1 });
+
 const StrikeUser = mongoose.models.StrikeUser || mongoose.model('StrikeUser', strikeSchema);
 const StrikeConfig = mongoose.models.StrikeConfig || mongoose.model('StrikeConfig', strikeConfigSchema);
 

@@ -416,6 +416,15 @@ civilian or (with a LEO role) as law enforcement.
   use, 60s, bound to one guild, opening nothing but a read-only stream. A ticket
   is spent on redemption, so the browser's own EventSource retry is suppressed
   and a fresh ticket is fetched instead.
+- **What the stream carries**: not data, but which of the `SECTIONS` in
+  `cad/events.js` moved (calls, officers, bolos, priority, tickets, characters,
+  verifications, strikes, support, blacklist), computed from counts, ids and
+  status fields on a 5s server-side tick per guild with viewers. Each view in
+  `cad-app.js` lists the sections it is drawn from in `WATCH`; a view missing
+  from it never refreshes on its own, so add both halves when adding a view or
+  a collection; `npm run check:cad` verifies the two tables agree. A refused background refresh (dialog open, field focused) is
+  retried every 2s rather than dropped, and a 30s poll covers a stream that is
+  down. The priority badge ticks every second from an absolute cooldown time.
 - **Tenancy** (`routes/cadApi.js`): every data route is under `/:guildId` behind
   `resolveGuild`, which proves the bot is in the guild, the caller is a member,
   and resolves live roles into `isLeo` / `isFd` / `isStaff`. A Discord outage
