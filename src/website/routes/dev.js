@@ -10,6 +10,7 @@ import FeatureFlag from '../../models/FeatureFlag.js';
 import PremiumKey from '../../models/PremiumKey.js';
 import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
+import { funnelSummary } from '../../utils/funnel.js';
 import { FEATURES, DEFAULT_PREMIUM_FEATURES } from '../../config/features.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 import { sendChangelogWebhook } from '../../utils/changelogWebhook.js';
@@ -552,7 +553,11 @@ export function createDevRouter(client) {
         (r) => !r.paying && r.trialState === 'expired'
       ).sort((a, b) => b.members - a.members);
 
+      // The counted steps of the last 30 days, alongside the standing picture.
+      const events = await funnelSummary(30).catch(() => null);
+
       res.json({
+        events,
         servers: rows.length,
         paying: rows.filter((r) => r.paying).length,
         trialActive: rows.filter((r) => r.trialState === 'active').length,

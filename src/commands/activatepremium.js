@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import PremiumKey from '../models/PremiumKey.js';
-import { clearPremiumCache, isPremiumGuild } from '../utils/premiumCheck.js';
+import { attachKeyToGuild, attachFailureMessage } from '../utils/premiumKeys.js';
 import { createEmbed, errorEmbed } from '../utils/embedBuilder.js';
 
 export const data = new SlashCommandBuilder()
@@ -20,41 +20,24 @@ export async function execute(interaction) {
   const keyInput = interaction.options.getString('key').trim();
   const guildId = interaction.guildId;
 
-  const alreadyPremium = await isPremiumGuild(guildId);
-  if (alreadyPremium) {
-    return interaction.editReply({
-      embeds: [errorEmbed('This server already has an active premium subscription.')],
-    });
-  }
-
   const keyRecord = await PremiumKey.findOne({ key: keyInput });
-
   if (!keyRecord) {
     return interaction.editReply({
-      embeds: [errorEmbed('Invalid premium key. Please check your key and try again.')],
+      embeds: [errorEmbed(attachFailureMessage('invalid'))],
     });
   }
 
-  if (keyRecord.guildId) {
-    return interaction.editReply({
-      embeds: [errorEmbed('This key has already been activated in another server.')],
-    });
+  // The same rules the dashboard and the checkout use, in one place.
+  const result = await attachKeyToGuild({
+    keyDoc: keyRecord,
+    guildId,
+    guildName: interaction.guild.name,
+    userId: interaction.user.id,
+    via: 'command',
+  });
+  if (!result.ok) {
+    return interaction.editReply({ embeds: [errorEmbed(attachFailureMessage(result.reason))] });
   }
-
-  // Reject cancelled subscriptions - don't let expired monthly keys activate new servers
-  if (keyRecord.plan === 'monthly' && keyRecord.subscriptionStatus === 'cancelled') {
-    return interaction.editReply({
-      embeds: [errorEmbed('This subscription has been cancelled and is no longer valid.')],
-    });
-  }
-
-  keyRecord.guildId = guildId;
-  keyRecord.guildName = interaction.guild.name;
-  keyRecord.activatedBy = interaction.user.id;
-  keyRecord.activatedAt = new Date();
-  await keyRecord.save();
-
-  clearPremiumCache(guildId);
 
   return interaction.editReply({
     embeds: [

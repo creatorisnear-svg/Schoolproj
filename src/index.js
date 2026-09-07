@@ -31,6 +31,7 @@ import { handleSetupConfigSelect } from './handlers/setupWizardHandler.js';
 import { handleModalSubmit } from './handlers/modalHandler.js';
 import { isMaintenanceMode } from './utils/maintenanceMode.js';
 import { attachLinks } from './utils/replyLinks.js';
+import { attachFunnel } from './utils/funnelHook.js';
 
 dotenv.config();
 
@@ -394,7 +395,7 @@ app.get('/auth/site/callback', async (req, res) => {
 });
 
 app.use('/api', apiRateLimit, createApiRouter(client));
-app.use('/checkout', apiRateLimit, createCheckoutRouter());
+app.use('/checkout', apiRateLimit, createCheckoutRouter(client));
 app.use('/webhooks', createWebhooksRouter(client));
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
@@ -1313,6 +1314,7 @@ client.on('interactionCreate', async interaction => {
     // are over 1300 of them and the one that got missed would be the one
     // somebody noticed. Autocomplete returns above and is unaffected.
     attachLinks(interaction);
+    attachFunnel(interaction);
 
     // ── Maintenance mode: block ALL interactions for non-admins ─────────────
     if (isMaintenanceMode()) {
@@ -1437,7 +1439,7 @@ client.on('interactionCreate', async interaction => {
         if (!result.success) {
           await reply(
             'Trial Already Used',
-            'This server has already used its one free trial.\n\n[See pricing](https://roleplaymanager.xyz/pricing)'
+            'This server has already used its one free trial.\n\n[See pricing](https://roleplaymanager.xyz/pricing?from=wall)'
           );
           return;
         }
@@ -1446,7 +1448,7 @@ client.on('interactionCreate', async interaction => {
           'Trial Active',
           `Every Premium feature is unlocked on this server until <t:${Math.floor(result.expiresAt.getTime() / 1000)}:F>.\n\n` +
           'Go ahead and set the feature up — run the command again and it will work now.\n\n' +
-          '-# One free trial per server. [See pricing](https://roleplaymanager.xyz/pricing)'
+          '-# One free trial per server. [See pricing](https://roleplaymanager.xyz/pricing?from=wall)'
         );
       } else if (interaction.customId.startsWith('verify_approve_')) {
         const pendingId = interaction.customId.replace('verify_approve_', '');
@@ -1808,11 +1810,13 @@ connectDatabase().then(async () => {
       const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
       const now = new Date();
 
-      const pricingRow = () => new ActionRowBuilder().addComponents(
+      // The link carries the server, so the pricing page can pick it and
+      // Premium switches on for it the moment they pay.
+      const pricingRow = (guildId) => new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setLabel('See pricing')
+          .setLabel('Turn on Premium')
           .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/pricing'),
+          .setURL('https://roleplaymanager.xyz/pricing?from=trial&guild=' + guildId),
         new ButtonBuilder()
           .setLabel('Support')
           .setStyle(ButtonStyle.Link)
@@ -1865,7 +1869,7 @@ connectDatabase().then(async () => {
               'a live status board. That is the part people pay for.'
             )
             .setFooter({ text: 'RPM • Ask in the support server if you get stuck' })],
-          components: [pricingRow()],
+          components: [pricingRow(trial.guildId)],
         }).catch(() => {});
       }
 
@@ -1904,7 +1908,7 @@ connectDatabase().then(async () => {
                   'support server and I will give you more time.'
             )
             .setFooter({ text: 'RPM' })],
-          components: [pricingRow()],
+          components: [pricingRow(trial.guildId)],
         }).catch(() => {});
       }
 
@@ -1942,7 +1946,7 @@ connectDatabase().then(async () => {
               '-# The rest of the bot carries on as normal, including 911 voice announcements.'
             )
             .setFooter({ text: 'RPM' })],
-          components: [pricingRow()],
+          components: [pricingRow(trial.guildId)],
         }).catch(() => {});
       }
     } catch (err) {

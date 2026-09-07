@@ -371,6 +371,18 @@
     </div>
 
     <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">The last 30 days, step by step</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">
+        Counted as it happens: a premium wall shown in Discord, a trial started, the pricing page
+        opened, a checkout opened, a payment made. Stripe only ever saw the last two.
+      </p>
+      <div id="funnel-events" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;">
+        <div style="color:#7a818e;font-size:13px;">Loading...</div>
+      </div>
+      <div id="funnel-events-detail" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
       <div class="section-label" style="margin-bottom:6px;">Set it up and never paid</div>
       <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">
         These servers configured a Premium feature and are not paying. They wanted it
@@ -717,6 +729,8 @@
           + funnelStat('Trial to paid', d.trialConversion === null ? 'n/a' : d.trialConversion + '%',
               'of finished trials');
 
+        renderFunnelEvents(d.events);
+
         document.getElementById('funnel-warm').innerHTML =
           funnelRows(d.warmLeads, 'Nobody has configured a Premium feature without paying.');
         document.getElementById('funnel-cold').innerHTML =
@@ -726,6 +740,44 @@
         document.getElementById('funnel-stats').innerHTML =
           '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
       });
+  }
+
+  function renderFunnelEvents(ev) {
+    var box = document.getElementById('funnel-events');
+    var detail = document.getElementById('funnel-events-detail');
+    if (!box) return;
+    if (!ev) {
+      box.innerHTML = '<div style="color:#7a818e;font-size:13px;">Not available yet.</div>';
+      return;
+    }
+    var s = ev.steps; var r = ev.rates;
+    var pct = function (v) { return v === null || v === undefined ? 'n/a' : v + '%'; };
+    box.innerHTML =
+      funnelStat('Walls shown', s.wall.events, s.wall.guilds + ' servers')
+      + funnelStat('Trials started', s.trial.events, pct(r.wallToTrial) + ' of walled servers')
+      + funnelStat('Pricing opened', s.pricing.events, pct(r.wallToPricing) + ' per wall')
+      + funnelStat('Checkouts', s.checkout.events, pct(r.pricingToCheckout) + ' of pricing views')
+      + funnelStat('Paid', s.paid.events, pct(r.checkoutToPaid) + ' of checkouts', s.paid.events > 0 ? 'good' : null);
+
+    var th = 'style="text-align:right;font-weight:500;"';
+    var walls = (ev.topWalls || []).map(function (w) {
+      return '<tr><td>' + esc(w.feature) + '</td><td style="text-align:right;">' + w.count + '</td><td style="text-align:right;">' + w.guilds + '</td></tr>';
+    }).join('');
+    var sources = (ev.pricingSources || []).map(function (p) {
+      return '<tr><td>' + esc(p.source) + '</td><td style="text-align:right;">' + p.count + '</td></tr>';
+    }).join('');
+    detail.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">'
+      + '<div><div class="section-label" style="margin-bottom:8px;">Walls that fire most</div>'
+      + (walls
+        ? '<table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="color:#7a818e;"><th style="text-align:left;font-weight:500;">Where</th><th ' + th + '>Times</th><th ' + th + '>Servers</th></tr>' + walls + '</table>'
+        : '<div style="color:#7a818e;font-size:12.5px;">No walls shown yet.</div>')
+      + '</div>'
+      + '<div><div class="section-label" style="margin-bottom:8px;">Where pricing visitors come from</div>'
+      + (sources
+        ? '<table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="color:#7a818e;"><th style="text-align:left;font-weight:500;">Source</th><th ' + th + '>Views</th></tr>' + sources + '</table>'
+        : '<div style="color:#7a818e;font-size:12.5px;">No pricing page views yet.</div>')
+      + '</div></div>';
   }
 
   function switchTab(name) {

@@ -2,6 +2,7 @@ import PremiumKey from '../models/PremiumKey.js';
 import FeatureFlag from '../models/FeatureFlag.js';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { DEFAULT_PREMIUM_FEATURES } from '../config/features.js';
+import { recordFunnel } from './funnel.js';
 
 const premiumCache = new Map();
 const featureFlagCache = new Map();
@@ -180,7 +181,7 @@ export function buildPremiumEmbed(featureName) {
       `Press the button below and it unlocks immediately, no card, no signup, ` +
       `nothing to install. Every Premium feature is included.\n\n` +
       `### Or buy Premium\n` +
-      `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing)\n` +
+      `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing?from=wall)\n` +
       `-# Already have a key? Use \`/activatepremium\`. One free trial per server.`
     )
     .setFooter({ text: 'RPM' });
@@ -227,7 +228,7 @@ export function limitReply(what, limit, gain) {
         new ButtonBuilder()
           .setLabel('See pricing')
           .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/pricing')
+          .setURL('https://roleplaymanager.xyz/pricing?from=wall')
       ),
     ],
   };
@@ -245,7 +246,7 @@ export function premiumReply(featureName) {
         new ButtonBuilder()
           .setLabel('See pricing')
           .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/pricing')
+          .setURL('https://roleplaymanager.xyz/pricing?from=wall')
       ),
     ],
   };
@@ -277,5 +278,6 @@ export async function activateTrialForGuild(guildId, activatedByUserId) {
     { used: true, usedForGuildId: guildId, usedAt: new Date() }
   ).catch(() => {});
   trialCache.delete(guildId);
+  recordFunnel({ kind: 'trial', guildId, userId: activatedByUserId });
   return { success: true, expiresAt };
 }

@@ -2428,17 +2428,31 @@ export function createApiRouter(client) {
     try {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
 
-      const existing = await PremiumKey.findOne({ guildId });
-      if (existing) return res.status(400).json({ error: 'This server already has an active premium key' });
+      const premiumKey = await PremiumKey.findOne({ key: key.trim() });
+      if (!premiumKey) return res.status(404).json({ error: 'Invalid premium key' });
 
-      const premiumKey = await PremiumKey.findOne({ key: key.trim(), guildId: null });
-      if (!premiumKey) return res.status(404).json({ error: 'Invalid or already used premium key' });
+      // Who is doing this, as a Discord id. The login token used to be stored
+      // here, which named nobody and put a credential in the database.
+      let userId = null;
+      try {
+        const meCached = _meCache.get(token);
+        if (meCached && meCached.exp > Date.now()) {
+          userId = meCached.data.user.id;
+        } else {
+          const userRes = await axios.get('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          userId = userRes.data.id;
+        }
+      } catch {
+        userId = null;
+      }
 
-      premiumKey.guildId = guildId;
-      premiumKey.guildName = guild.name;
-      premiumKey.activatedBy = req.headers.authorization?.slice(7) || 'unknown';
-      premiumKey.activatedAt = new Date();
-      await premiumKey.save();
+      const { attachKeyToGuild, attachFailureMessage } = await import('../../utils/premiumKeys.js');
+      const result = await attachKeyToGuild({
+        keyDoc: premiumKey, guildId, guildName: guild.name, userId, via: 'dashboard',
+      });
+      if (!result.ok) return res.status(400).json({ error: attachFailureMessage(result.reason) });
 
       res.json({ success: true });
     } catch (err) {

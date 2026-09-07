@@ -7,6 +7,12 @@ var toastEl = document.getElementById('toast');
 
 var currentUser = null;
 var currentGuild = null;
+
+/* Pricing links carry where they came from and which server, so the pricing
+   page can count the visit and switch Premium on for that server after payment. */
+function pricingHref(from) {
+  return '/pricing?from=' + from + (currentGuild && currentGuild.id ? '&guild=' + currentGuild.id : '');
+}
 var guilds = [];
 var pendingChanges = {};
 var _currentSettingsData = null;
@@ -828,7 +834,7 @@ function renderPremiumSection(g) {
       '<div class="config-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
       '<div><span class="config-label">Free trial is active on this server.</span>' +
       '<div class="config-sublabel">All premium features are unlocked until <strong>' + trialExpiresStr + '</strong>. Consider upgrading before it expires.</div></div>' +
-      '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">Upgrade to Premium</a>' +
+      '<a href="' + pricingHref('dashboard') + '" target="_blank" class="btn btn-primary btn-sm">Upgrade to Premium</a>' +
       '</div></div>';
   }
 
@@ -846,7 +852,7 @@ function renderPremiumSection(g) {
     '<div style="border-top:1px solid var(--border);padding-top:12px;width:100%;">' +
     '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Get a premium key from the pricing page, then enter it below to unlock all premium features.</p>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<a href="/pricing" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
+    '<a href="' + pricingHref('dashboard') + '" target="_blank" class="btn btn-primary btn-sm">View Pricing &amp; Get a Key</a>' +
     '<a href="https://discord.gg/cSdhfGPeV2" target="_blank" class="btn btn-discord btn-sm" style="font-size:11px;">Support Server</a>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
@@ -1039,7 +1045,7 @@ function showPremiumModal(featureName) {
         (featureName ? '<strong>' + esc(String(featureName)) + '</strong> requires Premium on this server.' : 'This feature requires Premium on this server.') +
       '</p>' +
       '<div style="display:flex;flex-direction:column;gap:10px;">' +
-        '<a href="https://roleplaymanager.xyz/pricing" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
+        '<a href="https://roleplaymanager.xyz' + pricingHref('dashboard') + '" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none;">Purchase Premium</a>' +
         '<div style="border-top:1px solid var(--border);padding-top:10px;">' +
           '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Or try it free for 7 days</div>' +
           '<p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Unlock every Premium feature for 7 days. No card, no signup.</p>' +
@@ -1088,7 +1094,7 @@ function renderSettings(mod) {
         '</div>' +
         (isPremiumLocked
           ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-            '<a href="https://roleplaymanager.xyz/pricing" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
+            '<a href="https://roleplaymanager.xyz' + pricingHref('dashboard') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +
             '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Vote on Top.gg</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +

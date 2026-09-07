@@ -437,6 +437,23 @@ civilian or (with a LEO role) as law enforcement.
 - **Limits**: every write checks `getGuildLimits`, the same per-guild caps the
   Discord handlers enforce. Note `getGuildLimits` returns `Infinity` for premium,
   which `JSON.stringify` turns into `null` — `/context` converts it explicitly.
+- **Buying Premium** (`routes/checkout.js`): the pricing page sends the site's
+  Discord token (`dash_token`, shared with the dashboard) and a chosen `guildId`;
+  the route verifies the buyer administers that server and the bot is in it,
+  puts both in the Stripe session metadata, and on completion attaches the key
+  to the server through `utils/premiumKeys.js` (`attachKeyToGuild`, the one set
+  of rules the command, the dashboard and the checkout all use; a lapsed key is
+  moved aside, a live one is kept). Without a sign-in the buyer gets a key as
+  before. Webhooks DM the buyer, the activator and the server owner
+  (`utils/premiumNotify.js`) on a failed payment (once a day, with the hosted
+  invoice) and when the subscription ends. Prices are looked up in Stripe by
+  nickname before any are created.
+- **Funnel** (`utils/funnel.js`, `models/FunnelEvent.js`): every premium wall
+  (detected at dispatch by `utils/funnelHook.js` from the trial button), trial
+  start, pricing page view (`POST /checkout/track`, sent by the page with
+  `?from=` and `?guild=`), checkout and payment is recorded; the dev panel's
+  Premium Funnel tab shows the last 30 days step by step. Links to the pricing
+  page should carry `from` (wall, dashboard, trial, lapsed) and `guild`.
 - **Bot bridge** (`src/website/cadBridge.js`) — the contract, and its two traps:
   - **Call IDs must end in a number.** Dispatch speaks the trailing segment and
     matches an officer's spoken reply with `callId.split('-').pop()`. Format is

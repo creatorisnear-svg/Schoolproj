@@ -142,6 +142,11 @@
     .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
     .modal .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
     .modal-section { margin-bottom: 20px; }
+    .modal-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; margin: 0 0 10px; }
+    .modal-note strong { color: var(--text); }
+    .btn-signin { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--radius-sm); background: #5865f2; color: #fff; font-size: 13px; font-weight: 600; text-decoration: none; }
+    .btn-signin:hover { background: #4752c4; }
+    .modal-section select { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; color: var(--text); font-family: inherit; outline: none; }
     .modal-section label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .modal-section input {
       width: 100%;
@@ -470,6 +475,18 @@
       <h2 id="modal-title">Get Premium</h2>
       <p class="modal-sub" id="modal-sub">Monthly plan &mdash; $5.00/month. Cancel any time.</p>
 
+      <div class="modal-section" id="modal-account">
+        <div id="modal-signed-out">
+          <p class="modal-note">Sign in with Discord first and Premium switches on for your server the moment you pay, nothing to copy or paste. Without signing in you get a key to activate yourself.</p>
+          <a class="btn-signin" id="btn-signin" href="#" onclick="signInForCheckout(); return false;">Sign in with Discord</a>
+        </div>
+        <div id="modal-signed-in" style="display:none;">
+          <label for="guild-select">Turn Premium on for</label>
+          <select id="guild-select"></select>
+          <p class="modal-note" id="modal-signed-as" style="margin:8px 0 0;"></p>
+        </div>
+      </div>
+
       <div class="modal-section">
         <label class="tos-accept">
           <input type="checkbox" id="tos-checkbox">
@@ -489,6 +506,82 @@
   <script>
     var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
     var selectedPlan = null;
+    var params = new URLSearchParams(window.location.search);
+    var dashToken = null;
+    var me = null;
+
+    function pageSource() { return params.get('from') || 'direct'; }
+    function escapeText(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    // Returning from the Discord sign-in: the token arrives in the fragment,
+    // the same way the dashboard receives it, and is kept under the same name.
+    (function () {
+      var hash = window.location.hash;
+      if (hash && hash.length > 1) {
+        var hp = new URLSearchParams(hash.slice(1));
+        var t = hp.get('token');
+        if (t) {
+          try { localStorage.setItem('dash_token', t); } catch (e) {}
+          history.replaceState({}, '', window.location.pathname + window.location.search);
+        }
+      }
+      try { dashToken = localStorage.getItem('dash_token'); } catch (e) { dashToken = null; }
+    })();
+
+    // Count the visit and where it came from: a wall in Discord, the
+    // dashboard, a trial message, or nowhere in particular.
+    fetch(API_BASE + '/checkout/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: pageSource(), guildId: params.get('guild') || null, feature: params.get('f') || null })
+    }).catch(function () {});
+
+    function signInForCheckout() {
+      try { sessionStorage.setItem('rpm_pending_plan', selectedPlan || ''); } catch (e) {}
+      var clientId = '1441306995641683978';
+      var redirectUri = encodeURIComponent(API_BASE + '/auth/site/callback');
+      var state = encodeURIComponent(window.location.origin + window.location.pathname + window.location.search);
+      window.location.href = 'https://discord.com/api/oauth2/authorize?client_id=' + clientId +
+        '&redirect_uri=' + redirectUri + '&response_type=code&scope=identify%20guilds&state=' + state;
+    }
+
+    function renderAccount() {
+      var out = document.getElementById('modal-signed-out');
+      var inn = document.getElementById('modal-signed-in');
+      if (!out || !inn) return;
+      if (!me) { out.style.display = ''; inn.style.display = 'none'; return; }
+      out.style.display = 'none'; inn.style.display = '';
+      var sel = document.getElementById('guild-select');
+      var wanted = params.get('guild');
+      sel.innerHTML = me.guilds.map(function (g) {
+        return '<option value="' + escapeText(g.id) + '"' + (g.id === wanted ? ' selected' : '') + '>' + escapeText(g.name) + '</option>';
+      }).join('') + '<option value=""' + (me.guilds.length ? '' : ' selected') + '>Just give me a key to use later</option>';
+      document.getElementById('modal-signed-as').textContent = me.guilds.length
+        ? 'Signed in as ' + me.user.username + '. Only servers where you are an administrator and the bot is installed are listed.'
+        : 'Signed in as ' + me.user.username + ', but the bot is not in any server you administer yet. You will get a key to activate later.';
+    }
+
+    function forgetSignIn() {
+      me = null; dashToken = null;
+      try { localStorage.removeItem('dash_token'); } catch (e) {}
+      renderAccount();
+    }
+
+    function loadAccount() {
+      if (!dashToken) { renderAccount(); return; }
+      fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + dashToken } })
+        .then(function (r) { if (r.status === 401) throw new Error('expired'); return r.json(); })
+        .then(function (d) { me = { user: d.user || {}, guilds: d.guilds || [] }; renderAccount(); })
+        .catch(function () { forgetSignIn(); });
+    }
+    loadAccount();
+
+    // Back from signing in with a plan already chosen: reopen where they were.
+    (function () {
+      var pending = null;
+      try { pending = sessionStorage.getItem('rpm_pending_plan'); sessionStorage.removeItem('rpm_pending_plan'); } catch (e) {}
+      if (pending && dashToken) setTimeout(function () { openCheckout(pending); }, 0);
+    })();
 
     function openCheckout(plan) {
       selectedPlan = plan;
@@ -544,12 +637,17 @@
       btn.disabled = true;
       btn.textContent = 'Redirecting...';
 
+      var headers = { 'Content-Type': 'application/json' };
+      if (dashToken) headers.Authorization = 'Bearer ' + dashToken;
+      var guildSel = document.getElementById('guild-select');
+      var guildId = (me && guildSel && guildSel.value) ? guildSel.value : null;
+
       fetch(API_BASE + '/checkout/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedPlan, tosAccepted: true })
+        headers: headers,
+        body: JSON.stringify({ plan: selectedPlan, tosAccepted: true, guildId: guildId, source: pageSource() })
       })
-      .then(function(r) { return r.json(); })
+      .then(function(r) { if (r.status === 401) forgetSignIn(); return r.json(); })
       .then(function(data) {
         if (data.url) {
           window.location.href = data.url;
