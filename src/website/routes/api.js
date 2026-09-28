@@ -5,8 +5,19 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
-import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild } from '../../utils/premiumCheck.js';
-import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, getFeatureByMod } from '../../config/features.js';
+import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild, hasPremiumAccess, getGuildLimits, trialUsed as hasUsedTrial } from '../../utils/premiumCheck.js';
+import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, FREE_TIER_TOGGLE_KEYS, getFeatureByMod } from '../../config/features.js';
+
+/** The paid fields of a partly free feature, locked on the dashboard until Premium or a trial. */
+const PAID_FIELDS = {
+  dispatch: ['aiEnabled', 'statusBoardChannelId'],
+  dutytime: ['boardChannelId', 'reportChannelId', 'inactiveAfterDays'],
+};
+
+/** A free cap refusal, in the same words everywhere on the dashboard. */
+function capReached(res, n, what) {
+  return res.status(403).json({ error: 'The free plan includes ' + n + ' ' + what + ' and this server has them all. Premium removes the limit.' });
+}
 import { COMMAND_GROUPS, groupForCommand } from '../../config/commandGroups.js';
 
 
@@ -24,7 +35,7 @@ function _pruneCaches() {
 }
 setInterval(_pruneCaches, 10 * 60 * 1000);
 
-async function verifyAdminAccess(token, guildId) {
+export async function verifyAdminAccess(token, guildId) {
   const key = `${token}:${guildId}`;
   const cached = _adminAccessCache.get(key);
   if (cached && cached.exp > Date.now()) return cached.result;
@@ -516,6 +527,13 @@ export function createApiRouter(client) {
         premiumDetails,
         onTrial,
         trialExpiresAt,
+        // What the dashboard should unlock: Premium or a running trial.
+        premiumAccess: premium || onTrial,
+        directoryListed: await import('../../models/DirectoryListing.js')
+          .then((m) => m.default.exists({ guildId: guild.id, listed: true }))
+          .then(Boolean)
+          .catch(() => false),
+        trialUsed: premium || onTrial ? false : await hasUsedTrial(guild.id).catch(() => false),
         config,
       });
     } catch (err) {
@@ -571,7 +589,7 @@ export function createApiRouter(client) {
       return res.status(400).json({ error: 'enabled must be a boolean' });
     }
 
-    if (enabled) {
+    if (enabled && !FREE_TIER_TOGGLE_KEYS.includes(feature)) {
       const access = await checkFeatureAccess(guildId, feature);
       if (!access.allowed) {
         return res.status(403).json({ error: 'premium_required' });
@@ -834,6 +852,14 @@ export function createApiRouter(client) {
           result.currentTrafficChannels = dc?.trafficStopChannelIds || [];
           result.leoRoles = dc?.leoRoleIds || [];
           result.roles = roles;
+          try {
+            const { usageFor, PREMIUM_UTTERANCES_PER_MONTH, FREE_READOUTS_PER_MONTH } = await import('../../utils/aiUsage.js');
+            const usage = await usageFor(guild.id);
+            const full = (await checkFeatureAccess(guild.id, 'dispatch')).allowed;
+            result.stats = full
+              ? [{ label: 'Radio lines this month', value: (usage.utterances || 0) + ' of ' + PREMIUM_UTTERANCES_PER_MONTH }]
+              : [{ label: 'Spoken 911 read-outs this month', value: (usage.readouts || 0) + ' of ' + FREE_READOUTS_PER_MONTH }];
+          } catch {}
           break;
         }
 
@@ -1240,6 +1266,20 @@ export function createApiRouter(client) {
       if (registryFeature.long) result.description = registryFeature.long;
     }
 
+    // Partly free: the free part stays usable and only the paid fields are
+    // locked. The whole page used to be greyed out, so the free parts the
+    // pricing page promises could not be set up here.
+    if (registryFeature && registryFeature.freeTier && !registryFeature.grandfathered && result.premium) {
+      const access = await checkFeatureAccess(req.params.id, registryFeature.key).catch(() => ({ allowed: false }));
+      result.partial = true;
+      result.freeTier = registryFeature.freeTier;
+      result.access = !!access.allowed;
+      const paid = PAID_FIELDS[mod] || [];
+      if (!access.allowed && Array.isArray(result.fields)) {
+        result.fields = result.fields.map((f) => (paid.includes(f.key) ? { ...f, locked: true } : f));
+      }
+    }
+
     res.json(result);
   });
 
@@ -1326,6 +1366,11 @@ export function createApiRouter(client) {
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
           }
+          // The free tier sets up 911 read-outs; the AI and the status board
+          // are the paid part, so they are not saved without Premium or a trial.
+          if (!(await checkFeatureAccess(guild.id, 'dispatch')).allowed) {
+            for (const k of PAID_FIELDS.dispatch) delete update[k];
+          }
           await DispatchConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           // Reload bot dispatch state in-process so patrol channels / LEO roles take effect immediately
           try {
@@ -1346,6 +1391,9 @@ export function createApiRouter(client) {
             if (!allowed.includes(k)) continue;
             if (k === 'inactiveAfterDays') update[k] = Math.max(1, Math.min(90, parseInt(v) || 14));
             else update[k] = v;
+          }
+          if (!(await checkFeatureAccess(guild.id, 'dutytime')).allowed) {
+            for (const k of PAID_FIELDS.dutytime) delete update[k];
           }
           // Moving the board means the old message is somewhere else, so
           // forget it and let the next run post a fresh one.
@@ -1547,9 +1595,8 @@ export function createApiRouter(client) {
     if (!label || !label.trim()) return res.status(400).json({ error: 'Ticket type label is required' });
     try {
       const { default: TicketConfig } = await import('../../models/TicketConfig.js');
-      const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
       const tc = await TicketConfig.findOne({ guildId: req.params.id }) || new TicketConfig({ guildId: req.params.id });
-      const isPrem = await isPremiumGuild(req.params.id);
+      const isPrem = await hasPremiumAccess(req.params.id);
       const limit = isPrem ? Infinity : 5;
       if ((tc.ticketTypes || []).length >= limit) {
         return res.status(403).json({ error: 'Free servers can have up to 5 ticket types. Upgrade to Premium for unlimited.' });
@@ -1608,6 +1655,9 @@ export function createApiRouter(client) {
         rrc.roles[existing].approverRoleIds = Array.isArray(approverRoleIds) ? approverRoleIds : [];
         rrc.roles[existing].roleName = role.name;
       } else {
+        // The same cap the bot enforces in Discord; the dashboard had none.
+        const cap = (await getGuildLimits(req.params.id)).roleRequestRoles;
+        if ((rrc.roles || []).length >= cap) return capReached(res, cap, 'role request roles');
         rrc.roles.push({ id: uuidv4(), roleId, roleName: role.name, approverRoleIds: Array.isArray(approverRoleIds) ? approverRoleIds : [], approverMemberIds: [], createdAt: new Date() });
       }
       rrc.markModified('roles');
@@ -1652,6 +1702,10 @@ export function createApiRouter(client) {
       const channel = guild.channels.cache.get(channelId);
       if (!channel || !channel.isTextBased()) return res.status(400).json({ error: 'Invalid channel' });
       const existing = await Sticky.findOne({ guildId: req.params.id, channelId });
+      if (!existing) {
+        const stickyCap = (await getGuildLimits(req.params.id)).stickyMessages;
+        if ((await Sticky.countDocuments({ guildId: req.params.id })) >= stickyCap) return capReached(res, stickyCap, 'sticky messages');
+      }
       if (existing) {
         if (existing.messageId) {
           await channel.messages.fetch(existing.messageId).then(m => m.delete()).catch(() => {});
@@ -1873,6 +1927,8 @@ export function createApiRouter(client) {
       const { default: CivilianJobConfig } = await import('../../models/CivilianJobConfig.js');
       const { v4: uuidv4 } = await import('uuid');
       const cjc = await CivilianJobConfig.findOne({ guildId: req.params.id }) || new CivilianJobConfig({ guildId: req.params.id });
+      const jobCap = (await getGuildLimits(req.params.id)).civilianJobs;
+      if ((cjc.jobs || []).length >= jobCap) return capReached(res, jobCap, 'civilian jobs');
       cjc.jobs.push({ jobId: uuidv4(), name: name.trim(), description: (description || '').trim(), roleId, durationHours: Number(durationHours) });
       cjc.markModified('jobs');
       await cjc.save();
@@ -2555,6 +2611,8 @@ export function createApiRouter(client) {
     if (price === undefined || isNaN(Number(price)) || Number(price) < 0) return res.status(400).json({ error: 'Valid price is required' });
     try {
       const { default: EconomyStore } = await import('../../models/EconomyStore.js');
+      const itemCap = (await getGuildLimits(req.params.id)).shopItems;
+      if ((await EconomyStore.countDocuments({ guildId: req.params.id })) >= itemCap) return capReached(res, itemCap, 'shop items');
       const item = await EconomyStore.create({
         guildId: req.params.id, name: name.trim(), price: Number(price),
         description: description?.trim() || '', usable: !!usable,
@@ -2598,8 +2656,8 @@ export function createApiRouter(client) {
     const hours = Math.max(1, Math.min(720, parseInt(cooldown) || 24));
     try {
       const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
-      const { clearPremiumCache, isPremiumGuild } = await import('../../utils/premiumCheck.js');
-      const isPremium = await isPremiumGuild(req.params.id);
+      const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+      const isPremium = await hasPremiumAccess(req.params.id);
       const ec = await EconomyConfig.findOne({ guildId: req.params.id }) || new EconomyConfig({ guildId: req.params.id });
       const limit = isPremium ? Infinity : 2;
       if ((ec.roleIncome || []).length >= limit) {
@@ -3338,6 +3396,10 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
+      // Adding entries is the Premium part, as it is in Discord. It had no
+      // check here, so any free server could run the blacklist from the site.
+      const blacklistAccess = await checkFeatureAccess(req.params.id, 'blacklist');
+      if (!blacklistAccess.allowed) return res.status(403).json({ error: 'Blacklist system requires a premium subscription.' });
       const { discordId, discordUsername, gamertag, reason, ipBanned } = req.body;
       if (!reason || (!discordId && !gamertag)) {
         return res.status(400).json({ error: 'Provide at least a Discord ID or gamertag plus a reason' });

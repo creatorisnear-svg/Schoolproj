@@ -11,6 +11,7 @@ import PremiumKey from '../../models/PremiumKey.js';
 import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
 import { funnelSummary } from '../../utils/funnel.js';
+import { usageSummary } from '../../utils/aiUsage.js';
 import { FEATURES, DEFAULT_PREMIUM_FEATURES } from '../../config/features.js';
 import { getMaintenanceStatus, setMaintenanceMode } from '../../utils/maintenanceMode.js';
 import { sendChangelogWebhook } from '../../utils/changelogWebhook.js';
@@ -464,6 +465,61 @@ export function createDevRouter(client) {
    * backfill and nothing that can drift out of date. It is a handful of counts
    * over collections that are already small.
    */
+  // ── Server directory moderation ─────────────────────────────────────────
+  router.get('/directory', devAuth, async (req, res) => {
+    try {
+      const [{ default: DirectoryListing }, { default: DirectoryVote }, { default: DirectoryClick }, { default: DirectoryReport }, { default: DirectoryPromotion }, { MAX_FEATURED, invalidateDirectory }] = await Promise.all([
+        import('../../models/DirectoryListing.js'), import('../../models/DirectoryVote.js'), import('../../models/DirectoryClick.js'),
+        import('../../models/DirectoryReport.js'), import('../../models/DirectoryPromotion.js'), import('../../utils/directory.js'),
+      ]);
+      void invalidateDirectory;
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const [listings, votes, clicks, reports, promos] = await Promise.all([
+        DirectoryListing.find({}).lean(),
+        DirectoryVote.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: '$guildId', n: { $sum: 1 } } }]),
+        DirectoryClick.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: '$guildId', n: { $sum: 1 } } }]),
+        DirectoryReport.find({ resolved: false }).sort({ createdAt: -1 }).limit(50).lean(),
+        DirectoryPromotion.find({ createdAt: { $gte: since } }).lean(),
+      ]);
+      const v = new Map(votes.map((x) => [x._id, x.n]));
+      const c = new Map(clicks.map((x) => [x._id, x.n]));
+      const nameOf = (id) => (client && client.guilds.cache.get(id)?.name) || id;
+      res.json({
+        listed: listings.filter((l) => l.listed && !l.hidden).length,
+        featuredNow: listings.filter((l) => l.featuredUntil && new Date(l.featuredUntil) > now).length,
+        maxFeatured: MAX_FEATURED,
+        votes30: votes.reduce((s, x) => s + x.n, 0),
+        clicks30: clicks.reduce((s, x) => s + x.n, 0),
+        promoCount30: promos.length,
+        promoRevenue30: promos.reduce((s, p) => s + (p.amount || 0), 0),
+        reports: reports.map((r) => ({ id: String(r._id), guildId: r.guildId, name: nameOf(r.guildId), reason: r.reason })),
+        listings: listings
+          .map((l) => ({ guildId: l.guildId, name: nameOf(l.guildId), listed: !!l.listed, hidden: !!l.hidden, votes: v.get(l.guildId) || 0, clicks: c.get(l.guildId) || 0, featuredUntil: l.featuredUntil || null }))
+          .sort((a, b) => (b.votes - a.votes) || (b.clicks - a.clicks)),
+      });
+    } catch (err) {
+      console.error('[Dev] directory:', err.message);
+      res.status(500).json({ error: 'Could not load the directory: ' + err.message });
+    }
+  });
+
+  router.post('/directory/:guildId/hide', devAuth, async (req, res) => {
+    const { default: DirectoryListing } = await import('../../models/DirectoryListing.js');
+    const { invalidateDirectory } = await import('../../utils/directory.js');
+    const hidden = !!(req.body && req.body.hidden);
+    const reason = hidden ? String((req.body && req.body.reason) || '').slice(0, 200) || null : null;
+    await DirectoryListing.updateOne({ guildId: String(req.params.guildId) }, { $set: { hidden, hiddenReason: reason } });
+    invalidateDirectory();
+    res.json({ ok: true });
+  });
+
+  router.post('/directory/reports/:id/resolve', devAuth, async (req, res) => {
+    const { default: DirectoryReport } = await import('../../models/DirectoryReport.js');
+    await DirectoryReport.updateOne({ _id: req.params.id }, { $set: { resolved: true } }).catch(() => {});
+    res.json({ ok: true });
+  });
+
   router.get('/funnel', devAuth, async (req, res) => {
     if (!client || !client.isReady()) {
       return res.status(503).json({ error: 'Bot is not connected to Discord' });
@@ -555,9 +611,15 @@ export function createDevRouter(client) {
 
       // The counted steps of the last 30 days, alongside the standing picture.
       const events = await funnelSummary(30).catch(() => null);
+      // What AI dispatch costs to run this month, and who is using it.
+      const aiUsage = await usageSummary().catch(() => null);
+      if (aiUsage) {
+        aiUsage.top = aiUsage.top.map((t) => ({ ...t, name: client.guilds.cache.get(t.guildId)?.name || t.guildId }));
+      }
 
       res.json({
         events,
+        aiUsage,
         servers: rows.length,
         paying: rows.filter((r) => r.paying).length,
         trialActive: rows.filter((r) => r.trialState === 'active').length,

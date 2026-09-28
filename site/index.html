@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RolePlayManager - Discord Bot for GTA 5 RP</title>
-  <meta name="description" content="The all-in-one Discord bot for GTA 5 RP communities. AI Voice Dispatch, CAD database, 911 calls, officer status boards, economy, and more.">
+  <title>RolePlayManager | Discord Bot for GTA 5 RP on PS5 and Xbox</title>
+  <meta name="description" content="The Discord bot for console GTA 5 roleplay on PS5 and Xbox. AI voice dispatch, a web CAD and MDT, 911 calls, patrol hours, economy, and a free server directory. Free to start.">
   <link rel="canonical" href="https://roleplaymanager.xyz/">
   <link rel="icon" type="image/png" href="/img/logo.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://roleplaymanager.xyz/">
-  <meta property="og:title" content="RolePlayManager - Discord Bot for GTA 5 RP">
-  <meta property="og:description" content="The all-in-one Discord bot for GTA 5 RP communities.">
+  <meta property="og:title" content="RolePlayManager | Discord Bot for GTA 5 RP on PS5 and Xbox">
+  <meta property="og:description" content="The Discord bot for console GTA 5 roleplay communities: AI voice dispatch, a web CAD, 911 calls and a free server directory.">
   <meta property="og:image" content="https://roleplaymanager.xyz/img/banner.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://roleplaymanager.xyz/img/banner.png">
@@ -32,6 +32,7 @@
       <ul class="nav-links">
         <li><a href="#features">Features</a></li>
         <li><a href="#commands">Commands</a></li>
+        <li><a href="/servers/">Servers</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a href="#contact">Support</a></li>
@@ -47,6 +48,7 @@
   <div class="mobile-nav-overlay" id="mobile-nav-overlay" role="dialog" aria-label="Mobile navigation" aria-modal="false">
     <a href="#features" onclick="closeMobileNav()">Features</a>
     <a href="#commands" onclick="closeMobileNav()">Commands</a>
+    <a href="/servers/" onclick="closeMobileNav()">Servers</a>
     <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
     <a href="#faq" onclick="closeMobileNav()">FAQ</a>
     <a href="#contact" onclick="closeMobileNav()">Support</a>
@@ -66,9 +68,10 @@
         <span id="hero-status-text">GTA 5 RP Discord Bot</span>
       </div>
       <h1 class="lp-hero-h1">Your RP community,<br><span class="lp-hero-accent">fully managed.</span></h1>
-      <p class="lp-hero-sub">The all-in-one Discord bot for GTA 5 roleplay servers. AI-powered dispatch, CAD systems, 911 emergencies, economy, staff tools, and more. All from one dashboard.</p>
+      <p class="lp-hero-sub">The all-in-one Discord bot for console GTA 5 roleplay on PS5 and Xbox. AI voice dispatch, a web CAD, 911 calls, economy, staff tools and more. All from one dashboard.</p>
       <div class="lp-hero-btns">
         <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">Add to Discord</a>
+        <a href="/servers/" class="btn btn-secondary btn-lg">Find a GTA RP server</a>
         <a href="/dashboard/" class="btn btn-secondary btn-lg">Open Dashboard</a>
       </div>
       <div class="lp-hero-stats">
@@ -89,6 +92,48 @@
       </div>
     </div>
   </section>
+
+  <!-- ── SERVER DIRECTORY ── -->
+  <section class="lp-section lp-section-alt" id="servers">
+    <div class="container">
+      <div class="lp-section-header">
+        <div class="lp-section-eyebrow">Server Directory</div>
+        <h2 class="lp-section-title">Find a GTA 5 RP server to join</h2>
+        <p class="lp-section-sub">Console roleplay communities on PS5 and Xbox, all running RolePlayManager. Run a server? List it here for free.</p>
+      </div>
+      <div id="home-servers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;max-width:1100px;margin:0 auto;"></div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
+        <a href="/servers/" class="btn btn-primary">Browse all servers</a>
+        <a href="/servers/#list-yours" class="btn btn-secondary">List your server free</a>
+      </div>
+    </div>
+  </section>
+  <script>
+    // Featured servers first, then the top voted: the home page is the most
+    // visited place to be featured.
+    (function () {
+      var api = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app/api/directory?limit=12';
+      function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+      fetch(api).then(function (r) { return r.json(); }).then(function (d) {
+        var seen = {};
+        var list = (d.featured || []).concat(d.servers || []).filter(function (s) { if (seen[s.id]) return false; seen[s.id] = 1; return true; }).slice(0, 6);
+        var box = document.getElementById('home-servers');
+        if (!list.length) { box.style.display = 'none'; return; }
+        var plat = (d.options && d.options.platforms) || {};
+        box.innerHTML = list.map(function (s) {
+          var icon = s.icon
+            ? '<img src="' + esc(s.icon) + '" alt="" width="40" height="40" loading="lazy" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;">'
+            : '<div style="width:40px;height:40px;border-radius:10px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--text-muted);flex-shrink:0;">' + esc((s.name || '?').slice(0, 1)) + '</div>';
+          return '<div style="background:var(--bg-card);border:1px solid ' + (s.featured ? 'rgba(251,191,36,0.45)' : 'var(--border)') + ';border-radius:12px;padding:14px;display:flex;gap:12px;align-items:center;">' + icon +
+            '<div style="min-width:0;flex:1;"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(s.name) + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);">' + Number(s.members || 0).toLocaleString('en-US') + ' members' +
+            ((s.platforms || []).length ? ' · ' + esc(s.platforms.map(function (p) { return plat[p] || p; }).join(', ')) : '') +
+            (s.featured ? ' · <span style="color:#fbbf24;">Featured</span>' : '') + '</div></div>' +
+            '<a class="btn btn-primary btn-sm" href="https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app/api/directory/join/' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">Join</a></div>';
+        }).join('');
+      }).catch(function () { document.getElementById('home-servers').style.display = 'none'; });
+    })();
+  </script>
 
   <!-- ── FEATURES ── -->
   <section class="lp-section" id="features">
@@ -559,6 +604,7 @@
       </a>
       <ul class="lp-footer-links">
         <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/servers/">Servers</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#commands">Commands</a></li>

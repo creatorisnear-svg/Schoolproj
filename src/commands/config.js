@@ -301,7 +301,7 @@ function dispatchMenuEmbed(warning = '') {
           '`2.` Set Status Board Channel: text channel for the live officer status board\n' +
           '`3.` Add Patrol Voice Channel: voice channel(s) to listen to\n' +
           '`4.` Set LEO Role(s), without this the bot listens to everyone in the channel\n' +
-          '`5.` Enable / Disable System: turn it on when ready' +
+          '`5.` Turn Dispatch On: once the steps above are done' +
           warning
         )
         .setFooter({ text: 'RPM' }),
@@ -317,7 +317,8 @@ function dispatchMenuEmbed(warning = '') {
             { label: '3. Add Patrol Voice Channel', description: 'Voice channel the bot will listen and talk in', value: 'add_patrol_channel' },
             { label: '4. Set LEO Role(s)', description: 'Roles the bot will listen to in patrol channels', value: 'set_leo_roles' },
             { label: 'Set Traffic Stop Channel', description: 'Voice channel officers are moved to on 10-11', value: 'add_stop_channel' },
-            { label: '5. Enable / Disable System', description: 'Turn AI dispatch on or off', value: 'toggle_system' },
+            { label: '5. Turn Dispatch On', description: 'Start 911 read-outs, and with Premium the AI dispatcher', value: 'enable_system' },
+            { label: 'Turn Dispatch Off', description: 'Stop dispatch and leave the voice channel', value: 'disable_system' },
             { label: 'Toggle AI Responses', description: 'Enable or disable AI-generated dispatcher replies', value: 'toggle_ai' },
             { label: 'Remove Patrol Channel', description: 'Stop monitoring a channel', value: 'remove_patrol_channel' },
             { label: 'View Settings', description: 'See current configuration', value: 'view_settings' },

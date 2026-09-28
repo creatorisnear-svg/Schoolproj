@@ -3,6 +3,16 @@ import FeatureFlag from '../models/FeatureFlag.js';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { DEFAULT_PREMIUM_FEATURES } from '../config/features.js';
 import { recordFunnel } from './funnel.js';
+import { EventEmitter } from 'events';
+import mongoose from 'mongoose';
+
+/**
+ * Tells the rest of the bot that a server's Premium, or its trial, may have
+ * changed. index.js listens and re-checks what AI dispatch may do there,
+ * which used to change only at the next deploy.
+ */
+export const premiumEvents = new EventEmitter();
+premiumEvents.setMaxListeners(20);
 
 const premiumCache = new Map();
 const featureFlagCache = new Map();
@@ -46,6 +56,16 @@ export async function isGuildOnTrial(guildId) {
   }
 }
 
+/**
+ * Premium or a running trial: what the bot actually unlocks. The dashboard,
+ * the free caps and the games used to check paid Premium only, so a server
+ * on its trial was told everything was unlocked and then found it was not.
+ */
+export async function hasPremiumAccess(guildId) {
+  if (await isPremiumGuild(guildId)) return true;
+  return isGuildOnTrial(guildId);
+}
+
 export function clearPremiumCache(guildId) {
   if (guildId) {
     for (const key of grandfatherCache.keys()) {
@@ -54,8 +74,11 @@ export function clearPremiumCache(guildId) {
   } else {
     grandfatherCache.clear();
   }
-  if (guildId) { premiumCache.delete(guildId); trialCache.delete(guildId); }
-  else { premiumCache.clear(); trialCache.clear(); }
+  if (guildId) { premiumCache.delete(guildId); trialCache.delete(guildId); trialUsedCache.delete(guildId); }
+  else { premiumCache.clear(); trialCache.clear(); trialUsedCache.clear(); }
+  // Every place that changes Premium clears this cache, so it is also the
+  // one place to announce the change.
+  if (guildId) premiumEvents.emit('changed', guildId);
 }
 
 export async function isFeaturePremiumGated(featureKey) {
@@ -85,11 +108,22 @@ export function clearFeatureFlagCache(featureKey) {
  * people back in. That is an incident, not a sale, and the reasonable response
  * to it is to remove the bot.
  */
+// When the blacklist became Premium (commit f1d0ae6). Configs created before
+// this belong to servers that were already relying on it.
+const BLACKLIST_PREMIUM_SINCE = Date.parse('2026-09-06T08:20:13Z');
+
 const GRANDFATHERED = {
   blacklist: async (guildId) => {
     try {
       const { default: BlacklistConfig } = await import('../models/BlacklistConfig.js');
-      return !!(await BlacklistConfig.exists({ guildId, enabled: true }));
+      // Only servers that were running it before it became Premium. The
+      // check used to be "enabled right now", so any server that switched it
+      // on during a trial, or later, kept it free forever.
+      return !!(await BlacklistConfig.exists({
+        guildId,
+        enabled: true,
+        _id: { $lt: mongoose.Types.ObjectId.createFromTime(Math.floor(BLACKLIST_PREMIUM_SINCE / 1000)) },
+      }));
     } catch {
       // If the check itself fails, err toward letting them keep it. A false
       // lock on a moderation feature is worse than a false unlock.
@@ -171,85 +205,142 @@ export async function getGuildLimits(guildId) {
   return trial ? LIMITS.premium : LIMITS.free;
 }
 
-export function buildPremiumEmbed(featureName) {
-  return new EmbedBuilder()
-    .setColor(0x2d2d2d)
-    .setTitle('Premium Feature')
-    .setDescription(
-      `**${featureName}** is a Premium feature.\n\n` +
+const SITE = 'https://roleplaymanager.xyz';
+
+/** The pricing page, saying where the visit came from and for which server. */
+export function pricingUrl(from, guildId) {
+  return SITE + '/pricing?from=' + encodeURIComponent(from) + (guildId ? '&guild=' + guildId : '');
+}
+
+/**
+ * Has this server had its one free trial? Cached briefly, because it is
+ * asked every time a wall is shown.
+ */
+const trialUsedCache = new Map();
+export async function trialUsed(guildId) {
+  if (!guildId) return false;
+  const cached = trialUsedCache.get(guildId);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
+  const { default: GuildTrial } = await import('../models/GuildTrial.js');
+  const value = !!(await GuildTrial.exists({ guildId }));
+  trialUsedCache.set(guildId, { value, ts: Date.now() });
+  return value;
+}
+
+/**
+ * The buttons under a wall. Before the trial: start it here, or see pricing.
+ * After it: buy Premium for this server. When the bot is set up to sell
+ * inside Discord (DISCORD_PREMIUM_SKU_ID), Discord's own purchase button goes
+ * on a row of its own.
+ */
+function wallRows({ trialUsed: used, guildId }) {
+  const row = new ActionRowBuilder();
+  if (!used) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId('premium_start_trial')
+        .setLabel(`Start the free ${TRIAL_DAYS} day trial`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setLabel('See pricing')
+        .setStyle(ButtonStyle.Link)
+        .setURL(pricingUrl('wall', guildId))
+    );
+  } else {
+    row.addComponents(
+      new ButtonBuilder()
+        .setLabel('Get Premium for this server')
+        .setStyle(ButtonStyle.Link)
+        .setURL(pricingUrl('wall', guildId))
+    );
+  }
+  const rows = [row];
+  const sku = process.env.DISCORD_PREMIUM_SKU_ID;
+  if (sku && /^\d{17,20}$/.test(sku)) {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId(sku)
+    ));
+  }
+  return rows;
+}
+
+export function buildPremiumEmbed(featureName, opts = {}) {
+  const url = pricingUrl('wall', opts.guildId);
+  const body = opts.trialUsed
+    ? `**${featureName}** is a Premium feature.\n\n` +
+      `This server has already had its free trial, so the next step is Premium itself. ` +
+      `It is $5 a month, cancel any time, and it switches on for this server the moment the payment goes through. ` +
+      `Everything you set up during the trial is still saved.\n\n` +
+      `[Get Premium for this server](${url})\n` +
+      `-# Already have a key? Use \`/activatepremium\`.`
+    : `**${featureName}** is a Premium feature.\n\n` +
       `### Try it free for ${TRIAL_DAYS} days\n` +
       `Press the button below and it unlocks immediately, no card, no signup, ` +
       `nothing to install. Every Premium feature is included.\n\n` +
       `### Or buy Premium\n` +
-      `[roleplaymanager.xyz/pricing](https://roleplaymanager.xyz/pricing?from=wall)\n` +
-      `-# Already have a key? Use \`/activatepremium\`. One free trial per server.`
-    )
+      `[roleplaymanager.xyz/pricing](${url})\n` +
+      `-# Already have a key? Use \`/activatepremium\`. One free trial per server.`;
+  return new EmbedBuilder()
+    .setColor(0x2d2d2d)
+    .setTitle('Premium Feature')
+    .setDescription(body)
     .setFooter({ text: 'RPM' });
 }
 
 /**
- * The premium wall, as a full interaction payload with a Start Free Trial button.
+ * The premium wall, as a full interaction payload.
  *
- * The wall used to be a dead end - a pricing link plus instructions to go vote on
- * Top.gg and come back. That asked someone to leave Discord at the exact moment
- * they had just discovered they wanted the feature. Two servers out of 115 had
- * ever bought Premium.
+ * The wall used to be a dead end: a pricing link plus instructions to go vote
+ * on Top.gg and come back. It now starts the trial in place, or once the trial
+ * is spent, buys Premium for this server in one step. The __wall marker lets
+ * the dispatch point (utils/funnelHook.js) rebuild it for the server it is in.
  */
+export function premiumReply(featureName, opts = {}) {
+  return {
+    embeds: [buildPremiumEmbed(featureName, opts)],
+    components: wallRows(opts),
+    __wall: { type: 'feature', featureName },
+  };
+}
+
 /**
  * What to send when somebody hits a free tier cap.
  *
- * Being stopped is the moment somebody is most willing to try Premium, and
- * every one of these used to end at a price list. Offering the free week here
- * costs nothing and asks for no decision they are not ready to make.
+ * Being stopped is the moment somebody is most willing to try Premium. Before
+ * the trial it offers the free week; after it, Premium itself.
  *
  * @param {string} what   plural noun, as the person would say it: "ticket types"
  * @param {number} limit  the cap they just hit
  * @param {string} [gain] what Premium gives instead, defaults to unlimited
  */
-export function limitReply(what, limit, gain) {
+export function limitReply(what, limit, gain, opts = {}) {
+  const tail = opts.trialUsed
+    ? 'This server has already had its free trial. Premium is $5 a month and switches on the moment you pay. Nothing you have set up changes.'
+    : 'You can have Premium free for ' + TRIAL_DAYS + ' days. Nothing to pay, no card, and your settings stay exactly as they are when it ends.';
   const embed = new EmbedBuilder()
     .setColor('#2d2d2d')
     .setTitle('You have used all ' + limit + ' of your ' + what)
     .setDescription(
       'The free plan includes ' + limit + ' ' + what + ' and this server has them all.\n\n' +
-      '**With Premium:** ' + (gain || 'unlimited ' + what) + '.\n\n' +
-      'You can have Premium free for ' + TRIAL_DAYS + ' days. Nothing to pay, no card, and your settings stay exactly as they are when it ends.'
+      '**With Premium:** ' + (gain || 'unlimited ' + what) + '.\n\n' + tail
     )
     .setFooter({ text: 'RPM' });
 
   return {
     embeds: [embed],
-    components: [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('premium_start_trial')
-          .setLabel('Start the free ' + TRIAL_DAYS + ' day trial')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setLabel('See pricing')
-          .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/pricing?from=wall')
-      ),
-    ],
+    components: wallRows(opts),
+    __wall: { type: 'limit', what, limit, gain: gain || null },
   };
 }
 
-export function premiumReply(featureName) {
-  return {
-    embeds: [buildPremiumEmbed(featureName)],
-    components: [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('premium_start_trial')
-          .setLabel(`Start free ${TRIAL_DAYS}-day trial`)
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setLabel('See pricing')
-          .setStyle(ButtonStyle.Link)
-          .setURL('https://roleplaymanager.xyz/pricing?from=wall')
-      ),
-    ],
-  };
+/** Rebuild a marked wall for a given server. Used by the dispatch point. */
+export function rebuildWall(marker, opts = {}) {
+  if (marker && marker.type === 'limit') {
+    const { __wall, ...payload } = limitReply(marker.what, marker.limit, marker.gain || undefined, opts);
+    return payload;
+  }
+  const { __wall, ...payload } = premiumReply((marker && marker.featureName) || 'This', opts);
+  return payload;
 }
 
 export async function recordVote(userId) {
@@ -277,7 +368,9 @@ export async function activateTrialForGuild(guildId, activatedByUserId) {
     { userId: activatedByUserId, used: false },
     { used: true, usedForGuildId: guildId, usedAt: new Date() }
   ).catch(() => {});
-  trialCache.delete(guildId);
+  // Clears every cache and tells index.js, which switches AI dispatch to full
+  // mode now rather than at the next deploy.
+  clearPremiumCache(guildId);
   recordFunnel({ kind: 'trial', guildId, userId: activatedByUserId });
   return { success: true, expiresAt };
 }

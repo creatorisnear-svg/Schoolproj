@@ -8,6 +8,11 @@ var toastEl = document.getElementById('toast');
 var currentUser = null;
 var currentGuild = null;
 
+/* Premium or a running trial: what the dashboard should unlock. */
+function hasPremiumAccess() {
+  return !!(currentGuild && (currentGuild.premium || currentGuild.premiumAccess));
+}
+
 /* Pricing links carry where they came from and which server, so the pricing
    page can count the visit and switch Premium on for that server after payment. */
 function pricingHref(from) {
@@ -71,7 +76,7 @@ function renderErrorView(title, message) {
 /* ── Offline awareness ── */
 function offlineBannerHtml() {
   return '<div id="offline-banner" class="offline-banner">' +
-    'You are offline — changes cannot be saved until the connection returns.</div>';
+    'You are offline. Changes cannot be saved until the connection returns.</div>';
 }
 
 function setOffline(off) {
@@ -129,7 +134,7 @@ function api(path, opts) {
     if (!res.ok) {
       return res.json().catch(function() { return {}; }).then(function(err) {
         if (err.error === 'premium_required') {
-          toast('Premium required - activate a key in the Premium section below.', 'error');
+          toast('Premium required. Start the free trial or get Premium in the Premium section below.', 'error');
           var premSection = document.getElementById('premium-section');
           if (premSection) {
             premSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -146,7 +151,7 @@ function api(path, opts) {
   }).catch(function() {
     done();
     if (timedOut) {
-      toast('That took too long. The bot may be starting up — try again in a moment.', 'error');
+      toast('That took too long. The bot may be starting up. Try again in a moment.', 'error');
     } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       setOffline(true);
       toast('You are offline.', 'error');
@@ -300,6 +305,14 @@ function init() {
           '<a href="#" onclick="logout();return false;" class="user-menu-item user-menu-item-danger">Sign Out</a>' +
           '</div></div>';
       }
+      // Links from the bot, such as /directory, open a given server and page.
+      try {
+        var qp = new URLSearchParams(window.location.search);
+        if (/^\d{17,20}$/.test(qp.get('guild') || '')) {
+          saveSession(qp.get('guild'), qp.get('section') || null);
+          history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (e) {}
       var savedGuildId = getSavedGuildId();
       var savedSection = getSavedSection();
       if (savedGuildId && guilds.some(function(g) { return g.id === savedGuildId; })) {
@@ -381,7 +394,7 @@ function selectServer(guildId, section) {
     }
     currentGuild = data;
     pendingChanges = {};
-    if (section) { renderSettings(section); } else { renderDashboard(); }
+    if (section === 'directory') { renderDirectory(); } else if (section) { renderSettings(section); } else { renderDashboard(); }
   });
 }
 
@@ -478,6 +491,9 @@ function renderSidebar(active) {
     '<div class="sidebar-item ' + (active === 'overview' ? 'active' : '') + '" onclick="closeSidebar();renderDashboard()">Overview</div>' +
     '<div class="sidebar-item" onclick="closeSidebar();renderServerSelect()">Switch Server</div>' +
     '</div>' +
+    '<div class="sidebar-section"><div class="sidebar-section-title">Grow</div>' +
+    '<div class="sidebar-item ' + (active === 'directory' ? 'active' : '') + '" onclick="closeSidebar();renderDirectory()">Server Directory</div>' +
+    '</div>' +
     groupedSections +
     premiumSection +
     '</div>' +
@@ -535,8 +551,16 @@ function renderDashboard() {
          (offCount ? ' · ' + offCount + ' off' : ''))
       : (enabledCount > 0
           ? enabledCount + ' feature' + (enabledCount !== 1 ? 's' : '') + ' active'
-          : 'No features enabled yet — follow the guide below')) +
+          : 'No features enabled yet. Follow the guide below.')) +
     '</p></div>';
+
+  // Recruiting is what owners care about most, and the directory is free.
+  if (!g.directoryListed) {
+    html += '<div class="config-section" style="margin-bottom:16px;border-color:rgba(96,165,250,0.35);"><div class="config-row" style="gap:12px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:220px;"><div style="font-weight:700;font-size:14px;margin-bottom:4px;">Get new members</div>' +
+      '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;">List ' + esc(g.name) + ' in the free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server to join.</div></div>' +
+      '<button class="btn btn-primary btn-sm" onclick="renderDirectory()">List your server</button></div></div>';
+  }
 
   // ── Stats row ──────────────────────────────────────────────────────────────
   html += '<div class="dash-grid" style="margin-bottom:16px;">' +
@@ -555,7 +579,7 @@ function renderDashboard() {
         '<div class="setup-guide-title">Getting Started</div>' +
         '<div class="setup-guide-sub">' +
           (hasLogChannel
-            ? 'You have features switched on that are not finished yet — members cannot use those until they are.'
+            ? 'You have features switched on that are not finished yet. Members cannot use those until they are.'
             : 'Complete these steps to get the bot working on your server') +
         '</div>' +
         '<div class="setup-steps">' +
@@ -564,7 +588,7 @@ function renderDashboard() {
                 '<div class="setup-step-num">1</div>' +
                 '<div class="setup-step-body">' +
                   '<div class="setup-step-title">Set a log channel</div>' +
-                  '<div class="setup-step-desc">Pick a private text channel where the bot records everything — strikes, verifications, tickets. Staff-only channels work best.</div>' +
+                  '<div class="setup-step-desc">Pick a private text channel where the bot records everything: strikes, verifications, tickets. Staff-only channels work best.</div>' +
                 '</div>' +
                 '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'general\')">Set Channel &rsaquo;</button>' +
               '</div>' +
@@ -584,7 +608,7 @@ function renderDashboard() {
                   '<div class="setup-step-title">Finish ' + incompleteCount + ' feature' + (incompleteCount !== 1 ? 's' : '') + '</div>' +
                   '<div class="setup-step-desc">' + esc(incompleteNames.slice(0, 3).join(', ')) +
                     (incompleteNames.length > 3 ? ' and ' + (incompleteNames.length - 3) + ' more' : '') +
-                    ' — each is switched on but still missing something.</div>' +
+                    '. Each is switched on but still missing something.</div>' +
                 '</div>' +
                 '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'' + esc(firstIncompleteMod || 'general') + '\')">Finish Setup &rsaquo;</button>' +
               '</div>'
@@ -592,7 +616,7 @@ function renderDashboard() {
                 '<div class="setup-step-num">3</div>' +
                 '<div class="setup-step-body">' +
                   '<div class="setup-step-title">Turn on the features you want</div>' +
-                  '<div class="setup-step-desc">Everything below is off by default. Each one explains what it does — switch on whatever fits your server.</div>' +
+                  '<div class="setup-step-desc">Everything below is off by default. Each one explains what it does. Switch on whatever fits your server.</div>' +
                 '</div>' +
               '</div>') +
         '</div>' +
@@ -743,7 +767,7 @@ function redeemTrial(btn) {
 function cancelSubscription() {
   var plan = (currentGuild && currentGuild.premiumDetails && currentGuild.premiumDetails.plan) || 'monthly';
   var planLabel = plan === 'quarterly' ? '3-month' : 'monthly';
-  if (!confirm('Cancel your ' + planLabel + ' subscription? Premium stays active until the end of the current billing period - no refunds are issued.')) return;
+  if (!confirm('Cancel your ' + planLabel + ' subscription? Premium stays active until the end of the current billing period. No refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
   api('/guild/' + currentGuild.id + '/premium/cancel', { method: 'POST' }).then(function(result) {
@@ -773,8 +797,8 @@ function reactivateSubscription() {
 
 function renderPremiumSection(g) {
   var premiumItems = [];
-  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch - officers talk, bot responds');
-  if (isFlagPremium('appys')) premiumItems.push('Applications - custom application panels with DM Q&A flow');
+  if (isFlagPremium('dispatch')) premiumItems.push('AI Voice Dispatch: officers talk, the bot answers');
+  if (isFlagPremium('appys')) premiumItems.push('Applications: unlimited custom application panels');
   premiumItems.push('Blackjack & Roulette gambling games');
   premiumItems.push('Top-25 leaderboard (free: top 10)');
   premiumItems.push('Unlimited ticket types (free: 5)');
@@ -795,7 +819,7 @@ function renderPremiumSection(g) {
 
     var sublabel = isCancelling && periodEndStr
       ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
-      : premiumItems.join(', ') + ' - all unlocked.';
+      : premiumItems.join(', ') + ': all unlocked.';
 
     var planLabel = pd.plan === 'monthly'
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
@@ -840,7 +864,7 @@ function renderPremiumSection(g) {
 
   return '<div class="config-section" id="premium-section" style="margin-top:16px;border-color:rgba(88,101,242,0.4);">' +
     '<div class="config-section-header" style="background:rgba(88,101,242,0.04);">' +
-    '<h3 style="color:#7b8cec;">Premium - Unlock More</h3>' +
+    '<h3 style="color:#7b8cec;">Premium: Unlock More</h3>' +
     '<span class="status-badge disabled"><span class="status-dot"></span>Inactive</span>' +
     '</div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:12px;">' +
@@ -859,14 +883,17 @@ function renderPremiumSection(g) {
     '<input type="text" id="premium-key-input" class="config-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1;min-width:180px;max-width:280px;">' +
     '<button id="activate-premium-btn" class="btn btn-primary btn-sm" onclick="activatePremium()">Activate Key</button>' +
     '</div>' +
-    '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">' +
-    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 7-Day Trial</div>' +
-    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Unlock every Premium feature for 7 days. No card, no signup.</p>' +
-    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-    '<button class="btn btn-primary btn-sm" onclick="redeemTrial(this)">Start Free Trial</button>' +
-    '</div>' +
-    '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">One trial per server, ever.</div>' +
-    '</div>' +
+    (currentGuild && currentGuild.trialUsed
+      ? '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;font-size:12px;color:var(--text-muted);line-height:1.5;">' +
+        'This server has had its free trial. Premium switches on the moment the payment goes through, and everything you set up is still saved.</div>'
+      : '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">' +
+        '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:8px;">Free 7-Day Trial</div>' +
+        '<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;line-height:1.5;">Unlock every Premium feature for 7 days. No card, no signup.</p>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary btn-sm" onclick="redeemTrial(this)">Start Free Trial</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">One trial per server, ever.</div>' +
+        '</div>') +
     '</div></div></div>';
 }
 
@@ -1018,7 +1045,7 @@ function toggleFeature(el) {
       currentGuild.config[key] = newVal;
       if (newVal && modId) {
         // Auto-navigate to the configure page so the user can finish setup
-        toast('Enabled — configure it now');
+        toast('Enabled. Configure it now.');
         setTimeout(function() { renderSettings(modId); }, 700);
       } else {
         toast(newVal ? 'Feature enabled' : 'Feature disabled');
@@ -1084,22 +1111,32 @@ function renderSettings(mod) {
       '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
       '<div class="dash-header"><h1>' + esc(data.name) + '</h1><p>' + esc(data.description) + '</p></div>';
 
-    var isPremiumLocked = data.premium && !currentGuild.premium;
+    // A trial unlocks everything while it lasts, and a partly free feature
+    // keeps its free part usable: only its paid fields are locked.
+    var hasAccess = hasPremiumAccess();
+    var isPartial = !!data.partial;
+    var isPremiumLocked = data.premium && !hasAccess && !isPartial;
+    var showPremiumLinks = isPremiumLocked || (isPartial && !hasAccess);
 
     if (data.premium) {
       html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);">' +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-        (isPremiumLocked ? 'Premium required - activate a key to configure this feature.' : 'Premium feature - active on this server.') +
-        '</div>' +
         (isPremiumLocked
+          ? 'Premium required. Start the free trial or get Premium to configure this feature.'
+          : (isPartial && !hasAccess)
+            ? 'Partly free: ' + esc(data.freeTier || 'the basics') + ' is free. The locked settings below need Premium.'
+            : (currentGuild.onTrial && !currentGuild.premium)
+              ? 'Premium feature, unlocked by your free trial.'
+              : 'Premium feature, active on this server.') +
+        '</div>' +
+        (showPremiumLinks
           ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
-            '<a href="https://roleplaymanager.xyz' + pricingHref('dashboard') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Purchase Premium</a>' +
+            '<a href="https://roleplaymanager.xyz' + pricingHref('dashboard') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Get Premium</a>' +
             '<span style="color:var(--amber-dim);">·</span>' +
-            '<a href="' + (TOPGG_VOTE_URL || 'https://top.gg') + '" target="_blank" style="color:var(--blue);text-decoration:underline;font-size:12px;">Vote on Top.gg</a>' +
-            '<span style="color:var(--amber-dim);">·</span>' +
-            '<a href="#" onclick="redeemTrial(this);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Redeem Trial</a>' +
-            '<span style="color:var(--amber-dim);">·</span>' +
+            (currentGuild.trialUsed ? '' :
+              '<a href="#" onclick="redeemTrial(this);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Start the free trial</a>' +
+              '<span style="color:var(--amber-dim);">·</span>') +
             '<a href="#" onclick="renderDashboard();setTimeout(function(){var s=document.getElementById(\'premium-section\');if(s)s.scrollIntoView({behavior:\'smooth\'})},200);return false;" style="color:var(--blue);text-decoration:underline;font-size:12px;">Activate Key</a>' +
             '</div>'
           : '') +
@@ -1207,7 +1244,7 @@ function renderBlacklistSettings(data) {
   /* ── Section 2: Add Blacklist Entry ── */
   html += '<div class="config-section" style="margin-top:10px;">' +
     '<div class="config-section-header"><div><h3>Add Entry</h3>' +
-    '<p class="config-section-desc">Blacklist a member by Discord ID, gamertag, or both. IPs are never stored here - IP banning activates when a blacklisted member tries to verify again.</p>' +
+    '<p class="config-section-desc">Blacklist a member by Discord ID, gamertag, or both. IPs are never stored here. IP banning activates when a blacklisted member tries to verify again.</p>' +
     '</div></div>';
 
   html += '<div style="display:flex;flex-direction:column;gap:10px;">' +
@@ -1227,7 +1264,7 @@ function renderBlacklistSettings(data) {
     '<div style="display:flex;align-items:center;gap:10px;">' +
     '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-muted);">' +
     '<input type="checkbox" id="bl-ip-ban" style="accent-color:var(--red);width:15px;height:15px;"> ' +
-    'IP Ban - block future verifications from the same IP address</label>' +
+    'IP Ban: block future verifications from the same IP address</label>' +
     '</div>' +
     '<div><button class="btn btn-danger btn-sm" onclick="addBlacklistEntry(this)">Add to Blacklist</button></div>' +
     '</div>';
@@ -1422,7 +1459,7 @@ function renderDispatchExtras(data) {
     dispatchStep('4', 'Set a dispatch channel', 'AI responses and logs are posted in this text channel', null) +
     '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:10px;width:100%;">' +
-    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels - the bot transcribes the audio, ' +
+    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels, and the bot transcribes the audio, ' +
     'generates an AI dispatcher reply, and reads it back in the channel. On a 10-11, the officer is automatically moved to a traffic stop channel.' +
     '</div>' +
     '</div></div>';
@@ -1457,7 +1494,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet - add at least one so the bot can listen.</span>') + '</div>' +
+    '<div class="channel-tags" id="patrol-tags">' + (patrolTags || '<span style="font-size:12px;color:var(--text-dim);">No channels added yet. Add at least one so the bot can listen.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="patrol-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button>' +
@@ -1475,7 +1512,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional - officers move here when they call a 10-11.</span>') + '</div>' +
+    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional: officers move here when they call a 10-11.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="traffic-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button>' +
@@ -1497,7 +1534,7 @@ function renderDispatchExtras(data) {
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added - add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
+    '<div class="channel-tags" id="leo-tags">' + (leoTags || '<span style="font-size:12px;color:var(--text-dim);">No roles added. Add at least one LEO role to restrict who can use dispatch.</span>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="leo-role-select"><option value="">Select a role...</option>' + roleOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'leo\')">Add Role</button>' +
@@ -1586,9 +1623,9 @@ function removeDispatchChannel(type, id) {
 /* ── Ticket types section ── */
 function renderTicketTypesSection(data) {
   var freeLimit = 5;
-  var limit = currentGuild.premium ? '\u221e' : String(freeLimit);
+  var limit = hasPremiumAccess() ? '\u221e' : String(freeLimit);
   var count = (data.ticketTypes || []).length;
-  var atLimit = !currentGuild.premium && count >= freeLimit;
+  var atLimit = !hasPremiumAccess() && count >= freeLimit;
   var roleOpts = (data.roles || []).map(function(r) {
     return '<option value="' + esc(r.value) + '">' + esc(r.label) + '</option>';
   }).join('');
@@ -1600,7 +1637,7 @@ function renderTicketTypesSection(data) {
     '</div>';
 
   if (count === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below - each type becomes a button on the ticket panel.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No ticket types yet. Add one below. Each type becomes a button on the ticket panel.</span></div>';
   } else {
     var buttonColorLabels = { Primary: 'Blue', Secondary: 'Grey', Success: 'Green', Danger: 'Red' };
     (data.ticketTypes || []).forEach(function(t) {
@@ -1636,7 +1673,7 @@ function renderTicketTypesSection(data) {
       '<option value="Danger">Danger (Red)</option>' +
       '</select>' +
       '</div>' +
-      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional - leave blank for all staff)</option>' + roleOpts + '</select>' +
+      '<select id="tt-role" class="config-select" style="width:100%;"><option value="">Staff role (optional, leave blank for all staff)</option>' + roleOpts + '</select>' +
       '<button class="btn btn-success btn-sm" onclick="addTicketType()">Add Type</button>' +
       '</div>';
   }
@@ -1744,14 +1781,14 @@ function renderRoleRequestSettings(data) {
     '</div>';
 
   if (roles.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No requestable roles yet. Add one below - members can then request it and staff approve via DM.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No requestable roles yet. Add one below. Members can then request it and staff approve via DM.</span></div>';
   } else {
     roles.forEach(function(r) {
       var approverNames = (r.approverRoleNames || []).join(', ');
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<div class="config-left">' +
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
-        '<div class="config-sublabel">Approvers: ' + (approverNames ? esc(approverNames) : 'None set - any staff can approve') + '</div>' +
+        '<div class="config-sublabel">Approvers: ' + (approverNames ? esc(approverNames) : 'None set, so any staff can approve') + '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteRoleRequest(\'' + esc(r.roleId) + '\')">Remove</button>' +
         '</div>';
@@ -1821,7 +1858,7 @@ function renderMovemeSettings(data) {
     '<span style="font-size:11px;color:var(--text-dim);">Members can only move to these channels</span></div>' +
     '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
     '<div class="channel-tags" id="moveme-channel-tags">' +
-    (tags || '<span style="font-size:12px;color:var(--text-dim);">No channels set - all voice channels are allowed when empty.</span>') +
+    (tags || '<span style="font-size:12px;color:var(--text-dim);">No channels set, so every voice channel is allowed.</span>') +
     '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="moveme-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
@@ -1872,7 +1909,7 @@ function removeMovemeChannel(id) {
       if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) tag.remove();
     });
     if (!tagsEl.querySelectorAll('.channel-tag').length) {
-      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels set - all voice channels are allowed when empty.</span>';
+      tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels set, so every voice channel is allowed.</span>';
     }
   }
   showSaveBar('moveme');
@@ -1906,7 +1943,7 @@ function renderCivJobsSettings(data) {
     '</div>';
 
   if (jobs.length === 0) {
-    html += '<div class="config-row"><span class="config-sublabel">No jobs yet. Add a job below - each job appears in the civ portal job board. Role and shift duration are required.</span></div>';
+    html += '<div class="config-row"><span class="config-sublabel">No jobs yet. Add a job below. Each job appears in the civ portal job board. Role and shift duration are required.</span></div>';
   } else {
     jobs.forEach(function(j) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
@@ -2029,11 +2066,11 @@ function renderAppySettings(data) {
     '<div style="font-size:13px;font-weight:600;color:var(--text);">Make Application</div>' +
     '<input id="appy-name" type="text" class="config-input" placeholder="Application name (e.g. LEO Application)">' +
     '<input id="appy-desc" type="text" class="config-input" placeholder="Short description shown in the select menu (optional)">' +
-    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional - assigned when accepted)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional, given when accepted)</div>' +
     '<select id="appy-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
     '<div style="font-size:12px;color:var(--text-dim);">Review Channel (where submissions for this application go)</div>' +
     '<select id="appy-review-ch" class="config-select" style="min-width:200px;"><option value="">Use global review channel</option>' + channelOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional, pinged on new submissions; only these roles can accept or deny)</div>' +
     '<div id="appy-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
     allRoles.map(function(r) {
       return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;">' +
@@ -2041,7 +2078,7 @@ function renderAppySettings(data) {
     }).join('') +
     (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
     '</div>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional — sent to the applicant when accepted)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional, sent to the applicant when accepted)</div>' +
     '<textarea id="appy-accept-msg" class="config-input" placeholder="e.g. Welcome to the team! Please read #rules and introduce yourself." rows="3" style="resize:vertical;min-height:60px;"></textarea>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
@@ -2078,9 +2115,9 @@ function renderAppySettings(data) {
     '<div style="font-size:12px;font-weight:600;color:var(--text);">Review Channel</div>' +
     '<div style="font-size:12px;color:var(--text-dim);">Where submissions for THIS application type are posted for staff review.</div>' +
     '<select id="appy-edit-review-ch" class="config-select" style="min-width:200px;"><option value="">Use global review channel</option>' + channelOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional — assigned when accepted)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Accept Role (optional, given when accepted)</div>' +
     '<select id="appy-edit-role" class="config-select"><option value="">No role on accept</option>' + roleOpts + '</select>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional — pinged on new submissions; only these roles can accept or deny)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Review Ping Roles (optional, pinged on new submissions; only these roles can accept or deny)</div>' +
     '<div id="appy-edit-ping-role-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--bg-input);">' +
     allRoles.map(function(r) {
       return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;">' +
@@ -2088,7 +2125,7 @@ function renderAppySettings(data) {
     }).join('') +
     (allRoles.length === 0 ? '<span class="config-sublabel">No roles found.</span>' : '') +
     '</div>' +
-    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional — sent to the applicant when accepted)</div>' +
+    '<div style="font-size:12px;color:var(--text-dim);">Acceptance Message (optional, sent to the applicant when accepted)</div>' +
     '<textarea id="appy-edit-accept-msg" class="config-input" placeholder="e.g. Welcome to the team! Please read #rules and introduce yourself." rows="3" style="resize:vertical;min-height:60px;"></textarea>' +
     '<div style="font-size:12px;color:var(--text-dim);">Questions</div>' +
     '<div id="appy-edit-questions-list" style="display:flex;flex-direction:column;gap:6px;"></div>' +
@@ -2241,7 +2278,7 @@ function renderCalendarEventsSection(data) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<div class="config-left">' +
         '<span class="config-label">' + esc(e.day) + (e.time ? ' at ' + esc(e.time) : '') + (e.timezone ? ' ' + esc(e.timezone) : '') + '</span>' +
-        '<div class="config-sublabel">' + esc(e.description || 'No description') + (e.person ? ' - Host: ' + esc(e.person) : '') + '</div>' +
+        '<div class="config-sublabel">' + esc(e.description || 'No description') + (e.person ? ' · Host: ' + esc(e.person) : '') + '</div>' +
         '</div>' +
         '<button class="btn btn-danger btn-sm" onclick="deleteCalendarEvent(\'' + esc(e.id) + '\')">Remove</button>' +
         '</div>';
@@ -2390,7 +2427,7 @@ function renderEconomySettings(data) {
 
   /* ── Role Income ── */
   var riList = data.roleIncomeList || [];
-  var riLimitLabel = currentGuild.premium ? '\u221e' : '2';
+  var riLimitLabel = hasPremiumAccess() ? '\u221e' : '2';
   var riRoles = data.roles || [];
   html += '<div class="config-section" style="margin-top:4px;">' +
     '<div class="config-section-header"><h3>Role Income</h3>' +
@@ -2408,7 +2445,7 @@ function renderEconomySettings(data) {
         '</div>';
     });
   }
-  if (!currentGuild.premium && riList.length >= 2) {
+  if (!hasPremiumAccess() && riList.length >= 2) {
     html += '<div class="config-row" style="background:var(--amber-bg);">' +
       '<span style="font-size:12px;color:var(--amber);">Free limit reached (2 entries). Upgrade to Premium for unlimited.</span></div>';
   } else {
@@ -2773,7 +2810,7 @@ function mmAction(action) {
     if (r && r.success) {
       toast(r.message || 'Done');
       var infoEl = document.getElementById('mm-selected-info');
-      if (infoEl && r.newBalance !== undefined) infoEl.textContent = 'Selected: ' + _mmSelectedUser.username + ' - New balance: ' + r.newBalance;
+      if (infoEl && r.newBalance !== undefined) infoEl.textContent = 'Selected: ' + _mmSelectedUser.username + ' · New balance: ' + r.newBalance;
     } else if (r && r.error) toast(r.error, 'error');
   });
 }
@@ -3158,9 +3195,14 @@ function renderSettingsFields(data, mod) {
 function renderOneField(field, mod) {
   var isTextarea = field.type === 'textarea';
   var html = '<div class="config-row' + (isTextarea ? ' textarea-row' : '') + '">';
-  html += '<div class="config-left"><span class="config-label">' + esc(field.label) + '</span>';
+  html += '<div class="config-left"><span class="config-label">' + esc(field.label) +
+    (field.locked ? ' <span style="font-size:10px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;color:var(--amber);border:1px solid rgba(251,191,36,0.3);border-radius:4px;padding:1px 5px;margin-left:4px;">Premium</span>' : '') +
+    '</span>';
   if (field.description) html += '<div class="config-sublabel">' + esc(field.description) + '</div>';
   html += '</div>';
+  // A paid field of a partly free feature: shown, so it is clear what
+  // Premium adds, but not usable until then.
+  if (field.locked) html += '<div style="pointer-events:none;opacity:0.4;user-select:none;" title="Needs Premium">';
 
   if (field.type === 'toggle') {
     html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '" title="' + esc(field.label) + '"></div>';
@@ -3187,6 +3229,7 @@ function renderOneField(field, mod) {
     html += '<span class="config-value">' + esc(String(field.value != null ? field.value : 'Not Set')) + '</span>';
   }
 
+  if (field.locked) html += '</div>';
   html += '</div>';
   return html;
 }
@@ -3295,3 +3338,181 @@ function saveSettings(mod) {
 }
 
 init();
+
+/* ── Server Directory ──
+   The owner's side of roleplaymanager.xyz/servers: list the server, describe
+   it, bump it, see what it gets, and buy a featured spot. */
+var directoryState = null;
+
+function renderDirectory() {
+  rememberView(renderDirectory);
+  saveSession(currentGuild && currentGuild.id, 'directory');
+  app.innerHTML = '<div class="dashboard-layout">' + renderSidebar('directory') +
+    '<div class="dashboard-content">' + sidebarToggleBtn('Menu') +
+    '<div class="dash-header"><h1>Server Directory</h1><p>Loading...</p></div></div></div>';
+
+  api('/directory/manage/' + currentGuild.id).then(function(data) {
+    if (!data) return;
+    directoryState = data;
+    var l = data.listing || { listed: false, description: '', platforms: [], region: 'na', tags: [], inviteChannelId: null };
+    var o = data.options;
+    var listed = l.listed && !l.hidden;
+    var now = Date.now();
+    var featuredUntil = l.featuredUntil ? new Date(l.featuredUntil) : null;
+    var featured = featuredUntil && featuredUntil.getTime() > now;
+    var nextBump = l.bumpedAt ? new Date(new Date(l.bumpedAt).getTime() + data.bumpCooldownHours * 3600000) : null;
+    var canBump = listed && (!nextBump || nextBump.getTime() <= now);
+    var publicUrl = 'https://roleplaymanager.xyz/servers/?q=' + encodeURIComponent(data.name);
+
+    function checks(name, map, selected) {
+      return '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + Object.keys(map).map(function(k) {
+        return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">' +
+          '<input type="checkbox" name="' + name + '" value="' + esc(k) + '"' + (selected.indexOf(k) >= 0 ? ' checked' : '') + '> ' + esc(map[k]) + '</label>';
+      }).join('') + '</div>';
+    }
+
+    var status = l.hidden
+      ? '<span class="status-badge disabled"><span class="status-dot"></span>Removed</span>'
+      : listed
+        ? '<span class="status-badge"><span class="status-dot"></span>Listed</span>'
+        : '<span class="status-badge disabled"><span class="status-dot"></span>Not listed</span>';
+
+    var html = '<div class="dashboard-layout">' + renderSidebar('directory') +
+      '<div class="dashboard-content">' + sidebarToggleBtn('Menu') +
+      '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
+      '<div class="dash-header"><h1>Server Directory</h1><p>Get new members. List ' + esc(data.name) +
+      ' in the public directory of console GTA RP servers at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a server to join. Listing is free.</p></div>';
+
+    if (l.hidden) {
+      html += '<div class="config-section" style="border-color:rgba(248,113,113,0.3);"><div class="config-row"><span style="font-size:13px;color:var(--red, #f87171);">This listing was removed from the directory' +
+        (l.hiddenReason ? ': ' + esc(l.hiddenReason) : '') + '. Contact support if you think that was a mistake.</span></div></div>';
+    }
+
+    // What it is doing for the server.
+    html += '<div class="config-section"><div class="config-section-header"><h3>Your listing</h3>' + status + '</div>' +
+      '<div class="config-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
+      dirStat('Votes', data.stats.votes, 'last 30 days') +
+      dirStat('Join clicks', data.stats.joinClicks, 'last 30 days') +
+      dirStat('Rank', data.stats.rank ? '#' + data.stats.rank : 'n/a', data.stats.total ? 'of ' + data.stats.total + ' servers' : '') +
+      dirStat('Featured', featured ? 'Yes' : 'No', featured ? 'until ' + featuredUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') +
+      '</div>' +
+      (listed
+        ? '<div class="config-row" style="gap:8px;flex-wrap:wrap;justify-content:flex-start;">' +
+          '<button class="btn btn-primary btn-sm" id="dir-bump" ' + (canBump ? '' : 'disabled') + ' onclick="bumpDirectory(this)">Bump to the top</button>' +
+          '<a class="btn btn-secondary btn-sm" href="' + publicUrl + '" target="_blank">See it in the directory</a>' +
+          '<span style="font-size:12px;color:var(--text-muted);">' +
+          (canBump ? 'Bumping moves you to the top of Recently Bumped. ' : 'Next bump ' + (nextBump ? nextBump.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'soon') + '. ') +
+          'Every ' + data.bumpCooldownHours + ' hours' + (data.premium ? ' with Premium.' : '. Premium servers can bump every 2 hours.') + '</span></div>'
+        : '') +
+      '</div>';
+
+    // The listing itself.
+    html += '<div class="config-section"><div class="config-section-header"><h3>Listing details</h3></div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Show in the directory</span>' +
+      '<div class="config-sublabel">Needs a description, a platform and at least ' + data.minMembers + ' members.</div></div>' +
+      '<div class="toggle ' + (l.listed ? 'active' : '') + '" id="dir-listed" onclick="this.classList.toggle(\'active\')"></div></div>' +
+      '<div class="config-row textarea-row"><div class="config-left"><span class="config-label">Description</span>' +
+      '<div class="config-sublabel">What kind of RP, departments, what makes it good. Up to 500 characters.</div></div>' +
+      '<textarea class="config-textarea" id="dir-description" maxlength="500" placeholder="Serious PS5 roleplay with LSPD, BCSO, Fire and EMS. Weekly sessions, active staff, training for new members.">' + esc(l.description || '') + '</textarea></div>' +
+      '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;"><span class="config-label">Platforms</span>' + checks('dir-platform', o.platforms, l.platforms || []) + '</div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Region</span></div>' +
+      '<select class="config-select" id="dir-region">' + Object.keys(o.regions).map(function(k) {
+        return '<option value="' + esc(k) + '"' + (l.region === k ? ' selected' : '') + '>' + esc(o.regions[k]) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;"><span class="config-label">Tags <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(up to ' + o.maxTags + ')</span></span>' + checks('dir-tag', o.tags, l.tags || []) + '</div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Invite channel</span>' +
+      '<div class="config-sublabel">Where people land when they press Join. The bot makes a permanent invite there.</div></div>' +
+      '<select class="config-select" id="dir-channel"><option value="">Pick for me</option>' + (data.channels || []).map(function(c) {
+        return '<option value="' + esc(c.id) + '"' + (l.inviteChannelId === c.id ? ' selected' : '') + '>#' + esc(c.name) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="config-row" style="justify-content:flex-end;"><button class="btn btn-primary" onclick="saveDirectory(this)">Save listing</button></div>' +
+      '</div>';
+
+    // Paid promotion.
+    html += '<div class="config-section" style="border-color:rgba(251,191,36,0.3);"><div class="config-section-header" style="background:rgba(251,191,36,0.04);"><h3 style="color:#fbbf24;">Get featured</h3></div>' +
+      '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:10px;">' +
+      '<p style="font-size:13px;color:var(--text-muted);margin:0;line-height:1.6;">Featured servers sit at the very top of the directory and on the RolePlayManager home page, above every other server, with a highlighted card. ' +
+      'Only ' + o.maxFeatured + ' servers can be featured at once. ' +
+      (data.featuredSlotsLeft > 0 || featured
+        ? (featured ? 'Buying again adds the time on.' : data.featuredSlotsLeft + ' of ' + o.maxFeatured + ' spots are open right now.')
+        : 'All spots are taken right now' + (data.nextFeaturedOpening ? '; the next one opens ' + new Date(data.nextFeaturedOpening).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '') + '.') +
+      '</p>' +
+      (listed
+        ? '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + o.promotions.map(function(p) {
+            return '<button class="btn ' + (p.days === 30 ? 'btn-primary' : 'btn-secondary') + ' btn-sm" onclick="promoteDirectory(' + p.days + ', this)"' +
+              (data.featuredSlotsLeft > 0 || featured ? '' : ' disabled') + '>Feature for ' + esc(p.label) + ' · $' + (p.amount / 100).toFixed(2) + '</button>';
+          }).join('') + '</div>' +
+          '<label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);"><input type="checkbox" id="dir-tos"> I agree to the <a href="/tos" target="_blank" style="color:var(--blue);">Terms of Service</a>.</label>'
+        : '<span style="font-size:12px;color:var(--text-muted);">List the server first, then you can feature it.</span>') +
+      '</div></div>';
+
+    if (!data.premium) {
+      html += '<div class="config-section"><div class="config-row" style="font-size:13px;color:var(--text-muted);line-height:1.6;">' +
+        'Premium servers get a Premium badge in the directory, are listed above free servers, and can bump every 2 hours instead of every ' + data.bumpCooldownHours + '. ' +
+        '<a href="https://roleplaymanager.xyz' + pricingHref('directory') + '" target="_blank" style="color:var(--blue);">See Premium</a></div></div>';
+    }
+
+    html += '</div></div>';
+    app.innerHTML = html;
+  });
+}
+
+function dirStat(label, value, hint) {
+  return '<div style="background:var(--bg-secondary, #111318);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">' +
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">' + esc(label) + '</div>' +
+    '<div style="font-size:20px;font-weight:700;margin:2px 0;">' + esc(String(value)) + '</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);">' + esc(hint || '') + '</div></div>';
+}
+
+function checkedValues(name) {
+  return Array.prototype.map.call(document.querySelectorAll('input[name="' + name + '"]:checked'), function(el) { return el.value; });
+}
+
+function saveDirectory(btn) {
+  var body = {
+    listed: document.getElementById('dir-listed').classList.contains('active'),
+    description: document.getElementById('dir-description').value,
+    platforms: checkedValues('dir-platform'),
+    region: document.getElementById('dir-region').value,
+    tags: checkedValues('dir-tag'),
+    inviteChannelId: document.getElementById('dir-channel').value || null,
+  };
+  if (directoryState && body.tags.length > directoryState.options.maxTags) {
+    toast('Pick up to ' + directoryState.options.maxTags + ' tags.', 'error');
+    return;
+  }
+  btn.disabled = true;
+  api('/directory/manage/' + currentGuild.id, { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
+    btn.disabled = false;
+    if (!res) return;
+    toast(res.listed ? 'Saved. Your server is in the directory.' : 'Saved.');
+    renderDirectory();
+  });
+}
+
+function bumpDirectory(btn) {
+  btn.disabled = true;
+  api('/directory/manage/' + currentGuild.id + '/bump', { method: 'POST' }).then(function(res) {
+    if (!res) { btn.disabled = false; return; }
+    toast('Bumped to the top.');
+    renderDirectory();
+  });
+}
+
+function promoteDirectory(days, btn) {
+  var tos = document.getElementById('dir-tos');
+  if (!tos || !tos.checked) { toast('Tick the Terms of Service box first.', 'error'); return; }
+  btn.disabled = true;
+  fetch(API_BASE + '/checkout/promote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+    body: JSON.stringify({ guildId: currentGuild.id, days: days, tosAccepted: true })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.url) { window.location.href = d.url; return; }
+    btn.disabled = false;
+    toast((d && d.error) || 'Could not start the payment.', 'error');
+  }).catch(function() {
+    btn.disabled = false;
+    toast('Could not reach the server. Try again in a moment.', 'error');
+  });
+}

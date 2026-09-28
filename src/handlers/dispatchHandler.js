@@ -17,6 +17,7 @@ import Priority from '../models/Priority.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
 import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
 import statusEvents from '../utils/statusEvents.js';
+import { recordAI, withinAllowance, claimAllowanceNotice, PREMIUM_UTTERANCES_PER_MONTH } from '../utils/aiUsage.js';
 
 // Pre-load panic alert sound (MP3 played urgently over voice on 10-99)
 const _panicSoundPath = join(dirname(fileURLToPath(import.meta.url)), '../assets/panic_alert.mp3');
@@ -935,6 +936,7 @@ async function transcribeAudio(wavBuffer) {
           language: 'en',
           prompt: WHISPER_PROMPT.slice(0, 896),
         });
+        recordAI('*', { stt: 1, [provider]: 1 });
         return result.text || '';
       } catch (err) {
         lastErr = err;
@@ -1093,6 +1095,102 @@ function formatCodeForSpeech(text) {
   return result;
 }
 
+/** One request to the voice model, rotating Groq keys on rate limits. */
+async function synthesizeOnce(text) {
+  let lastErr;
+  const maxTries = Math.max(1, groqKeys.length);
+  for (let attempt = 0; attempt < maxTries; attempt++) {
+    const { client, provider } = getAIClient();
+    // Hardcoded, unlike the chat model. Same exposure if it is ever retired.
+    const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
+    const voice = provider === 'groq' ? TTS_VOICE : 'onyx';
+    try {
+      if (attempt === 0) console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
+      const response = await client.audio.speech.create({
+        model,
+        voice,
+        input: text,
+        response_format: provider === 'groq' ? 'wav' : 'opus',
+      });
+      recordAI('*', { [provider]: 1 });
+      return Buffer.from(await response.arrayBuffer());
+    } catch (err) {
+      lastErr = err;
+      if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
+        console.log(`[TTS] Rate limited on key ${attempt + 1}, trying next key...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Split text into pieces of at most max characters, at sentence ends where
+ * possible, then commas, then spaces. Exported for the test suite.
+ */
+export function splitForSpeech(text, max = 190) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return [clean];
+  const pieces = [];
+  let rest = clean;
+  while (rest.length > max) {
+    const window = rest.slice(0, max + 1);
+    let cut = -1;
+    for (const re of [/[.!?](?=\s)/g, /[,;:](?=\s)/g, /\s/g]) {
+      let m;
+      let last = -1;
+      while ((m = re.exec(window)) !== null) last = m.index;
+      if (last > max * 0.4) { cut = last + 1; break; }
+    }
+    if (cut <= 0) cut = max;
+    pieces.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) pieces.push(rest);
+  return pieces.filter(Boolean);
+}
+
+/**
+ * Join WAV clips of the same format into one. Keeps the first clip's format
+ * block and appends every clip's samples. Exported for the test suite.
+ */
+export function concatWav(buffers) {
+  const read = (buf) => {
+    if (buf.length < 12 || buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') {
+      throw new Error('not a WAV clip');
+    }
+    let fmt = null;
+    let data = null;
+    let off = 12;
+    while (off + 8 <= buf.length) {
+      const id = buf.toString('ascii', off, off + 4);
+      let size = buf.readUInt32LE(off + 4);
+      const start = off + 8;
+      if (start + size > buf.length) size = buf.length - start; // streamed clips carry a bogus size
+      if (id === 'fmt ') fmt = buf.subarray(start, start + size);
+      if (id === 'data') data = buf.subarray(start, start + size);
+      off = start + size + (size % 2);
+    }
+    if (!fmt || !data) throw new Error('WAV clip without fmt or data');
+    return { fmt, data };
+  };
+  const clips = buffers.map(read);
+  const fmt = clips[0].fmt;
+  const pcm = Buffer.concat(clips.map((c) => c.data));
+  const header = Buffer.alloc(12 + 8 + fmt.length + 8);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(4 + 8 + fmt.length + 8 + pcm.length, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(fmt.length, 16);
+  fmt.copy(header, 20);
+  header.write('data', 20 + fmt.length, 'ascii');
+  header.writeUInt32LE(pcm.length, 24 + fmt.length);
+  return Buffer.concat([header, pcm]);
+}
+
 export async function generateDispatchTTSPublic(text) {
   return generateDispatchTTS(text);
 }
@@ -1128,34 +1226,16 @@ async function generateDispatchTTS(text) {
     return buf;
   }
 
-  let buf;
-  let lastErr;
-  const maxTries = Math.max(1, groqKeys.length);
-  for (let attempt = 0; attempt < maxTries; attempt++) {
-    const { client, provider } = getAIClient();
-    // Hardcoded, unlike the chat model. Same exposure if it is ever retired.
-    const model = provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1';
-    const voice = provider === 'groq' ? TTS_VOICE : 'onyx';
-    try {
-      if (attempt === 0) console.log(`[TTS] Generating new audio (${text.length} chars): "${text.slice(0, 60)}..."`);
-      const response = await client.audio.speech.create({
-        model,
-        voice,
-        input: text,
-        response_format: provider === 'groq' ? 'wav' : 'opus',
-      });
-      buf = Buffer.from(await response.arrayBuffer());
-      break;
-    } catch (err) {
-      lastErr = err;
-      if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
-        console.log(`[TTS] Rate limited on key ${attempt + 1}, trying next key...`);
-        continue;
-      }
-      throw err;
-    }
-  }
-  if (!buf) throw lastErr;
+  // Groq's voice takes at most 200 characters at a time. A 911 read-out is
+  // about 84 fixed characters plus whatever the caller typed, so long calls
+  // failed with nothing said. Long text is now spoken in pieces and joined
+  // into one clip.
+  if (!groqKeysLoaded) loadGroqKeys();
+  const pieces = groqKeys.length > 0 ? splitForSpeech(text, 190) : [text];
+  const parts = [];
+  for (const piece of pieces) parts.push(await synthesizeOnce(piece));
+  const buf = parts.length === 1 ? parts[0] : concatWav(parts);
+  recordAI('*', { tts: pieces.length, ttsChars: text.length });
 
   ttsMemCache.set(key, buf);
   if (ttsMemCache.size > TTS_MEM_CACHE_MAX) {
@@ -1777,7 +1857,12 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
   for (let attempt = 0; attempt < maxTries; attempt++) {
     const { client, provider } = getAIClient();
     const model = provider === 'groq' ? groqModel() : 'gpt-4o-mini';
-    const maxTokens = 60;
+    // gpt-oss models think before they answer, and the thinking counts
+    // against max_tokens. With 60 the answer often came back empty and the
+    // dispatcher said nothing. They get room to think, told to keep it short;
+    // everything else keeps the tight limit that keeps replies radio length.
+    const reasoning = provider === 'groq' && /gpt-oss/i.test(model);
+    const maxTokens = reasoning ? 400 : 60;
     try {
       const response = await client.chat.completions.create({
         model,
@@ -1786,11 +1871,12 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
         tool_choice: 'auto',
         max_tokens: maxTokens,
         temperature: 0.15,
-        frequency_penalty: 0.5,
+        ...(reasoning ? { reasoning_effort: 'low' } : { frequency_penalty: 0.5 }),
       });
       // Remember what answered, so retired models are paid for once rather
       // than on every call.
       if (provider === 'groq') resolvedGroqModel = model;
+      recordAI(guildId, { llm: 1, replies: 1, [provider]: 1 });
 
       const message = response.choices[0]?.message;
       let rawText = message?.content?.trim() || '';
@@ -1894,6 +1980,16 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
     const isLeo = leoRoleIds.length === 0 || member.roles.cache.some(r => leoRoleIds.includes(r.id));
     if (!isLeo) return;
+
+    // A fair monthly allowance, checked before anything is sent to be
+    // transcribed, so one very busy server cannot run up a bill its $5 does
+    // not cover. Over it, 911 read-outs carry on until the 1st.
+    const allowance = await withinAllowance(guild.id, 'utterances');
+    if (!allowance.allowed) {
+      noticeAllowanceUsed(guild, config).catch(() => {});
+      return;
+    }
+    recordAI(guild.id, { utterances: 1 });
 
     const officerName = member.displayName || member.user.username;
     const ttsName = cleanNameForTTS(officerName);
@@ -4741,6 +4837,48 @@ export function stopAllDispatchTimers(guildId) {
   stopCallRepeatTimer(guildId);
 }
 
+/**
+ * Which tier each server's dispatch is running in, as last set up.
+ *
+ * Whether the bot listens is decided when dispatch starts. Starting a trial,
+ * paying, or a trial or subscription ending used to change nothing until the
+ * next deploy, so a server testing the headline feature on day one of its
+ * trial got a bot that ignored them. index.js calls refreshDispatchTier on
+ * every Premium change, and it re-initialises only when the tier moved.
+ */
+const dispatchTier = new Map();
+
+export async function refreshDispatchTier(guild, client) {
+  if (!guild) return false;
+  const config = await DispatchConfig.findOne({ guildId: guild.id });
+  if (!config || !config.enabled || !(config.patrolChannelIds || []).length) {
+    dispatchTier.delete(guild.id);
+    return false;
+  }
+  const { checkFeatureAccess } = await import('../utils/premiumCheck.js');
+  const full = !!(await checkFeatureAccess(guild.id, 'dispatch')).allowed;
+  if (dispatchTier.has(guild.id) && dispatchTier.get(guild.id) === full) return false;
+  await initDispatchForGuild(guild, client);
+  return true;
+}
+
+/** Once a month, say in the dispatch channel that the voice allowance is used. */
+async function noticeAllowanceUsed(guild, config) {
+  if (!(await claimAllowanceNotice(guild.id))) return;
+  const channel = config?.dispatchChannelId ? guild.channels.cache.get(config.dispatchChannelId) : null;
+  if (!channel?.isTextBased?.()) return;
+  const embed = new EmbedBuilder()
+    .setColor(0x2d2d2d)
+    .setTitle('AI dispatch allowance used for this month')
+    .setDescription(
+      'This server has sent ' + PREMIUM_UTTERANCES_PER_MONTH.toLocaleString('en-US') + ' radio lines to the AI dispatcher this month, which is the monthly allowance.\n\n' +
+      '911 calls are still read out in your patrol channel. Full AI dispatch comes back on the 1st.\n\n' +
+      '-# Running bigger sessions than this every month? Tell us in the support server.'
+    )
+    .setFooter({ text: 'RPM' });
+  await channel.send({ embeds: [embed] }).catch(() => {});
+}
+
 export async function initDispatchForGuild(guild, client) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
@@ -4751,6 +4889,7 @@ export async function initDispatchForGuild(guild, client) {
     const { checkFeatureAccess } = await import('../utils/premiumCheck.js');
     const access = await checkFeatureAccess(guild.id, 'dispatch');
     const fullDispatch = !!access.allowed;
+    dispatchTier.set(guild.id, fullDispatch);
 
     const { setupDispatchForGuild, moveToChannel } = await import('../utils/voiceListener.js');
     const cadConfig = await CADConfig.findOne({ guildId: guild.id });

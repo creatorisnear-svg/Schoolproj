@@ -359,6 +359,7 @@
       <button class="tab" onclick="switchTab('maintenance')">Maintenance</button>
       <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
       <button class="tab" onclick="switchTab('verified')">Verified Members</button>
+      <button class="tab" onclick="switchTab('directory')">Directory</button>
     </div>
   </div>
 
@@ -380,6 +381,15 @@
         <div style="color:#7a818e;font-size:13px;">Loading...</div>
       </div>
       <div id="funnel-events-detail" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">AI dispatch usage this month</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">
+        Groq's free tier carries most of this. The OpenAI column is the paid fallback: those are the calls that cost money.
+        Premium servers get a monthly allowance of radio lines; free servers a monthly number of spoken 911 read-outs.
+      </p>
+      <div id="ai-usage"><div style="color:#7a818e;font-size:13px;">Loading...</div></div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
@@ -624,6 +634,16 @@
     </div>
   </div>
 
+  <div id="panel-directory" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">Server directory</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">Every listing, what it earns, and reports from visitors. Hiding a listing removes it from roleplaymanager.xyz/servers and tells its owner on the dashboard.</p>
+      <div id="dir-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;"></div>
+      <div id="dir-reports"></div>
+      <div id="dir-listings"><div style="color:#7a818e;font-size:13px;">Loading...</div></div>
+    </div>
+  </div>
+
   <div id="panel-verified" class="panel">
     <div class="card" style="margin-bottom:20px;">
       <div class="section-label" style="margin-bottom:14px;">Select Server</div>
@@ -681,7 +701,7 @@
 </div>
 
 <script>
-  var TABS = ['features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified'];
+  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory'];
 
   function funnelStat(label, value, hint, tone) {
     var colour = tone === 'good' ? '#34d399' : tone === 'bad' ? '#f87171' : '#e8eaed';
@@ -730,6 +750,7 @@
               'of finished trials');
 
         renderFunnelEvents(d.events);
+        renderAIUsage(d.aiUsage);
 
         document.getElementById('funnel-warm').innerHTML =
           funnelRows(d.warmLeads, 'Nobody has configured a Premium feature without paying.');
@@ -740,6 +761,73 @@
         document.getElementById('funnel-stats').innerHTML =
           '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
       });
+  }
+
+  function loadDirectory() {
+    fetch('/dev/directory', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { document.getElementById('dir-listings').innerHTML = '<div style="color:#f87171;font-size:13px;">' + esc(d.error) + '</div>'; return; }
+      document.getElementById('dir-summary').innerHTML =
+        funnelStat('Listed', d.listed, 'servers visible')
+        + funnelStat('Featured now', d.featuredNow, 'of ' + d.maxFeatured + ' spots')
+        + funnelStat('Votes', d.votes30, 'last 30 days')
+        + funnelStat('Join clicks', d.clicks30, 'last 30 days')
+        + funnelStat('Promotion sales', '$' + (d.promoRevenue30 / 100).toFixed(2), d.promoCount30 + ' in 30 days', d.promoCount30 > 0 ? 'good' : null);
+      document.getElementById('dir-reports').innerHTML = (d.reports || []).length
+        ? '<div class="section-label" style="margin:6px 0 8px;">Open reports</div>' + d.reports.map(function (r) {
+            return '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid #23272f;border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;">'
+              + '<div><strong>' + esc(r.name) + '</strong>: ' + esc(r.reason) + '</div>'
+              + '<button class="btn" style="font-size:12px;padding:4px 10px;" onclick="resolveReport(\'' + esc(r.id) + '\')">Done</button></div>';
+          }).join('')
+        : '';
+      var th = 'style="text-align:left;font-weight:500;"';
+      document.getElementById('dir-listings').innerHTML = (d.listings || []).length
+        ? '<table style="width:100%;font-size:12.5px;border-collapse:collapse;margin-top:10px;"><tr style="color:#7a818e;"><th ' + th + '>Server</th><th ' + th + '>State</th><th ' + th + '>Votes</th><th ' + th + '>Clicks</th><th ' + th + '>Featured until</th><th></th></tr>'
+          + d.listings.map(function (l) {
+            var state = l.hidden ? 'Hidden' : (l.listed ? 'Listed' : 'Off');
+            return '<tr><td>' + esc(l.name) + '</td><td>' + state + '</td><td>' + l.votes + '</td><td>' + l.clicks + '</td><td>'
+              + (l.featuredUntil ? new Date(l.featuredUntil).toLocaleDateString() : '') + '</td><td style="text-align:right;">'
+              + '<button class="btn" style="font-size:12px;padding:4px 10px;" onclick="setListingHidden(\'' + esc(l.guildId) + '\',' + (!l.hidden) + ')">' + (l.hidden ? 'Unhide' : 'Hide') + '</button></td></tr>';
+          }).join('') + '</table>'
+        : '<div style="color:#7a818e;font-size:13px;">No listings yet.</div>';
+    }).catch(function (err) {
+      document.getElementById('dir-listings').innerHTML = '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
+    });
+  }
+
+  function setListingHidden(guildId, hidden) {
+    var reason = hidden ? (prompt('Reason, shown to the owner:') || '') : '';
+    fetch('/dev/directory/' + guildId + '/hide', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hidden: hidden, reason: reason })
+    }).then(function () { loadDirectory(); });
+  }
+
+  function resolveReport(id) {
+    fetch('/dev/directory/reports/' + id + '/resolve', { method: 'POST', credentials: 'same-origin' }).then(function () { loadDirectory(); });
+  }
+
+  function renderAIUsage(u) {
+    var box = document.getElementById('ai-usage');
+    if (!box) return;
+    if (!u || !u.total) { box.innerHTML = '<div style="color:#7a818e;font-size:13px;">Nothing recorded yet this month.</div>'; return; }
+    var t = u.total;
+    var stats = funnelStat('Radio lines', t.utterances || 0, 'sent for transcription')
+      + funnelStat('AI replies', t.replies || 0, 'answers generated')
+      + funnelStat('911 read-outs', t.readouts || 0, 'spoken')
+      + funnelStat('Voice clips', t.tts || 0, (t.ttsChars || 0) + ' characters')
+      + funnelStat('Groq calls', t.groq || 0, 'free tier')
+      + funnelStat('OpenAI calls', t.openai || 0, 'paid fallback', (t.openai || 0) > 0 ? 'bad' : 'good');
+    var th = 'style="text-align:right;font-weight:500;"';
+    var rows = (u.top || []).map(function (s) {
+      return '<tr><td>' + esc(s.name) + '</td><td style="text-align:right;">' + s.utterances + '</td><td style="text-align:right;">' + s.replies
+        + '</td><td style="text-align:right;">' + s.readouts + '</td><td style="text-align:right;">' + s.openai + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">' + stats + '</div>'
+      + (rows
+        ? '<table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="color:#7a818e;"><th style="text-align:left;font-weight:500;">Server</th><th ' + th + '>Radio lines</th><th ' + th + '>Replies</th><th ' + th + '>Read-outs</th><th ' + th + '>OpenAI</th></tr>' + rows + '</table>'
+        : '')
+      + '<div style="color:#7a818e;font-size:12px;margin-top:10px;">Allowance: ' + u.limits.premiumUtterances + ' radio lines per Premium server, ' + u.limits.freeReadouts + ' spoken read-outs per free server, per month.</div>';
   }
 
   function renderFunnelEvents(ev) {
@@ -790,6 +878,7 @@
     if (name === 'broadcast' && !_bcGuilds.length) loadBcGuilds();
     if (name === 'keys') loadKeys();
     if (name === 'verified') initVerifiedTab();
+    if (name === 'directory') loadDirectory();
   }
 
   function showAlert(msg, type) {

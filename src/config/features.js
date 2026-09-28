@@ -157,6 +157,7 @@ export const FEATURES = [
     // See grandfatheredBlacklist in premiumCheck.js.
     premiumDefault: true,
     freeTier: "servers already using it keep it",
+    grandfathered: true,
     botGated: true,
   },
 
@@ -458,6 +459,17 @@ export const DEFAULT_PREMIUM_FEATURES = FEATURES.filter((f) => f.premiumDefault)
  * for checkFeatureAccess, so it still degrades at runtime, but a free server has
  * to be able to configure it or the free part is unreachable.
  */
+/**
+ * Partly free features whose free part a free server may switch on. The
+ * dashboard's On switch refused them, so the free 911 read-outs and the two
+ * free application types could not be switched on from the website at all.
+ * The blacklist is left out: its "free tier" is only for servers that had it
+ * before it became Premium.
+ */
+export const FREE_TIER_TOGGLE_KEYS = FEATURES
+  .filter((f) => f.premiumDefault && f.freeTier && !f.grandfathered)
+  .map((f) => f.key);
+
 export const PREMIUM_SETTINGS_MODS = FEATURES
   .filter((f) => f.premiumDefault && !f.freeTier)
   .map((f) => f.mod);

@@ -3,7 +3,7 @@ import {
   runBlackjack, runRoulette, runSlots,
   runDiceRoll, runRussianRoulette, runCockFight,
 } from '../handlers/economyActions.js';
-import { isPremiumGuild } from '../utils/premiumCheck.js';
+import { hasPremiumAccess } from '../utils/premiumCheck.js';
 
 const PREMIUM_GAMES = new Set(['blackjack', 'roulette']);
 
@@ -51,7 +51,7 @@ export async function execute(interaction) {
   const bet = interaction.options.getInteger('bet');
 
   if (PREMIUM_GAMES.has(sub)) {
-    const premium = await isPremiumGuild(interaction.guildId);
+    const premium = await hasPremiumAccess(interaction.guildId);
     if (!premium) {
       const gameName = sub === 'blackjack' ? 'Blackjack' : 'Roulette';
       return interaction.reply({

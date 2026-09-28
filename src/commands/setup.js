@@ -141,6 +141,12 @@ export async function buildSetupPayload(guildId) {
     'Pick anything below to set it up, or use the dashboard at roleplaymanager.xyz/dashboard.'
   );
 
+  // Recruiting is what owners care about most, and listing costs nothing.
+  descParts.push(
+    '### Get new members\n' +
+    'List this server in the free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server. Run `/directory`.'
+  );
+
   if (trialOffer) {
     descParts.push(
       `### The three Premium features are free for ${trialOffer.days} days\n` +

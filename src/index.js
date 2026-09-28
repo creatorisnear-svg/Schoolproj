@@ -18,6 +18,7 @@ import { createPortalApiRouter } from './website/routes/portalApi.js';
 import { createCheckoutRouter } from './website/routes/checkout.js';
 import { createWebhooksRouter } from './website/routes/webhooks.js';
 import { createCadApiRouter } from './website/routes/cadApi.js';
+import { createDirectoryRouter } from './website/routes/directory.js';
 import AuthorizedUser from './models/AuthorizedUser.js';
 import AutoRole from './models/AutoRole.js';
 import AutoJoin from './models/AutoJoin.js';
@@ -32,6 +33,7 @@ import { handleModalSubmit } from './handlers/modalHandler.js';
 import { isMaintenanceMode } from './utils/maintenanceMode.js';
 import { attachLinks } from './utils/replyLinks.js';
 import { attachFunnel } from './utils/funnelHook.js';
+import { premiumEvents } from './utils/premiumCheck.js';
 
 dotenv.config();
 
@@ -396,6 +398,31 @@ app.get('/auth/site/callback', async (req, res) => {
 
 app.use('/api', apiRateLimit, createApiRouter(client));
 app.use('/checkout', apiRateLimit, createCheckoutRouter(client));
+
+// A trial starting, a payment landing, or either ending changes what AI
+// dispatch may do on that server. That used to take effect only at the next
+// deploy. Debounced, because one purchase clears the cache more than once.
+{
+  const pendingPremium = new Map();
+  premiumEvents.on('changed', (guildId) => {
+    clearTimeout(pendingPremium.get(guildId));
+    const timer = setTimeout(async () => {
+      pendingPremium.delete(guildId);
+      const guild = client.guilds?.cache?.get(guildId);
+      if (!guild) return;
+      try {
+        const { refreshDispatchTier } = await import('./handlers/dispatchHandler.js');
+        if (await refreshDispatchTier(guild, client)) {
+          console.log('[Premium] Dispatch re-initialised for ' + guild.name + ' after a Premium change');
+        }
+      } catch (err) {
+        console.error('[Premium] Dispatch refresh failed:', err.message);
+      }
+    }, 2000);
+    if (typeof timer.unref === 'function') timer.unref();
+    pendingPremium.set(guildId, timer);
+  });
+}
 app.use('/webhooks', createWebhooksRouter(client));
 app.use('/portal', createPortalRouter(client));
 app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
@@ -408,6 +435,8 @@ app.get('/cad', (req, res) => {
   res.send(readFileSync(resolve('src/website/views/cad.html'), 'utf8'));
 });
 app.use('/api/cad', apiRateLimit, createCadApiRouter(client));
+// The public server directory at roleplaymanager.xyz/servers.
+app.use('/api/directory', apiRateLimit, createDirectoryRouter(client));
 
 app.get('/callback', async (req, res) => {
   console.log('[OAUTH CALLBACK] Received code, attempting exchange...');
@@ -544,11 +573,16 @@ client.on('guildCreate', async (guild) => {
         `**Welcome messages** · greet new members\n` +
         `**Priority tracker** · track active priority events\n` +
         `**AI Voice Dispatch** · AI listens to patrol channels *(Premium)*\n` +
-        `**Applications** · custom application panels for any purpose *(Premium)*\n` +
+        `**Applications** · custom application panels for any purpose *(2 free)*\n` +
+        `**Server Directory** · list your server free at roleplaymanager.xyz/servers so PS5 and Xbox players can find it\n` +
         `\n**The Premium ones are free for 7 days.** Run \`/activatetrial\` and they switch on now, no card.\n` +
         `Run \`/help\` for the full list`
       )
       .addFields(
+        {
+          name: 'Get new members',
+          value: `List **${guild.name}** in the RolePlayManager server directory, where PS5 and Xbox players look for a GTA RP server to join. It is free. Run \`/directory\` or **[open it on the dashboard](https://roleplaymanager.xyz/dashboard/?guild=${guild.id}&section=directory)**.`,
+        },
         {
           name: 'Prefer clicking over typing?',
           value: 'Configure everything through the web dashboard · no commands needed.\n\n**[Open Dashboard](https://roleplaymanager.xyz/dashboard)**',
@@ -1409,6 +1443,9 @@ client.on('interactionCreate', async interaction => {
         }
       } else if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
+      } else if (interaction.customId === 'directory_bump') {
+        const { handleDirectoryBump } = await import('./commands/directory.js');
+        await handleDirectoryBump(interaction);
       } else if (interaction.customId === 'premium_start_trial') {
         // The premium wall used to be a dead end: a pricing link and instructions
         // to go vote on Top.gg first. This starts the trial in place, at the

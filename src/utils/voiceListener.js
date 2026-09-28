@@ -253,6 +253,17 @@ async function _run911Poll(guildId) {
       pending911Warned.delete(call.callId);
       console.log(`[Dispatch 911 Poller] Announcing call ${call.callId} for guild ${guildId}`);
       try {
+        // Free servers get a monthly number of spoken read-outs; past it the
+        // call still goes out in the dispatch channel, just not over the radio.
+        const { withinAllowance, recordAI } = await import('./aiUsage.js');
+        if (state?.announceOnly) {
+          const allowance = await withinAllowance(guildId, 'readouts');
+          if (!allowance.allowed) {
+            console.log('[Dispatch 911 Poller] ' + guildId + ' has used this month\'s free read-outs; call ' + call.callId + ' goes out in text only');
+            continue;
+          }
+        }
+        recordAI(guildId, { readouts: 1 });
         const { generateDispatchTTSPublic } = await import('../handlers/dispatchHandler.js');
         const ttsText = `Attention all units. Nine one one emergency call. ${call.issue} at ${call.location}. All available units respond.`;
         const ttsBuffer = await generateDispatchTTSPublic(ttsText);

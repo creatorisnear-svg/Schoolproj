@@ -2759,7 +2759,8 @@ function buildDispatchSetupMenu() {
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
         { label: 'Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
         { label: 'Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
-        { label: 'Enable / Disable System', value: 'toggle_system', description: 'Turn the entire dispatch system on or off' },
+        { label: 'Turn Dispatch On', value: 'enable_system', description: 'Start 911 read-outs, and with Premium the AI dispatcher' },
+        { label: 'Turn Dispatch Off', value: 'disable_system', description: 'Stop dispatch and leave the voice channel' },
         { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
         { label: 'Remove Patrol Channel', value: 'remove_patrol_channel', description: 'Stop monitoring a voice channel' },
         { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
@@ -2845,6 +2846,32 @@ async function handleDispatchSetupMenu(interaction) {
       return interaction.update({
         embeds: [menuEmbed('Remove Traffic Stop Channel', 'Select the traffic stop channel you want to remove.')],
         components: [new ActionRowBuilder().addComponents(selector)],
+      });
+    }
+
+    // Explicit on and off. Step 5 used to be a toggle, and since step 1
+    // already switches dispatch on, following the steps in order switched it
+    // off at the end. toggle_system stays for menus still on screen.
+    if (choice === 'enable_system' || choice === 'disable_system') {
+      const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
+      const turnOn = choice === 'enable_system';
+      config.enabled = turnOn;
+      await config.save();
+
+      if (!turnOn) {
+        const { leaveDispatchChannel } = await import('../utils/voiceListener.js');
+        leaveDispatchChannel(interaction.guildId);
+      } else {
+        const { initDispatchForGuild } = await import('./dispatchHandler.js');
+        await initDispatchForGuild(interaction.guild, interaction.client);
+      }
+
+      const next = turnOn && !(config.patrolChannelIds || []).length
+        ? '\n\nAdd a patrol voice channel next, or there is nowhere to read calls out.'
+        : '';
+      return interaction.update({
+        embeds: [successEmbed(turnOn ? 'Dispatch On' : 'Dispatch Off', (turnOn ? 'Dispatch is **on**.' : 'Dispatch is **off**.') + next + '\n\nSelect your next option below.')],
+        components: [buildDispatchSetupMenu()],
       });
     }
 

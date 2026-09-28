@@ -544,3 +544,26 @@ These were discovered and fixed. Understanding why they happened prevents them c
 - **stripe** - Payment processing
 - **dotenv** - Environment variables
 - **uuid** - Unique ID generation
+
+## Server directory, trial access and AI allowance (September 2026)
+
+- **Server directory** (`site/servers/index.html`, `routes/directory.js`, `utils/directory.js`,
+  models `Directory*`): public list of servers using the bot at `/servers/`. Owners list from the
+  dashboard's Server Directory page or `/directory` (bump button `directory_bump`). Names, icons and
+  member counts are read live from the bot cache; a one minute in-memory snapshot serves every list
+  request. Join goes through `/api/directory/join/:id`, which re-checks and recreates the invite and
+  counts clicks. Votes need a Discord account older than 14 days, one per server per 12 hours,
+  counted over 30 days. Default sort puts Premium servers above free ones. Featured spots are sold in
+  `routes/checkout.js` (`POST /checkout/promote`, `kind: 'promotion'` metadata, applied idempotently
+  by `applyPromotion` via `DirectoryPromotion.stripeSessionId`); at most `MAX_FEATURED` at once. Dev
+  panel Directory tab hides listings and resolves reports.
+- **Trial access**: `hasPremiumAccess(guildId)` is Premium or a running trial; use it (or
+  `checkFeatureAccess`/`getGuildLimits`) for anything a trial should unlock. The dashboard reads
+  `premiumAccess` and `trialUsed` from the guild endpoint. Walls built by `premiumReply`/`limitReply`
+  carry a `__wall` marker and are rebuilt per server at the dispatch point (`utils/funnelHook.js`),
+  which swaps the trial button for a buy link once the trial is spent.
+- **Premium changes**: `clearPremiumCache(guildId)` emits `premiumEvents 'changed'`; `index.js`
+  debounces it and calls `refreshDispatchTier`, which re-initialises AI dispatch only when the tier moved.
+- **AI allowance** (`utils/aiUsage.js`, model `AIUsage`): per server per month. Premium listening
+  stops after `PREMIUM_UTTERANCES_PER_MONTH` (911 read-outs continue); free read-outs stop after
+  `FREE_READOUTS_PER_MONTH`. The dev panel funnel tab shows the month's usage and OpenAI fallback calls.

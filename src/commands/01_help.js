@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { isPremiumGuild, isFeaturePremiumGated } from '../utils/premiumCheck.js';
+import { hasPremiumAccess, trialUsed, isFeaturePremiumGated } from '../utils/premiumCheck.js';
 import { featureGroups } from '../config/features.js';
 
 export const data = new SlashCommandBuilder()
@@ -89,7 +89,8 @@ function menuRow(selected) {
  * Exported so the select handler renders through exactly this path.
  */
 export async function buildHelpView(interaction, choice = 'start') {
-  const premium = await isPremiumGuild(interaction.guildId);
+  const premium = await hasPremiumAccess(interaction.guildId);
+  const trialGone = premium ? true : await trialUsed(interaction.guildId).catch(() => false);
   const groups = featureGroups();
 
   const embed = new EmbedBuilder().setColor(COLOR).setFooter({ text: 'RPM' });
@@ -139,7 +140,9 @@ export async function buildHelpView(interaction, choice = 'start') {
       '`3.` Open the web dashboard with the button below to do the same in a browser.\n\n' +
       (premium
         ? '-# Premium is active on this server.'
-        : '-# Features marked Premium need a subscription. Run `/premium` to try everything free for 7 days.')
+        : trialGone
+          ? '-# Features marked Premium need a subscription. Run `/premium` to switch it on.'
+          : '-# Features marked Premium need a subscription. Run `/premium` to try everything free for 7 days.')
     )
     .addFields({ name: 'Categories', value: groupNames.map((g) => `**${g}**`).join(' · ') });
   return embed;

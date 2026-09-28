@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PermissionsBitField } from 'discord.js';
 import axios from 'axios';
 import { cadAuth, cadStreamAuth, issueStreamTicket } from './cadAuth.js';
-import { isPremiumGuild, getGuildLimits } from '../../utils/premiumCheck.js';
+import { isPremiumGuild, getGuildLimits, checkFeatureAccess } from '../../utils/premiumCheck.js';
 import CADConfig from '../../models/CADConfig.js';
 import RoleplayCommands from '../../models/RoleplayCommands.js';
 import DispatchConfig from '../../models/DispatchConfig.js';
@@ -322,9 +322,11 @@ export function resolveGuild(client) {
       cacheSet(memberCache, cacheKey, member);
     }
 
-    const [premium, dispatch] = await Promise.all([
+    const [premium, dispatch, dispatchAccess] = await Promise.all([
       isPremiumGuild(guildId).catch(() => false),
       DispatchConfig.findOne({ guildId }).lean().catch(() => null),
+      // A trial runs AI dispatch too, so a 911 from here reaches it.
+      checkFeatureAccess(guildId, 'dispatch').then((a) => !!a.allowed).catch(() => false),
     ]);
 
     req.guildId = guildId;
@@ -333,7 +335,7 @@ export function resolveGuild(client) {
     req.cadContext = {
       premium,
       dispatch,
-      hasDispatch: !!(premium && dispatch?.enabled),
+      hasDispatch: !!(dispatchAccess && dispatch?.enabled),
       cadConfig: member.cadConfig,
       rpConfig: member.rpConfig,
     };

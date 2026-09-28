@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { isPremiumGuild, isGuildOnTrial, TRIAL_DAYS } from '../utils/premiumCheck.js';
+import { isPremiumGuild, isGuildOnTrial, trialUsed, pricingUrl, TRIAL_DAYS } from '../utils/premiumCheck.js';
 import GuildTrial from '../models/GuildTrial.js';
 
 export const data = new SlashCommandBuilder()
@@ -14,6 +14,8 @@ export async function execute(interaction) {
     isPremiumGuild(guildId),
     isGuildOnTrial(guildId),
   ]);
+  // Once the trial is spent, offering it again only leads to a dead end.
+  const usedTrial = !hasPremium && !onTrial && await trialUsed(guildId).catch(() => false);
 
   let trialExpiry = null;
   if (onTrial) {
@@ -40,6 +42,11 @@ export async function execute(interaction) {
       '### Everything above is switched on right now\n' +
       'When the trial ends it all stops, but nothing is deleted. Your characters, tickets, shop and settings stay exactly where they are, and they come straight back if you subscribe later.\n' +
       '-# Premium is $5 a month.';
+  } else if (usedTrial) {
+    howTo =
+      '### This server has had its free trial\n' +
+      'Premium switches on for this server the moment the payment goes through. Everything you set up during the trial is still saved.\n' +
+      '-# Premium is $5 a month, or less on a longer plan.';
   } else {
     // No instructions to go and run something else. The button below does it.
     howTo =
@@ -65,16 +72,16 @@ export async function execute(interaction) {
     .setFooter({ text: 'RPM' });
 
   const buttons = [];
-  if (!hasPremium && !onTrial) {
+  if (!hasPremium && !onTrial && !usedTrial) {
     buttons.push(new ButtonBuilder()
       .setCustomId('premium_start_trial')
       .setLabel('Start the free ' + TRIAL_DAYS + ' day trial')
       .setStyle(ButtonStyle.Success));
   }
   buttons.push(new ButtonBuilder()
-    .setLabel(hasPremium ? 'Manage subscription' : 'See pricing')
+    .setLabel(hasPremium ? 'Manage subscription' : usedTrial ? 'Get Premium for this server' : 'See pricing')
     .setStyle(ButtonStyle.Link)
-    .setURL('https://roleplaymanager.xyz/pricing'));
+    .setURL(pricingUrl('premium', guildId)));
 
   return interaction.editReply({
     embeds: [embed],

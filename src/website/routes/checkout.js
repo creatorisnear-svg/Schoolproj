@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import axios from 'axios';
+import DirectoryListing from '../../models/DirectoryListing.js';
+import { bearerToken, identifyWithDiscord } from '../../utils/siteIdentity.js';
+import { PROMOTIONS, MAX_FEATURED, featuredCount, nextFeaturedOpening, applyPromotion } from '../../utils/directory.js';
 import { recordFunnel } from '../../utils/funnel.js';
 import { attachKeyToGuild } from '../../utils/premiumKeys.js';
 import {
@@ -50,9 +52,6 @@ setInterval(() => {
   for (const [ip, entry] of _trackLimitMap) {
     if (now > entry.resetAt) _trackLimitMap.delete(ip);
   }
-  for (const [token, entry] of _identityCache) {
-    if (now > entry.exp) _identityCache.delete(token);
-  }
 }, 30 * 60 * 1000).unref();
 
 function limited(map, ip, max) {
@@ -95,39 +94,72 @@ async function getStripeClient() {
 
 const clip = (v, n = 100) => (v === null || v === undefined ? null : String(v).slice(0, n));
 
-/**
- * Who is signed in, from the site's Discord token: their id and the servers
- * they administer. Cached briefly, since the pricing page asks and then the
- * checkout asks again a moment later.
- */
-const _identityCache = new Map();
-const IDENTITY_TTL_MS = 5 * 60 * 1000;
+// Who is signed in comes from utils/siteIdentity.js, shared with the server
+// directory, which needs the same answer.
 
-async function identifyWithDiscord(token) {
-  const cached = _identityCache.get(token);
-  if (cached && cached.exp > Date.now()) return cached.data;
+// ── Directory featured spots ─────────────────────────────────────────────────
 
-  const headers = { Authorization: `Bearer ${token}` };
-  const [me, guilds] = await Promise.all([
-    axios.get('https://discord.com/api/users/@me', { headers }),
-    axios.get('https://discord.com/api/users/@me/guilds', { headers }),
-  ]);
-  const data = {
-    id: me.data.id,
-    username: me.data.username,
-    guilds: (guilds.data || []).map((g) => ({
-      id: g.id,
-      name: g.name,
-      admin: (BigInt(g.permissions || 0) & BigInt(0x8)) === BigInt(0x8),
-    })),
-  };
-  _identityCache.set(token, { data, exp: Date.now() + IDENTITY_TTL_MS });
-  return data;
+const PROMO_NICK = (days) => 'RPM Directory Featured ' + days + ' days v1';
+const _promoPrices = new Map();
+
+/** The Stripe price for a featured spot: found by nickname, else created once. */
+async function getOrCreatePromoPrice(stripe, spec) {
+  if (_promoPrices.has(spec.days)) return _promoPrices.get(spec.days);
+  let id = null;
+  try {
+    const list = await stripe.prices.list({ active: true, limit: 100 });
+    const found = (list.data || []).find((p) => p.nickname === PROMO_NICK(spec.days)
+      && p.unit_amount === spec.amount && p.currency === 'usd' && !p.recurring);
+    if (found) id = found.id;
+  } catch (err) {
+    console.warn('[Stripe] could not list prices for promotions:', err.message);
+  }
+  if (!id) {
+    const product = await stripe.products.create({
+      name: 'RolePlayManager Directory: Featured for ' + spec.label,
+      description: 'Your server featured at the top of the RolePlayManager console GTA RP server directory for ' + spec.label + '.',
+    });
+    const price = await stripe.prices.create({ product: product.id, unit_amount: spec.amount, currency: 'usd', nickname: PROMO_NICK(spec.days) });
+    id = price.id;
+    console.log('[Stripe] Auto-created directory promotion price for ' + spec.label + ': ' + id);
+  }
+  _promoPrices.set(spec.days, id);
+  return id;
 }
 
-function bearerToken(req) {
-  const auth = req.headers.authorization;
-  return auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
+/**
+ * Apply a paid featured spot from a completed Stripe session. Idempotent,
+ * like the Premium key: the webhook and the success page may both call it.
+ */
+export async function applyPromotionFromSession(session, ctx = {}) {
+  if (!session || session.status !== 'complete' || session.payment_status !== 'paid' || session.mode !== 'payment') return null;
+  const m = session.metadata || {};
+  const spec = PROMOTIONS[Number(m.days)];
+  if (m.kind !== 'promotion' || !spec || !ID.test(m.guildId || '')) return null;
+
+  const buyer = ID.test(m.discordId || '') ? m.discordId : null;
+  const result = await applyPromotion({
+    stripeSessionId: session.id,
+    guildId: m.guildId,
+    buyerId: buyer,
+    days: spec.days,
+    amount: session.amount_total || spec.amount,
+  });
+  const guildName = ctx.client?.guilds?.cache?.get(m.guildId)?.name || m.guildName || 'Your server';
+
+  if (result.applied) {
+    console.log('[Directory] ' + m.guildId + ' featured for ' + spec.days + ' days (session ' + session.id + ')');
+    if (ctx.client && buyer) {
+      const until = new Date(result.featuredUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      const { EmbedBuilder } = await import('discord.js');
+      dmUsers(ctx.client, [buyer], { embeds: [new EmbedBuilder()
+        .setColor(0x2d2d2d)
+        .setTitle('Your server is featured')
+        .setDescription('**' + guildName + '** is featured at the top of the RolePlayManager server directory until ' + until + '.\n\nSee it at roleplaymanager.xyz/servers')
+        .setFooter({ text: 'RPM' })] }).catch(() => {});
+    }
+  }
+  return { ...result, guildId: m.guildId, guildName, days: spec.days };
 }
 
 // ── Prices ───────────────────────────────────────────────────────────────────
@@ -361,7 +393,12 @@ export async function handleWebhookEvent(event, ctx = {}) {
     client?.guilds?.cache?.get(keyDoc.guildId)?.name || keyDoc.guildName || null;
 
   if (event.type === 'checkout.session.completed') {
-    await issueKeyForCompletedSession(event.data.object, ctx);
+    const session = event.data.object;
+    if (session?.metadata?.kind === 'promotion') {
+      await applyPromotionFromSession(session, ctx);
+      return;
+    }
+    await issueKeyForCompletedSession(session, ctx);
     return;
   }
 
@@ -559,6 +596,72 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
+  // POST /checkout/promote - buy a featured spot in the server directory
+  router.post('/promote', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_rateLimitMap, ip, RATE_MAX)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again in an hour.' });
+    }
+    try {
+      const { guildId, days, tosAccepted } = req.body || {};
+      if (!tosAccepted) return res.status(400).json({ error: 'You must accept the Terms of Service.' });
+      const spec = PROMOTIONS[Number(days)];
+      if (!spec) return res.status(400).json({ error: 'Pick 7 or 30 days.' });
+      const gid = String(guildId || '');
+      if (!ID.test(gid)) return res.status(400).json({ error: 'Invalid server.' });
+
+      const token = bearerToken(req);
+      if (!token) return res.status(401).json({ error: 'Sign in with Discord first.' });
+      let identity;
+      try { identity = await identify(token); } catch { return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.' }); }
+      // Owners and members alike may feature a server they are in.
+      if (!identity.guilds.some((g) => g.id === gid)) {
+        return res.status(403).json({ error: 'You need to be a member of that server to feature it.' });
+      }
+
+      const listing = await DirectoryListing.findOne({ guildId: gid, listed: true, hidden: { $ne: true } }).lean();
+      if (!listing || (client && client.guilds?.cache && !client.guilds.cache.has(gid))) {
+        return res.status(400).json({ error: 'That server is not listed in the directory yet. Its owner can list it for free from the dashboard.' });
+      }
+      // Scarcity is the point of a featured spot. A server already featured
+      // may always extend.
+      const featuredNow = listing.featuredUntil && new Date(listing.featuredUntil) > new Date();
+      if (!featuredNow && (await featuredCount(gid)) >= MAX_FEATURED) {
+        const next = await nextFeaturedOpening();
+        return res.status(409).json({
+          error: 'All ' + MAX_FEATURED + ' featured spots are taken right now. The next one opens '
+            + (next ? 'on ' + new Date(next).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'soon') + '.',
+        });
+      }
+
+      const stripe = await getStripeClient();
+      if (!stripe) return res.status(503).json({ error: 'Payment processing is not configured yet. Join our Discord for help.' });
+
+      const priceId = await getOrCreatePromoPrice(stripe, spec);
+      const guildName = client?.guilds?.cache?.get(gid)?.name || '';
+      const metadata = {
+        kind: 'promotion', guildId: gid, guildName: clip(guildName, 100),
+        days: String(spec.days), discordId: identity.id, tosAccepted: 'true',
+      };
+      const domain = getDomain(req);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_creation: 'always',
+        line_items: [{ price: priceId, quantity: 1 }],
+        metadata,
+        payment_intent_data: { metadata },
+        allow_promotion_codes: true,
+        success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: 'https://roleplaymanager.xyz/servers/?promote=cancelled',
+      });
+      res.json({ url: session.url });
+    } catch (err) {
+      const detail = err?.raw?.message || err?.message || String(err);
+      console.error('[Checkout] Promote error:', detail);
+      res.status(500).json({ error: err?.raw?.message ? 'Stripe error: ' + err.raw.message : 'Could not start the payment. Please try again.' });
+    }
+  });
+
   // POST /checkout/track - the pricing page was opened, and from where
   router.post('/track', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -584,7 +687,22 @@ export function createCheckoutRouter(client, deps = {}) {
       errorMsg = 'Invalid or missing session. Please contact support via Discord.';
     } else {
       try {
-        result = await issueKeyForSession(session_id, ctx);
+        const stripe = await getStripeClient();
+        const session = stripe ? await stripe.checkout.sessions.retrieve(session_id) : null;
+        if (session?.metadata?.kind === 'promotion') {
+          const promo = await applyPromotionFromSession(session, ctx);
+          return res.send(renderPage({
+            headline: promo ? 'Your server is featured' : 'Payment received',
+            lead: promo
+              ? '<strong>' + escapeHtml(promo.guildName) + '</strong> is featured at the top of the server directory until '
+                + escapeHtml(new Date(promo.featuredUntil).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
+                + '. Buying again while featured adds the time on.'
+              : 'We could not confirm the payment just now. Refresh in a moment, or contact support.',
+            primaryUrl: 'https://roleplaymanager.xyz/servers/',
+            primaryLabel: 'See the directory',
+          }));
+        }
+        result = session ? await issueKeyForCompletedSession(session, ctx) : null;
         if (!result) {
           errorMsg = 'Payment not confirmed yet. Please wait a moment and refresh, or contact support.';
         }
@@ -627,7 +745,8 @@ export function createCheckoutRouter(client, deps = {}) {
       .replace('<!--KEY_DISPLAY-->', result?.key ? 'block' : 'none')
       .replace('<!--ERROR_MSG-->', errorMsg ? escapeHtml(errorMsg) : '')
       .replace('<!--ERROR_DISPLAY-->', errorMsg ? 'block' : 'none')
-      .replace('<!--DASHBOARD_URL-->', 'https://roleplaymanager.xyz/dashboard/');
+      .replace('<!--DASHBOARD_URL-->', 'https://roleplaymanager.xyz/dashboard/')
+      .replace('<!--PRIMARY_LABEL-->', 'Open Dashboard');
 
     res.send(filled);
   });
@@ -667,6 +786,22 @@ export function createCheckoutRouter(client, deps = {}) {
   });
 
   return router;
+}
+
+/** The success template, filled for a result that is not a Premium key. */
+function renderPage({ headline, lead, primaryUrl, primaryLabel }) {
+  const html = readFileSync(resolve('src/website/views/checkout-success.html'), 'utf8');
+  return html
+    .replace('<!--HEADLINE-->', escapeHtml(headline))
+    .replace('<!--LEAD-->', lead)
+    .replace('<!--KEY_LABEL-->', '')
+    .replace('<!--KEY_HINT-->', '')
+    .replace('<!--KEY_VALUE-->', '')
+    .replace('<!--KEY_DISPLAY-->', 'none')
+    .replace('<!--ERROR_MSG-->', '')
+    .replace('<!--ERROR_DISPLAY-->', 'none')
+    .replace('<!--DASHBOARD_URL-->', primaryUrl)
+    .replace('<!--PRIMARY_LABEL-->', escapeHtml(primaryLabel));
 }
 
 function escapeHtml(str) {
