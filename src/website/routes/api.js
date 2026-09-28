@@ -1007,7 +1007,6 @@ export function createApiRouter(client) {
             { key: 'enabled', label: 'Enable Economy', description: 'Enable or disable the economy system for this server', type: 'toggle', value: ec?.enabled ?? true },
             { key: 'currencySymbol', label: 'Currency Symbol', description: 'Symbol shown next to all balances', type: 'text', value: ec?.currencySymbol || '$', placeholder: '$' },
             { key: 'startingBalance', label: 'Starting Balance', description: 'Cash given to new members on first interaction', type: 'number', value: ec?.startingBalance ?? 1000, min: 0, max: 1000000 },
-            { key: 'voteReward', label: 'Top.gg Vote Reward', description: 'Cash a member gets here each time they vote for the bot on Top.gg, doubled at weekends. 0 turns it off', type: 'number', value: ec?.voteReward ?? 500, min: 0, max: 1000000 },
             { key: 'maxBalance', label: 'Max Balance', description: 'Maximum cash a member can hold at once', type: 'number', value: ec?.maxBalance ?? 1000000, min: 1, max: 999999999 },
             { key: 'logChannelId', label: 'Log Channel', description: 'Channel where admin money actions are logged', type: 'select', value: ec?.logChannelId || '', options: channels },
             { key: 'work_enabled', label: 'Enable Work', description: 'Allow members to earn money with /economy work', type: 'toggle', value: ec?.work?.enabled ?? true },
@@ -1507,7 +1506,7 @@ export function createApiRouter(client) {
         case 'economy': {
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id }) || new EconomyConfig({ guildId: guild.id });
-          const topLevel = ['currencySymbol', 'startingBalance', 'voteReward', 'maxBalance', 'logChannelId', 'sellPercent', 'incomeTax', 'incomeChannelId', 'enabled'];
+          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId', 'sellPercent', 'incomeTax', 'incomeChannelId', 'enabled'];
           const nestedMap = {
             work_enabled: ['work', 'enabled'],
             work_cooldown: ['work', 'cooldown'],
@@ -1532,7 +1531,7 @@ export function createApiRouter(client) {
             chatMoney_maxAmount: ['chatMoney', 'maxAmount'],
             chatMoney_cooldown: ['chatMoney', 'cooldown'],
           };
-          const numericFields = new Set(['startingBalance', 'voteReward', 'maxBalance', 'sellPercent', 'incomeTax', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
+          const numericFields = new Set(['startingBalance', 'maxBalance', 'sellPercent', 'incomeTax', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
           for (const [k, v] of Object.entries(changes)) {
             const val = numericFields.has(k) ? Number(v) : v;
             if (topLevel.includes(k)) {

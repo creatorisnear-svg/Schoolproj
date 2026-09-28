@@ -81,8 +81,7 @@ function isWallRow(row) {
   const parts = row?.components ?? row?.data?.components ?? [];
   return Array.isArray(parts) && parts.some((c) => {
     const url = c?.data?.url ?? c?.url ?? '';
-    const style = c?.data?.style ?? c?.style;
-    return customIdOf(c) === WALL_BUTTON_ID || /\/pricing\?from=wall/.test(url) || style === 6;
+    return customIdOf(c) === WALL_BUTTON_ID || /\/pricing\?from=wall/.test(url);
   });
 }
 

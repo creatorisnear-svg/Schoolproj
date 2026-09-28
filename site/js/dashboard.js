@@ -932,7 +932,7 @@ function renderBilling() {
       return;
     }
 
-    var planLabel = data.plan === 'monthly' ? 'Monthly ($5 a month)' : data.plan === 'yearly' ? 'Yearly ($39.99 a year)' : data.plan === 'quarterly' ? '3-Month ($14 every 3 months)' : data.plan === 'lifetime' ? 'Lifetime (one payment)' : data.plan === 'discord' ? 'Bought in Discord' : 'Manual or gifted';
+    var planLabel = data.plan === 'monthly' ? 'Monthly ($5 a month)' : data.plan === 'yearly' ? 'Yearly ($39.99 a year)' : data.plan === 'quarterly' ? '3-Month ($14 every 3 months)' : data.plan === 'lifetime' ? 'Lifetime (one payment)' : 'Manual or gifted';
     var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? 'var(--amber)' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
     var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status === 'past_due' ? 'Past Due' : data.status || 'Active';
 
@@ -2412,7 +2412,7 @@ function deleteWhitelistedLink(link) {
 function renderEconomySettings(data) {
   var fields = data.fields || [];
   var groups = {
-    general:   { label: 'General', keys: ['enabled','currencySymbol','startingBalance','voteReward','maxBalance','logChannelId'] },
+    general:   { label: 'General', keys: ['enabled','currencySymbol','startingBalance','maxBalance','logChannelId'] },
     work:      { label: 'Work',    keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
     crime:     { label: 'Crime',   keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
     rob:       { label: 'Robbery', keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },

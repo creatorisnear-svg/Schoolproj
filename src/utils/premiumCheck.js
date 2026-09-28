@@ -225,9 +225,7 @@ export async function trialUsed(guildId) {
 
 /**
  * The buttons under a wall. Before the trial: start it here, or see pricing.
- * After it: buy Premium for this server. When the bot is set up to sell
- * inside Discord (DISCORD_PREMIUM_SKU_ID), Discord's own purchase button goes
- * on a row of its own.
+ * After it: buy Premium for this server, through the site's Stripe checkout.
  */
 function wallRows({ trialUsed: used, guildId }) {
   const row = new ActionRowBuilder();
@@ -250,14 +248,7 @@ function wallRows({ trialUsed: used, guildId }) {
         .setURL(pricingUrl('wall', guildId))
     );
   }
-  const rows = [row];
-  const sku = process.env.DISCORD_PREMIUM_SKU_ID;
-  if (sku && /^\d{17,20}$/.test(sku)) {
-    rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId(sku)
-    ));
-  }
-  return rows;
+  return [row];
 }
 
 export function buildPremiumEmbed(featureName, opts = {}) {

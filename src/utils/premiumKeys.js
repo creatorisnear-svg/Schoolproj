@@ -22,7 +22,7 @@ export async function attachKeyToGuild({ keyDoc, guildId, guildName, userId, via
 
   if (keyDoc.guildId === guildId) return { ok: true, already: true };
   if (keyDoc.guildId) return { ok: false, reason: 'key_used' };
-  if (['monthly', 'quarterly', 'yearly', 'discord'].includes(keyDoc.plan) && keyDoc.subscriptionStatus === 'cancelled') {
+  if (['monthly', 'quarterly', 'yearly'].includes(keyDoc.plan) && keyDoc.subscriptionStatus === 'cancelled') {
     return { ok: false, reason: 'key_cancelled' };
   }
 

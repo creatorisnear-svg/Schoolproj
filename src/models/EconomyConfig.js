@@ -18,8 +18,6 @@ const economyConfigSchema = new mongoose.Schema({
   enabled: { type: Boolean, default: true },
   currencySymbol: { type: String, default: '$' },
   startingBalance: { type: Number, default: 1000 },
-  // Paid to a member here when they vote for the bot on Top.gg (utils/voteRewards.js).
-  voteReward: { type: Number, default: 500 },
   maxBalance: { type: Number, default: 1000000 },
   logChannelId: { type: String, default: null },
 

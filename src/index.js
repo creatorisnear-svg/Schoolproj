@@ -1061,33 +1061,7 @@ for (const file of commandFiles) {
   }
 }
 
-// Premium bought inside Discord. Inactive until DISCORD_PREMIUM_SKU_ID is set.
-for (const [event, opts] of [['entitlementCreate', {}], ['entitlementUpdate', {}], ['entitlementDelete', { deleted: true }]]) {
-  client.on(event, async (...args) => {
-    const entitlement = args[args.length - 1];
-    try {
-      const { syncEntitlement } = await import('./utils/discordStore.js');
-      await syncEntitlement(entitlement, opts);
-    } catch (err) {
-      console.error('[Discord Store] ' + event + ' failed:', err.message);
-    }
-  });
-}
-
 client.once('clientReady', async () => {
-  // Server counts to Top.gg and discordbotlist.com, and Discord store catch-up.
-  import('./utils/botLists.js').then((m) => m.startBotListStats(client)).catch(() => {});
-  import('./utils/discordStore.js').then((m) => m.reconcileEntitlements(client)).catch(() => {});
-  // Vote reminders people asked for in the thank-you DM.
-  setInterval(async () => {
-    if (mongoose.connection.readyState !== 1) return;
-    try {
-      const { sendDueVoteReminders } = await import('./utils/voteRewards.js');
-      await sendDueVoteReminders(client);
-    } catch (err) {
-      console.error('[Votes] Reminder poller error:', err.message);
-    }
-  }, 5 * 60 * 1000).unref();
   console.log('[READY] Instance is healthy. All health checks are passing.');
   console.log('[DB] Connected to MongoDB Atlas');
   console.log(`[BOT] Logged in as ${client.user.tag}`);
@@ -1475,9 +1449,6 @@ client.on('interactionCreate', async interaction => {
         }
       } else if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
-      } else if (interaction.customId === 'vote_remind') {
-        const { handleVoteRemind } = await import('./utils/voteRewards.js');
-        await handleVoteRemind(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);

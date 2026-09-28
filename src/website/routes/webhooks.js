@@ -1,6 +1,5 @@
 import express from 'express';
 import { recordVote } from '../../utils/premiumCheck.js';
-import { rewardVoteInServers, thanksMessage } from '../../utils/voteRewards.js';
 
 export function createWebhooksRouter(client) {
   const router = express.Router();
@@ -38,15 +37,20 @@ export function createWebhooksRouter(client) {
       await recordVote(user);
       console.log(`[TopGG Webhook] Vote credit recorded for user ${user}`);
 
-      // A real reward: cash in every server where the voter uses the economy.
-      const weekend = !!isWeekend;
-      const paid = await rewardVoteInServers(client, String(user), weekend).catch((err) => {
-        console.error('[TopGG Webhook] Reward failed:', err.message);
-        return [];
-      });
       const discordUser = await client.users.fetch(user).catch(() => null);
       if (discordUser) {
-        discordUser.send(thanksMessage(client, paid, weekend)).catch(() => {});
+        const { EmbedBuilder } = await import('discord.js');
+        const embed = new EmbedBuilder()
+          .setColor(0x2d2d2d)
+          .setTitle('Thanks for Voting')
+          .setDescription(
+            `Your vote on Top.gg has been recorded - thank you.\n\n` +
+            `Every server can start a free 7-day Premium trial at any time with \`/activatetrial\`, ` +
+            `whether or not anyone votes. Voting just helps other RP servers find the bot.\n\n` +
+            `-# One free trial per server.`
+          )
+          .setFooter({ text: 'RPM' });
+        discordUser.send({ embeds: [embed] }).catch(() => {});
       } else {
         console.warn(`[TopGG Webhook] Could not fetch Discord user ${user} to send DM`);
       }
