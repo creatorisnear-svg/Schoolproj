@@ -1389,6 +1389,9 @@ client.on('interactionCreate', async interaction => {
         await handleHelpCategory(interaction);
       } else if (interaction.customId === 'setup_config_select') {
         await handleSetupConfigSelect(interaction);
+      } else if (interaction.customId.startsWith('dirsetup_')) {
+        const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
+        await handleDirectorySetup(interaction);
       } else if (interaction.customId === 'blacklist_config_menu') {
         const { handleBlacklistConfigMenu } = await import('./handlers/blacklistHandler.js');
         await handleBlacklistConfigMenu(interaction, client);
@@ -1449,6 +1452,9 @@ client.on('interactionCreate', async interaction => {
         }
       } else if (interaction.customId === 'verify_button') {
         await handleVerifyModal(interaction);
+      } else if (interaction.customId.startsWith('dirsetup_')) {
+        const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
+        await handleDirectorySetup(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);
@@ -1600,7 +1606,10 @@ client.on('interactionCreate', async interaction => {
       // and the user got "This interaction failed". /verify now uses the same
       // web flow as the panel button, which is the one that checks the
       // blacklist. See src/commands/verify.js.
-      if (interaction.customId.startsWith('business_password_')) {
+      if (interaction.customId === 'dirsetup_description_modal') {
+        const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
+        await handleDirectorySetup(interaction);
+      } else if (interaction.customId.startsWith('business_password_')) {
         const { handleBusinessPasswordModal } = await import('./handlers/economyActions.js');
         await handleBusinessPasswordModal(interaction);
       } else if (interaction.customId.startsWith('business_do_deposit_')) {

@@ -32,7 +32,7 @@ export async function directoryView(guild, note = '') {
     embed.setDescription(
       (note ? note + '\n\n' : '') +
       'Get new members. The RolePlayManager server directory at roleplaymanager.xyz/servers is where PS5 and Xbox players look for a GTA RP server to join.\n\n' +
-      '**Listing is free.** Write a short description, pick your platforms and switch it on. It takes a minute on the dashboard.\n\n' +
+      '**Listing is free.** Write a short description, pick your platforms and switch it on. It takes a minute in `/setup` under Server Directory, or on the dashboard.\n\n' +
       (listing && listing.hidden
         ? '-# This listing was removed from the directory. Contact support if you think that was a mistake.'
         : '-# Premium servers get a Premium badge and are listed above free servers.')

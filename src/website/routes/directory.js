@@ -9,7 +9,7 @@ import {
   PLATFORMS, REGIONS, TAGS, PROMOTIONS, MAX_FEATURED, MIN_MEMBERS, MAX_TAGS,
   BUMP_COOLDOWN_MS, VOTE_COOLDOWN_MS, MIN_ACCOUNT_AGE_MS,
   directorySnapshot, queryDirectory, featuredOf, rankOf, adjustVotes, invalidateDirectory,
-  cleanListingInput, inviteChannels, createInvite, ensureInvite, listingStats,
+  cleanListingInput, inviteChannels, ensureInvite, listingStats, goLive,
   bumpListing, featuredCount, nextFeaturedOpening,
 } from '../../utils/directory.js';
 
@@ -202,27 +202,9 @@ export function createDirectoryRouter(client, deps = {}) {
     listing.updatedBy = s.user.id;
 
     if (listing.listed) {
-      if (listing.hidden) return res.status(403).json({ error: 'This listing was removed from the directory. Contact support if you think that was a mistake.' });
-      if ((guild.memberCount || 0) < MIN_MEMBERS) {
-        return res.status(400).json({ error: 'A server needs at least ' + MIN_MEMBERS + ' members to be listed.' });
-      }
-      if ((listing.description || '').length < 20) {
-        return res.status(400).json({ error: 'Write a short description first, at least 20 characters. It is the first thing people read.' });
-      }
-      if (!(listing.platforms || []).length) {
-        return res.status(400).json({ error: 'Pick at least one platform, so PS5 and Xbox players can find you.' });
-      }
-      // A new invite when first listed, or when the channel changed.
-      if (!listing.inviteCode || 'inviteChannelId' in input) {
-        const code = await createInvite(guild, listing.inviteChannelId);
-        if (!code) {
-          return res.status(400).json({ error: 'The bot could not make an invite. Give it the Create Invite permission in the channel you picked, or pick another channel.' });
-        }
-        listing.inviteCode = code;
-        listing.inviteCheckedAt = new Date();
-      }
-      if (!listing.listedAt) listing.listedAt = new Date();
-      if (!listing.bumpedAt) listing.bumpedAt = new Date();
+      // The same rules /setup uses in Discord.
+      const live = await goLive(guild, listing, { newInvite: 'inviteChannelId' in input });
+      if (!live.ok) return res.status(live.status).json({ error: live.error });
     }
 
     await listing.save();

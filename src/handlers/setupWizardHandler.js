@@ -615,6 +615,13 @@ export const moduleResponses = {
   },
 };
 
+// The Server Directory, which is not a registry feature but is one of the
+// most useful things to set up: it brings new members.
+moduleResponses.directory = async (interaction) => {
+  const { directorySetupView } = await import('./directorySetupHandler.js');
+  return interaction.update(await directorySetupView(interaction.guild));
+};
+
 /**
  * The module keys this wizard can actually handle. /setup builds its menu from
  * this, so it can never offer an option that falls through to "Unknown option"

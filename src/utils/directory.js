@@ -233,6 +233,39 @@ export async function createInvite(guild, channelId) {
 }
 
 /**
+ * Put a listing live, or say plainly why not. One set of rules for the
+ * dashboard and for /setup in Discord, so the two can never disagree about
+ * what a listing needs. Mutates the listing; the caller saves it.
+ */
+export async function goLive(guild, listing, { newInvite = false } = {}) {
+  if (listing.hidden) {
+    return { ok: false, status: 403, error: 'This listing was removed from the directory. Contact support if you think that was a mistake.' };
+  }
+  if ((guild.memberCount || 0) < MIN_MEMBERS) {
+    return { ok: false, status: 400, error: 'A server needs at least ' + MIN_MEMBERS + ' members to be listed.' };
+  }
+  if ((listing.description || '').length < 20) {
+    return { ok: false, status: 400, error: 'Write a short description first, at least 20 characters. It is the first thing people read.' };
+  }
+  if (!(listing.platforms || []).length) {
+    return { ok: false, status: 400, error: 'Pick at least one platform, so PS5 and Xbox players can find you.' };
+  }
+  // A new invite when first listed, or when the owner changed the channel.
+  if (!listing.inviteCode || newInvite) {
+    const code = await createInvite(guild, listing.inviteChannelId);
+    if (!code) {
+      return { ok: false, status: 400, error: 'The bot could not make an invite. Give it the Create Invite permission in the channel you picked, or pick another channel.' };
+    }
+    listing.inviteCode = code;
+    listing.inviteCheckedAt = new Date();
+  }
+  listing.listed = true;
+  if (!listing.listedAt) listing.listedAt = new Date();
+  if (!listing.bumpedAt) listing.bumpedAt = new Date();
+  return { ok: true };
+}
+
+/**
  * The invite a Join button should use: the stored one if it still works,
  * otherwise a new one. Invites get deleted, and a dead Join button is the
  * worst thing a listing can have.

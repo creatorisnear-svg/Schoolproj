@@ -1,24 +1,8 @@
 {
-  "version": "1.13.0",
-  "title": "A free server directory, and a free trial that really unlocks Premium",
+  "version": "1.14.0",
+  "title": "List your server in the directory straight from /setup",
   "changes": [
-    "New: a free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server to join. List your server from the dashboard or with /directory: write a short description, pick your platforms, and people can vote for you and press Join to go straight in",
-    "Bump your listing with /directory to move it to the top of Recently Bumped, every 6 hours, or every 2 hours with Premium. Premium servers also get a Premium badge and are listed above free servers",
-    "Want more eyes on your server? Anyone in it can feature it at the top of the directory and on the RolePlayManager home page: 7 days for $4.99 or 30 days for $14.99. Only 10 servers can be featured at a time",
-    "Fixed: during the free trial the dashboard kept Premium pages greyed out with 'activate a key'. The trial now unlocks everything on the website too, including the higher limits",
-    "Fixed: starting a trial or buying Premium did not switch the AI dispatcher to full mode until the bot restarted. It now switches over within seconds, and back when a trial ends",
-    "Fixed: the free parts of partly free features can now be switched on from the dashboard. The free 911 read-outs and the 2 free application types were locked there",
-    "Fixed: following the dispatch setup steps in order switched dispatch off at step 5. Step 5 is now Turn Dispatch On, with a separate Turn Dispatch Off",
-    "Fixed: long 911 calls were not read out at all. The dispatcher now reads calls of any length, and its AI replies no longer come back silent",
-    "Servers that already had their free trial are no longer offered it again. Premium screens now take you straight to getting Premium for your server",
-    "AI dispatch now has a monthly allowance so it stays fast for everyone: 5,000 radio lines a month on Premium and 100 spoken 911 read-outs on the free plan. Almost every server stays well inside it, and the dashboard shows your usage",
-    "The website now keeps to the same free plan limits as Discord for role requests, civilian jobs, shop items and sticky messages",
-    "New: a yearly Premium plan at $39.99, a third off monthly. Monthly stays $5. Lifetime is now $79.99",
-    "New: a 7 day money back guarantee on your first payment. If Premium is not right for your server, ask in the support server within 7 days",
-    "New: anyone can buy Premium for a server they are in, as a gift. The owner is told who it was from",
-    "New with Premium: bot branding. Give the bot your own name, picture, banner and profile text on your server, from the dashboard",
-    "New: download everything the bot stores for your server as one file, from Export Data on the dashboard",
-    "New in the web CAD for officers: warrants, arrest reports and an impound lot. Issue a warrant from a person's record and every officer sees it until it is served. Arrest reports carry what happened, jail time and the fine, and can serve a warrant. Impound vehicles by plate and release them from the lot",
-    "New with Premium: an evidence locker in the web CAD. Log seized items against a person and a case, and pull up everything for one case"
+    "New: list your server in the free server directory without leaving Discord. Run /setup and pick Server Directory, then choose your platforms, region and type of roleplay, write a short description and press List this server",
+    "The Server Directory screen shows what your listing still needs, and once you are listed, your votes and how many people pressed Join. You can take it off the directory again with one press"
   ]
 }

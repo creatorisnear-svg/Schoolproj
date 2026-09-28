@@ -144,7 +144,7 @@ export async function buildSetupPayload(guildId) {
   // Recruiting is what owners care about most, and listing costs nothing.
   descParts.push(
     '### Get new members\n' +
-    'List this server in the free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server. Run `/directory`.'
+    'List this server in the free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server. Pick **Server Directory** in the menu below.'
   );
 
   if (trialOffer) {
@@ -165,6 +165,14 @@ export async function buildSetupPayload(guildId) {
   // Filtered by what the wizard can actually handle, so an option can never fall
   // through to "Unknown option selected" the way 911/CAD did.
   const menuOptions = [];
+  // First in the list: getting new members is what owners want most.
+  if (SUPPORTED_MODULES.includes('directory')) {
+    menuOptions.push({
+      label: 'Server Directory',
+      description: 'Get new members: list this server for free',
+      value: 'directory',
+    });
+  }
   for (const [, features] of featureGroups()) {
     for (const f of features) {
       if (!f.configSubcommand || !SUPPORTED_MODULES.includes(f.configSubcommand)) continue;
