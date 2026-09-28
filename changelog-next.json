@@ -18,6 +18,8 @@
     "New: anyone can buy Premium for a server they are in, as a gift. The owner is told who it was from",
     "New with Premium: bot branding. Give the bot your own name, picture, banner and profile text on your server, from the dashboard",
     "New: vote for RolePlayManager on Top.gg and get in-game cash in every server where you use the economy, double at weekends. Owners set the amount on the dashboard, 500 by default, or 0 to turn it off. The thank-you message can remind you when you can vote again",
-    "New: download everything the bot stores for your server as one file, from Export Data on the dashboard"
+    "New: download everything the bot stores for your server as one file, from Export Data on the dashboard",
+    "New in the web CAD for officers: warrants, arrest reports and an impound lot. Issue a warrant from a person's record and every officer sees it until it is served. Arrest reports carry what happened, jail time and the fine, and can serve a warrant. Impound vehicles by plate and release them from the lot",
+    "New with Premium: an evidence locker in the web CAD. Log seized items against a person and a case, and pull up everything for one case"
   ]
 }

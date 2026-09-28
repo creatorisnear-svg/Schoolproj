@@ -111,6 +111,13 @@ const cadCharacterSchema = new mongoose.Schema({
       charge: String,
       date: Date,
       outcome: String,
+      // Arrest reports written in the web CAD carry the full story.
+      reportId: String,
+      narrative: String,
+      jailMinutes: Number,
+      fine: Number,
+      officerId: String,
+      officerName: String,
     },
   ],
   status: {

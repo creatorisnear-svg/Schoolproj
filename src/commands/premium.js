@@ -64,6 +64,7 @@ export async function execute(interaction) {
       '`AI Voice Dispatch` bot joins patrol voice channels, transcribes speech, generates AI dispatcher responses, runs plate/name checks by voice, auto-moves officers on 10-11\n\n' +
        '`Priority Tracker` live priority status board, cooldown tracking, and staff controls for active events\n\n' +
        '`Applications` custom application panels with DM questions, review buttons, and optional role assignment\n\n' +
+       '`Evidence Locker` log seized items against people, arrest reports and cases in the web CAD\n\n' +
       '`Advanced Gambling` Blackjack and Roulette *(free servers keep Slots, Dice, Cockfight, Russian Roulette)*\n\n' +
       '`Blacklist System` ban list that blocks known troublemakers at verification, before they ever get in\n\n' +
       '`No Limits` unlimited shop items, civilian jobs, requestable roles, ticket types, characters, vehicles, firearms, BOLOs, stickies and role income, plus a top 25 leaderboard\n\n' +

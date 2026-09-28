@@ -348,6 +348,9 @@
     { id: 'calls', label: 'Active Calls', badge: 'calls' },
     { id: 'search', label: 'Records' },
     { id: 'bolos', label: 'BOLOs' },
+    { id: 'warrants', label: 'Warrants' },
+    { id: 'impounds', label: 'Impound Lot' },
+    { id: 'evidence', label: 'Evidence' },
     { id: 'tickets', label: 'Ticket Book' },
     { id: 'units', label: 'LEO Dashboard' },
   ];
@@ -398,6 +401,9 @@
     staffstrikes: '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>',
     bolos: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><path d="M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>',
     tickets: '<path d="M4 7.5h16v3a2 2 0 0 0 0 3v3H4v-3a2 2 0 0 0 0-3z"/><path d="M9.5 7.5v9"/>',
+    warrants: '<path d="M7 3.5h10v17H7z"/><path d="M10 8h4"/><path d="M10 12h4"/><path d="M10 16h2"/>',
+    impounds: '<path d="M3 17.5h18"/><path d="M5 17.5v-4l2-4h10l2 4v4"/><path d="M3 21h18"/><path d="M12 3v4"/>',
+    evidence: '<path d="M4 8h16v12H4z"/><path d="M9 8V5h6v3"/><path d="M4 13h16"/>',
     units: '<path d="M3 16.5h18"/><path d="M5 16.5v-4l2-4h10l2 4v4"/><path d="M7.5 16.5v2"/><path d="M16.5 16.5v2"/>',
   };
 
@@ -837,6 +843,9 @@
     search: [],
     bolos: ['bolos'],
     tickets: ['tickets'],
+    warrants: ['warrants'],
+    impounds: ['impounds'],
+    evidence: ['evidence'],
     units: ['officers'],
     staffoverview: ['verifications', 'strikes', 'support', 'calls', 'blacklist'],
     staffverify: ['verifications'],
@@ -1579,6 +1588,9 @@
           bind('[data-bolo]', function (el) { newBolo(el.dataset.bolo); });
           bind('[data-ticket]', function (el) { newTicket(el.dataset.ticket); });
           bind('[data-arrest]', function (el) { newArrest(el.dataset.arrest); });
+          bind('[data-warrant]', function (el) { newWarrant(el.dataset.warrant); });
+          bind('[data-impound]', function (el) { newImpound(el.dataset.impound); });
+          bind('[data-evidence]', function (el) { newEvidence(el.dataset.evidence); });
           bind('[data-wanted]', function (el) { toggleWanted(el.dataset.wanted); });
           bind('[data-licence]', function (el) { toggleLicence(el.dataset.licence); });
           bind('[data-revoke]', function (el) {
@@ -1614,12 +1626,28 @@
       ['Emergency contact', c.emergencyContact],
     ].filter(function (p) { return p[1]; });
 
-    var arrests = (c.arrestHistory || []).map(function (a) {
-      return '<div class="row"><span>' + esc(a.charge) + '</span>'
+    var arrests = (c.arrestHistory || []).slice().reverse().map(function (a) {
+      var extra = [];
+      if (a.jailMinutes) extra.push(a.jailMinutes + ' min jail');
+      if (a.fine) extra.push(money(a.fine));
+      if (a.officerName) extra.push('by ' + a.officerName);
+      return '<div class="row"><span>' + esc(a.charge) + (a.reportId ? ' <span class="mono muted">' + esc(a.reportId) + '</span>' : '') + '</span>'
         + '<span class="spacer"></span>'
+        + (extra.length ? '<span class="muted">' + esc(extra.join(', ')) + '</span>' : '')
         + '<span class="muted">' + esc(a.outcome || 'Pending') + '</span>'
         + '<span class="muted">' + esc(a.date ? new Date(a.date).toLocaleDateString() : '') + '</span>'
-        + '</div>';
+        + '</div>'
+        + (a.narrative ? '<p style="font-size:12.5px;color:var(--text-muted);margin:2px 0 8px;white-space:pre-line">' + esc(a.narrative) + '</p>' : '');
+    }).join('');
+
+    var warrants = (r.warrants || []).map(function (w) {
+      return '<div class="row"><span>' + esc(w.charges) + ' <span class="mono muted">' + esc(w.warrantId) + '</span></span>'
+        + '<span class="spacer"></span><span class="muted">' + esc(timeAgo(w.createdAt)) + '</span></div>';
+    }).join('');
+
+    var impounds = (r.impounds || []).map(function (i) {
+      return '<div class="row"><span class="mono">' + esc(i.licensePlate) + '</span><span>' + esc(i.reason) + '</span>'
+        + '<span class="spacer"></span><span class="muted">' + esc(timeAgo(i.createdAt)) + '</span></div>';
     }).join('');
 
     var tickets = (r.tickets || []).map(function (t) {
@@ -1640,6 +1668,8 @@
       + (c.status === 'wanted'
         ? '<span class="badge" style="background:var(--red-bg);border-color:var(--red-border);color:var(--red)">Wanted</span>'
         : '')
+      + (r.warrants && r.warrants.length ? '<span class="badge" style="background:var(--red-bg);border-color:var(--red-border);color:var(--red)">' + r.warrants.length + ' warrant' + (r.warrants.length === 1 ? '' : 's') + '</span>' : '')
+      + (r.impounds && r.impounds.length ? '<span class="badge">Impounded</span>' : '')
       + (r.bolos && r.bolos.length ? '<span class="badge badge-leo">' + r.bolos.length + ' BOLO</span>' : '')
       + (r.outstandingFines ? '<span class="badge">' + esc(money(r.outstandingFines)) + ' owed</span>' : '')
       + '<span class="spacer"></span></div>'
@@ -1658,13 +1688,18 @@
               + '</div>';
           }).join('')
         : '')
+      + (warrants ? '<div class="subhead">Active warrants</div>' + warrants : '')
+      + (impounds ? '<div class="subhead">Impounded vehicles</div>' + impounds : '')
       + (bolos ? '<div class="subhead">Active BOLOs</div>' + bolos : '')
-      + (arrests ? '<div class="subhead">Arrest history</div>' + arrests : '')
+      + (arrests ? '<div class="subhead">Arrest reports</div>' + arrests : '')
       + (tickets ? '<div class="subhead">Tickets</div>' + tickets : '')
       + '<div class="call-actions">'
       + '<button class="btn btn-sm" data-ticket="' + esc(c._id) + '">Issue ticket</button>'
-      + '<button class="btn btn-sm" data-arrest="' + esc(c._id) + '">Log arrest</button>'
+      + '<button class="btn btn-sm" data-arrest="' + esc(c._id) + '">Arrest report</button>'
+      + '<button class="btn btn-sm" data-warrant="' + esc(c._id) + '">Issue warrant</button>'
       + '<button class="btn btn-sm" data-bolo="' + esc(c._id) + '">Create BOLO</button>'
+      + '<button class="btn btn-sm" data-impound="' + esc(c._id) + '">Impound vehicle</button>'
+      + '<button class="btn btn-sm" data-evidence="' + esc(c._id) + '">Log evidence</button>'
       + '<button class="btn btn-sm ' + (c.status === 'wanted' ? '' : 'btn-danger') + '" data-wanted="' + esc(c._id) + '">'
       + (c.status === 'wanted' ? 'Clear wanted' : 'Flag wanted') + '</button>'
       + '<button class="btn btn-sm" data-licence="' + esc(c._id) + '">'
@@ -1694,20 +1729,174 @@
   }
 
   function newArrest(characterId) {
+    var record = findRecord(characterId);
+    var open = (record && record.warrants) || [];
+    var fields = [
+      { name: 'charge', label: 'Charges', required: true, max: 300 },
+      { name: 'narrative', label: 'What happened', type: 'textarea', max: 2000 },
+      { name: 'jailMinutes', label: 'Jail time (minutes)', type: 'number' },
+      { name: 'fine', label: 'Fine', type: 'number' },
+      { name: 'outcome', label: 'Outcome', max: 200 },
+    ];
+    if (open.length) {
+      fields.push({
+        name: 'servesWarrant', label: 'Serves a warrant', type: 'select',
+        options: [{ value: '', label: 'None' }].concat(open.map(function (w) { return { value: w.warrantId, label: w.warrantId + ': ' + w.charges }; })),
+      });
+    }
     dialog({
-      title: 'Log arrest',
-      fields: [
-        { name: 'charge', label: 'Charge', required: true, max: 300 },
-        { name: 'outcome', label: 'Outcome', max: 200 },
-      ],
-      confirm: 'Log',
+      title: 'Arrest report',
+      fields: fields,
+      confirm: 'File report',
       onSubmit: function (values) {
         return api('/' + state.guildId + '/leo/records/' + characterId + '/arrests',
           { method: 'POST', body: values })
-          .then(function () { toast('Arrest logged.', 'ok'); rerunSearch(); });
+          .then(function (res) { toast('Report ' + (res.reportId || '') + ' filed.', 'ok'); rerunSearch(); });
       },
     });
   }
+
+  function newWarrant(characterId) {
+    dialog({
+      title: 'Issue warrant',
+      sub: 'Shows on this person\'s record for every officer until it is served or cancelled.',
+      fields: [
+        { name: 'charges', label: 'Charges', required: true, max: 300 },
+        { name: 'details', label: 'Details', type: 'textarea', max: 1000 },
+      ],
+      confirm: 'Issue',
+      danger: true,
+      onSubmit: function (values) {
+        values.characterId = characterId;
+        return api('/' + state.guildId + '/leo/warrants', { method: 'POST', body: values })
+          .then(function (res) { toast('Warrant ' + res.warrant.warrantId + ' issued.', 'ok'); rerunSearch(); });
+      },
+    });
+  }
+
+  function newImpound(characterId) {
+    var record = characterId ? findRecord(characterId) : null;
+    var plates = record ? [record.character.licensePlate].concat((record.character.vehicles || []).map(function (v) { return v.licensePlate; })).filter(Boolean) : [];
+    dialog({
+      title: 'Impound a vehicle',
+      fields: [
+        plates.length
+          ? { name: 'licensePlate', label: 'Plate', type: 'select', options: plates.map(function (p) { return { value: p, label: p }; }) }
+          : { name: 'licensePlate', label: 'Plate', required: true, max: 10 },
+        { name: 'reason', label: 'Reason', required: true, max: 300 },
+      ],
+      confirm: 'Impound',
+      onSubmit: function (values) {
+        return api('/' + state.guildId + '/leo/impounds', { method: 'POST', body: values })
+          .then(function () {
+            toast('Vehicle impounded.', 'ok');
+            if (characterId) rerunSearch(); else go('impounds');
+          });
+      },
+    });
+  }
+
+  function newEvidence(characterId) {
+    dialog({
+      title: 'Log evidence',
+      sub: 'Goes into the evidence locker. A Premium feature.',
+      fields: [
+        { name: 'description', label: 'Item', required: true, max: 500 },
+        { name: 'caseRef', label: 'Case reference', max: 60, value: '' },
+        { name: 'storedAt', label: 'Stored at', max: 120 },
+      ].concat(characterId ? [] : [{ name: 'characterName', label: 'Person, if any', max: 80 }]),
+      confirm: 'Log',
+      onSubmit: function (values) {
+        if (characterId) values.characterId = characterId;
+        return api('/' + state.guildId + '/leo/evidence', { method: 'POST', body: values })
+          .then(function (res) {
+            toast('Logged as ' + res.item.evidenceId + '.', 'ok');
+            if (!characterId) go('evidence');
+          });
+      },
+    });
+  }
+
+  VIEWS.warrants = function () {
+    return api('/' + state.guildId + '/leo/warrants').then(function (res) {
+      var list = res.warrants || [];
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Warrants', 'Active warrants. Issue one from a person\'s record in Records.')
+        + (list.length
+          ? list.map(function (w) {
+              return '<div class="card"><div class="card-head"><h3>' + esc(w.characterName) + '</h3>'
+                + '<span class="mono muted">' + esc(w.warrantId) + '</span><span class="spacer"></span>'
+                + '<span class="muted">' + esc(timeAgo(w.createdAt)) + '</span>'
+                + '<button class="btn btn-sm" data-serve="' + esc(w.warrantId) + '">Served</button>'
+                + '<button class="btn btn-sm" data-cancel="' + esc(w.warrantId) + '">Cancel</button></div>'
+                + '<p style="font-size:13px">' + esc(w.charges) + '</p>'
+                + (w.details ? '<p style="font-size:13px;color:var(--text-muted);margin-top:6px;white-space:pre-line">' + esc(w.details) + '</p>' : '')
+                + (w.issuedByName ? '<p class="muted" style="font-size:12px;margin-top:6px">Issued by ' + esc(w.issuedByName) + '</p>' : '')
+                + '</div>';
+            }).join('')
+          : '<div class="empty">No active warrants.</div>')
+        + '</div>';
+      ['serve', 'cancel'].forEach(function (action) {
+        bind('[data-' + action + ']', function (el) {
+          api('/' + state.guildId + '/leo/warrants/' + el.dataset[action] + '/' + action, { method: 'POST' })
+            .then(function () { toast(action === 'serve' ? 'Warrant served.' : 'Warrant cancelled.', 'ok'); go('warrants'); })
+            .catch(fail);
+        });
+      });
+    });
+  };
+
+  VIEWS.impounds = function () {
+    return api('/' + state.guildId + '/leo/impounds').then(function (res) {
+      var list = res.impounds || [];
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Impound Lot', 'Vehicles held right now.', '<button class="btn btn-primary btn-sm" id="new-impound">Impound a vehicle</button>')
+        + (list.length
+          ? list.map(function (i) {
+              return '<div class="card"><div class="card-head"><h3 class="mono">' + esc(i.licensePlate) + '</h3>'
+                + (i.vehicle ? '<span class="muted">' + esc(i.vehicle) + '</span>' : '')
+                + '<span class="spacer"></span><span class="muted">' + esc(timeAgo(i.createdAt)) + '</span>'
+                + '<button class="btn btn-sm" data-release="' + esc(i.impoundId) + '">Release</button></div>'
+                + '<p style="font-size:13px">' + esc(i.reason) + '</p>'
+                + '<p class="muted" style="font-size:12px;margin-top:6px">'
+                + (i.characterName ? 'Registered to ' + esc(i.characterName) + '. ' : 'Not on file. ')
+                + (i.officerName ? 'Impounded by ' + esc(i.officerName) + '.' : '') + '</p></div>';
+            }).join('')
+          : '<div class="empty">The impound lot is empty.</div>')
+        + '</div>';
+      $('new-impound').addEventListener('click', function () { newImpound(null); });
+      bind('[data-release]', function (el) {
+        api('/' + state.guildId + '/leo/impounds/' + el.dataset.release + '/release', { method: 'POST' })
+          .then(function () { toast('Vehicle released.', 'ok'); go('impounds'); })
+          .catch(fail);
+      });
+    });
+  };
+
+  VIEWS.evidence = function () {
+    return api('/' + state.guildId + '/leo/evidence').then(function (res) {
+      var list = res.items || [];
+      $('main').innerHTML = '<div class="panel">'
+        + panelHead('Evidence Locker', 'Everything logged, newest first.', '<button class="btn btn-primary btn-sm" id="new-evidence">Log evidence</button>')
+        + (list.length
+          ? list.map(function (e) {
+              return '<div class="card"><div class="card-head"><h3>' + esc(e.description) + '</h3><span class="spacer"></span>'
+                + '<span class="mono muted">' + esc(e.evidenceId) + '</span></div>'
+                + '<p class="muted" style="font-size:12.5px">'
+                + [e.caseRef ? 'Case ' + esc(e.caseRef) : '', e.characterName ? 'Person: ' + esc(e.characterName) : '', e.storedAt ? 'Stored at ' + esc(e.storedAt) : '', e.submittedByName ? 'Logged by ' + esc(e.submittedByName) : '', esc(timeAgo(e.createdAt))].filter(Boolean).join(' · ')
+                + '</p></div>';
+            }).join('')
+          : '<div class="empty">Nothing logged yet.</div>')
+        + '</div>';
+      $('new-evidence').addEventListener('click', function () { newEvidence(null); });
+    }).catch(function (err) {
+      if (!err || err.code !== 'premium_required') throw err;
+      $('main').innerHTML = '<div class="panel">' + panelHead('Evidence Locker', 'A Premium feature.')
+        + '<div class="card"><p style="font-size:13px;line-height:1.6">Log every item seized, tie it to an arrest report or a call, and pull up everything for a case in one place. '
+        + 'The evidence locker is part of Premium.</p>'
+        + '<div class="call-actions"><a class="btn btn-primary btn-sm" target="_blank" rel="noopener" href="https://roleplaymanager.xyz/pricing?from=cad&guild=' + encodeURIComponent(state.guildId) + '">Get Premium</a></div></div></div>';
+    });
+  };
 
   function newBolo(characterId) {
     dialog({

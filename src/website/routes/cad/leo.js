@@ -3,7 +3,10 @@ import CADCharacter from '../../../models/CADCharacter.js';
 import TrafficTicket from '../../../models/TrafficTicket.js';
 import OfficerStatus from '../../../models/OfficerStatus.js';
 import BOLO from '../../../models/BOLO.js';
-import { getGuildLimits } from '../../../utils/premiumCheck.js';
+import Warrant from '../../../models/Warrant.js';
+import Impound from '../../../models/Impound.js';
+import Evidence from '../../../models/Evidence.js';
+import { getGuildLimits, hasPremiumAccess } from '../../../utils/premiumCheck.js';
 import { TEN_CODES } from '../../../handlers/dispatchHandler.js';
 import { refreshStatusBoard, setOfficerStatus } from '../../cadBridge.js';
 import { str, num, plate, escapeRegex, badRequest, notFound, limitError } from './shared.js';
@@ -20,17 +23,34 @@ const RECENT_MS = 8 * 60 * 60 * 1000;
 
 /** The record an officer sees when they run someone. */
 async function fullRecord(guildId, character) {
-  const [bolos, tickets] = await Promise.all([
+  const plates = [character.licensePlate, ...(character.vehicles || []).map((v) => v.licensePlate)].filter(Boolean);
+  const [bolos, tickets, warrants, impounds] = await Promise.all([
     BOLO.find({ guildId, characterId: character._id, active: true }).sort({ createdAt: -1 }).lean(),
     TrafficTicket.find({ guildId, characterId: character._id }).sort({ createdAt: -1 }).limit(25).lean(),
+    Warrant.find({ guildId, characterId: character._id, active: true }).sort({ createdAt: -1 }).lean(),
+    plates.length ? Impound.find({ guildId, licensePlate: { $in: plates }, active: true }).lean() : [],
   ]);
 
   return {
     character,
     bolos,
     tickets,
+    warrants,
+    impounds,
     outstandingFines: tickets.filter((t) => !t.paid).reduce((sum, t) => sum + (t.fine || 0), 0),
   };
+}
+
+/** A short readable id, like W-7K2Q9: easy to say on the radio. */
+function shortId(prefix) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return prefix + '-' + s;
+}
+
+function officerName(req) {
+  return str(req.cadUser?.username, 60) || str(req.cadMember?.displayName, 60) || null;
 }
 
 export function createLeoRouter(client) {
@@ -104,13 +124,150 @@ export function createLeoRouter(client) {
     const character = await CADCharacter.findOne({ _id: req.params.id, guildId: req.guildId });
     if (!character) return notFound(res, 'Record');
 
-    character.arrestHistory.push({
+    const report = {
       charge,
       date: new Date(),
       outcome: str(req.body.outcome, 200) || 'Pending',
-    });
+      reportId: shortId('AR'),
+      narrative: str(req.body.narrative, 2000) || '',
+      jailMinutes: num(req.body.jailMinutes, 0, 100000),
+      fine: num(req.body.fine, 0, 100000000),
+      officerId: req.cadUser.userId,
+      officerName: officerName(req),
+    };
+    character.arrestHistory.push(report);
+    // An arrest serves any warrant the officer says it serves.
+    if (req.body.servesWarrant) {
+      await Warrant.updateOne(
+        { guildId: req.guildId, warrantId: str(req.body.servesWarrant, 20), characterId: character._id, active: true },
+        { $set: { active: false, closedAs: 'served', closedBy: req.cadUser.userId, closedAt: new Date() } },
+      );
+    }
     await character.save();
-    res.status(201).json({ character });
+    res.status(201).json({ character, reportId: report.reportId });
+  });
+
+  // ── Warrants ───────────────────────────────────────────────────────────────
+  router.get('/warrants', async (req, res) => {
+    const warrants = await Warrant.find({ guildId: req.guildId, active: true }).sort({ createdAt: -1 }).limit(100).lean();
+    res.json({ warrants });
+  });
+
+  router.post('/warrants', async (req, res) => {
+    const charges = str(req.body.charges, 300);
+    if (!charges) return badRequest(res, 'List the charges.');
+    const character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+    if (!character) return notFound(res, 'Character');
+    const warrant = await Warrant.create({
+      guildId: req.guildId,
+      warrantId: shortId('W'),
+      characterId: character._id,
+      characterName: character.characterName,
+      charges,
+      details: str(req.body.details, 1000) || '',
+      issuedBy: req.cadUser.userId,
+      issuedByName: officerName(req),
+    });
+    res.status(201).json({ warrant });
+  });
+
+  router.post('/warrants/:warrantId/:action', async (req, res) => {
+    const action = req.params.action;
+    if (!['serve', 'cancel'].includes(action)) return notFound(res, 'Action');
+    const warrant = await Warrant.findOne({ guildId: req.guildId, warrantId: req.params.warrantId, active: true });
+    if (!warrant) return notFound(res, 'Warrant');
+    warrant.active = false;
+    warrant.closedAs = action === 'serve' ? 'served' : 'cancelled';
+    warrant.closedBy = req.cadUser.userId;
+    warrant.closedAt = new Date();
+    await warrant.save();
+    res.json({ warrant });
+  });
+
+  // ── Impound lot ────────────────────────────────────────────────────────────
+  router.get('/impounds', async (req, res) => {
+    const impounds = await Impound.find({ guildId: req.guildId, active: true }).sort({ createdAt: -1 }).limit(100).lean();
+    res.json({ impounds });
+  });
+
+  router.post('/impounds', async (req, res) => {
+    const licensePlate = plate(req.body.licensePlate);
+    if (!licensePlate) return badRequest(res, 'Enter the plate.');
+    const reason = str(req.body.reason, 300);
+    if (!reason) return badRequest(res, 'Give a reason for the impound.');
+    const already = await Impound.findOne({ guildId: req.guildId, licensePlate, active: true }).lean();
+    if (already) return badRequest(res, 'That vehicle is already in the impound lot.');
+
+    // The registered owner, if the plate is on file.
+    const owner = await CADCharacter.findOne({
+      guildId: req.guildId,
+      $or: [{ licensePlate }, { 'vehicles.licensePlate': licensePlate }],
+    }).lean();
+    const vehicle = owner ? (owner.vehicles || []).find((v) => v.licensePlate === licensePlate) : null;
+
+    const impound = await Impound.create({
+      guildId: req.guildId,
+      impoundId: shortId('IMP'),
+      licensePlate,
+      vehicle: vehicle ? [vehicle.color, vehicle.make, vehicle.model].filter(Boolean).join(' ') : str(req.body.vehicle, 80) || '',
+      characterId: owner ? owner._id : null,
+      characterName: owner ? owner.characterName : null,
+      reason,
+      officerId: req.cadUser.userId,
+      officerName: officerName(req),
+    });
+    res.status(201).json({ impound });
+  });
+
+  router.post('/impounds/:impoundId/release', async (req, res) => {
+    const impound = await Impound.findOne({ guildId: req.guildId, impoundId: req.params.impoundId, active: true });
+    if (!impound) return notFound(res, 'Impound');
+    impound.active = false;
+    impound.releasedBy = req.cadUser.userId;
+    impound.releasedAt = new Date();
+    await impound.save();
+    res.json({ impound });
+  });
+
+  // ── Evidence locker (Premium) ──────────────────────────────────────────────
+  async function premiumOnly(req, res) {
+    if (await hasPremiumAccess(req.guildId)) return true;
+    res.status(403).json({ error: 'premium_required', message: 'The evidence locker is a Premium feature.' });
+    return false;
+  }
+
+  router.get('/evidence', async (req, res) => {
+    if (!(await premiumOnly(req, res))) return;
+    const q = str(req.query.q, 60);
+    const filter = { guildId: req.guildId };
+    if (q) {
+      const loose = new RegExp(escapeRegex(q), 'i');
+      filter.$or = [{ caseRef: loose }, { characterName: loose }, { description: loose }, { evidenceId: loose }];
+    }
+    const items = await Evidence.find(filter).sort({ createdAt: -1 }).limit(100).lean();
+    res.json({ items });
+  });
+
+  router.post('/evidence', async (req, res) => {
+    if (!(await premiumOnly(req, res))) return;
+    const description = str(req.body.description, 500);
+    if (!description) return badRequest(res, 'Describe the item.');
+    let character = null;
+    if (req.body.characterId) {
+      character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+    }
+    const item = await Evidence.create({
+      guildId: req.guildId,
+      evidenceId: shortId('EV'),
+      caseRef: str(req.body.caseRef, 60) || '',
+      characterId: character ? character._id : null,
+      characterName: character ? character.characterName : (str(req.body.characterName, 80) || null),
+      description,
+      storedAt: str(req.body.storedAt, 120) || '',
+      submittedBy: req.cadUser.userId,
+      submittedByName: officerName(req),
+    });
+    res.status(201).json({ item });
   });
 
   // ── BOLOs ──────────────────────────────────────────────────────────────────

@@ -10,6 +10,9 @@ import VerifiedUser from '../../../models/VerifiedUser.js';
 import { StrikeUser, StrikeConfig } from '../../../models/Strike.js';
 import Ticket from '../../../models/Ticket.js';
 import Blacklist from '../../../models/Blacklist.js';
+import Warrant from '../../../models/Warrant.js';
+import Impound from '../../../models/Impound.js';
+import Evidence from '../../../models/Evidence.js';
 
 /**
  * Live updates for the CAD, over server-sent events.
@@ -49,6 +52,7 @@ const QUERY_MS = Math.max(1000, TICK_MS - 500);
 export const SECTIONS = [
   'calls', 'officers', 'bolos', 'priority', 'tickets',
   'characters', 'verifications', 'strikes', 'support', 'blacklist',
+  'warrants', 'impounds', 'evidence',
 ];
 
 /** guildId -> { clients:Set<res>, timer, busy } */
@@ -108,6 +112,9 @@ export async function fingerprint(guildId) {
     run(() => StrikeConfig.findOne({ guildId }, 'strikes').lean()),
     run(() => Ticket.countDocuments({ guildId, status: { $ne: 'closed' } })),
     run(() => Blacklist.countDocuments({ guildId, active: true })),
+    run(() => Warrant.find({ guildId, active: true }, 'warrantId').lean()),
+    run(() => Impound.find({ guildId, active: true }, 'impoundId').lean()),
+    run(() => Evidence.countDocuments({ guildId })),
   ]);
 
   const failed = settled.filter((r) => r.status === 'rejected');
@@ -118,7 +125,7 @@ export async function fingerprint(guildId) {
     calls, officers, bolos, priority,
     ticketsTotal, ticketsUnpaid, characters, charactersLatest,
     pendingCount, pendingLatest, verified, strikes, strikeConfig,
-    support, blacklist,
+    support, blacklist, warrants, impounds, evidence,
   ] = settled.map((r) => (r.status === 'fulfilled' ? r.value : FAILED));
 
   // A section is null when anything it is built from failed.
@@ -155,6 +162,10 @@ export async function fingerprint(guildId) {
         && strikeConfig.strikes[`strike${n}`].action) || '').join(',')),
     support: section([support], () => String(support)),
     blacklist: section([blacklist], () => String(blacklist)),
+    // Ids: one served and one issued in the same tick must still register.
+    warrants: section([warrants], () => warrants.map((w) => w.warrantId).sort().join('|')),
+    impounds: section([impounds], () => impounds.map((i) => i.impoundId).sort().join('|')),
+    evidence: section([evidence], () => String(evidence)),
   };
 }
 
