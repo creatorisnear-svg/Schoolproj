@@ -40,7 +40,9 @@ const RATE_MAX = 10;
 // visitor reloading is not a carding attack.
 const _trackLimitMap = new Map();
 const TRACK_MAX = 60;
-const VALID_PLANS = new Set(['monthly', 'quarterly', 'lifetime']);
+// quarterly is no longer offered on the pricing page but still honoured for
+// links and keys that exist.
+const VALID_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'lifetime']);
 const ID = /^\d{17,20}$/;
 
 // Purge expired entries every 30 minutes to prevent memory growth
@@ -73,7 +75,7 @@ function generateKey() {
 }
 
 function isSubscriptionPlan(plan) {
-  return plan === 'monthly' || plan === 'quarterly';
+  return plan === 'monthly' || plan === 'quarterly' || plan === 'yearly';
 }
 
 function getDomain(req) {
@@ -185,14 +187,27 @@ const PRICE_SPECS = {
       description: '3-month premium subscription billed every 3 months. $14 per period. Includes AI Voice Dispatch and all premium features. All sales final.',
     },
   },
+  // A third off monthly. Yearly plans also lose far fewer subscribers to a
+  // card that fails at renewal, which is how the only subscriber was lost.
+  yearly: {
+    field: 'yearlyPriceIdV1',
+    nickname: 'RPM Premium Yearly v1',
+    amount: 3999,
+    recurring: { interval: 'year', interval_count: 1 },
+    product: {
+      name: 'RolePlayManager Premium - Yearly',
+      description: 'Yearly premium subscription. $39.99 a year. Includes AI Voice Dispatch and all premium features.',
+    },
+  },
+  // Twice the yearly price. At $48.99 lifetime cost less than a year of monthly.
   lifetime: {
-    field: 'lifetimePriceIdV3',
-    nickname: 'RPM Premium Lifetime v3',
-    amount: 4899,
+    field: 'lifetimePriceIdV4',
+    nickname: 'RPM Premium Lifetime v4',
+    amount: 7999,
     recurring: null,
     product: {
       name: 'RolePlayManager Premium - Lifetime',
-      description: 'One-time lifetime premium purchase. $48.99. Includes AI Voice Dispatch and all current premium features. All sales final.',
+      description: 'One-time lifetime premium purchase. $79.99. Includes AI Voice Dispatch and all current premium features.',
     },
   },
 };
@@ -212,15 +227,15 @@ function priceMatches(price, spec) {
  * else created. Exported for the test suite.
  */
 export async function getOrCreatePrices(stripe) {
-  const ids = { monthly: null, quarterly: null, lifetime: null };
+  const ids = { monthly: null, quarterly: null, yearly: null, lifetime: null };
   let StripeConfig = null;
 
   try {
     ({ default: StripeConfig } = await import('../../models/StripeConfig.js'));
     const cfg = await StripeConfig.findOne({ key: 'global' }).maxTimeMS(5000);
     for (const [plan, spec] of Object.entries(PRICE_SPECS)) ids[plan] = cfg?.[spec.field] || null;
-    if (ids.monthly && ids.quarterly && ids.lifetime) {
-      return { monthlyPriceId: ids.monthly, quarterlyPriceId: ids.quarterly, lifetimePriceId: ids.lifetime };
+    if (ids.monthly && ids.quarterly && ids.yearly && ids.lifetime) {
+      return { monthlyPriceId: ids.monthly, quarterlyPriceId: ids.quarterly, yearlyPriceId: ids.yearly, lifetimePriceId: ids.lifetime };
     }
     console.warn('[Stripe] price cache incomplete:', JSON.stringify(ids));
   } catch (dbErr) {
@@ -265,7 +280,7 @@ export async function getOrCreatePrices(stripe) {
     if (StripeConfig) {
       await StripeConfig.findOneAndUpdate(
         { key: 'global' },
-        { monthlyPriceIdV3: ids.monthly, quarterlyPriceIdV3: ids.quarterly, lifetimePriceIdV3: ids.lifetime },
+        { monthlyPriceIdV3: ids.monthly, quarterlyPriceIdV3: ids.quarterly, yearlyPriceIdV1: ids.yearly, lifetimePriceIdV4: ids.lifetime },
         { upsert: true, new: true }
       );
     }
@@ -273,7 +288,7 @@ export async function getOrCreatePrices(stripe) {
     console.warn('[Stripe] DB save failed (prices still usable this request):', dbErr.message);
   }
 
-  return { monthlyPriceId: ids.monthly, quarterlyPriceId: ids.quarterly, lifetimePriceId: ids.lifetime };
+  return { monthlyPriceId: ids.monthly, quarterlyPriceId: ids.quarterly, yearlyPriceId: ids.yearly, lifetimePriceId: ids.lifetime };
 }
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
@@ -307,6 +322,18 @@ async function autoActivate(keyDoc, session, ctx) {
   console.log(`[Stripe] Premium switched on for guild ${guildId} from session ${session.id}`);
   if (client && buyer) {
     dmUsers(client, [buyer], premiumActivatedMessage({ guildName, plan: keyDoc.plan })).catch(() => {});
+  }
+  // A gift: tell the owner who bought it, so it is not a mystery.
+  if (client && session.metadata?.gift === 'true') {
+    const owner = client.guilds?.cache?.get(guildId)?.ownerId;
+    if (owner && owner !== buyer) {
+      const { EmbedBuilder } = await import('discord.js');
+      dmUsers(client, [owner], { embeds: [new EmbedBuilder()
+        .setColor(0x2d2d2d)
+        .setTitle('Premium was gifted to your server')
+        .setDescription('<@' + buyer + '> bought Premium for **' + (guildName || 'your server') + '**. It is on now, with every Premium feature unlocked.\n\nRun `/premium` in the server to see what it includes.')
+        .setFooter({ text: 'RPM' })] }).catch(() => {});
+    }
   }
   return { guildId, guildName, already: false };
 }
@@ -517,17 +544,26 @@ export function createCheckoutRouter(client, deps = {}) {
       }
 
       let guildName = null;
+      let gift = false;
       if (guildId !== undefined && guildId !== null && guildId !== '') {
         if (!ID.test(String(guildId))) return res.status(400).json({ error: 'Invalid server.' });
         if (!identity) {
           return res.status(401).json({ error: 'Your sign-in has expired. Sign in again, or continue without choosing a server.' });
         }
-        const g = identity.guilds.find((x) => x.id === String(guildId) && x.admin);
-        if (!g) return res.status(403).json({ error: 'You need Administrator on that server to buy Premium for it.' });
+        // Any member may buy Premium for a server they are in: a gift when
+        // they are not an administrator there. Owners without a working card
+        // were the one subscriber this bot has lost.
+        const g = identity.guilds.find((x) => x.id === String(guildId));
+        if (!g) return res.status(403).json({ error: 'You need to be a member of that server to buy Premium for it.' });
         if (client && client.guilds?.cache && !client.guilds.cache.has(String(guildId))) {
           return res.status(400).json({ error: 'The bot is not in that server yet. Invite it first, then come back.' });
         }
+        const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
+        if (await isPremiumGuild(String(guildId))) {
+          return res.status(409).json({ error: 'That server already has Premium, so there is nothing to buy.' });
+        }
         guildName = client?.guilds?.cache?.get(String(guildId))?.name || g.name || null;
+        gift = !g.admin;
       }
 
       const stripe = await getStripeClient();
@@ -543,6 +579,7 @@ export function createCheckoutRouter(client, deps = {}) {
       if (guildId && identity) {
         metadata.guildId = String(guildId);
         if (guildName) metadata.guildName = clip(guildName, 100);
+        if (gift) metadata.gift = 'true';
       }
       if (source) metadata.source = clip(source, 40);
 
@@ -553,11 +590,11 @@ export function createCheckoutRouter(client, deps = {}) {
         allow_promotion_codes: true,
       };
 
-      const { monthlyPriceId, quarterlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
+      const { monthlyPriceId, quarterlyPriceId, yearlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
 
       let session;
       if (isSubscriptionPlan(plan)) {
-        const priceId = plan === 'monthly' ? monthlyPriceId : quarterlyPriceId;
+        const priceId = { monthly: monthlyPriceId, quarterly: quarterlyPriceId, yearly: yearlyPriceId }[plan];
         session = await stripe.checkout.sessions.create({
           ...commonParams,
           mode: 'subscription',
@@ -713,7 +750,7 @@ export function createCheckoutRouter(client, deps = {}) {
     }
 
     const activated = result?.activated || null;
-    const planWord = { monthly: 'Monthly Premium', quarterly: '3-month Premium', lifetime: 'Lifetime Premium' }[result?.plan] || 'Premium';
+    const planWord = { monthly: 'Monthly Premium', quarterly: '3-month Premium', yearly: 'Yearly Premium', lifetime: 'Lifetime Premium' }[result?.plan] || 'Premium';
 
     let headline; let lead; let keyLabel; let keyHint;
     if (activated) {

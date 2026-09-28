@@ -14,6 +14,20 @@ const PAID_FIELDS = {
   dutytime: ['boardChannelId', 'reportChannelId', 'inactiveAfterDays'],
 };
 
+/**
+ * For the website's server pickers: servers the user is in where the bot is
+ * too but they are not an administrator (they can gift Premium there), and
+ * servers they administer that do not have the bot yet (an Add button).
+ */
+function extraServers(userGuilds, client) {
+  const isAdmin = (g) => (BigInt(g.permissions) & BigInt(0x8)) === BigInt(0x8);
+  const icon = (g) => ({ id: g.id, name: g.name, icon: g.icon || null });
+  return {
+    memberGuilds: userGuilds.filter((g) => !isAdmin(g) && client.guilds.cache.has(g.id)).map(icon).slice(0, 50),
+    addable: userGuilds.filter((g) => isAdmin(g) && !client.guilds.cache.has(g.id)).map(icon).slice(0, 25),
+  };
+}
+
 /** A free cap refusal, in the same words everywhere on the dashboard. */
 function capReached(res, n, what) {
   return res.status(403).json({ error: 'The free plan includes ' + n + ' ' + what + ' and this server has them all. Premium removes the limit.' });
@@ -294,7 +308,7 @@ export function createApiRouter(client) {
         const botGuild = client.guilds.cache.get(g.id);
         return { id: g.id, name: g.name, icon: g.icon, memberCount: botGuild?.memberCount || 0 };
       });
-      return res.json({ user: cached.user, guilds: manageable });
+      return res.json({ user: cached.user, guilds: manageable, ...extraServers(cached.userGuilds, client) });
     }
 
     try {
@@ -325,7 +339,7 @@ export function createApiRouter(client) {
         };
       });
 
-      res.json({ user, guilds: manageable });
+      res.json({ user, guilds: manageable, ...extraServers(userGuilds, client) });
     } catch (err) {
       res.status(401).json({ error: 'Invalid token' });
     }
@@ -993,6 +1007,7 @@ export function createApiRouter(client) {
             { key: 'enabled', label: 'Enable Economy', description: 'Enable or disable the economy system for this server', type: 'toggle', value: ec?.enabled ?? true },
             { key: 'currencySymbol', label: 'Currency Symbol', description: 'Symbol shown next to all balances', type: 'text', value: ec?.currencySymbol || '$', placeholder: '$' },
             { key: 'startingBalance', label: 'Starting Balance', description: 'Cash given to new members on first interaction', type: 'number', value: ec?.startingBalance ?? 1000, min: 0, max: 1000000 },
+            { key: 'voteReward', label: 'Top.gg Vote Reward', description: 'Cash a member gets here each time they vote for the bot on Top.gg, doubled at weekends. 0 turns it off', type: 'number', value: ec?.voteReward ?? 500, min: 0, max: 1000000 },
             { key: 'maxBalance', label: 'Max Balance', description: 'Maximum cash a member can hold at once', type: 'number', value: ec?.maxBalance ?? 1000000, min: 1, max: 999999999 },
             { key: 'logChannelId', label: 'Log Channel', description: 'Channel where admin money actions are logged', type: 'select', value: ec?.logChannelId || '', options: channels },
             { key: 'work_enabled', label: 'Enable Work', description: 'Allow members to earn money with /economy work', type: 'toggle', value: ec?.work?.enabled ?? true },
@@ -1492,7 +1507,7 @@ export function createApiRouter(client) {
         case 'economy': {
           const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
           const ec = await EconomyConfig.findOne({ guildId: guild.id }) || new EconomyConfig({ guildId: guild.id });
-          const topLevel = ['currencySymbol', 'startingBalance', 'maxBalance', 'logChannelId', 'sellPercent', 'incomeTax', 'incomeChannelId', 'enabled'];
+          const topLevel = ['currencySymbol', 'startingBalance', 'voteReward', 'maxBalance', 'logChannelId', 'sellPercent', 'incomeTax', 'incomeChannelId', 'enabled'];
           const nestedMap = {
             work_enabled: ['work', 'enabled'],
             work_cooldown: ['work', 'cooldown'],
@@ -1517,7 +1532,7 @@ export function createApiRouter(client) {
             chatMoney_maxAmount: ['chatMoney', 'maxAmount'],
             chatMoney_cooldown: ['chatMoney', 'cooldown'],
           };
-          const numericFields = new Set(['startingBalance', 'maxBalance', 'sellPercent', 'incomeTax', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
+          const numericFields = new Set(['startingBalance', 'voteReward', 'maxBalance', 'sellPercent', 'incomeTax', 'work_cooldown', 'work_minPayout', 'work_maxPayout', 'crime_cooldown', 'crime_successRate', 'crime_minPayout', 'crime_maxPayout', 'crime_fineRate', 'rob_cooldown', 'rob_successRate', 'rob_maxStealPercent', 'gambling_minBet', 'gambling_maxBet', 'gambling_cooldown', 'chatMoney_minAmount', 'chatMoney_maxAmount', 'chatMoney_cooldown']);
           for (const [k, v] of Object.entries(changes)) {
             const val = numericFields.has(k) ? Number(v) : v;
             if (topLevel.includes(k)) {
@@ -2258,7 +2273,7 @@ export function createApiRouter(client) {
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
       if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire and cannot be cancelled.' });
-      if (!['monthly', 'quarterly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No cancellable subscription found.' });
+      if (!['monthly', 'quarterly', 'yearly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No cancellable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No subscription found. This key was not purchased through Stripe.' });
       if (premiumKey.subscriptionStatus === 'canceled' || premiumKey.subscriptionStatus === 'cancelled') {
         return res.status(400).json({ error: 'This subscription is already cancelled.' });
@@ -2302,7 +2317,7 @@ export function createApiRouter(client) {
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
       if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire.' });
-      if (!['monthly', 'quarterly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No reactivatable subscription found.' });
+      if (!['monthly', 'quarterly', 'yearly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No reactivatable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No Stripe subscription found for this key.' });
       if (premiumKey.subscriptionStatus !== 'cancelling') {
         return res.status(400).json({ error: 'Subscription is not pending cancellation.' });
@@ -3521,6 +3536,85 @@ export function createApiRouter(client) {
         console.error('[Internal /panic] TTS error:', err.message);
       }
     });
+  });
+
+  // ── Data export ────────────────────────────────────────────────────────
+  // Everything the bot stores for a server, as one JSON file. After ERM, the
+  // biggest bot in the Roblox RP scene, shut down in September, owners look
+  // for a tool that lets them leave with their data. Addresses, tokens and
+  // anything secret are left out.
+  router.get('/guild/:id/export', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      if (!(await verifyAdminAccess(token, req.params.id))) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+
+    const { default: mongoose } = await import('mongoose');
+    const SKIP = new Set(['DirectoryVote', 'DirectoryReport', 'DirectoryClick', 'FunnelEvent', 'AIUsage']);
+    const SECRET = /^(ip|ipAddress|ipAddresses|ipHash|hashedIp)$|token|secret|password|^key$/i;
+    const scrub = (v) => {
+      if (Array.isArray(v)) return v.map(scrub);
+      if (v && typeof v === 'object' && !(v instanceof Date) && !(v instanceof mongoose.Types.ObjectId)) {
+        const out = {};
+        for (const [k, val] of Object.entries(v)) { if (!SECRET.test(k)) out[k] = scrub(val); }
+        return out;
+      }
+      return v;
+    };
+    const data = {};
+    for (const name of mongoose.modelNames()) {
+      if (SKIP.has(name)) continue;
+      const model = mongoose.model(name);
+      if (!model.schema.path('guildId')) continue;
+      const rows = await model.find({ guildId: req.params.id }).limit(5000).lean().catch(() => []);
+      if (rows.length) data[name] = rows.map(scrub);
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="RolePlayManager-' + req.params.id + '.json"');
+    res.send(JSON.stringify({ exportedAt: new Date().toISOString(), guildId: req.params.id, data }, null, 2));
+  });
+
+  // ── Bot branding (Premium) ─────────────────────────────────────────────
+  router.get('/guild/:id/branding', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      if (!(await verifyAdminAccess(token, req.params.id))) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { default: GuildBranding } = await import('../../models/GuildBranding.js');
+    const row = await GuildBranding.findOne({ guildId: req.params.id }).lean();
+    res.json({
+      premium: await hasPremiumAccess(req.params.id),
+      branding: row ? { nick: row.nick, bio: row.bio, hasAvatar: row.hasAvatar, hasBanner: row.hasBanner, appliedAt: row.appliedAt } : null,
+      botName: client.user?.username || 'RolePlayManager',
+      botAvatar: client.user?.displayAvatarURL?.({ size: 128 }) || null,
+    });
+  });
+
+  router.put('/guild/:id/branding', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      if (!(await verifyAdminAccess(token, req.params.id))) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    if (!client.guilds.cache.has(req.params.id)) return res.status(404).json({ error: 'Guild not found' });
+    if (!(await hasPremiumAccess(req.params.id))) return res.status(403).json({ error: 'premium_required' });
+    const { applyBranding } = await import('../../utils/branding.js');
+    const result = await applyBranding(client, req.params.id, req.body || {}, null);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+    res.json({ ok: true });
+  });
+
+  router.delete('/guild/:id/branding', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      if (!(await verifyAdminAccess(token, req.params.id))) return res.status(403).json({ error: 'No admin access' });
+    } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    const { resetBranding } = await import('../../utils/branding.js');
+    await resetBranding(client, req.params.id);
+    res.json({ ok: true });
   });
 
   return router;

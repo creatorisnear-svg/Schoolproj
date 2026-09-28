@@ -7,6 +7,8 @@ var toastEl = document.getElementById('toast');
 
 var currentUser = null;
 var currentGuild = null;
+/* Servers the user runs that do not have the bot yet: offered an Add button. */
+var addableGuilds = [];
 
 /* Premium or a running trial: what the dashboard should unlock. */
 function hasPremiumAccess() {
@@ -288,6 +290,7 @@ function init() {
       if (!data || !data.user) { clearToken(); showLogin(); return; }
       currentUser = data.user;
       guilds = data.guilds || [];
+      addableGuilds = data.addable || [];
       var avatar = currentUser.avatar
         ? 'https://cdn.discordapp.com/avatars/' + currentUser.id + '/' + currentUser.avatar + '.png?size=32'
         : null;
@@ -359,7 +362,17 @@ function renderServerSelect() {
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
             '</div>';
         }).join('')) +
-    '</div></div>';
+    '</div>' +
+    (addableGuilds.length
+      ? '<div class="dash-header" style="margin-top:24px;"><h1 style="font-size:18px;">Add it to another server</h1><p>Servers you run that do not have RolePlayManager yet.</p></div>' +
+        '<div class="server-list">' + addableGuilds.map(function(g) {
+          return '<a class="server-card" style="text-decoration:none;color:inherit;" target="_blank" rel="noopener" href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands&guild_id=' + encodeURIComponent(g.id) + '&disable_guild_select=true">' +
+            '<div class="server-icon">' + (g.icon ? '<img src="https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64" alt="">' : esc(g.name.charAt(0))) + '</div>' +
+            '<div style="flex:1;min-width:0;"><div class="server-name">' + esc(g.name) + '</div><div class="server-members">Not added yet</div></div>' +
+            '<span class="btn btn-primary btn-sm">Add bot</span></a>';
+        }).join('') + '</div>'
+      : '') +
+    '</div>';
 }
 
 // Premium state comes from the registry, which the API resolves per feature
@@ -394,7 +407,7 @@ function selectServer(guildId, section) {
     }
     currentGuild = data;
     pendingChanges = {};
-    if (section === 'directory') { renderDirectory(); } else if (section) { renderSettings(section); } else { renderDashboard(); }
+    if (section === 'directory') { renderDirectory(); } else if (section === 'branding') { renderBranding(); } else if (section) { renderSettings(section); } else { renderDashboard(); }
   });
 }
 
@@ -493,6 +506,8 @@ function renderSidebar(active) {
     '</div>' +
     '<div class="sidebar-section"><div class="sidebar-section-title">Grow</div>' +
     '<div class="sidebar-item ' + (active === 'directory' ? 'active' : '') + '" onclick="closeSidebar();renderDirectory()">Server Directory</div>' +
+    '<div class="sidebar-item ' + (active === 'branding' ? 'active' : '') + '" onclick="closeSidebar();renderBranding()">Bot Branding <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">PRO</span></div>' +
+    '<div class="sidebar-item" onclick="closeSidebar();exportServerData()">Export Data</div>' +
     '</div>' +
     groupedSections +
     premiumSection +
@@ -766,7 +781,7 @@ function redeemTrial(btn) {
 
 function cancelSubscription() {
   var plan = (currentGuild && currentGuild.premiumDetails && currentGuild.premiumDetails.plan) || 'monthly';
-  var planLabel = plan === 'quarterly' ? '3-month' : 'monthly';
+  var planLabel = plan === 'quarterly' ? '3-month' : plan === 'yearly' ? 'yearly' : 'monthly';
   if (!confirm('Cancel your ' + planLabel + ' subscription? Premium stays active until the end of the current billing period. No refunds are issued.')) return;
   var btn = document.getElementById('cancel-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
@@ -809,7 +824,7 @@ function renderPremiumSection(g) {
     var pd = g.premiumDetails || {};
     var subStatus = pd.subscriptionStatus || null;
     var isCancelling = subStatus === 'cancelling';
-    var isSubscription = pd.hasStripeSubscription && (pd.plan === 'monthly' || pd.plan === 'quarterly');
+    var isSubscription = pd.hasStripeSubscription && (pd.plan === 'monthly' || pd.plan === 'quarterly' || pd.plan === 'yearly');
     var periodEnd = pd.subscriptionCurrentPeriodEnd ? new Date(pd.subscriptionCurrentPeriodEnd) : null;
     var periodEndStr = periodEnd ? periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
@@ -823,6 +838,8 @@ function renderPremiumSection(g) {
 
     var planLabel = pd.plan === 'monthly'
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
+      : pd.plan === 'yearly'
+        ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Yearly</span>'
       : pd.plan === 'quarterly'
         ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">3-Month</span>'
         : (pd.subscriptionStatus === null && !isSubscription ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
@@ -915,7 +932,7 @@ function renderBilling() {
       return;
     }
 
-    var planLabel = data.plan === 'monthly' ? 'Monthly ($5/mo)' : data.plan === 'quarterly' ? '3-Month ($14/3mo)' : data.plan === 'lifetime' ? 'Lifetime ($48.99 one-time)' : 'Manual / Gifted';
+    var planLabel = data.plan === 'monthly' ? 'Monthly ($5 a month)' : data.plan === 'yearly' ? 'Yearly ($39.99 a year)' : data.plan === 'quarterly' ? '3-Month ($14 every 3 months)' : data.plan === 'lifetime' ? 'Lifetime (one payment)' : data.plan === 'discord' ? 'Bought in Discord' : 'Manual or gifted';
     var statusColor = data.status === 'active' ? 'var(--green)' : data.status === 'cancelling' ? 'var(--amber)' : data.status === 'past_due' ? '#f97316' : 'var(--text-muted)';
     var statusText = data.status === 'active' ? 'Active' : data.status === 'cancelling' ? 'Cancelling' : data.status === 'past_due' ? 'Past Due' : data.status || 'Active';
 
@@ -934,7 +951,7 @@ function renderBilling() {
       ? billingRow('Purchase date', new Date(data.purchasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))
       : '';
 
-    var isSubscription = data.hasStripeSubscription && (data.plan === 'monthly' || data.plan === 'quarterly');
+    var isSubscription = data.hasStripeSubscription && (data.plan === 'monthly' || data.plan === 'quarterly' || data.plan === 'yearly');
     var cancelBtn = '';
     if (isSubscription) {
       if (data.status === 'cancelling') {
@@ -2395,7 +2412,7 @@ function deleteWhitelistedLink(link) {
 function renderEconomySettings(data) {
   var fields = data.fields || [];
   var groups = {
-    general:   { label: 'General', keys: ['enabled','currencySymbol','startingBalance','maxBalance','logChannelId'] },
+    general:   { label: 'General', keys: ['enabled','currencySymbol','startingBalance','voteReward','maxBalance','logChannelId'] },
     work:      { label: 'Work',    keys: ['work_enabled','work_cooldown','work_minPayout','work_maxPayout'] },
     crime:     { label: 'Crime',   keys: ['crime_enabled','crime_cooldown','crime_successRate','crime_minPayout','crime_maxPayout','crime_fineRate'] },
     rob:       { label: 'Robbery', keys: ['rob_enabled','rob_cooldown','rob_successRate','rob_maxStealPercent'] },
@@ -3515,4 +3532,106 @@ function promoteDirectory(days, btn) {
     btn.disabled = false;
     toast('Could not reach the server. Try again in a moment.', 'error');
   });
+}
+
+/* ── Bot Branding (Premium) ──
+   The bot under the server's own name, picture, banner and profile text, on
+   this server only. Reset puts the normal RolePlayManager look back. */
+var brandingImages = { avatar: undefined, banner: undefined };
+
+function renderBranding() {
+  rememberView(renderBranding);
+  saveSession(currentGuild && currentGuild.id, 'branding');
+  brandingImages = { avatar: undefined, banner: undefined };
+  app.innerHTML = '<div class="dashboard-layout">' + renderSidebar('branding') +
+    '<div class="dashboard-content">' + sidebarToggleBtn('Menu') +
+    '<div class="dash-header"><h1>Bot Branding</h1><p>Loading...</p></div></div></div>';
+
+  api('/guild/' + currentGuild.id + '/branding').then(function(data) {
+    if (!data) return;
+    var b = data.branding || {};
+    var locked = !data.premium;
+    var html = '<div class="dashboard-layout">' + renderSidebar('branding') +
+      '<div class="dashboard-content">' + sidebarToggleBtn('Menu') +
+      '<div class="mobile-back" onclick="closeSidebar();renderDashboard()">&#8249; Back to Overview</div>' +
+      '<div class="dash-header"><h1>Bot Branding</h1><p>Make the bot look like part of ' + esc(currentGuild.name) +
+      ': your own name, picture, banner and profile text for the bot, on this server only. Everywhere else it stays RolePlayManager.</p></div>';
+
+    if (locked) {
+      html += '<div style="background:var(--amber-bg);border:1px solid rgba(251,191,36,0.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--amber);">' +
+        'Bot branding is a Premium feature. ' +
+        (currentGuild.trialUsed ? '' : '<a href="#" onclick="redeemTrial(this);return false;" style="color:var(--blue);text-decoration:underline;">Start the free trial</a> or ') +
+        '<a href="https://roleplaymanager.xyz' + pricingHref('branding') + '" target="_blank" style="color:var(--blue);text-decoration:underline;">get Premium</a> to use it.</div>';
+    }
+
+    html += '<div class="config-section"' + (locked ? ' style="pointer-events:none;opacity:0.45;"' : '') + '><div class="config-section-header"><h3>How the bot looks here</h3></div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Name</span><div class="config-sublabel">Shown instead of ' + esc(data.botName) + ' on this server. Up to 32 characters.</div></div>' +
+      '<input type="text" class="config-input" id="br-nick" maxlength="32" value="' + esc(b.nick || '') + '" placeholder="LSPD Dispatch"></div>' +
+      '<div class="config-row textarea-row"><div class="config-left"><span class="config-label">Profile text</span><div class="config-sublabel">What members see when they open the bot\'s profile here. Up to 190 characters.</div></div>' +
+      '<textarea class="config-textarea" id="br-bio" maxlength="190" placeholder="Official dispatch for Los Santos RP.">' + esc(b.bio || '') + '</textarea></div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Picture</span><div class="config-sublabel">' + (b.hasAvatar ? 'A custom picture is set. ' : '') + 'Square PNG, JPG, GIF or WebP, under 2 MB.</div></div>' +
+      '<input type="file" id="br-avatar" accept="image/png,image/jpeg,image/gif,image/webp" onchange="brandingFile(this,\'avatar\')"></div>' +
+      '<div class="config-row"><div class="config-left"><span class="config-label">Banner</span><div class="config-sublabel">' + (b.hasBanner ? 'A custom banner is set. ' : '') + 'Wide image shown at the top of the profile, under 2 MB.</div></div>' +
+      '<input type="file" id="br-banner" accept="image/png,image/jpeg,image/gif,image/webp" onchange="brandingFile(this,\'banner\')"></div>' +
+      '<div class="config-row" style="justify-content:flex-end;gap:8px;">' +
+      '<button class="btn btn-secondary" onclick="resetBrandingClick(this)">Reset to RolePlayManager</button>' +
+      '<button class="btn btn-primary" onclick="saveBranding(this)">Save branding</button></div>' +
+      '</div>';
+
+    html += '</div></div>';
+    app.innerHTML = html;
+  });
+}
+
+function brandingFile(input, which) {
+  var file = input.files && input.files[0];
+  if (!file) { brandingImages[which] = undefined; return; }
+  if (file.size > 2 * 1024 * 1024) { toast('That image is over 2 MB.', 'error'); input.value = ''; return; }
+  var reader = new FileReader();
+  reader.onload = function() { brandingImages[which] = reader.result; };
+  reader.readAsDataURL(file);
+}
+
+function saveBranding(btn) {
+  var body = {
+    nick: document.getElementById('br-nick').value.trim() || null,
+    bio: document.getElementById('br-bio').value.trim() || null,
+  };
+  if (brandingImages.avatar) body.avatar = brandingImages.avatar;
+  if (brandingImages.banner) body.banner = brandingImages.banner;
+  btn.disabled = true;
+  api('/guild/' + currentGuild.id + '/branding', { method: 'PUT', body: JSON.stringify(body) }).then(function(res) {
+    btn.disabled = false;
+    if (!res) return;
+    toast('Saved. Discord can take a minute to show the new look.');
+    renderBranding();
+  });
+}
+
+function resetBrandingClick(btn) {
+  if (!confirm('Put the bot back to the normal RolePlayManager name and picture on this server?')) return;
+  btn.disabled = true;
+  api('/guild/' + currentGuild.id + '/branding', { method: 'DELETE' }).then(function(res) {
+    btn.disabled = false;
+    if (!res) return;
+    toast('Back to the normal look.');
+    renderBranding();
+  });
+}
+
+/* ── Export Data ──
+   Everything the bot stores for this server, as one JSON file. */
+function exportServerData() {
+  toast('Preparing your export...');
+  fetch(API_BASE + '/api/guild/' + currentGuild.id + '/export', { headers: { 'Authorization': 'Bearer ' + getToken() } })
+    .then(function(r) { if (!r.ok) throw new Error('export failed'); return r.blob(); })
+    .then(function(blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'RolePlayManager-' + currentGuild.id + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    })
+    .catch(function() { toast('Could not export right now. Try again in a moment.', 'error'); });
 }

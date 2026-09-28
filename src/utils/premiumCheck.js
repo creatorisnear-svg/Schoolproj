@@ -27,16 +27,12 @@ export async function isPremiumGuild(guildId) {
   const cached = premiumCache.get(guildId);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
 
-  const key = await PremiumKey.findOne({ guildId });
-  let result = false;
-  if (key) {
-    if (key.plan === 'lifetime' || key.plan === 'manual') {
-      result = true;
-    } else {
-      const activeStatuses = ['active', 'trialing', 'past_due', 'cancelling'];
-      result = activeStatuses.includes(key.subscriptionStatus);
-    }
-  }
+  // Every key, not the first one found: a server can hold a lapsed key and a
+  // live one (bought again, or bought inside Discord as well as on the site),
+  // and findOne could return the lapsed one.
+  const keys = await PremiumKey.find({ guildId }).lean();
+  const activeStatuses = ['active', 'trialing', 'past_due', 'cancelling'];
+  const result = keys.some((key) => key.plan === 'lifetime' || key.plan === 'manual' || activeStatuses.includes(key.subscriptionStatus));
   premiumCache.set(guildId, { value: result, ts: Date.now() });
   return result;
 }

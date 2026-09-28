@@ -12,6 +12,12 @@
     "Fixed: long 911 calls were not read out at all. The dispatcher now reads calls of any length, and its AI replies no longer come back silent",
     "Servers that already had their free trial are no longer offered it again. Premium screens now take you straight to getting Premium for your server",
     "AI dispatch now has a monthly allowance so it stays fast for everyone: 5,000 radio lines a month on Premium and 100 spoken 911 read-outs on the free plan. Almost every server stays well inside it, and the dashboard shows your usage",
-    "The website now keeps to the same free plan limits as Discord for role requests, civilian jobs, shop items and sticky messages"
+    "The website now keeps to the same free plan limits as Discord for role requests, civilian jobs, shop items and sticky messages",
+    "New: a yearly Premium plan at $39.99, a third off monthly. Monthly stays $5. Lifetime is now $79.99",
+    "New: a 7 day money back guarantee on your first payment. If Premium is not right for your server, ask in the support server within 7 days",
+    "New: anyone can buy Premium for a server they are in, as a gift. The owner is told who it was from",
+    "New with Premium: bot branding. Give the bot your own name, picture, banner and profile text on your server, from the dashboard",
+    "New: vote for RolePlayManager on Top.gg and get in-game cash in every server where you use the economy, double at weekends. Owners set the amount on the dashboard, 500 by default, or 0 to turn it off. The thank-you message can remind you when you can vote again",
+    "New: download everything the bot stores for your server as one file, from Export Data on the dashboard"
   ]
 }

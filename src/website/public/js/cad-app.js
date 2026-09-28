@@ -296,7 +296,9 @@
       body.innerHTML = '<div class="empty">'
         + 'None of your servers have the CAD switched on yet.<br><br>'
         + 'A server admin turns it on with <span class="mono">/setup</span> in Discord, '
-        + 'under Roleplay Commands.'
+        + 'under Roleplay Commands.<br><br>'
+        + 'Looking for a server to join? <a href="https://roleplaymanager.xyz/servers/">Browse GTA RP servers</a>.<br>'
+        + 'Run your own? <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener">Add RolePlayManager to it</a>, free.'
         + '</div>';
       return;
     }

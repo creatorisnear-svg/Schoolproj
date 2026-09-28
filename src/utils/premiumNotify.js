@@ -89,7 +89,7 @@ export function subscriptionEndedMessage({ guildName, guildId, reason }) {
 }
 
 export function premiumActivatedMessage({ guildName, plan }) {
-  const what = { monthly: 'Monthly Premium', quarterly: '3-month Premium', lifetime: 'Lifetime Premium' }[plan] || 'Premium';
+  const what = { monthly: 'Monthly Premium', quarterly: '3-month Premium', yearly: 'Yearly Premium', lifetime: 'Lifetime Premium' }[plan] || 'Premium';
   const embed = new EmbedBuilder()
     .setColor(0x2d2d2d)
     .setTitle('Premium is on')

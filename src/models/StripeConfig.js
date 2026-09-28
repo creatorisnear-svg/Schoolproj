@@ -17,6 +17,11 @@ const stripeConfigSchema = new mongoose.Schema({
   monthlyPriceIdV3: { type: String, default: null },
   quarterlyPriceIdV3: { type: String, default: null },
   lifetimePriceIdV3: { type: String, default: null },
+  // Yearly plan, and lifetime at $79.99. Without these fields Mongoose's
+  // strict mode drops them from the cache write and a new price is created
+  // on every checkout, which is how six duplicate sets appeared before.
+  yearlyPriceIdV1: { type: String, default: null },
+  lifetimePriceIdV4: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
 });
 

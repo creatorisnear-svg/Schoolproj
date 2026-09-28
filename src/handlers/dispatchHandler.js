@@ -1063,7 +1063,9 @@ async function handlePendingStopMoveVoiceAnswer(guild, config, member, transcrip
 
 const TTS_CACHE_DIR = join(tmpdir(), 'everlink_tts_cache');
 const ttsMemCache = new Map();
-const TTS_MEM_CACHE_MAX = 30;
+// Routine lines (acknowledgements, 10-codes, read-out openers) repeat all
+// day across every server, so a larger cache saves real voice requests.
+const TTS_MEM_CACHE_MAX = 200;
 
 try { mkdirSync(TTS_CACHE_DIR, { recursive: true }); } catch {}
 

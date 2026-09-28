@@ -38,7 +38,9 @@ const premiumKeySchema = new mongoose.Schema({
   stripeSessionId: { type: String },
   stripeSubscriptionId: { type: String, default: null },
   stripePaymentIntentId: { type: String, default: null },
-  plan: { type: String, enum: ['monthly', 'quarterly', 'lifetime', 'manual'], default: 'manual' },
+  plan: { type: String, enum: ['monthly', 'quarterly', 'yearly', 'lifetime', 'manual', 'discord'], default: 'manual' },
+  // Bought inside Discord (utils/discordStore.js).
+  discordEntitlementId: { type: String, default: null },
   purchasedBy: { type: String, default: null },
   // The server picked at checkout, kept even if activation had to wait.
   purchasedGuildId: { type: String, default: null },

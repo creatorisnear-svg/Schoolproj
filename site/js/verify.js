@@ -24,6 +24,7 @@
       '<h3>' + (pending ? 'Application Submitted' : 'Verified') + '</h3>' +
       '<p>' + esc(msg) + '</p>' +
       (pending ? '<p class="pending-note">Staff will review your application. You will be notified in Discord.</p>' : '<p class="pending-note">You can now close this tab and return to Discord.</p>') +
+      '<p class="pending-note" style="margin-top:22px;">Run your own RP server? <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" target="_blank" rel="noopener" style="color:var(--blue);">Add RolePlayManager to it</a>. It is free.</p>' +
       '</div>';
   }
 
