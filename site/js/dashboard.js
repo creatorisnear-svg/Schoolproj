@@ -832,9 +832,13 @@ function renderPremiumSection(g) {
       ? '<span class="status-badge" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);"><span class="status-dot" style="background:#fbbf24;"></span>Cancelling</span>'
       : '<span class="status-badge enabled"><span class="status-dot"></span>Active</span>';
 
+    var isFund = pd.plan === 'fund';
+    var fundEndStr = isFund && pd.expiresAt ? new Date(pd.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
     var sublabel = isCancelling && periodEndStr
       ? 'Subscription ends <strong>' + periodEndStr + '</strong>. Premium stays active until then.'
-      : premiumItems.join(', ') + ': all unlocked.';
+      : fundEndStr
+        ? 'Paid for by your members until <strong>' + fundEndStr + '</strong>. Every $5 they chip in adds a month.'
+        : premiumItems.join(', ') + ': all unlocked.';
 
     var planLabel = pd.plan === 'monthly'
       ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Monthly</span>'
@@ -842,10 +846,12 @@ function renderPremiumSection(g) {
         ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Yearly</span>'
       : pd.plan === 'quarterly'
         ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">3-Month</span>'
+      : isFund
+        ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Paid by members</span>'
         : (pd.subscriptionStatus === null && !isSubscription ? '<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lifetime</span>' : '');
 
     var actionBtns = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
-    actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
+    if (!isFund) actionBtns += '<button id="transfer-btn" class="btn btn-secondary btn-sm" onclick="transferPremium()">Transfer Key</button>';
     if (isSubscription) {
       if (isCancelling) {
         actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';

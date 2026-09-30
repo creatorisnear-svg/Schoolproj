@@ -204,6 +204,9 @@
           <li>Server configuration settings entered by administrators</li>
         </ul>
 
+        <h3>Safety Network</h3>
+        <p>The Safety Network is off unless a server's staff turn it on. When a server shares its bans, we store the Discord user ID of each person it bans and the reason given, and show that reason, the size of the server and when it happened as a warning to other servers in the network when that person joins them. We never show which server it came from. An unban, the server turning sharing off, or the bot leaving the server withdraws it.</p>
+
         <h3>From Purchases</h3>
         <p>When you purchase a Premium subscription or lifetime key, payment is processed by Stripe. We do not store your card number or billing details. We store:</p>
         <ul>
@@ -211,6 +214,7 @@
           <li>Discord user ID of the purchaser</li>
           <li>Guild ID the key is activated on</li>
           <li>Purchase date and tier (monthly / lifetime)</li>
+          <li>For chip-ins toward a server's Premium: the Discord user ID of who chipped in, the server, and the amount</li>
         </ul>
 
         <h2>2. Discord Privileged Gateway Intents</h2>

@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { isPremiumGuild, isGuildOnTrial, trialUsed, pricingUrl, TRIAL_DAYS } from '../utils/premiumCheck.js';
+import { isPremiumGuild, isGuildOnTrial, trialUsed, pricingUrl, chipInUrl, hasPaidPlan, TRIAL_DAYS } from '../utils/premiumCheck.js';
+import { fundStatus, dollars, progressBar, FUND_GOAL_CENTS } from '../utils/premiumFund.js';
 import GuildTrial from '../models/GuildTrial.js';
 
 export const data = new SlashCommandBuilder()
@@ -10,10 +11,14 @@ export async function execute(interaction) {
   try { await interaction.deferReply({ flags: 64 }); } catch { return; }
 
   const guildId = interaction.guildId;
-  const [hasPremium, onTrial] = await Promise.all([
+  const [hasPremium, onTrial, paidPlan, fund] = await Promise.all([
     isPremiumGuild(guildId),
     isGuildOnTrial(guildId),
+    hasPaidPlan(guildId).catch(() => false),
+    fundStatus(guildId).catch(() => null),
   ]);
+  // Premium that only the members' chip-ins pay for: it runs out, and they can add to it.
+  const fromFund = hasPremium && !paidPlan && !!fund?.until;
   // Once the trial is spent, offering it again only leads to a dead end.
   const usedTrial = !hasPremium && !onTrial && await trialUsed(guildId).catch(() => false);
 
@@ -24,7 +29,9 @@ export async function execute(interaction) {
   }
 
   let statusLine;
-  if (hasPremium) {
+  if (fromFund) {
+    statusLine = `> **Active until <t:${Math.floor(fund.until.getTime() / 1000)}:D>.** Paid for by members of this server.`;
+  } else if (hasPremium) {
     statusLine = '> **Active.** This server has a Premium subscription.';
   } else if (onTrial && trialExpiry) {
     statusLine = `> **Free trial.** Expires <t:${Math.floor(trialExpiry.getTime() / 1000)}:R>.`;
@@ -33,7 +40,9 @@ export async function execute(interaction) {
   }
 
   let howTo;
-  if (hasPremium) {
+  if (fromFund) {
+    howTo = 'Every $5 your members chip in adds another month.';
+  } else if (hasPremium) {
     howTo = 'Use `/activatepremium` if you need to apply a new key.';
   } else if (onTrial) {
     // They already have all of it. The only useful thing to say is what
@@ -55,6 +64,14 @@ export async function execute(interaction) {
       '-# One trial per server, ever. Already know you want it? Pricing is below.';
   }
 
+  // Anyone in the server can put money toward it, unless the server pays itself.
+  if (!paidPlan && fund) {
+    howTo +=
+      '\n\n### Members can chip in\n' +
+      '`' + progressBar(fund.balanceCents) + '`  **' + dollars(fund.balanceCents) + ' of ' + dollars(FUND_GOAL_CENTS) + '** raised\n' +
+      'Anyone in this server can put $2 or more toward Premium. Every $5 turns it on for a month.';
+  }
+
   const embed = new EmbedBuilder()
     .setColor(hasPremium ? 0x43b581 : onTrial ? 0x5865f2 : 0x2d2d2d)
     .setTitle('RolePlayManager Premium')
@@ -67,6 +84,7 @@ export async function execute(interaction) {
        '`Evidence Locker` log seized items against people, arrest reports and cases in the web CAD\n\n' +
       '`Advanced Gambling` Blackjack and Roulette *(free servers keep Slots, Dice, Cockfight, Russian Roulette)*\n\n' +
       '`Blacklist System` ban list that blocks known troublemakers at verification, before they ever get in\n\n' +
+      '`Safety Network auto-bans` ban anyone who joins after being banned in several other network servers\n\n' +
       '`No Limits` unlimited shop items, civilian jobs, requestable roles, ticket types, characters, vehicles, firearms, BOLOs, stickies and role income, plus a top 25 leaderboard\n\n' +
       howTo
     )
@@ -80,9 +98,15 @@ export async function execute(interaction) {
       .setStyle(ButtonStyle.Success));
   }
   buttons.push(new ButtonBuilder()
-    .setLabel(hasPremium ? 'Manage subscription' : usedTrial ? 'Get Premium for this server' : 'See pricing')
+    .setLabel(paidPlan ? 'Manage subscription' : usedTrial ? 'Get Premium for this server' : 'See pricing')
     .setStyle(ButtonStyle.Link)
     .setURL(pricingUrl('premium', guildId)));
+  if (!paidPlan) {
+    buttons.push(new ButtonBuilder()
+      .setLabel('Chip in')
+      .setStyle(ButtonStyle.Link)
+      .setURL(chipInUrl('premium', guildId)));
+  }
 
   return interaction.editReply({
     embeds: [embed],

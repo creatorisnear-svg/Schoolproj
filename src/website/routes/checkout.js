@@ -7,6 +7,7 @@ import { bearerToken, identifyWithDiscord } from '../../utils/siteIdentity.js';
 import { PROMOTIONS, MAX_FEATURED, featuredCount, nextFeaturedOpening, applyPromotion } from '../../utils/directory.js';
 import { recordFunnel } from '../../utils/funnel.js';
 import { attachKeyToGuild } from '../../utils/premiumKeys.js';
+import { CHIP_AMOUNTS, FUND_GOAL_CENTS, applyContribution, fundStatus, dollars } from '../../utils/premiumFund.js';
 import {
   premiumContacts, dmUsers,
   paymentFailedMessage, subscriptionEndedMessage, premiumActivatedMessage,
@@ -162,6 +163,111 @@ export async function applyPromotionFromSession(session, ctx = {}) {
     }
   }
   return { ...result, guildId: m.guildId, guildName, days: spec.days };
+}
+
+// ── Chip in: members put money toward their server's Premium ────────────────
+
+const FUND_NICK = (cents) => 'RPM Premium Chip In ' + cents + ' v1';
+const _fundPrices = new Map();
+
+/** The Stripe price for one chip-in amount: found by nickname, else created once. */
+async function getOrCreateFundPrice(stripe, cents) {
+  if (_fundPrices.has(cents)) return _fundPrices.get(cents);
+  let id = null;
+  try {
+    const list = await stripe.prices.list({ active: true, limit: 100 });
+    const found = (list.data || []).find((p) => p.nickname === FUND_NICK(cents)
+      && p.unit_amount === cents && p.currency === 'usd' && !p.recurring);
+    if (found) id = found.id;
+  } catch (err) {
+    console.warn('[Stripe] could not list prices for chip-ins:', err.message);
+  }
+  if (!id) {
+    const product = await stripe.products.create({
+      name: 'RolePlayManager Premium: chip in ' + dollars(cents),
+      description: "Money toward a server's RolePlayManager Premium. Every $5 raised turns Premium on for a month.",
+    });
+    const price = await stripe.prices.create({ product: product.id, unit_amount: cents, currency: 'usd', nickname: FUND_NICK(cents) });
+    id = price.id;
+    console.log('[Stripe] Auto-created chip-in price for ' + dollars(cents) + ': ' + id);
+  }
+  _fundPrices.set(cents, id);
+  return id;
+}
+
+/**
+ * Count a completed chip-in (utils/premiumFund.js). Idempotent, like the
+ * others: the webhook and the success page may both call it.
+ */
+export async function applyFundFromSession(session, ctx = {}) {
+  if (!session || session.status !== 'complete' || session.payment_status !== 'paid' || session.mode !== 'payment') return null;
+  const m = session.metadata || {};
+  if (m.kind !== 'fund' || !ID.test(m.guildId || '')) return null;
+  const amount = Number(session.amount_total) || 0;
+  if (amount <= 0) return null;
+
+  const client = ctx.client || null;
+  const guild = client?.guilds?.cache?.get(m.guildId) || null;
+  const guildName = guild?.name || m.guildName || 'your server';
+  const buyer = ID.test(m.discordId || '') ? m.discordId : null;
+
+  const result = await applyContribution({
+    guildId: m.guildId, userId: buyer, amountCents: amount, stripeSessionId: session.id, guildName,
+  });
+
+  if (result.applied) {
+    console.log('[Fund] ' + dollars(amount) + ' toward Premium for ' + m.guildId
+      + (result.months ? ', ' + result.months + ' month(s) switched on' : '') + ' (session ' + session.id + ')');
+    recordFunnel({ kind: 'paid', guildId: m.guildId, userId: buyer, plan: 'fund', source: clip(m.source, 40) });
+
+    // The owner hears about every chip-in: it is money for their server.
+    const owner = guild?.ownerId;
+    if (client && owner && owner !== buyer) {
+      const { EmbedBuilder } = await import('discord.js');
+      const who = buyer ? '<@' + buyer + '>' : 'A member';
+      const embed = new EmbedBuilder().setFooter({ text: 'RPM' });
+      if (result.months) {
+        embed.setColor(0x43b581)
+          .setTitle('Your members switched Premium on')
+          .setDescription(who + ' chipped in ' + dollars(amount) + ' and that made ' + dollars(FUND_GOAL_CENTS)
+            + ': **' + guildName + '** has Premium until <t:' + Math.floor(new Date(result.until).getTime() / 1000) + ':f>, with every Premium feature unlocked.');
+      } else {
+        embed.setColor(0x2d2d2d)
+          .setTitle('A member chipped in for Premium')
+          .setDescription(who + ' put ' + dollars(amount) + ' toward Premium for **' + guildName + '**.\n\n**'
+            + dollars(result.balanceCents) + ' of ' + dollars(FUND_GOAL_CENTS) + '** raised. At ' + dollars(FUND_GOAL_CENTS) + ', Premium turns on for a month.');
+      }
+      dmUsers(client, [owner], { embeds: [embed] }).catch(() => {});
+    }
+  }
+  return { ...result, guildId: m.guildId, guildName, amount };
+}
+
+// ── The half price first month after a trial ────────────────────────────────
+
+const WINBACK_COUPON = 'rpm_winback_half_first_month';
+let _winbackCoupon = null;
+
+/** The coupon for it: found by its fixed ID, else created once. */
+async function getOrCreateWinbackCoupon(stripe) {
+  if (_winbackCoupon) return _winbackCoupon;
+  try {
+    const found = await stripe.coupons.retrieve(WINBACK_COUPON);
+    if (found?.id) { _winbackCoupon = found.id; return found.id; }
+  } catch (err) {
+    if (err?.code !== 'resource_missing' && err?.statusCode !== 404) throw err;
+  }
+  const coupon = await stripe.coupons.create({ id: WINBACK_COUPON, percent_off: 50, duration: 'once', name: 'Half price first month' });
+  console.log('[Stripe] Created the win-back coupon ' + coupon.id);
+  _winbackCoupon = coupon.id;
+  return coupon.id;
+}
+
+/** A server's offer while it lasts: 48 hours after its trial ended unpaid (index.js). */
+async function liveWinback(guildId) {
+  if (!ID.test(String(guildId || ''))) return null;
+  const { default: GuildTrial } = await import('../../models/GuildTrial.js');
+  return GuildTrial.findOne({ guildId: String(guildId), winbackUntil: { $gt: new Date() }, winbackUsedAt: null }).lean();
 }
 
 // ── Prices ───────────────────────────────────────────────────────────────────
@@ -394,6 +500,11 @@ export async function issueKeyForCompletedSession(session, ctx = {}) {
       plan,
       source: clip(session.metadata?.source, 40),
     });
+    // The half price month after a trial is used once.
+    if (session.metadata?.offer === 'winback' && keyFields.purchasedGuildId) {
+      const { default: GuildTrial } = await import('../../models/GuildTrial.js');
+      await GuildTrial.updateOne({ guildId: keyFields.purchasedGuildId }, { $set: { winbackUsedAt: new Date() } }).catch(() => {});
+    }
   }
 
   const activated = await autoActivate(keyDoc, session, ctx);
@@ -423,6 +534,10 @@ export async function handleWebhookEvent(event, ctx = {}) {
     const session = event.data.object;
     if (session?.metadata?.kind === 'promotion') {
       await applyPromotionFromSession(session, ctx);
+      return;
+    }
+    if (session?.metadata?.kind === 'fund') {
+      await applyFundFromSession(session, ctx);
       return;
     }
     await issueKeyForCompletedSession(session, ctx);
@@ -526,7 +641,7 @@ export function createCheckoutRouter(client, deps = {}) {
     }
 
     try {
-      const { plan, tosAccepted, guildId, source } = req.body || {};
+      const { plan, tosAccepted, guildId, source, offer } = req.body || {};
 
       if (!tosAccepted) {
         return res.status(400).json({ error: 'You must accept the Terms of Service.' });
@@ -566,6 +681,16 @@ export function createCheckoutRouter(client, deps = {}) {
         gift = !g.admin;
       }
 
+      // The half price first month after a trial: monthly, for that server,
+      // within its 48 hours, once.
+      let winback = false;
+      if (offer === 'winback') {
+        if (plan !== 'monthly' || !guildId || !identity || !(await liveWinback(guildId))) {
+          return res.status(410).json({ error: 'The half price offer has ended for this server, or is only for the monthly plan. Premium is $5 a month.' });
+        }
+        winback = true;
+      }
+
       const stripe = await getStripeClient();
       if (!stripe) {
         return res.status(503).json({
@@ -582,12 +707,14 @@ export function createCheckoutRouter(client, deps = {}) {
         if (gift) metadata.gift = 'true';
       }
       if (source) metadata.source = clip(source, 40);
+      if (winback) metadata.offer = 'winback';
 
       const commonParams = {
         success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${domain}/checkout/cancel`,
         metadata,
-        allow_promotion_codes: true,
+        // Stripe takes a coupon or promotion codes, not both.
+        ...(winback ? { discounts: [{ coupon: await getOrCreateWinbackCoupon(stripe) }] } : { allow_promotion_codes: true }),
       };
 
       const { monthlyPriceId, quarterlyPriceId, yearlyPriceId, lifetimePriceId } = await getOrCreatePrices(stripe);
@@ -699,6 +826,91 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
+  // GET /checkout/offer?guild=... - is the half price first month on for this server?
+  router.get('/offer', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_trackLimitMap, ip, TRACK_MAX)) return res.status(429).json({ error: 'Too many requests.' });
+    try {
+      const offer = await liveWinback(req.query.guild);
+      res.json({ active: !!offer, until: offer?.winbackUntil || null });
+    } catch {
+      res.json({ active: false, until: null });
+    }
+  });
+
+  // GET /checkout/fund/:guildId - what a server's members have raised
+  router.get('/fund/:guildId', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_trackLimitMap, ip, TRACK_MAX)) return res.status(429).json({ error: 'Too many requests.' });
+    const gid = String(req.params.guildId || '');
+    if (!ID.test(gid)) return res.status(400).json({ error: 'Invalid server.' });
+    try {
+      const { hasPaidPlan } = await import('../../utils/premiumCheck.js');
+      const [status, paid] = await Promise.all([fundStatus(gid), hasPaidPlan(gid)]);
+      res.json({ ...status, paidPremium: paid, amounts: CHIP_AMOUNTS });
+    } catch (err) {
+      console.error('[Checkout] Fund status error:', err.message);
+      res.status(500).json({ error: 'Could not load the fund.' });
+    }
+  });
+
+  // POST /checkout/chipin - put money toward a server's Premium
+  router.post('/chipin', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_rateLimitMap, ip, RATE_MAX)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again in an hour.' });
+    }
+    try {
+      const { guildId, amount, tosAccepted, source } = req.body || {};
+      if (!tosAccepted) return res.status(400).json({ error: 'You must accept the Terms of Service.' });
+      const cents = Number(amount);
+      if (!CHIP_AMOUNTS.includes(cents)) return res.status(400).json({ error: 'Pick $2, $3 or $5.' });
+      const gid = String(guildId || '');
+      if (!ID.test(gid)) return res.status(400).json({ error: 'Pick a server.' });
+
+      const token = bearerToken(req);
+      if (!token) return res.status(401).json({ error: 'Sign in with Discord first.' });
+      let identity;
+      try { identity = await identify(token); } catch { return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.' }); }
+      if (!identity.guilds.some((g) => g.id === gid)) {
+        return res.status(403).json({ error: 'You need to be a member of that server to chip in for it.' });
+      }
+      if (client && client.guilds?.cache && !client.guilds.cache.has(gid)) {
+        return res.status(400).json({ error: 'The bot is not in that server yet.' });
+      }
+      const { hasPaidPlan } = await import('../../utils/premiumCheck.js');
+      if (await hasPaidPlan(gid)) {
+        return res.status(409).json({ error: 'That server already pays for Premium, so there is nothing to chip in for.' });
+      }
+
+      const stripe = await getStripeClient();
+      if (!stripe) return res.status(503).json({ error: 'Payment processing is not configured yet. Join our Discord for help.' });
+
+      const priceId = await getOrCreateFundPrice(stripe, cents);
+      const guildName = client?.guilds?.cache?.get(gid)?.name || '';
+      const metadata = {
+        kind: 'fund', guildId: gid, guildName: clip(guildName, 100),
+        amount: String(cents), discordId: identity.id, tosAccepted: 'true',
+      };
+      if (source) metadata.source = clip(source, 40);
+      const domain = getDomain(req);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: priceId, quantity: 1 }],
+        metadata,
+        payment_intent_data: { metadata },
+        success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${domain}/checkout/cancel`,
+      });
+      recordFunnel({ kind: 'checkout', guildId: gid, userId: identity.id, plan: 'fund', source: metadata.source || null });
+      res.json({ url: session.url });
+    } catch (err) {
+      const detail = err?.raw?.message || err?.message || String(err);
+      console.error('[Checkout] Chip in error:', detail);
+      res.status(500).json({ error: err?.raw?.message ? 'Stripe error: ' + err.raw.message : 'Could not start the payment. Please try again.' });
+    }
+  });
+
   // POST /checkout/track - the pricing page was opened, and from where
   router.post('/track', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -737,6 +949,23 @@ export function createCheckoutRouter(client, deps = {}) {
               : 'We could not confirm the payment just now. Refresh in a moment, or contact support.',
             primaryUrl: 'https://roleplaymanager.xyz/servers/',
             primaryLabel: 'See the directory',
+          }));
+        }
+        if (session?.metadata?.kind === 'fund') {
+          const fund = await applyFundFromSession(session, ctx);
+          const name = escapeHtml(fund?.guildName || 'your server');
+          const until = fund?.until ? new Date(fund.until).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
+          const raised = fund ? '<strong>' + escapeHtml(dollars(fund.balanceCents)) + ' of ' + escapeHtml(dollars(FUND_GOAL_CENTS)) + '</strong>' : '';
+          return res.send(renderPage({
+            headline: fund ? 'Thanks for chipping in' : 'Payment received',
+            lead: !fund
+              ? 'We could not confirm the payment just now. Refresh in a moment, or contact support.'
+              : until
+                ? '<strong>' + name + '</strong> has Premium until ' + escapeHtml(until) + ', paid for by its members. ' + raised + ' is raised toward the month after.'
+                : raised + ' is raised toward Premium for <strong>' + name + '</strong>. At ' + escapeHtml(dollars(FUND_GOAL_CENTS))
+                  + ' it turns on for a month. Anyone in the server can chip in from <code>/premium</code> in Discord.',
+            primaryUrl: fund ? 'https://discord.com/channels/' + fund.guildId : 'https://roleplaymanager.xyz/pricing',
+            primaryLabel: fund ? 'Back to Discord' : 'Back to pricing',
           }));
         }
         result = session ? await issueKeyForCompletedSession(session, ctx) : null;

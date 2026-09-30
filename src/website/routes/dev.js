@@ -8,6 +8,7 @@ import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import PremiumKey from '../../models/PremiumKey.js';
+import { keyIsLive } from '../../utils/premiumCheck.js';
 import VerifiedUser from '../../models/VerifiedUser.js';
 import { clearFeatureFlagCache, clearPremiumCache, recordVote } from '../../utils/premiumCheck.js';
 import { funnelSummary } from '../../utils/funnel.js';
@@ -553,10 +554,9 @@ export function createDevRouter(client) {
 
       // Paying means the same thing here as it does to isPremiumGuild, so the
       // dashboard cannot disagree with what the bot actually enforces.
-      const ACTIVE = ['active', 'trialing', 'past_due', 'cancelling'];
       const paying = new Set(
         keys
-          .filter((k) => k.plan === 'lifetime' || k.plan === 'manual' || ACTIVE.includes(k.subscriptionStatus))
+          .filter((k) => keyIsLive(k))
           .map((k) => k.guildId)
       );
 

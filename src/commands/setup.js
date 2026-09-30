@@ -173,6 +173,13 @@ export async function buildSetupPayload(guildId) {
       value: 'directory',
     });
   }
+  if (SUPPORTED_MODULES.includes('safetynetwork')) {
+    menuOptions.push({
+      label: 'Safety Network',
+      description: 'Get warned when trolls banned by other servers join',
+      value: 'safetynetwork',
+    });
+  }
   for (const [, features] of featureGroups()) {
     for (const f of features) {
       if (!f.configSubcommand || !SUPPORTED_MODULES.includes(f.configSubcommand)) continue;

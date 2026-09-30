@@ -5,7 +5,7 @@ import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
 import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
-import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild, hasPremiumAccess, getGuildLimits, trialUsed as hasUsedTrial } from '../../utils/premiumCheck.js';
+import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild, hasPremiumAccess, getGuildLimits, trialUsed as hasUsedTrial, keyIsLive } from '../../utils/premiumCheck.js';
 import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, FREE_TIER_TOGGLE_KEYS, getFeatureByMod } from '../../config/features.js';
 
 /** The paid fields of a partly free feature, locked on the dashboard until Premium or a trial. */
@@ -504,11 +504,14 @@ export function createApiRouter(client) {
       let premiumDetails = null;
       try {
         const { default: PremiumKey } = await import('../../models/PremiumKey.js');
-        const key = await PremiumKey.findOne({ guildId: guild.id });
-         premium = await isPremiumGuild(guild.id);
+        // The live key when there is one: a server can hold a lapsed key too.
+        const keys = await PremiumKey.find({ guildId: guild.id }).lean();
+        const key = keys.find((k) => keyIsLive(k)) || keys[0] || null;
+        premium = await isPremiumGuild(guild.id);
         if (key) {
           premiumDetails = {
             plan: key.plan || 'manual',
+            expiresAt: key.expiresAt || null,
             subscriptionStatus: key.subscriptionStatus || null,
             subscriptionCurrentPeriodEnd: key.subscriptionCurrentPeriodEnd || null,
             hasStripeSubscription: !!key.stripeSubscriptionId,
@@ -2457,8 +2460,14 @@ export function createApiRouter(client) {
 
     try {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
-      const premiumKey = await PremiumKey.findOne({ guildId });
-      if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+      // Months the members paid for belong to this server and never move.
+      const premiumKey = await PremiumKey.findOne({ guildId, plan: { $ne: 'fund' } });
+      if (!premiumKey) {
+        const fund = await PremiumKey.exists({ guildId, plan: 'fund' });
+        return res.status(fund ? 400 : 404).json({
+          error: fund ? 'Premium your members paid for stays with this server, so there is no key to move.' : 'No active premium key found for this server',
+        });
+      }
 
       const keyValue = premiumKey.key;
       premiumKey.guildId = null;

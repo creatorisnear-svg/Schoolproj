@@ -30,6 +30,10 @@ const dutyConfigSchema = new mongoose.Schema({
   /** So the weekly jobs fire once a week rather than once an hour. */
   lastBoardAt: { type: Date, default: null },
   lastReportAt: { type: Date, default: null },
+  // Session recaps (utils/sessionRecap.js): their own channel, else reportChannelId.
+  recapChannelId: { type: String, default: null },
+  recapOff: { type: Boolean, default: false },
+  lastRecapAt: { type: Date, default: null },
 });
 
 export default mongoose.models.DutyConfig || mongoose.model('DutyConfig', dutyConfigSchema);

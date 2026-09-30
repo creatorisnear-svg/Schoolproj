@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTA 6 RP Discord Bot for PS5 and Xbox | RolePlayManager</title>
+  <meta name="description" content="Getting a GTA 6 roleplay server ready for launch on November 19? RolePlayManager is the Discord bot for console RP on PS5 and Xbox: a web CAD, AI voice dispatch, 911 calls, priority, applications and a free server directory.">
+  <meta name="keywords" content="GTA 6 RP, GTA 6 roleplay, GTA 6 RP Discord, GTA 6 RP server, GTA 6 PS5 roleplay, GTA 6 Xbox roleplay, GTA 6 CAD, console RP bot">
+  <link rel="canonical" href="https://roleplaymanager.xyz/gta-6-rp/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Get your GTA 6 RP server ready for launch day">
+  <meta property="og:description" content="GTA 6 launches on PS5 and Xbox only, so every GTA 6 roleplay server starts on console. RolePlayManager is built for console RP.">
+  <meta property="og:url" content="https://roleplaymanager.xyz/gta-6-rp/">
+  <meta property="og:image" content="https://roleplaymanager.xyz/img/logo.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "When does GTA 6 come out?",
+        "acceptedAnswer": { "@type": "Answer", "text": "November 19, 2026, on PS5, PS5 Pro and Xbox Series X|S. Rockstar has not announced a PC version." } },
+      { "@type": "Question", "name": "Does RolePlayManager work with GTA 6?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. The bot and the CAD run in Discord and in the browser, not inside the game, so they work for a GTA 6 server the same way they work for a GTA 5 one." } },
+      { "@type": "Question", "name": "Can I set up my GTA 6 RP server before launch?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Add the bot, run /setup, and list the server in the RolePlayManager directory with the Getting ready for GTA 6 tag so players find it before launch day." } },
+      { "@type": "Question", "name": "Is RolePlayManager free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "The bot is free, including the web CAD, 911 calls, verification, tickets and economy. Premium adds AI voice dispatch and removes the limits for $5 a month, with a free 7 day trial." } }
+    ]
+  }
+  </script>
+  <style>
+    .g6-page { padding: 96px 0 80px; }
+    .g6-hero { text-align: center; max-width: 780px; margin: 0 auto 48px; }
+    .g6-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; margin-bottom: 16px; }
+    .g6-hero h1 { font-size: 40px; font-weight: 800; line-height: 1.12; margin-bottom: 14px; }
+    .g6-hero p { color: var(--text-muted); font-size: 16px; line-height: 1.65; margin: 0 auto 22px; }
+    .g6-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .g6-section { max-width: 1000px; margin: 0 auto 48px; }
+    .g6-section h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; text-align: center; }
+    .g6-section > p { color: var(--text-muted); text-align: center; max-width: 680px; margin: 0 auto 22px; line-height: 1.6; }
+    .g6-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .g6-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+    .g6-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .g6-card p { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0; }
+    .g6-faq { max-width: 760px; margin: 0 auto; }
+    .g6-faq h3 { font-size: 15px; font-weight: 700; margin: 18px 0 6px; }
+    .g6-faq p { color: var(--text-muted); font-size: 14px; line-height: 1.65; margin: 0; }
+    @media (max-width: 620px) { .g6-hero h1 { font-size: 28px; } }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+  <nav aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="logo" aria-label="RolePlayManager home">
+        <img src="/img/logo.png" alt="RolePlayManager logo">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="nav-links" role="list">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
+        <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
+      </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-overlay">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="/#features" onclick="closeMobileNav()">Features</a>
+    <a href="/servers/" onclick="closeMobileNav()">Servers</a>
+    <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+    <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
+  </div>
+
+  <main id="main-content" class="g6-page">
+    <div class="container">
+      <header class="g6-hero">
+        <div class="g6-eyebrow">GTA 6 comes out November 19</div>
+        <h1>GTA 6 roleplay starts on console. Be ready on day one.</h1>
+        <p>GTA 6 launches on PS5 and Xbox Series X|S only, so every GTA 6 roleplay server starts out as a console server. RolePlayManager is the Discord bot built for console RP. Set your server up now and it is ready the moment the game is.</p>
+        <div class="g6-actions">
+          <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">Add to Discord</a>
+          <a href="/servers/#list-yours" class="btn btn-secondary btn-lg">List your server free</a>
+        </div>
+      </header>
+
+      <section class="g6-section" aria-labelledby="carry-title">
+        <h2 id="carry-title">What your server has on launch day</h2>
+        <p>Everything runs in Discord and in the browser, not in the game, so none of it waits for a game update.</p>
+        <div class="g6-grid">
+          <div class="g6-card">
+            <h3>Departments and applications</h3>
+            <p>Police, fire, EMS and civilian departments, application forms with review buttons, verification and role requests.</p>
+          </div>
+          <div class="g6-card">
+            <h3>A web CAD on any phone</h3>
+            <p>Characters, vehicles, warrants, arrest reports and 911 calls in the browser. Console players keep it open on their phone next to the TV.</p>
+          </div>
+          <div class="g6-card">
+            <h3>AI voice dispatch</h3>
+            <p>A dispatcher that reads 911 calls out on the patrol radio and answers officers by voice, runs plates and names, and keeps the status board.</p>
+          </div>
+          <div class="g6-card">
+            <h3>Priority, economy and staff tools</h3>
+            <p>Priority cooldowns, an economy with jobs and businesses, strikes, tickets, patrol hours and session recaps.</p>
+          </div>
+          <div class="g6-card">
+            <h3>The Safety Network</h3>
+            <p>Launch day brings trolls too. Servers in the network share their bans, so you hear about someone before they cause trouble in yours.</p>
+          </div>
+          <div class="g6-card">
+            <h3>Players who find you</h3>
+            <p>List your server free in the directory and tag it Getting ready for GTA 6, so players looking for a GTA 6 server find yours first.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="g6-section" aria-labelledby="faq-title">
+        <h2 id="faq-title">Questions</h2>
+        <div class="g6-faq">
+          <h3>When does GTA 6 come out?</h3>
+          <p>November 19, 2026, on PS5, PS5 Pro and Xbox Series X|S. Rockstar has not announced a PC version.</p>
+          <h3>Does RolePlayManager work with GTA 6?</h3>
+          <p>Yes. The bot and the CAD run in Discord and in the browser, not inside the game, so they work for a GTA 6 server the same way they work for a GTA 5 one.</p>
+          <h3>Can I set up my server before launch?</h3>
+          <p>Yes, and now is the best time. Add the bot, run <code>/setup</code>, and list the server in the directory with the Getting ready for GTA 6 tag, so players find it before launch day.</p>
+          <h3>Is it free?</h3>
+          <p>The bot is free, including the web CAD, 911 calls, verification, tickets and economy. Premium adds AI voice dispatch and removes the limits for $5 a month, and there is a free 7 day trial. <a href="/pricing">See pricing</a>.</p>
+        </div>
+      </section>
+
+      <div class="g6-actions">
+        <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">Add to Discord</a>
+        <a href="/servers/" class="btn btn-secondary btn-lg">Browse RP servers</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="container lp-footer-inner">
+      <a href="/" class="logo lp-footer-logo">
+        <img src="/img/logo.png" alt="RPM" width="28" height="28" style="width:28px;height:28px;max-width:28px;border-radius:50%;object-fit:cover;">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="lp-footer-links">
+        <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">Support</a></li>
+        <li><a href="/tos">Terms</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+      </ul>
+      <p class="lp-footer-copy">RolePlayManager &copy; 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    function toggleMobileNav() {
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var btn = document.getElementById('nav-hamburger');
+      var open = !overlay.classList.contains('open');
+      overlay.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function closeMobileNav() {
+      document.getElementById('mobile-nav-overlay').classList.remove('open');
+      document.getElementById('nav-hamburger').setAttribute('aria-expanded', 'false');
+    }
+  </script>
+</body>
+</html>

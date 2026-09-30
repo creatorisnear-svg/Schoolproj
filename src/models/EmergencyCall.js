@@ -28,4 +28,16 @@ const emergencyCallSchema = new Schema({
 // active calls; this keeps that off the closed ones.
 emergencyCallSchema.index({ guildId: 1, status: 1 });
 
+// Calls are deleted once dismissed or stale, so session recaps count them as
+// they come in (models/ActivityEvent.js). Every way a call is made saves it.
+emergencyCallSchema.pre('save', function () {
+  this.$locals.wasNew = this.isNew;
+});
+emergencyCallSchema.post('save', function (doc) {
+  if (!doc.$locals?.wasNew || !doc.guildId) return;
+  import('./ActivityEvent.js')
+    .then(({ default: ActivityEvent }) => ActivityEvent.create({ guildId: doc.guildId, kind: 'call', at: doc.timestamp || new Date() }))
+    .catch(() => {});
+});
+
 export default models.EmergencyCall || model('EmergencyCall', emergencyCallSchema);

@@ -76,6 +76,9 @@ function humansIn(channel) {
 export async function openSession(guildId, member, channel) {
   if (mongoose.connection.readyState !== 1) return null;
 
+  // Back on patrol: no recap yet, the session is still going.
+  import('./sessionRecap.js').then((m) => m.cancelRecap(guildId)).catch(() => {});
+
   const existing = await DutySession.findOne({ guildId, userId: member.id, endedAt: null });
   if (existing) return existing;
 
@@ -123,6 +126,8 @@ export async function closeSession(guildId, userId, closedBy = 'left') {
   session.deafSince = null;
   session.closedBy = how;
   await session.save();
+  // The last officer off patrol starts the countdown to a session recap.
+  if (closedBy === 'left') import('./sessionRecap.js').then((m) => m.officerLeft(guildId)).catch(() => {});
   return session;
 }
 

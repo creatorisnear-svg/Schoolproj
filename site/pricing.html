@@ -204,6 +204,13 @@
     .modal-error { font-size: 13px; color: var(--red); margin-top: 12px; display: none; }
     .modal-error.show { display: block; }
   </style>
+  <style>
+    .chip-amounts { display: flex; gap: 8px; margin-top: 6px; }
+    .chip-amount { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .chip-amount:has(input:checked) { border-color: var(--blue, #5865f2); }
+    .chipin-banner { margin-bottom: 48px; }
+    .chipin-cta { display: block; max-width: 280px; margin: 16px auto 0; }
+  </style>
 </head>
 <body>
   <a href="#main-content" class="skip-nav">Skip to main content</a>
@@ -271,7 +278,12 @@
         <p>One server, one subscription. The bot itself is free, and stays free. Several features are partly free and get deeper with Premium.</p>
       </div>
 
-      <div class="trial-banner">
+      <div class="trial-banner" id="offer-banner" style="display:none;">
+        <h2>Your first month is half price</h2>
+        <p id="offer-text"></p>
+      </div>
+
+      <div class="trial-banner" id="trial-banner">
         <h2>Try all of it free for 7 days first</h2>
         <p>
           Run <code>/premium</code> in your server and press the button. Every Premium feature
@@ -380,6 +392,16 @@
         You can also buy Premium for a server you are in as a gift, even if you do not run it.
       </p>
 
+      <div class="trial-banner chipin-banner" id="chip-in">
+        <h2>Can't pay $5 alone? Chip in together</h2>
+        <p>
+          Anyone in a server can put $2, $3 or $5 toward its Premium. Every $5 raised turns
+          Premium on for a month, and the owner is told who chipped in. It is a one-off
+          payment, not a subscription.
+        </p>
+        <button class="plan-cta primary chipin-cta" onclick="openCheckout('chipin')">Chip in for a server</button>
+      </div>
+
       <!-- FAQ -->
       <div class="pricing-faq">
         <h2>Frequently asked questions</h2>
@@ -483,7 +505,7 @@
 
       <div class="modal-section" id="modal-account">
         <div id="modal-signed-out">
-          <p class="modal-note">Sign in with Discord first and Premium switches on for your server the moment you pay, nothing to copy or paste. Without signing in you get a key to activate yourself.</p>
+          <p class="modal-note" id="modal-signin-note">Sign in with Discord first and Premium switches on for your server the moment you pay, nothing to copy or paste. Without signing in you get a key to activate yourself.</p>
           <a class="btn-signin" id="btn-signin" href="#" onclick="signInForCheckout(); return false;">Sign in with Discord</a>
         </div>
         <div id="modal-signed-in" style="display:none;">
@@ -491,6 +513,16 @@
           <select id="guild-select"></select>
           <p class="modal-note" id="modal-signed-as" style="margin:8px 0 0;"></p>
         </div>
+      </div>
+
+      <div class="modal-section" id="modal-amount" style="display:none;">
+        <label>How much</label>
+        <div class="chip-amounts" role="radiogroup" aria-label="Amount">
+          <label class="chip-amount"><input type="radio" name="chip-amount" value="200"> $2</label>
+          <label class="chip-amount"><input type="radio" name="chip-amount" value="300"> $3</label>
+          <label class="chip-amount"><input type="radio" name="chip-amount" value="500" checked> $5</label>
+        </div>
+        <p class="modal-note" id="fund-progress" style="margin:8px 0 0;"></p>
       </div>
 
       <div class="modal-section">
@@ -515,6 +547,8 @@
     var params = new URLSearchParams(window.location.search);
     var dashToken = null;
     var me = null;
+    var winbackGuild = null;
+    var SIGNIN_NOTE = (document.getElementById('modal-signin-note') || {}).textContent || '';
 
     function pageSource() { return params.get('from') || 'direct'; }
     function escapeText(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -561,6 +595,15 @@
       var wanted = params.get('guild');
       var opt = function (g) { return '<option value="' + escapeText(g.id) + '"' + (g.id === wanted ? ' selected' : '') + '>' + escapeText(g.name) + '</option>'; };
       var gifts = me.memberGuilds || [];
+      var label = document.querySelector('label[for="guild-select"]');
+      if (selectedPlan === 'chipin') {
+        var all = me.guilds.concat(gifts);
+        if (label) label.textContent = 'Chip in for';
+        sel.innerHTML = all.length ? all.map(opt).join('') : '<option value="">The bot is not in any of your servers yet</option>';
+        document.getElementById('modal-signed-as').textContent = 'Signed in as ' + me.user.username + '. Pick the server you are chipping in for.';
+        return;
+      }
+      if (label) label.textContent = 'Turn Premium on for';
       sel.innerHTML =
         (me.guilds.length ? '<optgroup label="Servers you run">' + me.guilds.map(opt).join('') + '</optgroup>' : '') +
         (gifts.length ? '<optgroup label="Gift Premium to a server you are in">' + gifts.map(opt).join('') + '</optgroup>' : '') +
@@ -580,10 +623,60 @@
       if (!dashToken) { renderAccount(); return; }
       fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + dashToken } })
         .then(function (r) { if (r.status === 401) throw new Error('expired'); return r.json(); })
-        .then(function (d) { me = { user: d.user || {}, guilds: d.guilds || [], memberGuilds: d.memberGuilds || [] }; renderAccount(); })
+        .then(function (d) { me = { user: d.user || {}, guilds: d.guilds || [], memberGuilds: d.memberGuilds || [] }; renderAccount(); if (selectedPlan === 'chipin') loadFund(); })
         .catch(function () { forgetSignIn(); });
     }
     loadAccount();
+
+    // What the members of the chosen server have raised so far.
+    function loadFund() {
+      var el = document.getElementById('fund-progress');
+      var sel = document.getElementById('guild-select');
+      if (!el) return;
+      var gid = me && sel ? sel.value : '';
+      if (!gid) { el.textContent = ''; return; }
+      el.textContent = 'Checking what is raised so far...';
+      fetch(API_BASE + '/checkout/fund/' + encodeURIComponent(gid))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (selectedPlan !== 'chipin') return;
+          if (d.paidPremium) { el.textContent = 'This server already pays for Premium, so there is nothing to chip in for.'; return; }
+          var raised = '$' + ((d.balanceCents || 0) / 100).toFixed(2) + ' of $' + ((d.goalCents || 500) / 100).toFixed(2) + ' raised';
+          el.textContent = d.until
+            ? 'Premium is on until ' + new Date(d.until).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + '. ' + raised + ' toward the month after.'
+            : raised + '. At $5.00 Premium turns on for a month.';
+        })
+        .catch(function () { el.textContent = ''; });
+    }
+    document.getElementById('guild-select').addEventListener('change', function () {
+      if (selectedPlan === 'chipin') loadFund();
+    });
+
+    // Back after a trial ended unpaid: the half price first month, while it lasts.
+    (function () {
+      var g = params.get('guild');
+      if (params.get('offer') !== 'winback' || !g) return;
+      fetch(API_BASE + '/checkout/offer?guild=' + encodeURIComponent(g))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.active) return;
+          winbackGuild = g;
+          var hours = Math.max(1, Math.round((new Date(d.until) - Date.now()) / 3600000));
+          document.getElementById('offer-text').textContent =
+            'Your free trial has ended, and for the next ' + hours + (hours === 1 ? ' hour' : ' hours') +
+            ' your first month of Premium Monthly is $2.50 instead of $5. After that it is $5 a month, and you can cancel any time.';
+          document.getElementById('offer-banner').style.display = '';
+          document.getElementById('trial-banner').style.display = 'none';
+        })
+        .catch(function () {});
+    })();
+
+    // From Discord: /premium and the Premium walls link straight to chipping in.
+    (function () {
+      var pending = null;
+      try { pending = sessionStorage.getItem('rpm_pending_plan'); } catch (e) {}
+      if (params.get('chipin') === '1' && !pending) setTimeout(function () { openCheckout('chipin'); }, 0);
+    })();
 
     // Back from signing in with a plan already chosen: reopen where they were.
     (function () {
@@ -597,9 +690,20 @@
       var modal = document.getElementById('checkout-modal');
       var title = document.getElementById('modal-title');
       var sub = document.getElementById('modal-sub');
-      if (plan === 'monthly') {
+      var chip = plan === 'chipin';
+      document.getElementById('modal-amount').style.display = chip ? '' : 'none';
+      var note = document.getElementById('modal-signin-note');
+      if (note) note.textContent = chip ? 'Sign in with Discord to pick the server you are chipping in for.' : SIGNIN_NOTE;
+      renderAccount();
+      if (chip) {
+        title.textContent = 'Chip in for Premium';
+        sub.textContent = "A one-off payment toward a server's Premium, not a subscription. Every $5 raised turns Premium on for a month.";
+        loadFund();
+      } else if (plan === 'monthly') {
         title.textContent = 'Get Premium Monthly';
-        sub.textContent = 'Monthly plan, $5.00 a month. Recurring charge. Cancel any time.';
+        sub.textContent = winbackGuild
+          ? 'Half price first month for the server from your trial: $2.50, then $5.00 a month. Cancel any time.'
+          : 'Monthly plan, $5.00 a month. Recurring charge. Cancel any time.';
       } else if (plan === 'yearly') {
         title.textContent = 'Get Premium Yearly';
         sub.textContent = 'Yearly plan, $39.99 once a year. Cancel any time. Money back within 7 days.';
@@ -654,10 +758,27 @@
       var guildSel = document.getElementById('guild-select');
       var guildId = (me && guildSel && guildSel.value) ? guildSel.value : null;
 
-      fetch(API_BASE + '/checkout/create', {
+      var endpoint = API_BASE + '/checkout/create';
+      var payload = { plan: selectedPlan, tosAccepted: true, guildId: guildId, source: pageSource() };
+      if (selectedPlan === 'chipin') {
+        if (!guildId) {
+          errorEl.textContent = 'Sign in with Discord and pick the server you are chipping in for.';
+          errorEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = 'Continue to Payment';
+          return;
+        }
+        var picked = document.querySelector('input[name="chip-amount"]:checked');
+        endpoint = API_BASE + '/checkout/chipin';
+        payload = { guildId: guildId, amount: picked ? Number(picked.value) : 500, tosAccepted: true, source: pageSource() };
+      } else if (selectedPlan === 'monthly' && winbackGuild && guildId === winbackGuild) {
+        payload.offer = 'winback';
+      }
+
+      fetch(endpoint, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({ plan: selectedPlan, tosAccepted: true, guildId: guildId, source: pageSource() })
+        body: JSON.stringify(payload)
       })
       .then(function(r) { if (r.status === 401) forgetSignIn(); return r.json(); })
       .then(function(data) {

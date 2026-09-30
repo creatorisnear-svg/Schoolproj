@@ -38,7 +38,11 @@ const premiumKeySchema = new mongoose.Schema({
   stripeSessionId: { type: String },
   stripeSubscriptionId: { type: String, default: null },
   stripePaymentIntentId: { type: String, default: null },
-  plan: { type: String, enum: ['monthly', 'quarterly', 'yearly', 'lifetime', 'manual'], default: 'manual' },
+  // 'fund': a month of Premium paid for by the server's members, which runs
+  // until expiresAt. See utils/premiumFund.js.
+  plan: { type: String, enum: ['monthly', 'quarterly', 'yearly', 'lifetime', 'manual', 'fund'], default: 'manual' },
+  expiresAt: { type: Date, default: null },
+  fundReminderAt: { type: Date, default: null },
   purchasedBy: { type: String, default: null },
   // The server picked at checkout, kept even if activation had to wait.
   purchasedGuildId: { type: String, default: null },

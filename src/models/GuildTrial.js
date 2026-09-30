@@ -12,6 +12,9 @@ const guildTrialSchema = new mongoose.Schema({
   setupNudgeSent: { type: Boolean, default: false },
   endingSoonSent: { type: Boolean, default: false },
   active: { type: Boolean, default: true },
+  // A half price first month for 48 hours after a trial ends unpaid.
+  winbackUntil: { type: Date, default: null },
+  winbackUsedAt: { type: Date, default: null },
 });
 
 guildTrialSchema.index({ guildId: 1 });

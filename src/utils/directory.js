@@ -3,6 +3,7 @@ import DirectoryVote from '../models/DirectoryVote.js';
 import DirectoryClick from '../models/DirectoryClick.js';
 import DirectoryPromotion from '../models/DirectoryPromotion.js';
 import PremiumKey from '../models/PremiumKey.js';
+import { keyIsLive } from './premiumCheck.js';
 
 /**
  * The public directory of console GTA RP servers at roleplaymanager.xyz/servers.
@@ -47,6 +48,7 @@ export const TAGS = {
   whitelisted: 'Whitelisted',
   new: 'New server',
   mature: '18+',
+  gta6: 'Getting ready for GTA 6',
 };
 
 /** Paid featured spots, in cents. */
@@ -103,7 +105,7 @@ async function buildSnapshot(client) {
   ]);
   const voteMap = new Map(votes.map((v) => [v._id, v.n]));
   const premium = new Set(keys
-    .filter((k) => k.plan === 'lifetime' || k.plan === 'manual' || ACTIVE.includes(k.subscriptionStatus))
+    .filter((k) => keyIsLive(k))
     .map((k) => k.guildId));
 
   const now = Date.now();

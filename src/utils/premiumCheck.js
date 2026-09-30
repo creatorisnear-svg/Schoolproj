@@ -23,6 +23,25 @@ export const TOPGG_VOTE_URL = `https://top.gg/bot/${process.env.TOPGG_BOT_ID || 
 export const TRIAL_DAYS = 7;
 const VOTE_CREDIT_DAYS = 7;
 
+const ACTIVE_STATUSES = ['active', 'trialing', 'past_due', 'cancelling'];
+
+/**
+ * Whether one Premium key is switched on right now. A month paid for by the
+ * server's members (plan 'fund', utils/premiumFund.js) runs until its expiry.
+ * The directory and the dev panel ask this too, so they cannot disagree.
+ */
+export function keyIsLive(key, now = new Date()) {
+  if (!key) return false;
+  if (key.plan === 'fund') return !!key.expiresAt && new Date(key.expiresAt) > now;
+  return key.plan === 'lifetime' || key.plan === 'manual' || ACTIVE_STATUSES.includes(key.subscriptionStatus);
+}
+
+/** Premium the server pays for itself: a subscription, lifetime or manual key, not a members' month. */
+export async function hasPaidPlan(guildId) {
+  const keys = await PremiumKey.find({ guildId, plan: { $ne: 'fund' } }).lean();
+  return keys.some((key) => keyIsLive(key));
+}
+
 export async function isPremiumGuild(guildId) {
   const cached = premiumCache.get(guildId);
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.value;
@@ -31,8 +50,7 @@ export async function isPremiumGuild(guildId) {
   // live one (bought again, or bought inside Discord as well as on the site),
   // and findOne could return the lapsed one.
   const keys = await PremiumKey.find({ guildId }).lean();
-  const activeStatuses = ['active', 'trialing', 'past_due', 'cancelling'];
-  const result = keys.some((key) => key.plan === 'lifetime' || key.plan === 'manual' || activeStatuses.includes(key.subscriptionStatus));
+  const result = keys.some((key) => keyIsLive(key));
   premiumCache.set(guildId, { value: result, ts: Date.now() });
   return result;
 }
@@ -208,6 +226,11 @@ export function pricingUrl(from, guildId) {
   return SITE + '/pricing?from=' + encodeURIComponent(from) + (guildId ? '&guild=' + guildId : '');
 }
 
+/** The chip-in page, where members put money toward this server's Premium. */
+export function chipInUrl(from, guildId) {
+  return SITE + '/pricing?chipin=1&from=' + encodeURIComponent(from) + (guildId ? '&guild=' + guildId : '');
+}
+
 /**
  * Has this server had its one free trial? Cached briefly, because it is
  * asked every time a wall is shown.
@@ -247,6 +270,15 @@ function wallRows({ trialUsed: used, guildId }) {
         .setStyle(ButtonStyle.Link)
         .setURL(pricingUrl('wall', guildId))
     );
+    // Members see walls too, and most cannot pay $5 alone. Together they can.
+    if (guildId) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setLabel('Chip in with members')
+          .setStyle(ButtonStyle.Link)
+          .setURL(chipInUrl('wall', guildId))
+      );
+    }
   }
   return [row];
 }

@@ -622,6 +622,12 @@ moduleResponses.directory = async (interaction) => {
   return interaction.update(await directorySetupView(interaction.guild));
 };
 
+// The Safety Network: servers that opt in share their bans as warnings.
+moduleResponses.safetynetwork = async (interaction) => {
+  const { safetyNetworkView } = await import('./safetyNetworkHandler.js');
+  return interaction.update(await safetyNetworkView(interaction.guild));
+};
+
 /**
  * The module keys this wizard can actually handle. /setup builds its menu from
  * this, so it can never offer an option that falls through to "Unknown option"

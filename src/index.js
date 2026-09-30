@@ -62,6 +62,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    // Ban and unban events, for the Safety Network (utils/safetyNetwork.js).
+    GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
@@ -712,6 +714,17 @@ client.on('guildDelete', async (guild) => {
   }
 });
 
+// The Safety Network: bans from servers that share them, and unbans.
+client.on('guildBanAdd', (ban) => {
+  import('./utils/safetyNetwork.js').then((m) => m.onBanAdd(ban)).catch((err) => console.error('[SafetyNet] ban:', err.message));
+});
+client.on('guildBanRemove', (ban) => {
+  import('./utils/safetyNetwork.js').then((m) => m.onBanRemove(ban)).catch((err) => console.error('[SafetyNet] unban:', err.message));
+});
+
+// Session recaps post by themselves, so they need the client.
+import('./utils/sessionRecap.js').then((m) => m.setRecapClient(client)).catch(() => {});
+
 client.on('guildMemberAdd', async (member) => {
   try {
     if (!member?.guild || member.user?.bot) return;
@@ -730,6 +743,9 @@ client.on('guildMemberAdd', async (member) => {
     } catch (err) {
       console.error('[VERIFY] guildMemberAdd unverified role error:', err.message);
     }
+
+    // Someone other servers in the Safety Network banned: warn staff.
+    import('./utils/safetyNetwork.js').then((m) => m.checkJoin(member)).catch((err) => console.error('[SafetyNet] join:', err.message));
 
     const welcome = await Welcome.findOne({ guildId: member.guild.id });
     if (!welcome?.enabled) return;
@@ -1389,6 +1405,9 @@ client.on('interactionCreate', async interaction => {
         await handleHelpCategory(interaction);
       } else if (interaction.customId === 'setup_config_select') {
         await handleSetupConfigSelect(interaction);
+      } else if (interaction.customId.startsWith('safenet_')) {
+        const { handleSafetyNetwork } = await import('./handlers/safetyNetworkHandler.js');
+        await handleSafetyNetwork(interaction);
       } else if (interaction.customId.startsWith('dirsetup_')) {
         const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
         await handleDirectorySetup(interaction);
@@ -1455,6 +1474,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('dirsetup_')) {
         const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
         await handleDirectorySetup(interaction);
+      } else if (interaction.customId.startsWith('safenet_')) {
+        const { handleSafetyNetwork } = await import('./handlers/safetyNetworkHandler.js');
+        await handleSafetyNetwork(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);
@@ -1973,13 +1995,19 @@ connectDatabase().then(async () => {
 
       for (const trial of expired) {
         const using = await trialFeaturesInUse(trial.guildId);
+        const { clearPremiumCache, isPremiumGuild } = await import('./utils/premiumCheck.js');
+        // Bought Premium during the trial, or the members paid for a month:
+        // nothing has ended for them, so there is nothing to say.
+        const stillPremium = await isPremiumGuild(trial.guildId).catch(() => false);
 
         trial.active = false;
         trial.expiredMessageSent = true;
+        // Otherwise 48 hours of a half price first month (routes/checkout.js).
+        if (!stillPremium) trial.winbackUntil = new Date(now.getTime() + 48 * 3600000);
         await trial.save();
 
-        const { clearPremiumCache } = await import('./utils/premiumCheck.js');
         clearPremiumCache(trial.guildId);
+        if (stillPremium) continue;
 
         const guild = client.guilds.cache.get(trial.guildId);
         const user = await client.users.fetch(trial.activatedBy).catch(() => null);
@@ -1994,13 +2022,26 @@ connectDatabase().then(async () => {
                 ? list(using) + ' has stopped working in **' + (guild?.name || 'your server') + '**. ' +
                   'Your settings are untouched, so turning Premium on puts it straight back.\n\n'
                 : 'The Premium trial for **' + (guild?.name || 'your server') + '** has ended.\n\n') +
-              'Premium is $5 a month.\n\n' +
+              '**For the next 48 hours, your first month is half price: $2.50,** then $5 a month. Cancel any time.\n\n' +
               '-# The rest of the bot carries on as normal, including 911 voice announcements.'
             )
             .setFooter({ text: 'RPM' })],
-          components: [pricingRow(trial.guildId)],
+          components: [new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setLabel('Get your first month half price')
+              .setStyle(ButtonStyle.Link)
+              .setURL('https://roleplaymanager.xyz/pricing?from=winback&offer=winback&guild=' + trial.guildId),
+            new ButtonBuilder()
+              .setLabel('Support')
+              .setStyle(ButtonStyle.Link)
+              .setURL('https://discord.gg/cSdhfGPeV2')
+          )],
         }).catch(() => {});
       }
+
+      // Months of Premium paid for by members: a reminder before, a note after.
+      const { checkFundMonths } = await import('./utils/premiumFund.js');
+      await checkFundMonths(client);
     } catch (err) {
       console.error('[Trial] Check error:', err.message);
     }

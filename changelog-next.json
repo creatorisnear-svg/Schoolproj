@@ -1,8 +1,12 @@
 {
-  "version": "1.14.0",
-  "title": "List your server in the directory straight from /setup",
+  "version": "1.15.0",
+  "title": "The Safety Network, session recaps, and chipping in for Premium",
   "changes": [
-    "New: list your server in the free server directory without leaving Discord. Run /setup and pick Server Directory, then choose your platforms, region and type of roleplay, write a short description and press List this server",
-    "The Server Directory screen shows what your listing still needs, and once you are listed, your votes and how many people pressed Join. You can take it off the directory again with one press"
+    "New: the Safety Network. Servers can share their bans, and when someone banned by other servers joins yours, your staff get a warning with the reasons and buttons to ban or kick. Turn it on in /setup under Safety Network. Nobody is banned automatically unless you choose that, which is part of Premium",
+    "New: session recaps. When the last officer goes off patrol, the bot posts what the session added up to: patrol time, 911 calls, arrests, tickets, warrants, impounds and the top officers. They go to your patrol report channel, or pick one with /recap channel. Post one any time with /recap now",
+    "New: members can chip in for Premium. Anyone in your server can put $2, $3 or $5 toward it from /premium, and every $5 raised turns Premium on for a month. You get a message each time someone chips in",
+    "When a free trial ends, the server now has 48 hours to get its first month of Premium at half price, $2.50",
+    "Getting ready for GTA 6? The server directory has a new Getting ready for GTA 6 tag, so players looking for a GTA 6 server can find yours",
+    "Fixed: a server that bought Premium during its free trial was still told the trial had ended and Premium had stopped"
   ]
 }
