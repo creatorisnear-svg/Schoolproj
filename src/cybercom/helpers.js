@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Options } from 'discord.js';
 
 /**
- * The helper bots: "RPM CyberCom 1" to "RPM CyberCom 10".
+ * The helper bots: "RPM CyberCom 1" to "RPM CyberCom 16".
  *
  * Discord lets one bot account be in one voice channel per server, so to sit
  * in several channels at once RPM CyberCom needs several accounts. Their
@@ -39,9 +39,14 @@ export async function startHelpers() {
     client.on('error', (err) => console.error(`[CyberCom] Helper ${helper.index} error:`, err.message));
     return helper;
   });
-  await Promise.all(helpers.map((h) => h.client.login(h.token)
-    .catch((err) => console.error(`[CyberCom] Helper ${h.index} could not log in:`, err.message))
-    .finally(() => { delete h.token; })));
+  // One after another, a moment apart: 16 accounts connecting at the same
+  // instant is the kind of burst Discord's gateway rate limits.
+  for (const h of helpers) {
+    await h.client.login(h.token)
+      .catch((err) => console.error(`[CyberCom] Helper ${h.index} could not log in:`, err.message))
+      .finally(() => { delete h.token; });
+    await new Promise((r) => setTimeout(r, 750));
+  }
   return helpers.length;
 }
 

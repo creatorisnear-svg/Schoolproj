@@ -46,7 +46,7 @@ export async function cyberComView(guild, note = '') {
 
   if (helperCount()) {
     lines.push(`**Helper bots:** ${added.length} of ${helpers.length} added. Each covers one busy channel at a time.`);
-    if (missing.length) lines.push(missing.map((h) => `[Add RPM CyberCom ${h.index}](${inviteUrl(h)})`).join(' · '));
+    if (missing.length) lines.push('Add: ' + missing.map((h) => `[CyberCom ${h.index}](${inviteUrl(h)})`).join(' · '));
   } else {
     lines.push('**Helper bots:** not available yet.');
   }
