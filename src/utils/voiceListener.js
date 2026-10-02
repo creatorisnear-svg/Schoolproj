@@ -20,7 +20,7 @@ import OfficerStatus from '../models/OfficerStatus.js';
 
 // Pre-load radio wave sound - played before every dispatch TTS response
 const _radioWavePath = join(dirname(fileURLToPath(import.meta.url)), '../assets/radio_wave.mp3');
-const RADIO_WAVE_BUFFER = existsSync(_radioWavePath) ? readFileSync(_radioWavePath) : null;
+export const RADIO_WAVE_BUFFER = existsSync(_radioWavePath) ? readFileSync(_radioWavePath) : null;
 if (RADIO_WAVE_BUFFER) {
   console.log(`[Dispatch] Radio wave sound loaded (${RADIO_WAVE_BUFFER.length} bytes)`);
 } else {
@@ -702,6 +702,8 @@ function _setupReceiver(connection, guild, state, guildId) {
 
   receiver.speaking.on('start', async (userId) => {
     if (userId === guild.client?.user?.id) return;
+    // Other bots too: RPM CyberCom's helpers speak in the dispatcher's voice.
+    if (guild.members.cache.get(userId)?.user?.bot) return;
     const key = `${guildId}:${userId}`;
     if (recordingUsers.has(key)) return;
 
@@ -1153,7 +1155,7 @@ function downsampleTo16kMono(pcmData) {
   return out;
 }
 
-function createWavBuffer(pcmChunks) {
+export function createWavBuffer(pcmChunks) {
   const rawPcm = Buffer.concat(pcmChunks);
   const pcmData = downsampleTo16kMono(rawPcm);
   const numChannels = 1;

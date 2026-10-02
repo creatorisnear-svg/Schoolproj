@@ -22,6 +22,8 @@ const aiUsageSchema = new mongoose.Schema({
   ttsCached: { type: Number, default: 0 },
   groq: { type: Number, default: 0 },
   openai: { type: Number, default: 0 },     // paid fallback calls: the ones that cost money
+  cybercom: { type: Number, default: 0 },   // lines RPM CyberCom's helper bots sent to transcription
+  cybercomSeconds: { type: Number, default: 0 },
   noticeSentAt: { type: Date, default: null },
   updatedAt: { type: Date, default: Date.now },
 });

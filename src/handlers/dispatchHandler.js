@@ -320,7 +320,7 @@ function wantedPhrase(character) {
   };
 }
 
-function detectCADLookup(text) {
+export function detectCADLookup(text) {
   const lower = text.toLowerCase().trim();
   console.log(`[CAD Detect] Checking transcript for CAD lookup: "${lower}"`);
 
@@ -372,7 +372,7 @@ function detectCADLookup(text) {
   return null;
 }
 
-async function runCADLookup(guildId, lookup) {
+export async function runCADLookup(guildId, lookup) {
   console.log(`[CAD Lookup] Running ${lookup.type} lookup for "${lookup.query}" in guild ${guildId}`);
 
   if (lookup.type === 'plate') {
@@ -918,7 +918,7 @@ const WHISPER_PROMPT =
   'Pillbox Hill, Maze Bank, Legion Square, Rockford Hills, Vinewood, Sandy Shores, Paleto Bay, Mirror Park, Davis, Strawberry, ' +
   'Boulevard, Freeway, Highway, intersection, mile marker, eastbound, westbound, northbound, southbound.';
 
-async function transcribeAudio(wavBuffer) {
+export async function transcribeAudio(wavBuffer, prompt = WHISPER_PROMPT) {
   const tempPath = join(tmpdir(), `dispatch_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
   writeFileSync(tempPath, wavBuffer);
   try {
@@ -934,7 +934,7 @@ async function transcribeAudio(wavBuffer) {
           file: createReadStream(tempPath),
           model,
           language: 'en',
-          prompt: WHISPER_PROMPT.slice(0, 896),
+          prompt: String(prompt || WHISPER_PROMPT).slice(0, 896),
         });
         recordAI('*', { stt: 1, [provider]: 1 });
         return result.text || '';
@@ -2122,6 +2122,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       return;
     }
     _transcriptDedup.set(dedupKey, { ts: now, text: normalized });
+
+    // RPM CyberCom: keep what was said for staff, and run traffic stops and
+    // 10-80 attachments through the helper bots. True when it handled it.
+    try {
+      const { fromDispatcher } = await import('../cybercom/brain.js');
+      if (await fromDispatcher({ guild, member, transcript })) return;
+    } catch (err) {
+      console.error('[CyberCom] radio hook:', err.message);
+    }
 
     // ── Per-officer AI response cooldown ─────────────────────────────────────
     // If the same officer triggered a response in the last 3 seconds, ignore
@@ -3441,7 +3450,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
   }
 }
 
-async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, lastPatrolChannelId, trafficStopChannelId = null) {
+export async function updateOfficerStatus(guildId, userId, username, tenCode, parsed, lastPatrolChannelId, trafficStopChannelId = null) {
   const isTrafficStop = tenCode === '10-11';
   const update = {
     guildId,
@@ -4351,6 +4360,10 @@ async function checkTrafficStops(guild) {
   try {
     const config = await DispatchConfig.findOne({ guildId: guild.id });
     if (!config?.enabled) return;
+    // With RPM CyberCom a helper already sits in every traffic stop, so the
+    // dispatcher stays on the radio instead of visiting stops.
+    const { isCyberComActive } = await import('../cybercom/access.js');
+    if (await isCyberComActive(guild.id)) return;
 
     const onStopOfficers = await OfficerStatus.find({ guildId: guild.id, tenCode: '10-11' });
     if (onStopOfficers.length === 0) return;

@@ -872,6 +872,10 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if (!userId) return;
   if (newState.member?.user?.bot) return;
 
+  // RPM CyberCom puts a helper bot wherever people are.
+  import('./cybercom/coordinator.js').then((m) => m.onVoiceStateUpdate(oldState, newState))
+    .catch((err) => console.error('[CyberCom] voice update:', err.message));
+
   const joinedChannelId = newState.channelId;
   const leftChannelId = oldState.channelId !== newState.channelId ? oldState.channelId : null;
 
@@ -1257,6 +1261,10 @@ client.once('clientReady', async () => {
     // DB not connected or no cooldowns - safe to ignore
   }
 
+  // RPM CyberCom: the helper bots in civilian, traffic stop and extra radio channels.
+  import('./cybercom/coordinator.js').then((m) => m.startCyberCom(client))
+    .catch((err) => console.error('[CyberCom] could not start:', err.message));
+
   // Initialize AI Voice Dispatch for all configured guilds
   try {
     const { initDispatchForGuild } = await import('./handlers/dispatchHandler.js');
@@ -1363,6 +1371,10 @@ client.on('interactionCreate', async interaction => {
         const cmd = await import(`./commands/${interaction.commandName}.js`);
         return await cmd.autocomplete(interaction);
       }
+      if (interaction.commandName === 'voicemoderation') {
+        const cmd = await import('./commands/voicemoderation.js');
+        return await cmd.autocomplete(interaction);
+      }
       return;
     }
 
@@ -1409,6 +1421,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('safenet_')) {
         const { handleSafetyNetwork } = await import('./handlers/safetyNetworkHandler.js');
         await handleSafetyNetwork(interaction);
+      } else if (interaction.customId.startsWith('cybercom_')) {
+        const { handleCyberCom } = await import('./handlers/cybercomSetupHandler.js');
+        await handleCyberCom(interaction);
       } else if (interaction.customId.startsWith('dirsetup_')) {
         const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
         await handleDirectorySetup(interaction);
@@ -1478,6 +1493,9 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('safenet_')) {
         const { handleSafetyNetwork } = await import('./handlers/safetyNetworkHandler.js');
         await handleSafetyNetwork(interaction);
+      } else if (interaction.customId.startsWith('cybercom_')) {
+        const { handleCyberCom } = await import('./handlers/cybercomSetupHandler.js');
+        await handleCyberCom(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);

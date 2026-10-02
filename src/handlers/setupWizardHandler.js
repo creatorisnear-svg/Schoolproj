@@ -623,6 +623,12 @@ moduleResponses.directory = async (interaction) => {
 };
 
 // The Safety Network: servers that opt in share their bans as warnings.
+// RPM CyberCom: the paid voice add-on.
+moduleResponses.cybercom = async (interaction) => {
+  const { cyberComView } = await import('./cybercomSetupHandler.js');
+  return interaction.update(await cyberComView(interaction.guild));
+};
+
 moduleResponses.safetynetwork = async (interaction) => {
   const { safetyNetworkView } = await import('./safetyNetworkHandler.js');
   return interaction.update(await safetyNetworkView(interaction.guild));

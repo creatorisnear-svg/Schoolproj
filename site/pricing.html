@@ -402,6 +402,18 @@
         <button class="plan-cta primary chipin-cta" onclick="openCheckout('chipin')">Chip in for a server</button>
       </div>
 
+      <div class="trial-banner chipin-banner" id="cybercom">
+        <h2>RPM CyberCom: $9.99 a month, on top of Premium</h2>
+        <p>
+          A bot in every voice channel. Officers say "Dispatch, show me on a 10-11 with" and a name, the
+          bot moves them to a free traffic stop, and the person being pulled over is asked if they want to
+          be moved in. Plates and names are run inside the stop. A 10-80 goes out on the police radio, and
+          units say "Dispatch, attach me to the 10-80" to be moved straight there. Civilians say "RPM, move
+          me to" and a name to join someone. Everything said is transcribed for your staff and kept 14 days.
+        </p>
+        <button class="plan-cta primary chipin-cta" onclick="openCheckout('cybercom')">Get RPM CyberCom</button>
+      </div>
+
       <!-- FAQ -->
       <div class="pricing-faq">
         <h2>Frequently asked questions</h2>
@@ -596,6 +608,12 @@
       var opt = function (g) { return '<option value="' + escapeText(g.id) + '"' + (g.id === wanted ? ' selected' : '') + '>' + escapeText(g.name) + '</option>'; };
       var gifts = me.memberGuilds || [];
       var label = document.querySelector('label[for="guild-select"]');
+      if (selectedPlan === 'cybercom') {
+        if (label) label.textContent = 'Add RPM CyberCom to';
+        sel.innerHTML = me.guilds.length ? me.guilds.map(opt).join('') : '<option value="">You do not run a server the bot is in</option>';
+        document.getElementById('modal-signed-as').textContent = 'Signed in as ' + me.user.username + '. Servers you run are listed. RPM CyberCom needs Premium on the server.';
+        return;
+      }
       if (selectedPlan === 'chipin') {
         var all = me.guilds.concat(gifts);
         if (label) label.textContent = 'Chip in for';
@@ -676,6 +694,7 @@
       var pending = null;
       try { pending = sessionStorage.getItem('rpm_pending_plan'); } catch (e) {}
       if (params.get('chipin') === '1' && !pending) setTimeout(function () { openCheckout('chipin'); }, 0);
+      else if (params.get('from') === 'cybercom' && !pending) setTimeout(function () { openCheckout('cybercom'); }, 0);
     })();
 
     // Back from signing in with a plan already chosen: reopen where they were.
@@ -693,9 +712,13 @@
       var chip = plan === 'chipin';
       document.getElementById('modal-amount').style.display = chip ? '' : 'none';
       var note = document.getElementById('modal-signin-note');
-      if (note) note.textContent = chip ? 'Sign in with Discord to pick the server you are chipping in for.' : SIGNIN_NOTE;
+      if (note) note.textContent = chip ? 'Sign in with Discord to pick the server you are chipping in for.'
+        : plan === 'cybercom' ? 'Sign in with Discord to pick the server to add RPM CyberCom to.' : SIGNIN_NOTE;
       renderAccount();
-      if (chip) {
+      if (plan === 'cybercom') {
+        title.textContent = 'Get RPM CyberCom';
+        sub.textContent = '$9.99 a month on top of Premium. Cancel any time.';
+      } else if (chip) {
         title.textContent = 'Chip in for Premium';
         sub.textContent = "A one-off payment toward a server's Premium, not a subscription. Every $5 raised turns Premium on for a month.";
         loadFund();
@@ -771,6 +794,16 @@
         var picked = document.querySelector('input[name="chip-amount"]:checked');
         endpoint = API_BASE + '/checkout/chipin';
         payload = { guildId: guildId, amount: picked ? Number(picked.value) : 500, tosAccepted: true, source: pageSource() };
+      } else if (selectedPlan === 'cybercom') {
+        if (!guildId) {
+          errorEl.textContent = 'Sign in with Discord and pick the server to add RPM CyberCom to.';
+          errorEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = 'Continue to Payment';
+          return;
+        }
+        endpoint = API_BASE + '/checkout/cybercom';
+        payload = { guildId: guildId, tosAccepted: true, source: pageSource() };
       } else if (selectedPlan === 'monthly' && winbackGuild && guildId === winbackGuild) {
         payload.offer = 'winback';
       }

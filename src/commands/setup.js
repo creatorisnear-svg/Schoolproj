@@ -180,6 +180,13 @@ export async function buildSetupPayload(guildId) {
       value: 'safetynetwork',
     });
   }
+  if (SUPPORTED_MODULES.includes('cybercom')) {
+    menuOptions.push({
+      label: 'RPM CyberCom',
+      description: 'A bot in every voice channel: traffic stops, 10-80s, transcripts',
+      value: 'cybercom',
+    });
+  }
   for (const [, features] of featureGroups()) {
     for (const f of features) {
       if (!f.configSubcommand || !SUPPORTED_MODULES.includes(f.configSubcommand)) continue;

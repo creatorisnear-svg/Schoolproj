@@ -8,6 +8,8 @@ import { PROMOTIONS, MAX_FEATURED, featuredCount, nextFeaturedOpening, applyProm
 import { recordFunnel } from '../../utils/funnel.js';
 import { attachKeyToGuild } from '../../utils/premiumKeys.js';
 import { CHIP_AMOUNTS, FUND_GOAL_CENTS, applyContribution, fundStatus, dollars } from '../../utils/premiumFund.js';
+import CyberComSubscription from '../../models/CyberComSubscription.js';
+import { cyberComSubscribed, clearCyberComCache, CYBERCOM_PRICE_CENTS } from '../../cybercom/access.js';
 import {
   premiumContacts, dmUsers,
   paymentFailedMessage, subscriptionEndedMessage, premiumActivatedMessage,
@@ -241,6 +243,102 @@ export async function applyFundFromSession(session, ctx = {}) {
     }
   }
   return { ...result, guildId: m.guildId, guildName, amount };
+}
+
+// ── RPM CyberCom: the voice add-on, $9.99 a month on top of Premium ─────────
+
+const CYBERCOM_NICK = 'RPM CyberCom monthly v1';
+let _cyberComPrice = null;
+
+/** The monthly CyberCom price: found by nickname, else created once. */
+async function getOrCreateCyberComPrice(stripe) {
+  if (_cyberComPrice) return _cyberComPrice;
+  let id = null;
+  try {
+    const list = await stripe.prices.list({ active: true, limit: 100, type: 'recurring' });
+    const found = (list.data || []).find((p) => p.nickname === CYBERCOM_NICK && p.unit_amount === CYBERCOM_PRICE_CENTS
+      && p.currency === 'usd' && p.recurring?.interval === 'month');
+    if (found) id = found.id;
+  } catch (err) {
+    console.warn('[Stripe] could not list prices for CyberCom:', err.message);
+  }
+  if (!id) {
+    const product = await stripe.products.create({
+      name: 'RPM CyberCom',
+      description: 'A RolePlayManager bot in every voice channel: traffic stops, 10-80s, civilian moves and voice transcripts for staff. Works on top of Premium.',
+    });
+    const price = await stripe.prices.create({
+      product: product.id, unit_amount: CYBERCOM_PRICE_CENTS, currency: 'usd', recurring: { interval: 'month' }, nickname: CYBERCOM_NICK,
+    });
+    id = price.id;
+    console.log('[Stripe] Auto-created the RPM CyberCom price: ' + id);
+  }
+  _cyberComPrice = id;
+  return id;
+}
+
+/** Switch CyberCom on from a completed checkout. Idempotent: webhook and success page both call it. */
+export async function applyCyberComFromSession(session, ctx = {}) {
+  if (!session || session.status !== 'complete' || session.mode !== 'subscription' || !session.subscription) return null;
+  const m = session.metadata || {};
+  if (m.kind !== 'cybercom' || !ID.test(m.guildId || '')) return null;
+  const buyer = ID.test(m.discordId || '') ? m.discordId : null;
+  const before = await CyberComSubscription.findOne({ guildId: m.guildId }).lean();
+  const fresh = !before || before.stripeSubscriptionId !== session.subscription || before.status === 'cancelled';
+  await CyberComSubscription.findOneAndUpdate(
+    { guildId: m.guildId },
+    {
+      $set: {
+        status: 'active', stripeSubscriptionId: session.subscription, stripeCustomerId: session.customer || null,
+        stripeSessionId: session.id, purchasedBy: buyer, updatedAt: new Date(),
+      },
+      $setOnInsert: { createdAt: new Date() },
+    },
+    { upsert: true },
+  );
+  clearCyberComCache(m.guildId);
+  const client = ctx.client || null;
+  const guildName = client?.guilds?.cache?.get(m.guildId)?.name || m.guildName || 'your server';
+  if (fresh) {
+    console.log('[CyberCom] subscription started for ' + m.guildId + ' (session ' + session.id + ')');
+    recordFunnel({ kind: 'paid', guildId: m.guildId, userId: buyer, plan: 'cybercom', source: clip(m.source, 40) });
+    if (client && buyer) {
+      const { EmbedBuilder } = await import('discord.js');
+      dmUsers(client, [buyer], { embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('RPM CyberCom is on')
+        .setDescription('**' + guildName + '** has RPM CyberCom.\n\nNext, in your server: run `/setup` and open **RPM CyberCom**. Add the helper bots there, then pick your civilian, traffic stop and police radio channels.')
+        .setFooter({ text: 'RPM' })] }).catch(() => {});
+    }
+  }
+  return { guildId: m.guildId, guildName, fresh };
+}
+
+/** Subscription changes for CyberCom, which has no Premium key. */
+async function cyberComSubscriptionEvent(event, ctx = {}) {
+  const obj = event.data?.object || {};
+  const subId = event.type.startsWith('customer.subscription.')
+    ? obj.id
+    : (obj.subscription || obj.parent?.subscription_details?.subscription || null);
+  if (!subId) return;
+  const sub = await CyberComSubscription.findOne({ stripeSubscriptionId: subId });
+  if (!sub) return;
+  if (event.type === 'customer.subscription.deleted') {
+    sub.status = 'cancelled';
+  } else if (event.type === 'customer.subscription.updated') {
+    sub.status = obj.cancel_at_period_end ? 'cancelling' : obj.status === 'active' ? 'active' : obj.status;
+    if (obj.current_period_end) sub.currentPeriodEnd = new Date(obj.current_period_end * 1000);
+  } else if (event.type === 'invoice.payment_failed') {
+    sub.status = 'past_due';
+    if (ctx.client && sub.purchasedBy) {
+      const { EmbedBuilder } = await import('discord.js');
+      dmUsers(ctx.client, [sub.purchasedBy], { embeds: [new EmbedBuilder().setColor(0xed4245).setTitle('Your RPM CyberCom payment did not go through')
+        .setDescription('The card on file was declined. RPM CyberCom keeps working while Stripe tries again.' + (obj.hosted_invoice_url ? '\n\n[Pay the invoice](' + obj.hosted_invoice_url + ')' : ''))
+        .setFooter({ text: 'RPM' })] }).catch(() => {});
+    }
+  }
+  sub.updatedAt = new Date();
+  await sub.save();
+  clearCyberComCache(sub.guildId);
+  console.log('[CyberCom] subscription ' + subId + ' is now ' + sub.status);
 }
 
 // ── The half price first month after a trial ────────────────────────────────
@@ -540,6 +638,10 @@ export async function handleWebhookEvent(event, ctx = {}) {
       await applyFundFromSession(session, ctx);
       return;
     }
+    if (session?.metadata?.kind === 'cybercom') {
+      await applyCyberComFromSession(session, ctx);
+      return;
+    }
     await issueKeyForCompletedSession(session, ctx);
     return;
   }
@@ -548,7 +650,7 @@ export async function handleWebhookEvent(event, ctx = {}) {
     const sub = event.data.object;
     if (!sub?.id) return;
     const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
-    if (!keyDoc) return;
+    if (!keyDoc) return cyberComSubscriptionEvent(event, ctx);
 
     keyDoc.subscriptionStatus = 'cancelled';
     const tellThem = client && !keyDoc.endedDmAt;
@@ -571,7 +673,7 @@ export async function handleWebhookEvent(event, ctx = {}) {
     const sub = event.data.object;
     if (!sub?.id) return;
     const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: sub.id });
-    if (!keyDoc) return;
+    if (!keyDoc) return cyberComSubscriptionEvent(event, ctx);
 
     if (sub.cancel_at_period_end) {
       keyDoc.subscriptionStatus = 'cancelling';
@@ -596,7 +698,7 @@ export async function handleWebhookEvent(event, ctx = {}) {
       || null;
     if (!subId) return;
     const keyDoc = await PremiumKey.findOne({ stripeSubscriptionId: subId });
-    if (!keyDoc) return;
+    if (!keyDoc) return cyberComSubscriptionEvent(event, ctx);
 
     keyDoc.subscriptionStatus = 'past_due';
 
@@ -911,6 +1013,59 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
+  // POST /checkout/cybercom - RPM CyberCom for a server, on top of Premium
+  router.post('/cybercom', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_rateLimitMap, ip, RATE_MAX)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again in an hour.' });
+    }
+    try {
+      const { guildId, tosAccepted, source } = req.body || {};
+      if (!tosAccepted) return res.status(400).json({ error: 'You must accept the Terms of Service.' });
+      const gid = String(guildId || '');
+      if (!ID.test(gid)) return res.status(400).json({ error: 'Pick a server.' });
+
+      const token = bearerToken(req);
+      if (!token) return res.status(401).json({ error: 'Sign in with Discord first.' });
+      let identity;
+      try { identity = await identify(token); } catch { return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.' }); }
+      const g = identity.guilds.find((x) => x.id === gid);
+      if (!g || !g.admin) return res.status(403).json({ error: "Only the server's owner or admins can add RPM CyberCom." });
+      if (client && client.guilds?.cache && !client.guilds.cache.has(gid)) {
+        return res.status(400).json({ error: 'The bot is not in that server yet. Invite it first, then come back.' });
+      }
+      const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
+      if (!(await isPremiumGuild(gid))) {
+        return res.status(409).json({ error: 'RPM CyberCom works on top of Premium. Turn Premium on for this server first.' });
+      }
+      if (await cyberComSubscribed(gid)) return res.status(409).json({ error: 'That server already has RPM CyberCom.' });
+
+      const stripe = await getStripeClient();
+      if (!stripe) return res.status(503).json({ error: 'Payment processing is not configured yet. Join our Discord for help.' });
+
+      const priceId = await getOrCreateCyberComPrice(stripe);
+      const guildName = client?.guilds?.cache?.get(gid)?.name || g.name || '';
+      const metadata = { kind: 'cybercom', guildId: gid, guildName: clip(guildName, 100), discordId: identity.id, tosAccepted: 'true' };
+      if (source) metadata.source = clip(source, 40);
+      const domain = getDomain(req);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        metadata,
+        subscription_data: { metadata },
+        allow_promotion_codes: true,
+        success_url: `${domain}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${domain}/checkout/cancel`,
+      });
+      recordFunnel({ kind: 'checkout', guildId: gid, userId: identity.id, plan: 'cybercom', source: metadata.source || null });
+      res.json({ url: session.url });
+    } catch (err) {
+      const detail = err?.raw?.message || err?.message || String(err);
+      console.error('[Checkout] CyberCom error:', detail);
+      res.status(500).json({ error: err?.raw?.message ? 'Stripe error: ' + err.raw.message : 'Could not start the payment. Please try again.' });
+    }
+  });
+
   // POST /checkout/track - the pricing page was opened, and from where
   router.post('/track', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -966,6 +1121,17 @@ export function createCheckoutRouter(client, deps = {}) {
                   + ' it turns on for a month. Anyone in the server can chip in from <code>/premium</code> in Discord.',
             primaryUrl: fund ? 'https://discord.com/channels/' + fund.guildId : 'https://roleplaymanager.xyz/pricing',
             primaryLabel: fund ? 'Back to Discord' : 'Back to pricing',
+          }));
+        }
+        if (session?.metadata?.kind === 'cybercom') {
+          const cc = await applyCyberComFromSession(session, ctx);
+          return res.send(renderPage({
+            headline: cc ? 'RPM CyberCom is on' : 'Payment received',
+            lead: cc
+              ? '<strong>' + escapeHtml(cc.guildName) + '</strong> has RPM CyberCom. Next, in your server: run <code>/setup</code>, open <strong>RPM CyberCom</strong>, add the helper bots and pick your civilian, traffic stop and police radio channels.'
+              : 'We could not confirm the payment just now. Refresh in a moment, or contact support.',
+            primaryUrl: cc ? 'https://discord.com/channels/' + cc.guildId : 'https://roleplaymanager.xyz/pricing',
+            primaryLabel: cc ? 'Open Discord' : 'Back to pricing',
           }));
         }
         result = session ? await issueKeyForCompletedSession(session, ctx) : null;
