@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RolePlayManager promo renderer</title>
+<!--
+  The RolePlayManager promo video and ads, drawn on a canvas.
+  marketing/render.mjs opens this in headless Edge, one job at a time:
+    ?job=video&w=1080&h=1920   every frame as a PNG, piped into ffmpeg
+    ?job=still&still=og        one designed still (see STILLS)
+    ?job=still&t=6.6           one frame of the video
+  Edit the words in the scene functions and run render.mjs again.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@300;800&display=block" rel="stylesheet">
+<style>html, body { margin: 0; background: #000; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const q = new URLSearchParams(location.search);
+const W = +q.get('w') || 1080, H = +q.get('h') || 1920;
+const FPS = 30, DUR = 31;
+const cv = document.getElementById('c');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+const PORTRAIT = H > W;
+const S = Math.min(W, H) / 1080;
+
+const C = {
+  bg: '#0a0b0e', card: '#16181e', input: '#111318', border: '#23272f', text: '#e8eaed', muted: '#7a818e',
+  green: '#34d399', red: '#f87171', amber: '#fbbf24', blue: '#60a5fa',
+  dBg: '#313338', dEmbed: '#2b2d31', dText: '#dbdee1', dMuted: '#949ba4', dBlurple: '#5865f2',
+  dGreen: '#23a55a', dRed: '#da373c', dGray: '#4e5058',
+};
+const INTER = '"Inter", "Segoe UI", sans-serif';
+const MONT = '"Montserrat", "Segoe UI", sans-serif';
+const MONO = 'Consolas, "Cascadia Mono", monospace';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const prog = (t, start, dur = 0.5) => ease((t - start) / dur);
+const font = (size, weight = 700, fam = INTER) => `${weight} ${Math.round(size * 100) / 100}px ${fam}`;
+
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+function wrapLines(str, maxW, f) {
+  ctx.save(); ctx.font = f;
+  const out = []; let line = '';
+  for (const word of str.split(' ')) {
+    const test = line ? line + ' ' + word : word;
+    if (line && ctx.measureText(test).width > maxW) { out.push(line); line = word; } else line = test;
+  }
+  if (line) out.push(line);
+  ctx.restore();
+  return out;
+}
+
+/** Draw text (wrapped to maxW); returns the height it used. */
+function drawText(str, x, y, o = {}) {
+  const { size = 40, weight = 700, fam = INTER, color = C.text, align = 'left', alpha = 1,
+    maxW = 1e9, lh = 1.2, baseline = 'top', spacing = 0 } = o;
+  const f = font(size, weight, fam);
+  const lines = wrapLines(str, maxW, f);
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.font = f; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = baseline;
+  if (spacing) ctx.letterSpacing = spacing + 'px';
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * size * lh));
+  ctx.restore();
+  return lines.length * size * lh;
+}
+
+function textWidth(str, size, weight = 700, fam = INTER) {
+  ctx.save(); ctx.font = font(size, weight, fam); const w = ctx.measureText(str).width; ctx.restore(); return w;
+}
+
+function glowAt(x, y, r, color) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+function background(t, lights = 0) {
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = Math.max(1, S);
+  const g = 72 * S, off = (t * 10 * S) % g;
+  ctx.beginPath();
+  for (let x = -g + off; x < W + g; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (let y = -g + off; y < H + g; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+  ctx.restore();
+  if (lights > 0.001) {
+    const r = Math.max(W, H) * 0.62;
+    glowAt(0, 0, r, `rgba(239,68,68,${(lights * (0.20 + 0.14 * Math.sin(t * 6))).toFixed(3)})`);
+    glowAt(W, 0, r, `rgba(59,130,246,${(lights * (0.20 + 0.14 * Math.sin(t * 6 + Math.PI))).toFixed(3)})`);
+  }
+  const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+
+const logoImg = new Image();
+logoImg.src = '/logo.png';
+function drawLogo(cx, cy, size, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.beginPath(); ctx.arc(cx, cy, size / 2, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#111'; ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+  const ar = (logoImg.naturalWidth || 1) / (logoImg.naturalHeight || 1);
+  const h = size * 1.04, w = h * ar;
+  ctx.drawImage(logoImg, cx - w / 2, cy - h / 2, w, h);
+  ctx.restore();
+}
+
+function wordmark(x, y, size, alpha = 1, align = 'center') {
+  const a = textWidth('ROLEPLAY', size, 800, MONT), b = textWidth('MANAGER', size, 300, MONT);
+  const x0 = align === 'center' ? x - (a + b) / 2 : x;
+  ctx.save();
+  ctx.globalAlpha *= alpha; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = font(size, 800, MONT); ctx.fillText('ROLEPLAY', x0, y);
+  ctx.font = font(size, 300, MONT); ctx.fillText('MANAGER', x0 + a, y);
+  ctx.restore();
+}
+
+function chip(label, x, y, o = {}) {
+  const { size = 30, alpha = 1, align = 'center', dot = null, color = C.text, fill = 'rgba(255,255,255,0.05)', stroke = C.border } = o;
+  const tw = textWidth(label, size, 600);
+  const padX = size * 0.8, h = size * 2.0, dotW = dot ? size * 0.85 : 0;
+  const w = tw + padX * 2 + dotW;
+  const x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x0, y - h / 2, w, h, h / 2); ctx.fillStyle = fill; ctx.fill();
+  ctx.lineWidth = Math.max(1, 2 * S); ctx.strokeStyle = stroke; ctx.stroke();
+  if (dot) { ctx.beginPath(); ctx.arc(x0 + padX + size * 0.22, y, size * 0.22, 0, Math.PI * 2); ctx.fillStyle = dot; ctx.fill(); }
+  ctx.font = font(size, 600); ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, x0 + padX + dotW, y + size * 0.04);
+  ctx.restore();
+  return w;
+}
+
+function chipRow(labels, cx, cy, size, alpha, gap = 16) {
+  const widths = labels.map((l) => textWidth(l, size, 600) + size * 1.6);
+  const total = widths.reduce((a, b) => a + b, 0) + gap * S * (labels.length - 1);
+  let x = cx - total / 2;
+  labels.forEach((l, i) => {
+    const p = clamp(alpha * 1.6 - i * 0.25);
+    chip(l, x, cy + (1 - p) * 12 * S, { size, alpha: p, align: 'left' });
+    x += widths[i] + gap * S;
+  });
+}
+
+function urlPill(text, cx, cy, size, alpha) {
+  const tw = textWidth(text, size, 800);
+  const w = tw + size * 1.5, h = size * 1.9;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(cx - w / 2, cy - h / 2, w, h, h / 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.font = font(size, 800); ctx.fillStyle = C.bg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, cx, cy + size * 0.05);
+  ctx.restore();
+}
+
+function check(cx, cy, r, alpha = 1) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(52,211,153,0.16)'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - r * 0.45, cy + r * 0.02); ctx.lineTo(cx - r * 0.1, cy + r * 0.36); ctx.lineTo(cx + r * 0.5, cy - r * 0.38);
+  ctx.strokeStyle = C.green; ctx.lineWidth = r * 0.22; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.restore();
+}
+
+// ── Scene text: eyebrow, title and body, left in landscape, centred in portrait ──
+function textBlockHeight({ title, body }) {
+  const L = PORTRAIT, maxW = L ? 940 * S : 760 * S;
+  const eS = 26 * S, tS = (L ? 84 : 76) * S, bS = (L ? 38 : 34) * S;
+  const tL = wrapLines(title, maxW, font(tS, 800)).length;
+  const bL = body ? wrapLines(body, maxW, font(bS, 500)).length : 0;
+  return eS * 2 + tL * tS * 1.08 + (body ? 28 * S + bL * bS * 1.4 : 0);
+}
+
+/** In portrait, where the text starts so text and picture sit in the middle of the safe area. */
+function portraitTop(spec, visualH, gap) {
+  const free = (1560 - 300) * S - (textBlockHeight(spec) + gap + visualH);
+  return 300 * S + Math.max(0, free / 2);
+}
+
+function textBlock(t, { eyebrow, title, body }, top = null) {
+  const L = PORTRAIT;
+  const x = L ? W / 2 : 150 * S, align = L ? 'center' : 'left', maxW = L ? 940 * S : 760 * S;
+  const eS = 26 * S, tS = (L ? 84 : 76) * S, bS = (L ? 38 : 34) * S;
+  const tL = wrapLines(title, maxW, font(tS, 800)).length;
+  const bL = body ? wrapLines(body, maxW, font(bS, 500)).length : 0;
+  const blockH = textBlockHeight({ title, body });
+  let y = L ? (top === null ? 330 * S : top) : (H - blockH) / 2;
+  const p1 = prog(t, 0.0, 0.5), p2 = prog(t, 0.1, 0.55), p3 = prog(t, 0.25, 0.55);
+  drawText(eyebrow.toUpperCase(), x, y + (1 - p1) * 16 * S, { size: eS, weight: 700, color: C.muted, align, alpha: p1, spacing: 4 * S });
+  y += eS * 2;
+  drawText(title, x, y + (1 - p2) * 30 * S, { size: tS, weight: 800, color: '#fff', align, alpha: p2, maxW, lh: 1.08 });
+  y += tL * tS * 1.08;
+  if (body) {
+    y += 28 * S;
+    drawText(body, x, y + (1 - p3) * 24 * S, { size: bS, weight: 500, color: C.muted, align, alpha: p3, maxW, lh: 1.4 });
+    y += bL * bS * 1.4;
+  }
+  return y;
+}
+const visualX = (w) => (PORTRAIT ? (W - w) / 2 : W * 0.70 - w / 2);
+
+// ── Mock Discord: a voice channel, a radio line, a bot message ──────────────
+function speakerIcon(x, cy, size, color) {
+  ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = size * 0.1; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, cy - size * 0.18); ctx.lineTo(x + size * 0.22, cy - size * 0.18); ctx.lineTo(x + size * 0.48, cy - size * 0.4);
+  ctx.lineTo(x + size * 0.48, cy + size * 0.4); ctx.lineTo(x + size * 0.22, cy + size * 0.18); ctx.lineTo(x, cy + size * 0.18);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + size * 0.52, cy, size * 0.26, -0.9, 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + size * 0.52, cy, size * 0.46, -0.9, 0.9); ctx.stroke();
+  ctx.restore();
+}
+
+function waveform(x, cy, w, h, t, color) {
+  const n = 16, bw = w / n * 0.55;
+  ctx.save(); ctx.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const a = Math.abs(Math.sin(t * 9 + i * 0.7) * Math.sin(t * 4.3 + i * 1.3));
+    const bh = h * (0.18 + 0.82 * a);
+    rr(x + i * (w / n), cy - bh / 2, bw, bh, bw / 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function avatar(cx, cy, r, m, on, t) {
+  if (on) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r + 5 * S, 0, Math.PI * 2);
+    ctx.strokeStyle = C.dGreen; ctx.lineWidth = 4 * S; ctx.globalAlpha *= 0.75 + 0.25 * Math.sin(t * 10); ctx.stroke();
+    ctx.restore();
+  }
+  if (m.logo) { drawLogo(cx, cy, r * 2); return; }
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = m.color; ctx.fill();
+  ctx.font = font(r * 0.8, 800); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(m.initials, cx, cy + r * 0.04);
+  ctx.restore();
+}
+
+function voiceCard(x, y, w, s, members, speaking, t, alpha = 1) {
+  const pad = 26 * s, headH = 60 * s, rowH = 76 * s;
+  const h = pad * 2 + headH + members.length * rowH;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 22 * s); ctx.fillStyle = C.dBg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * s; ctx.stroke();
+  speakerIcon(x + pad, y + pad + 22 * s, 34 * s, C.dMuted);
+  drawText('Patrol 1', x + pad + 50 * s, y + pad + 4 * s, { size: 30 * s, weight: 700, color: C.dText });
+  drawText('VOICE', x + w - pad, y + pad + 10 * s, { size: 20 * s, weight: 700, color: C.dMuted, align: 'right', spacing: 3 * s });
+  members.forEach((m, i) => {
+    const cy = y + pad + headH + i * rowH + rowH / 2;
+    const ax = x + pad + 30 * s;
+    const on = speaking === m.name;
+    avatar(ax, cy, 27 * s, m, on, t);
+    const nx = ax + 48 * s;
+    drawText(m.name, nx, cy, { size: 29 * s, weight: on ? 700 : 500, color: on ? '#fff' : C.dText, baseline: 'middle' });
+    if (m.app) {
+      const bx = nx + textWidth(m.name, 29 * s, on ? 700 : 500) + 12 * s;
+      rr(bx, cy - 15 * s, 58 * s, 30 * s, 6 * s); ctx.fillStyle = C.dBlurple; ctx.fill();
+      drawText('APP', bx + 29 * s, cy, { size: 18 * s, weight: 800, color: '#fff', align: 'center', baseline: 'middle' });
+    }
+    if (on) waveform(x + w - pad - 150 * s, cy, 150 * s, 36 * s, t, C.dGreen);
+  });
+  ctx.restore();
+  return h;
+}
+
+function radioLine(x, y, w, s, who, text, alpha, accent, draw = true) {
+  const pad = 22 * s, size = 29 * s;
+  const lines = wrapLines(text, w - pad * 2, font(size, 500)).length;
+  const h = pad * 2 + 36 * s + lines * size * 1.35;
+  if (!draw) return h;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 18 * s); ctx.fillStyle = C.card; ctx.fill();
+  ctx.strokeStyle = C.border; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawText(who.toUpperCase(), x + pad, y + pad, { size: 20 * s, weight: 800, color: accent, spacing: 3 * s });
+  drawText(text, x + pad, y + pad + 36 * s, { size, weight: 500, color: C.text, maxW: w - pad * 2, lh: 1.35 });
+  ctx.restore();
+  return h;
+}
+
+/** The Safety Network warning, as the bot posts it. Returns its height. */
+function safetyMessage(x, y, w, s, t, alpha, draw = true) {
+  const pad = 26 * s, av = 72 * s, ex = x + pad + av + 20 * s, ew = x + w - pad - ex;
+  const ip = 22 * s, inner = ew - ip * 2 - 6 * s;
+  const lineS = 25 * s;
+  const d2 = wrapLines('They are banned in 3 other servers in the network.', inner, font(lineS, 500)).length;
+  let eh = ip + 36 * s + 6 * s;
+  eh += lineS * 1.35 + d2 * lineS * 1.35 + 14 * s;
+  eh += 30 * s + 2 * (lineS * 1.35 + 8 * s);
+  const banned = t >= 3.1;
+  if (banned) eh += 66 * s;
+  eh += 30 * s + ip;
+  const btnH = 56 * s;
+  const h = pad + 44 * s + eh + (banned ? 0 : 16 * s + btnH) + pad;
+  if (!draw) return h;
+
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 22 * s); ctx.fillStyle = C.dBg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawLogo(x + pad + av / 2, y + pad + av / 2, av);
+  drawText('RolePlayManager', ex, y + pad + 2 * s, { size: 28 * s, weight: 700, color: '#fff' });
+  const bx = ex + textWidth('RolePlayManager', 28 * s, 700) + 12 * s;
+  rr(bx, y + pad + 4 * s, 58 * s, 28 * s, 6 * s); ctx.fillStyle = C.dBlurple; ctx.fill();
+  drawText('APP', bx + 29 * s, y + pad + 18 * s, { size: 17 * s, weight: 800, color: '#fff', align: 'center', baseline: 'middle' });
+  drawText('Today at 9:41 PM', bx + 72 * s, y + pad + 8 * s, { size: 20 * s, weight: 500, color: C.dMuted });
+
+  const ey = y + pad + 44 * s;
+  rr(ex, ey, ew, eh, 10 * s); ctx.fillStyle = C.dEmbed; ctx.fill();
+  rr(ex, ey, 6 * s, eh, 3 * s); ctx.fillStyle = '#ed4245'; ctx.fill();
+  let cy = ey + ip;
+  const ix = ex + 6 * s + ip;
+  drawText('Safety Network warning', ix, cy, { size: 28 * s, weight: 800, color: '#fff' });
+  cy += 42 * s;
+  drawText('xRaiderx just joined.', ix, cy, { size: lineS, weight: 700, color: '#fff' });
+  cy += lineS * 1.35;
+  drawText('They are banned in 3 other servers in the network.', ix, cy, { size: lineS, weight: 500, color: C.dText, maxW: inner, lh: 1.35 });
+  cy += d2 * lineS * 1.35 + 14 * s;
+  drawText('Reasons given', ix, cy, { size: 22 * s, weight: 800, color: C.dText });
+  cy += 30 * s;
+  ['Raiding the server', 'Trolling during a session'].forEach((r, i) => {
+    const p = prog(t, 0.9 + i * 0.3, 0.4);
+    ctx.save(); ctx.globalAlpha *= p;
+    rr(ix, cy + 2 * s, 5 * s, lineS * 1.2, 3 * s); ctx.fillStyle = C.dGray; ctx.fill();
+    drawText(r, ix + 18 * s, cy, { size: lineS, weight: 500, color: C.dText });
+    ctx.restore();
+    cy += lineS * 1.35 + 8 * s;
+  });
+  if (banned) {
+    const p = prog(t, 3.1, 0.4);
+    ctx.save(); ctx.globalAlpha *= p;
+    drawText('Banned', ix, cy + 6 * s, { size: 22 * s, weight: 800, color: '#fff' });
+    drawText('by @Mod just now', ix, cy + 34 * s, { size: 22 * s, weight: 500, color: C.dText });
+    ctx.restore();
+    cy += 66 * s;
+  }
+  drawText('A warning is not proof. Check before you act.', ix, cy + 6 * s, { size: 18 * s, weight: 500, color: C.dMuted });
+
+  if (!banned) {
+    const by = ey + eh + 16 * s;
+    const pb = prog(t, 1.6, 0.4);
+    const pressed = t >= 2.75;
+    const press = pressed ? 0.94 : 1;
+    [['Ban', C.dRed], ['Kick', C.dGray]].forEach(([label, color], i) => {
+      const bw = textWidth(label, 25 * s, 600) + 60 * s;
+      const bx2 = ex + i * (textWidth('Ban', 25 * s, 600) + 60 * s + 12 * s);
+      ctx.save(); ctx.globalAlpha *= pb;
+      const sc = i === 0 ? press : 1;
+      ctx.translate(bx2 + bw / 2, by + btnH / 2); ctx.scale(sc, sc);
+      rr(-bw / 2, -btnH / 2, bw, btnH, 8 * s); ctx.fillStyle = color; ctx.fill();
+      if (i === 0 && pressed) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill(); }
+      drawText(label, 0, 0, { size: 25 * s, weight: 600, color: '#fff', align: 'center', baseline: 'middle' });
+      ctx.restore();
+    });
+    // A pointer that presses Ban.
+    const pp = prog(t, 2.1, 0.6);
+    if (t > 2.0) {
+      const tx = ex + (textWidth('Ban', 25 * s, 600) + 60 * s) / 2 + 6 * s, ty = by + btnH / 2 + 6 * s;
+      const px = tx + (1 - pp) * 160 * s, py = ty + (1 - pp) * 120 * s;
+      pointer(px, py, 34 * s, Math.min(1, (t - 2.0) * 4) * (pressed ? 0.9 : 1));
+    }
+  }
+  ctx.restore();
+  return h;
+}
+
+function pointer(x, y, size, alpha) {
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(0, size); ctx.lineTo(size * 0.28, size * 0.74); ctx.lineTo(size * 0.48, size * 1.12);
+  ctx.lineTo(size * 0.62, size * 1.05); ctx.lineTo(size * 0.43, size * 0.68); ctx.lineTo(size * 0.78, size * 0.68); ctx.closePath();
+  ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = size * 0.06; ctx.stroke();
+  ctx.restore();
+}
+
+// ── Mock web CAD on a phone ─────────────────────────────────────────────────
+function phone(x, y, w, h, alpha, screen) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 60 * S; ctx.shadowOffsetY = 20 * S;
+  rr(x, y, w, h, 64 * S); ctx.fillStyle = '#0d0f13'; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 3 * S; ctx.strokeStyle = '#2a2e37'; ctx.stroke();
+  const m = 14 * S;
+  ctx.save();
+  rr(x + m, y + m, w - m * 2, h - m * 2, 52 * S); ctx.clip();
+  ctx.fillStyle = C.bg; ctx.fillRect(x + m, y + m, w - m * 2, h - m * 2);
+  screen(x + m, y + m, w - m * 2, h - m * 2);
+  ctx.restore();
+  rr(x + w / 2 - 70 * S, y + 30 * S, 140 * S, 36 * S, 18 * S); ctx.fillStyle = '#000'; ctx.fill();
+  ctx.restore();
+}
+
+function badge(label, x, y, s, color, alpha = 1) {
+  const tw = textWidth(label, 18 * s, 800);
+  ctx.save(); ctx.globalAlpha *= alpha;
+  rr(x, y, tw + 24 * s, 34 * s, 8 * s); ctx.fillStyle = color + '26'; ctx.fill();
+  ctx.lineWidth = 1.5 * s; ctx.strokeStyle = color + '80'; ctx.stroke();
+  drawText(label, x + 12 * s, y + 17 * s, { size: 18 * s, weight: 800, color, baseline: 'middle', spacing: 1.5 * s });
+  ctx.restore();
+  return tw + 24 * s;
+}
+
+function cadScreen(x, y, w, h, t) {
+  const s = w / 440;
+  const px = x + 24 * s, iw = w - 48 * s;
+  drawText('9:41', x + 40 * s, y + 24 * s, { size: 22 * s, weight: 700, color: '#fff' });
+  let cy = y + 86 * s;
+  drawLogo(px + 24 * s, cy + 24 * s, 48 * s);
+  drawText('RPM CAD', px + 62 * s, cy + 2 * s, { size: 26 * s, weight: 800, color: '#fff' });
+  drawText('Los Santos RP', px + 62 * s, cy + 32 * s, { size: 18 * s, weight: 500, color: C.muted });
+  chip('10-8', px + iw, cy + 24 * s, { size: 17 * s, align: 'right', dot: C.green });
+  cy += 80 * s;
+  ['Records', 'Calls', 'BOLOs', 'Warrants'].forEach((tab, i) => {
+    const tx = px + i * 100 * s;
+    drawText(tab, tx, cy, { size: 20 * s, weight: i === 0 ? 700 : 500, color: i === 0 ? '#fff' : C.muted });
+    if (i === 0) { rr(tx, cy + 32 * s, textWidth(tab, 20 * s, 700), 3 * s, 2 * s); ctx.fillStyle = '#fff'; ctx.fill(); }
+  });
+  ctx.fillStyle = C.border; ctx.fillRect(px, cy + 36 * s, iw, 1.5 * s);
+  cy += 62 * s;
+
+  rr(px, cy, iw, 62 * s, 14 * s); ctx.fillStyle = C.input; ctx.fill();
+  ctx.lineWidth = 2 * s; ctx.strokeStyle = t > 0.9 ? '#3a3f4b' : C.border; ctx.stroke();
+  const typed = 'ABC123'.slice(0, Math.floor(clamp((t - 0.9) / 0.75) * 6 + 0.0001));
+  if (typed) {
+    drawText(typed, px + 22 * s, cy + 31 * s, { size: 26 * s, weight: 700, fam: MONO, color: '#fff', baseline: 'middle' });
+    if (Math.floor(t * 2.4) % 2 === 0) { ctx.fillStyle = '#fff'; ctx.fillRect(px + 26 * s + textWidth(typed, 26 * s, 700, MONO), cy + 16 * s, 2.5 * s, 30 * s); }
+  } else {
+    drawText('Search a plate or a name', px + 22 * s, cy + 31 * s, { size: 22 * s, weight: 500, color: C.muted, baseline: 'middle' });
+  }
+  cy += 84 * s;
+
+  const p1 = prog(t, 1.85, 0.45);
+  ctx.save(); ctx.globalAlpha *= p1; ctx.translate(0, (1 - p1) * 20 * s);
+  rr(px, cy, iw, 196 * s, 16 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawText('VEHICLE', px + 22 * s, cy + 20 * s, { size: 16 * s, weight: 800, color: C.muted, spacing: 2 * s });
+  drawText('ABC123', px + 22 * s, cy + 46 * s, { size: 34 * s, weight: 700, fam: MONO, color: '#fff' });
+  drawText('Bravado Buffalo, black', px + 22 * s, cy + 92 * s, { size: 21 * s, weight: 600, color: C.text });
+  drawText('Registered to Tony Russo', px + 22 * s, cy + 122 * s, { size: 19 * s, weight: 500, color: C.muted });
+  const pb = 0.75 + 0.25 * Math.sin(t * 8);
+  const bw = badge('STOLEN', px + 22 * s, cy + 150 * s, s, C.red, t > 2.3 ? pb : 0.9);
+  badge('BOLO', px + 32 * s + bw, cy + 150 * s, s, C.amber);
+  ctx.restore();
+  cy += 214 * s;
+
+  const p2 = prog(t, 2.6, 0.45);
+  ctx.save(); ctx.globalAlpha *= p2; ctx.translate(0, (1 - p2) * 20 * s);
+  rr(px, cy, iw, 168 * s, 16 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawText('OWNER', px + 22 * s, cy + 20 * s, { size: 16 * s, weight: 800, color: C.muted, spacing: 2 * s });
+  drawText('Tony Russo', px + 22 * s, cy + 46 * s, { size: 28 * s, weight: 800, color: '#fff' });
+  drawText('Warrant: armed robbery', px + 22 * s, cy + 88 * s, { size: 20 * s, weight: 700, color: C.red });
+  drawText('2 prior arrests  ·  1 open ticket', px + 22 * s, cy + 120 * s, { size: 18 * s, weight: 500, color: C.muted });
+  ctx.restore();
+  cy += 188 * s;
+
+  const p3 = prog(t, 3.2, 0.45);
+  ctx.save(); ctx.globalAlpha *= p3;
+  const half = (iw - 14 * s) / 2;
+  rr(px, cy, half, 58 * s, 12 * s); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawText('Issue ticket', px + half / 2, cy + 29 * s, { size: 20 * s, weight: 700, color: C.text, align: 'center', baseline: 'middle' });
+  rr(px + half + 14 * s, cy, half, 58 * s, 12 * s); ctx.fillStyle = '#fff'; ctx.fill();
+  drawText('Arrest report', px + half + 14 * s + half / 2, cy + 29 * s, { size: 20 * s, weight: 800, color: C.bg, align: 'center', baseline: 'middle' });
+  ctx.restore();
+}
+
+// ── Scenes ──────────────────────────────────────────────────────────────────
+function staggerLine(line, cx, y, size, t, t0, step, k0, color = '#fff') {
+  const words = line.split(' ');
+  const sp = textWidth(' ', size, 800);
+  const ws = words.map((w) => textWidth(w, size, 800));
+  let x = cx - (ws.reduce((a, b) => a + b, 0) + sp * (words.length - 1)) / 2;
+  words.forEach((word, i) => {
+    const p = prog(t, t0 + (k0 + i) * step, 0.45);
+    drawText(word, x, y + (1 - p) * 34 * S, { size, weight: 800, color, alpha: p });
+    x += ws[i] + sp;
+  });
+}
+
+function emphasisLine(line, cx, y, size, t, t0) {
+  const p = prog(t, t0, 0.55);
+  const parts = line.split(' ');
+  const last = parts.pop();
+  const head = parts.join(' ');
+  const sp = head ? textWidth(' ', size, 800) : 0;
+  const hw = head ? textWidth(head, size, 800) : 0, lw = textWidth(last, size, 800);
+  const padX = size * 0.16;
+  const total = hw + sp + lw + padX * 2;
+  let x = cx - total / 2;
+  const yy = y + (1 - p) * 40 * S;
+  if (head) drawText(head, x, yy, { size, weight: 800, color: '#fff', alpha: p });
+  x += hw + sp;
+  const pw = prog(t, t0 + 0.35, 0.45);
+  ctx.save();
+  ctx.globalAlpha *= p;
+  rr(x, yy - size * 0.06, (lw + padX * 2) * pw, size * 1.16, size * 0.16); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.restore();
+  drawText(last, x + padX, yy, { size, weight: 800, color: pw > 0.5 ? C.bg : '#fff', alpha: p });
+}
+
+function sceneHook(t) {
+  const L = PORTRAIT;
+  const g1 = L ? ['GTA 6 hits', 'PS5 and Xbox', 'on November 19.'] : ['GTA 6 hits PS5 and Xbox', 'on November 19.'];
+  const g2 = L ? ['Is your RP', 'server ready?'] : ['Is your RP server ready?'];
+  const s1 = (L ? 104 : 92) * S, s2 = (L ? 128 : 118) * S;
+  const total = g1.length * s1 * 1.1 + 70 * S + g2.length * s2 * 1.12;
+  let y = (H - total) / 2 - (L ? 80 * S : 10 * S);
+  let k = 0;
+  const dim = 1 - 0.45 * prog(t, 1.4, 0.5);
+  g1.forEach((line) => {
+    ctx.save(); ctx.globalAlpha *= dim;
+    staggerLine(line, W / 2, y, s1, t, 0.1, 0.11, k);
+    ctx.restore();
+    k += line.split(' ').length; y += s1 * 1.1;
+  });
+  y += 70 * S;
+  g2.forEach((line, i) => {
+    if (i === g2.length - 1) emphasisLine(line, W / 2, y, s2, t, 1.5 + i * 0.12);
+    else staggerLine(line, W / 2, y, s2, t, 1.5, 0.1, 0);
+    y += s2 * 1.12;
+  });
+}
+
+function sceneBrand(t) {
+  const L = PORTRAIT;
+  const cy = L ? H * 0.36 : H * 0.34;
+  const size = (L ? 360 : 290) * S;
+  const p = prog(t, 0.0, 0.7);
+  ctx.save(); ctx.globalAlpha *= p; glowAt(W / 2, cy, size * 1.1, 'rgba(255,255,255,0.10)'); ctx.restore();
+  ctx.save(); ctx.translate(W / 2, cy); ctx.scale(0.86 + 0.14 * p, 0.86 + 0.14 * p); drawLogo(0, 0, size, p); ctx.restore();
+  const wy = cy + size / 2 + (L ? 120 : 110) * S;
+  const pw = prog(t, 0.4, 0.6);
+  wordmark(W / 2, wy + (1 - pw) * 20 * S, (L ? 74 : 84) * S, pw);
+  const pt = prog(t, 0.75, 0.6);
+  drawText('The Discord bot for console GTA roleplay', W / 2, wy + 44 * S, { size: (L ? 40 : 38) * S, weight: 500, color: C.muted, align: 'center', alpha: pt, maxW: 940 * S, lh: 1.3 });
+  chipRow(['PS5', 'Xbox', 'Free to add'], W / 2, wy + (L ? 200 : 150) * S, 30 * S, prog(t, 1.1, 0.6));
+}
+
+const RADIO = [
+  { who: 'Dispatch', at: 1.1, end: 2.8, text: 'Shots fired near Grove Street. Units respond.' },
+  { who: 'Unit 12', at: 2.8, end: 3.7, text: '10-4, en route.' },
+  { who: 'Dispatch', at: 3.7, end: 5.4, text: 'Copy, Unit 12. Plate ABC123 comes back stolen.' },
+];
+const MEMBERS = [
+  { name: 'Dispatch', logo: true, app: true },
+  { name: 'Unit 12', initials: '12', color: '#3b5bdb' },
+  { name: 'Unit 7', initials: '7', color: '#2b8a3e' },
+];
+
+function sceneDispatch(t) {
+  const L = PORTRAIT;
+  const w = (L ? 900 : 700) * S;
+  const x = visualX(w);
+  const speaking = (RADIO.find((r) => t >= r.at && t < r.end) || {}).who || null;
+  const cardH = 26 * S * 2 + 60 * S + MEMBERS.length * 76 * S;
+  const lineHs = RADIO.map((r) => radioLine(0, 0, w, S, r.who, r.text, 1, '#fff', false));
+  const gap = 16 * S;
+  const totalH = cardH + 28 * S + lineHs.reduce((a, b) => a + b + gap, 0);
+  const spec = { eyebrow: 'AI voice dispatch', title: 'An AI dispatcher on your patrol radio', body: 'It reads out 911 calls, answers your officers and runs plates by voice.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, totalH, 64 * S) : null);
+  let y = L ? bottom + 64 * S : (H - totalH) / 2;
+  const pc = prog(t, 0.35, 0.55);
+  voiceCard(x, y + (1 - pc) * 40 * S, w, S, MEMBERS, speaking, t, pc);
+  y += cardH + 28 * S;
+  RADIO.forEach((r, i) => {
+    const p = prog(t, r.at, 0.4);
+    if (p > 0) radioLine(x, y + (1 - p) * 24 * S, w, S, r.who, r.text, p, r.who === 'Dispatch' ? C.green : C.blue);
+    y += lineHs[i] + gap;
+  });
+}
+
+function sceneCad(t) {
+  const bottom = textBlock(t, { eyebrow: 'Web CAD', title: 'A full CAD on your phone', body: 'Run plates, write arrest reports and issue warrants, right next to the TV.' });
+  const L = PORTRAIT;
+  const pw = (L ? 540 : 460) * S, ph = (L ? 1040 : 900) * S;
+  const px = visualX(pw);
+  const pIn = prog(t, 0.2, 0.7);
+  const py = (L ? bottom + 70 * S : (H - ph) / 2) + (1 - pIn) * 140 * S;
+  phone(px, py, pw, ph, pIn, (sx, sy, sw, sh) => cadScreen(sx, sy, sw, sh, t));
+  if (L) {
+    const g = ctx.createLinearGradient(0, H - 420 * S, 0, H - 170 * S);
+    g.addColorStop(0, 'rgba(10,11,14,0)'); g.addColorStop(1, 'rgba(10,11,14,1)');
+    ctx.fillStyle = g; ctx.fillRect(0, H - 420 * S, W, 420 * S);
+  }
+}
+
+function sceneSafety(t) {
+  const L = PORTRAIT;
+  const w = (L ? 940 : 720) * S;
+  const x = visualX(w);
+  const p = prog(t, 0.35, 0.6);
+  const h = safetyMessage(x, 0, w, S, 0, 1, false);
+  const spec = { eyebrow: 'Safety Network', title: 'Spot trolls the moment they join', body: 'Servers share their bans, so your staff are warned when someone banned elsewhere joins.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, h, 70 * S) : null);
+  const y = (L ? bottom + 70 * S : (H - h) / 2) + (1 - p) * 50 * S;
+  safetyMessage(x, y, w, S, t, p);
+}
+
+const FEATURES = ['Priority cooldowns', 'Session recaps', 'Applications', 'Economy and jobs', 'Tickets and strikes', 'Verification', 'Patrol hours', 'Server directory'];
+
+function featureCard(x, y, w, h, label, alpha) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 18 * S); ctx.fillStyle = C.card; ctx.fill();
+  ctx.strokeStyle = C.border; ctx.lineWidth = 2 * S; ctx.stroke();
+  const r = 18 * S;
+  check(x + 26 * S + r, y + h / 2, r);
+  drawText(label, x + 26 * S + r * 2 + 18 * S, y + h / 2, { size: (PORTRAIT ? 31 : 27) * S, weight: 600, color: C.text, baseline: 'middle' });
+  ctx.restore();
+}
+
+function sceneFeatures(t) {
+  const L = PORTRAIT;
+  const cw = (L ? 450 : 340) * S, ch = (L ? 116 : 98) * S, gap = 18 * S;
+  const gw = cw * 2 + gap, gh = ch * 4 + gap * 3;
+  const spec = { eyebrow: 'And the rest', title: 'Everything your RP server runs on' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, gh, 70 * S) : null);
+  const x0 = visualX(gw);
+  const y0 = L ? bottom + 70 * S : (H - gh) / 2;
+  FEATURES.forEach((label, i) => {
+    const p = prog(t, 0.3 + i * 0.11, 0.45);
+    featureCard(x0 + (i % 2) * (cw + gap), y0 + Math.floor(i / 2) * (ch + gap) + (1 - p) * 26 * S, cw, ch, label, p);
+  });
+}
+
+function sceneCta(t) {
+  const L = PORTRAIT;
+  const size = (L ? 250 : 190) * S;
+  const cy = L ? H * 0.29 : H * 0.25;
+  const p = prog(t, 0.05, 0.6);
+  drawLogo(W / 2, cy, size * (0.9 + 0.1 * p), p);
+  let y = cy + size / 2 + 56 * S;
+  const pt = prog(t, 0.3, 0.6);
+  y += drawText('Add it to your server free', W / 2, y + (1 - pt) * 20 * S, { size: (L ? 90 : 84) * S, weight: 800, color: '#fff', align: 'center', alpha: pt, maxW: (L ? 940 : 1600) * S, lh: 1.08 });
+  y += 44 * S;
+  const us = (L ? 54 : 48) * S;
+  urlPill('roleplaymanager.xyz', W / 2, y + us * 0.95, us, prog(t, 0.6, 0.6));
+  y += us * 1.9 + 44 * S;
+  drawText('Premium from $5 a month, with a 7 day free trial', W / 2, y, { size: (L ? 34 : 32) * S, weight: 500, color: C.muted, align: 'center', alpha: prog(t, 0.9, 0.6), maxW: 940 * S });
+  y += (L ? 120 : 92) * S;
+  chipRow(['PS5', 'Xbox', 'Ready for GTA 6'], W / 2, y, 28 * S, prog(t, 1.15, 0.6));
+}
+
+function watermark(alpha) {
+  if (alpha <= 0.001) return;
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.9;
+  const ls = 46 * S, size = 25 * S;
+  if (PORTRAIT) {
+    const tw = textWidth('roleplaymanager.xyz', size, 600);
+    const x = W / 2 - (ls + 14 * S + tw) / 2;
+    drawLogo(x + ls / 2, 236 * S, ls);
+    drawText('roleplaymanager.xyz', x + ls + 14 * S, 236 * S, { size, weight: 600, color: C.muted, baseline: 'middle' });
+  } else {
+    drawLogo(80 * S, 78 * S, ls);
+    drawText('roleplaymanager.xyz', 80 * S + ls / 2 + 14 * S, 78 * S, { size, weight: 600, color: C.muted, baseline: 'middle' });
+  }
+  ctx.restore();
+}
+
+const SCENES = [
+  { start: 0.0, end: 3.8, draw: sceneHook, lights: 1 },
+  { start: 3.8, end: 7.6, draw: sceneBrand },
+  { start: 7.6, end: 13.4, draw: sceneDispatch, lights: 0.55, mark: true },
+  { start: 13.4, end: 18.6, draw: sceneCad, mark: true },
+  { start: 18.6, end: 23.0, draw: sceneSafety, mark: true },
+  { start: 23.0, end: 26.6, draw: sceneFeatures, mark: true },
+  { start: 26.6, end: DUR, draw: sceneCta, last: true },
+];
+const XF = 0.35;
+function sceneAlpha(s, t) {
+  if (t < s.start || t > s.end + XF) return 0;
+  const fin = s.start === 0 ? 1 : ease((t - s.start) / XF);
+  const fout = s.last ? 1 : 1 - ease((t - s.end) / XF);
+  return Math.min(fin, fout);
+}
+
+function renderFrame(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  let lights = 0, mark = 0;
+  for (const s of SCENES) { const a = sceneAlpha(s, t); lights += a * (s.lights || 0); if (s.mark) mark += a; }
+  background(t, Math.min(1, lights));
+  for (const s of SCENES) {
+    const a = sceneAlpha(s, t);
+    if (a <= 0.001) continue;
+    ctx.save(); ctx.globalAlpha = a; s.draw(t - s.start); ctx.restore();
+  }
+  watermark(Math.min(1, mark));
+}
+
+// ── Stills: ads and the link preview image ──────────────────────────────────
+const STILLS = {
+  // 1200 x 630: what Discord, X and others show when someone shares the site.
+  og() {
+    background(0, 0);
+    drawLogo(W * 0.2, H / 2, 300 * S);
+    const x = W * 0.2 + 210 * S;
+    wordmark(x, H / 2 - 70 * S, 92 * S, 1, 'left');
+    drawText('The Discord bot for console GTA roleplay on PS5 and Xbox', x, H / 2 - 30 * S, { size: 44 * S, weight: 500, color: C.muted, maxW: W - x - 70 * S, lh: 1.3 });
+    let cx = x;
+    ['Web CAD', 'AI voice dispatch', 'Server directory'].forEach((l) => { cx += chip(l, cx, H / 2 + 150 * S, { size: 30 * S, align: 'left' }) + 14 * S; });
+  },
+  // 1080 x 1080: the GTA 6 hook.
+  gta6() {
+    background(1.2, 1);
+    drawText('GTA 6 hits PS5 and Xbox on November 19.', W / 2, 150 * S, { size: 76 * S, weight: 800, color: C.text, align: 'center', maxW: 900 * S, lh: 1.1 });
+    staggerLine('Is your RP', W / 2, 420 * S, 112 * S, 99, 0, 0, 0);
+    emphasisLine('server ready?', W / 2, 545 * S, 112 * S, 99, 0);
+    drawLogo(W / 2, 808 * S, 120 * S);
+    wordmark(W / 2, 935 * S, 50 * S);
+    drawText('roleplaymanager.xyz', W / 2, 965 * S, { size: 32 * S, weight: 600, color: C.muted, align: 'center' });
+  },
+  // 1080 x 1080: the AI dispatcher.
+  dispatch() {
+    background(2, 0.5);
+    drawText('AI VOICE DISPATCH', W / 2, 90 * S, { size: 26 * S, weight: 700, color: C.muted, align: 'center', spacing: 4 * S });
+    drawText('An AI dispatcher for your PS5 and Xbox RP server', W / 2, 140 * S, { size: 66 * S, weight: 800, color: '#fff', align: 'center', maxW: 940 * S, lh: 1.08 });
+    const w = 900 * S, x = (W - w) / 2;
+    const h = voiceCard(x, 330 * S, w, S, MEMBERS, 'Dispatch', 1.7);
+    radioLine(x, 330 * S + h + 24 * S, w, S, 'Dispatch', 'Shots fired near Grove Street. Units respond.', 1, C.green);
+    drawText('Free to add at roleplaymanager.xyz', W / 2, 990 * S, { size: 32 * S, weight: 600, color: C.muted, align: 'center' });
+  },
+  // 1080 x 1920: a story or status post.
+  story() {
+    background(0, 0);
+    drawLogo(W / 2, 330 * S, 230 * S);
+    wordmark(W / 2, 560 * S, 72 * S);
+    drawText('The Discord bot for console GTA roleplay on PS5 and Xbox', W / 2, 600 * S, { size: 38 * S, weight: 500, color: C.muted, align: 'center', maxW: 860 * S, lh: 1.3 });
+    const items = ['AI voice dispatch on your patrol radio', 'A full web CAD on your phone', 'The Safety Network against trolls', 'Session recaps after every patrol', 'Priority, economy and applications', 'A free server directory'];
+    items.forEach((label, i) => {
+      const y = 790 * S + i * 104 * S;
+      check(170 * S, y, 24 * S);
+      drawText(label, 216 * S, y, { size: 38 * S, weight: 600, color: C.text, baseline: 'middle' });
+    });
+    drawText('Add it to your server free', W / 2, 1490 * S, { size: 64 * S, weight: 800, color: '#fff', align: 'center' });
+    urlPill('roleplaymanager.xyz', W / 2, 1640 * S, 50 * S, 1);
+  },
+};
+
+// ── Run the job and hand the result to render.mjs ───────────────────────────
+async function ready() {
+  await document.fonts.ready;
+  await Promise.all(['300 40px Montserrat', '800 40px Montserrat', '500 40px Inter', '600 40px Inter', '700 40px Inter', '800 40px Inter']
+    .map((f) => document.fonts.load(f)));
+  if (!logoImg.complete || !logoImg.naturalWidth) await new Promise((r) => { logoImg.onload = r; logoImg.onerror = r; });
+}
+const send = (path, body) => fetch(path, { method: 'POST', body });
+const blobOf = (type, quality) => new Promise((r) => cv.toBlob(r, type, quality));
+
+(async () => {
+  try {
+    await ready();
+    if (q.get('job') === 'video') {
+      const n = Math.round(DUR * FPS);
+      for (let i = 0; i < n; i++) {
+        renderFrame(i / FPS);
+        await send('/frame', await blobOf('image/png'));
+      }
+    } else {
+      if (q.get('t') !== null) renderFrame(+q.get('t')); else STILLS[q.get('still')]();
+      const jpg = q.get('fmt') === 'jpg';
+      await send('/still?name=' + encodeURIComponent(q.get('name')), await blobOf(jpg ? 'image/jpeg' : 'image/png', 0.9));
+    }
+    await send('/done', 'ok');
+  } catch (err) {
+    await send('/error', String((err && err.stack) || err));
+  }
+})();
+</script>
+</body>
+</html>
