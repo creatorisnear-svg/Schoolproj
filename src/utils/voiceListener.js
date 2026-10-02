@@ -58,6 +58,29 @@ const MAX_BACKOFF_MS = 300000;
 const lastLoggedState = new Map();
 const logThrottleCounts = new Map();
 
+/**
+ * What the dispatcher heard lately, per server, and where each line stopped.
+ * "Nobody spoke", "spoke but no audio came through" and "heard but not
+ * answered" all looked the same before: silence, and nothing in the logs.
+ * Shown in /setup (RPM CyberCom) and /config dispatch, and logged.
+ */
+const radioTrace = new Map();
+export function traceRadio(guildId, userId, what, { log = true } = {}) {
+  const list = radioTrace.get(guildId) || [];
+  list.push({ at: Date.now(), userId, what });
+  if (list.length > 8) list.shift();
+  radioTrace.set(guildId, list);
+  if (log) console.log(`[Dispatch] ${guildId}${userId ? ' ' + userId : ''}: ${what}`);
+}
+export function getRadioTrace(guildId) {
+  return radioTrace.get(guildId) || [];
+}
+/** The latest of it as Discord lines, newest first. */
+export function radioTraceLines(guildId, n = 4) {
+  return getRadioTrace(guildId).slice(-n).reverse()
+    .map((e) => `<t:${Math.floor(e.at / 1000)}:R> ${e.userId ? `<@${e.userId}> ` : ''}${e.what}`);
+}
+
 /** Per-guild panic poller intervals - detect 10-99 from DB without needing BOT_INTERNAL_URL */
 const panicPollers = new Map();
 
@@ -422,7 +445,8 @@ export async function moveToChannel(channel) {
       adapterCreator: channel.guild.voiceAdapterCreator,
       selfDeaf: false,
       selfMute: false,
-      debug: false,
+      // On, for the voice encryption (DAVE) messages below; nothing else is logged.
+      debug: true,
     });
   } catch (err) {
     console.error(`[Dispatch] Failed to join "${channel.name}":`, err.message);
@@ -433,6 +457,21 @@ export async function moveToChannel(channel) {
   state.connection = connection;
   state.currentChannelId = channel.id;
   joiningGuilds.delete(guildId);
+
+  // Audio that cannot be decrypted is dropped with only a debug message, so a
+  // dispatcher that cannot read the encryption hears silence and says nothing.
+  let decryptFails = 0;
+  connection.on('debug', (message) => {
+    if (!message.includes('[DAVE]')) return;
+    if (message.includes('Failed to decrypt')) {
+      decryptFails++;
+      if (decryptFails === 1 || decryptFails % 200 === 0) {
+        traceRadio(guildId, null, `could not decrypt what was said: Discord voice encryption (${decryptFails} packets so far)`);
+      }
+    } else if (/reinit|initialized|transition|recover|invalid|external sender/i.test(message)) {
+      console.log(`[Dispatch] ${channel.guild.name} voice encryption: ${message}`);
+    }
+  });
 
   connection.on('error', (err) => {
     const errKey = `err:${guildId}`;
@@ -559,6 +598,7 @@ export async function moveToChannel(channel) {
 
   const onConnectionReady = () => {
     console.log(`[Dispatch] Connection ready in "${channel.name}"`);
+    traceRadio(guildId, null, state.announceOnly ? `joined #${channel.name} to read out a 911 call` : `joined #${channel.name} and is listening`);
     setTimeout(async () => {
       if (state.connection !== connection) return;
       if (state.joinAudioPlayed) {
@@ -717,6 +757,10 @@ function _setupReceiver(connection, guild, state, guildId) {
         return;
       }
     }
+    if (!onTranscription) {
+      traceRadio(guildId, userId, 'spoke, but this server is on 911 read-outs only, so the dispatcher is not listening');
+      return;
+    }
 
     recordingUsers.add(key);
     // Recording started (debug-level, suppressed in production)
@@ -724,6 +768,7 @@ function _setupReceiver(connection, guild, state, guildId) {
     const safetyTimeout = setTimeout(() => {
       if (recordingUsers.has(key)) {
         console.warn(`[Dispatch] Safety timeout - clearing stuck recording for user ${userId}`);
+        traceRadio(guildId, userId, 'spoke, but no audio came through for 30 seconds (it could not be decrypted)');
         recordingUsers.delete(key);
         try { stream?.destroy(); } catch {}
         try { decoder?.destroy(); } catch {}
@@ -765,7 +810,10 @@ function _setupReceiver(connection, guild, state, guildId) {
       // Recording ended (debug-level, suppressed in production)
       // Require at least 20 chunks (~400ms) to filter out noise bursts and mic pops.
       // Threshold reduced from 40 to allow short-but-valid transmissions (e.g. "dispatch, 10-8").
-      if (pcmChunks.length < 20) return;
+      if (pcmChunks.length < 20) {
+        if (pcmChunks.length === 0) traceRadio(guildId, userId, 'spoke, but no audio came through');
+        return;
+      }
       const wav = createWavBuffer(pcmChunks);
       if (onTranscription) {
         // ── Simultaneous speaker gate ──────────────────────────────────────────

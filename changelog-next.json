@@ -1,11 +1,8 @@
 {
-  "version": "1.17.1",
-  "title": "Dispatch fixes and a simpler RPM CyberCom setup",
+  "version": "1.17.2",
+  "title": "See what dispatch heard",
   "changes": [
-    "Fixed: the AI dispatcher sometimes stayed silent after a server got Premium, a trial or RPM CyberCom, until the bot restarted. It now starts listening straight away",
-    "Dispatch no longer ignores people without the officer role. When they say \"dispatch\", it tells them only officers can talk to dispatch. Saying \"dispatch\" in a civilian channel tells you to start with \"RPM\" there instead",
-    "RPM CyberCom in /setup now shows why dispatch might not answer: no police radio channels, no dispatch channel, the bot missing voice permissions, or you not having the officer role",
-    "Police radio channels in RPM CyberCom are the same channels as the patrol channels in AI Voice Dispatch. Set them once, in either place, and they show in both",
-    "Traffic stop channels are now set only in /setup under RPM CyberCom. They are no longer in the AI Voice Dispatch setup or on the dashboard"
+    "Say \"Dispatch, radio check\" and the AI dispatcher answers loud and clear, so you can test that it hears you. It used to stay silent on a radio check",
+    "RPM CyberCom in /setup and View Settings in /config dispatch now show what the dispatcher last heard on the radio, and why it did not answer if it did not: no dispatch channel, no officer role, no audio coming through, or a line that did not start with \"dispatch\""
   ]
 }

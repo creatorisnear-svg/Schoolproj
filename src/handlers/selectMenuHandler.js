@@ -2913,6 +2913,9 @@ async function handleDispatchSetupMenu(interaction) {
       const leoRoles = config.leoRoleIds?.length > 0
         ? config.leoRoleIds.map(id => `<@&${id}>`).join(', ')
         : '*Not set (using CAD config)*';
+      // Where the last few radio lines got to, so "it does not answer" has a reason.
+      const { radioTraceLines } = await import('../utils/voiceListener.js');
+      const heard = radioTraceLines(interaction.guildId, 4).join('\n').slice(0, 1000) || '*Nothing since the bot last restarted.*';
       const embed = new EmbedBuilder()
         .setColor('#2d2d2d')
         .setTitle('AI Dispatch Settings')
@@ -2924,6 +2927,7 @@ async function handleDispatchSetupMenu(interaction) {
           { name: 'Traffic Stop Channels', value: stopCh, inline: false },
           { name: 'AI Responses', value: config.aiEnabled ? 'Enabled' : 'Disabled', inline: true },
           { name: 'System', value: config.enabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'Last Heard on the Radio', value: heard, inline: false },
           { name: 'Multi-Channel Note', value: 'Discord allows one voice connection per server. The bot monitors the active patrol channel and automatically moves to whichever channel an officer joins.', inline: false },
         )
         .setFooter({ text: 'RPM' });

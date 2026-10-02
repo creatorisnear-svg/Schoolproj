@@ -518,6 +518,9 @@ function detectClearPanic(text) {
   return /\b(?:clear\s+(?:the\s+)?10[-\s]?99|cancel\s+(?:the\s+)?10[-\s]?99|stand\s+down\s+(?:the\s+)?(?:10[-\s]?99|panic|emergency)|10[-\s]?99\s+(?:is\s+)?(?:clear|cleared|cancelled|all\s+clear|stand\s+down)|officer\s+is\s+(?:okay|ok|safe|secure)|i(?:'m|m)\s+(?:okay|ok|safe|secure|good)|false\s+alarm|all\s+(?:good|clear),?\s+(?:stand\s+down|cancel)|deactivate\s+(?:the\s+)?(?:10[-\s]?99|panic))\b/i.test(text);
 }
 
+// "Dispatch, radio check" and the like: answered, so people can test that dispatch hears them.
+const RADIO_CHECK_RE = /\b(?:radio\s*check|comms?\s*check|mic\s*check|sound\s*check|testing|test(?:\s+test)?|can\s+you\s+hear\s+me|do\s+you\s+(?:hear|read)\s+me|how\s+(?:do\s+you\s+)?(?:copy|read|hear\s+me)|are\s+you\s+(?:there|on|working|listening)|you\s+there)\b/i;
+
 // Returns true only when the text contains vocabulary that belongs in a police dispatch context.
 // Used to drop off-topic chatter that happens to say "dispatch" (e.g. "dispatch, can you help me?").
 function isDispatchRelevant(text) {
@@ -2002,9 +2005,13 @@ async function tellNotAnOfficer(guild, member, wavBuffer) {
 
   const text = await transcribeAudio(wavBuffer).catch(() => '');
   const { afterWakeWord } = await import('../cybercom/text.js');
-  if (afterWakeWord(text || '', 'police') === null) return;
+  const { traceRadio } = await import('../utils/voiceListener.js');
+  if (afterWakeWord(text || '', 'police') === null) {
+    traceRadio(guild.id, member.id, 'spoke without the officer role, so dispatch does not answer');
+    return;
+  }
   _notOfficerHeard.set(key, { heard: now, told: now });
-  console.log(`[Dispatch] ${member.displayName} said dispatch but has no officer role`);
+  traceRadio(guild.id, member.id, 'said dispatch without the officer role, and was told so');
   const name = cleanNameForTTS(member.displayName || member.user.username);
   const { playDispatchVoice } = await import('../utils/voiceListener.js');
   playDispatchVoice(guild.id, await generateDispatchTTS(`${name}, only officers can talk to dispatch. Ask your staff for the officer role.`));
@@ -2019,8 +2026,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       CADConfig.findOne({ guildId: guild.id }),
     ]);
 
-    if (!config || !config.enabled || !config.dispatchChannelId) return;
-    if (!member) return;
+    const { traceRadio } = await import('../utils/voiceListener.js');
+    if (!config || !config.enabled) return traceRadio(guild.id, userId, 'spoke, but dispatch is turned off');
+    if (!config.dispatchChannelId) return traceRadio(guild.id, userId, 'spoke, but no dispatch channel is set, and the dispatcher does not answer without one');
+    if (!member) return traceRadio(guild.id, userId, 'spoke, but could not be looked up in the server');
 
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
     const isLeo = leoRoleIds.length === 0 || member.roles.cache.some(r => leoRoleIds.includes(r.id));
@@ -2035,7 +2044,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     const allowance = await withinAllowance(guild.id, 'utterances');
     if (!allowance.allowed) {
       noticeAllowanceUsed(guild, config).catch(() => {});
-      return;
+      return traceRadio(guild.id, userId, 'spoke, but this month\'s AI dispatch allowance is used up');
     }
     recordAI(guild.id, { utterances: 1 });
 
@@ -2048,10 +2057,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
       transcript = await transcribeAudio(wavBuffer);
     } catch (err) {
       console.error('[Dispatch] Transcription error:', err.message);
-      return;
+      return traceRadio(guild.id, userId, 'spoke, but transcription failed: ' + err.message, { log: false });
     }
 
-    if (!transcript || transcript.trim().length < 3) return;
+    if (!transcript || transcript.trim().length < 3) return traceRadio(guild.id, userId, 'spoke, but no words could be made out');
+    traceRadio(guild.id, userId, `said "${transcript.trim().slice(0, 120)}"`, { log: false });
 
     // ── Noise / Whisper hallucination filter ─────────────────────────────────
     {
@@ -2352,6 +2362,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           } else {
             if (rollCallExpiry) statusRollCallMode.delete(guild.id); // expired, clean up
             console.log(`[Dispatch] Ignoring - no trigger word detected in: "${raw.slice(0, 60)}"`);
+            traceRadio(guild.id, userId, 'did not start with "dispatch", so it was not answered', { log: false });
             return;
           }
         }
@@ -2363,7 +2374,7 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             commandText = preContext;
             preContext = '';
           } else {
-            return;
+            return traceRadio(guild.id, userId, 'said only "dispatch", with nothing after it to answer');
           }
         }
         transcript = commandText;
@@ -2377,7 +2388,15 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // drop it silently. This prevents the bot from responding to off-topic chatter
     // like "dispatch, can you help me move?" or accidental trigger-word hits.
     if (hadTrigger && !isDispatchRelevant(transcript)) {
-      // Trigger heard but off-topic (debug-level, suppressed)
+      // A radio check is how people find out whether dispatch hears them, and
+      // it used to be dropped here as off-topic: the test looked like a fault.
+      if (RADIO_CHECK_RE.test(transcript)) {
+        traceRadio(guild.id, userId, 'radio check, answered loud and clear');
+        const { playDispatchVoice } = await import('../utils/voiceListener.js');
+        playDispatchVoice(guild.id, await generateDispatchTTS(`${ttsName}, loud and clear.`));
+        return;
+      }
+      traceRadio(guild.id, userId, 'started with dispatch, but had nothing in it for dispatch to act on');
       return;
     }
     // --- End relevance gate ---

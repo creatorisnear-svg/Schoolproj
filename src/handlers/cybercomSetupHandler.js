@@ -79,6 +79,12 @@ export async function cyberComView(guild, note = '', viewer = null) {
   } else if (active || premium) {
     lines.push('**Dispatch check:** all set. Officers start with "dispatch" in a police radio channel.');
   }
+  if (active || premium) {
+    const { radioTraceLines } = await import('../utils/voiceListener.js');
+    const heard = radioTraceLines(guild.id, 4);
+    lines.push('', '**Last heard on the police radio:**',
+      ...(heard.length ? heard : ['Nothing since the bot last restarted. Say "Dispatch, radio check" in a police radio channel, then open this again.']));
+  }
   lines.push('');
 
   if (helperCount()) {
