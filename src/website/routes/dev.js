@@ -48,6 +48,24 @@ const PROMO_VOICE_LINES = [
   { id: 'plate', voices: ['austin', 'daniel', 'fable'], text: 'Dispatch, run plate A B C 1 2 3.' },
   { id: 'plateReply', voices: 'dispatch', text: 'Plate A B C 1 2 3 comes back to Tony Russo, black 2019 Bravado Buffalo. Record shows WANTED for armed robbery.' },
 ];
+// The RPM CyberCom promo (?set=cybercom, for marketing/render-cybercom.mjs).
+// The bot's lines are word for word what stops.js says; officers start with
+// "Dispatch", civilians with "RPM". Reyes, Unit 12 and Blade keep one voice each.
+const CYBERCOM_VOICE_LINES = [
+  { id: 'ccStop', voices: ['troy', 'daniel', 'echo'], text: 'Dispatch, show me on a 10-11 with Blade.' },
+  { id: 'ccStopAck', voices: 'dispatch', text: 'Copy Reyes, ten eleven with Blade. Moving you to Traffic Stop 1.' },
+  { id: 'ccStopAsk', voices: 'dispatch', text: 'Blade, would you like to be moved into the ten eleven channel?' },
+  { id: 'ccStopYes', voices: ['austin', 'fable', 'onyx'], text: 'Yeah, move me.' },
+  { id: 'ccPursuit', voices: ['troy', 'daniel', 'echo'], text: 'Dispatch, show me in a 10-80.' },
+  { id: 'ccPursuitAck', voices: 'dispatch', text: 'Copy Reyes, ten eighty. Letting all units know.' },
+  { id: 'ccPursuitRadio', voices: 'dispatch', text: 'Reyes is in a ten eighty. Any units wanting to respond, say dispatch, attach me to the ten eighty.' },
+  { id: 'ccAttach', voices: ['daniel', 'austin', 'fable'], text: 'Dispatch, attach me to the 10-80.' },
+  { id: 'ccAttachAck', voices: 'dispatch', text: "Copy Unit 12, attaching you to Reyes's ten eighty." },
+  { id: 'ccClear', voices: ['troy', 'daniel', 'echo'], text: 'Dispatch, show me off my 10-11.' },
+  { id: 'ccClearAck', voices: 'dispatch', text: 'Copy, ten eight. Moving everyone back to their channels. Say no to stay.' },
+  { id: 'ccRpm', voices: ['austin', 'fable', 'onyx'], text: 'R P M, move me to Mia.' },
+  { id: 'ccRpmAck', voices: 'dispatch', text: 'Moving you to Mia.' },
+];
 if (!DEV_PASSWORD) {
   console.warn('[DEV] DEV_PASSWORD is not set. The dev panel is disabled.');
 }
@@ -211,13 +229,15 @@ export function createDevRouter(client) {
   });
 
   // GET /dev/promo-voice: the promo video's radio lines in the bot's real
-  // voices, as one JSON download for marketing/render.mjs. The voice key only
+  // voices, as one JSON download for marketing/render.mjs (?set=cybercom:
+  // the RPM CyberCom promo's, for render-cybercom.mjs). The voice key only
   // exists on the server, so the clips are made here.
   router.get('/promo-voice', devAuth, async (req, res) => {
     try {
       const { generateDispatchTTSPublic, synthesizeWithVoice } = await import('../../handlers/dispatchHandler.js');
       const lines = [];
-      for (const line of PROMO_VOICE_LINES) {
+      const set = req.query.set === 'cybercom' ? CYBERCOM_VOICE_LINES : PROMO_VOICE_LINES;
+      for (const line of set) {
         const entry = { id: line.id, text: line.text, voice: null };
         if (line.voices === 'dispatch') {
           try {
@@ -236,7 +256,7 @@ export function createDevRouter(client) {
         }
         lines.push(entry);
       }
-      res.setHeader('Content-Disposition', 'attachment; filename="rpm-promo-voice.json"');
+      res.setHeader('Content-Disposition', `attachment; filename="rpm-promo-voice${set === CYBERCOM_VOICE_LINES ? '-cybercom' : ''}.json"`);
       res.json({ generatedAt: new Date().toISOString(), lines });
     } catch (err) {
       console.error('[DEV] Promo voice error:', err.message);

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RPM CyberCom promo renderer</title>
+<!--
+  The RPM CyberCom promo video, drawn on a canvas with kit.js.
+  marketing/render-cybercom.mjs opens this in headless Edge:
+    ?job=video&w=1080&h=1920   every frame as a PNG, piped into ffmpeg
+    ?job=still&t=30            one frame of the video
+  What is said and when, and the beat of the song, come from the renderer
+  (/timeline.json); how each scene looks is here.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@300;800&display=block" rel="stylesheet">
+<style>html, body { margin: 0; background: #000; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="kit.js"></script>
+<script>
+// ── The beat ────────────────────────────────────────────────────────────────
+// Beat k of the song is at TL.beat0 + k * TL.beat in the video, and a bar
+// starts on every beat where k % 4 is 2. Scenes after the first start on a
+// beat, so beat j of a scene is at BT(j) in its own time.
+const beatTime = (k) => TL.beat0 + k * TL.beat;
+const BT = (j) => j * TL.beat;
+const lerp = (a, b, p) => a + (b - a) * p;
+/** Cut text to a width with an ellipsis, as Discord does in a menu. */
+function fitText(str, size, weight, maxW) {
+  if (textWidth(str, size, weight) <= maxW) return str;
+  let out = str;
+  while (out.length > 1 && textWidth(out + '...', size, weight) > maxW) out = out.slice(0, -1);
+  return out.trimEnd() + '...';
+}
+
+function ccWordmark(x, y, size, alpha = 1) {
+  const gap = size * 0.3;
+  const a = textWidth('RPM', size, 800, MONT), b = textWidth('CYBERCOM', size, 300, MONT);
+  const x0 = x - (a + gap + b) / 2;
+  ctx.save();
+  ctx.globalAlpha *= alpha; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = font(size, 800, MONT); ctx.fillText('RPM', x0, y);
+  ctx.font = font(size, 300, MONT); ctx.fillText('CYBERCOM', x0 + a + gap, y);
+  ctx.restore();
+}
+
+/** Chips in a row, one more on each beat from t0. */
+function beatChips(labels, cx, cy, size, t, t0) {
+  const gap = 16 * S;
+  const widths = labels.map((l) => textWidth(l, size, 600) + size * 1.6);
+  let x = cx - (widths.reduce((a, b) => a + b, 0) + gap * (labels.length - 1)) / 2;
+  labels.forEach((l, i) => {
+    const p = prog(t, t0 + BT(i), 0.35);
+    chip(l, x, cy + (1 - p) * 12 * S, { size, alpha: p, align: 'left' });
+    x += widths[i] + gap;
+  });
+}
+
+// ── Opening ─────────────────────────────────────────────────────────────────
+function sceneHook(t) {
+  const L = PORTRAIT;
+  const g1 = L ? ['Still dragging', 'people into', 'traffic stops?'] : ['Still dragging people', 'into traffic stops?'];
+  const g2 = L ? ['Just say', 'the word.'] : ['Just say the word.'];
+  const s1 = (L ? 104 : 92) * S, s2 = (L ? 128 : 118) * S;
+  const total = g1.length * s1 * 1.1 + 70 * S + g2.length * s2 * 1.12;
+  let y = (H - total) / 2 - (L ? 80 * S : 10 * S);
+  // The question a word on each eighth note, the answer on the next bar.
+  const t0 = beatTime(2) - TL.beat / 2, step = TL.beat / 2, t1 = beatTime(6);
+  let k = 0;
+  const dim = 1 - 0.45 * prog(t, t1 - 0.3, 0.5);
+  g1.forEach((line) => {
+    ctx.save(); ctx.globalAlpha *= dim;
+    staggerLine(line, W / 2, y, s1, t, t0, step, k);
+    ctx.restore();
+    k += line.split(' ').length; y += s1 * 1.1;
+  });
+  y += 70 * S;
+  g2.forEach((line, i) => {
+    if (i === g2.length - 1) emphasisLine(line, W / 2, y, s2, t, t1 - 0.15 + i * TL.beat / 2);
+    else staggerLine(line, W / 2, y, s2, t, t1 - 0.15, 0.1, 0);
+    y += s2 * 1.12;
+  });
+}
+
+function sceneBrand(t) {
+  const L = PORTRAIT;
+  const cy = L ? H * 0.36 : H * 0.33;
+  const size = (L ? 340 : 270) * S;
+  const p = prog(t, 0.0, 0.7);
+  ctx.save(); ctx.globalAlpha *= p; glowAt(W / 2, cy, size * 1.1, 'rgba(96,165,250,0.16)'); ctx.restore();
+  ctx.save(); ctx.translate(W / 2, cy); ctx.scale(0.86 + 0.14 * p, 0.86 + 0.14 * p); drawLogo(0, 0, size, p); ctx.restore();
+  const wy = cy + size / 2 + (L ? 120 : 112) * S;
+  const pw = prog(t, BT(1) - 0.1, 0.6);
+  ccWordmark(W / 2, wy + (1 - pw) * 20 * S, (L ? 80 : 88) * S, pw);
+  const pt = prog(t, BT(2) - 0.1, 0.6);
+  drawText('A bot in every voice channel', W / 2, wy + 44 * S, { size: (L ? 42 : 40) * S, weight: 500, color: C.muted, align: 'center', alpha: pt, maxW: 940 * S });
+  beatChips(['Traffic stops', '10-80s', 'Voice moderation'], W / 2, wy + (L ? 170 : 150) * S, 30 * S, t, BT(4) - 0.1);
+}
+
+// ── The voice channels ──────────────────────────────────────────────────────
+// Who is in the video, and the server's voice channels as it opens, each
+// channel's members in the order they joined. The renderer's story moves them.
+const CAST = {
+  Dispatch: { logo: true, app: true },
+  'RPM CyberCom 1': { logo: true, app: true },
+  'RPM CyberCom 2': { logo: true, app: true },
+  'RPM CyberCom 3': { logo: true, app: true },
+  Reyes: { initials: 'R', color: '#3b5bdb' },
+  'Unit 12': { initials: '12', color: '#0c8599' },
+  Blade: { initials: 'B', color: '#e8590c' },
+  Mia: { initials: 'M', color: '#c2255c' },
+};
+const START = [
+  ['Police radio', [['Patrol 1', ['Dispatch', 'Reyes', 'Unit 12']], ['Traffic Stop 1', []]]],
+  ['Civilian', [['Civilian 1', ['Blade', 'RPM CyberCom 1']], ['Civilian 2', ['Mia', 'RPM CyberCom 3']]]],
+];
+const isBot = (who) => !!CAST[who]?.app;
+const OFFICERS = new Set(['Reyes', 'Unit 12']);
+const accentOf = (who) => (isBot(who) ? C.green : OFFICERS.has(who) ? C.blue : C.amber);
+
+// The channels after each of the story's events: STATES[i] is after i events.
+let STATES = null;
+function states() {
+  if (STATES) return STATES;
+  let cur = { members: new Map(START.flatMap(([, chans]) => chans)), tags: new Map() };
+  STATES = [cur];
+  for (const e of TL.cc.events) {
+    const next = { members: new Map([...cur.members].map(([k, v]) => [k, [...v]])), tags: new Map(cur.tags) };
+    if (e.kind === 'tag') {
+      if (e.code) next.tags.set(e.channel, e.code); else next.tags.delete(e.channel);
+    } else {
+      for (const list of next.members.values()) { const i = list.indexOf(e.member); if (i >= 0) list.splice(i, 1); }
+      next.members.get(e.channel).push(e.member);
+    }
+    STATES.push(next);
+    cur = next;
+  }
+  return STATES;
+}
+
+const ROW = { head: 74, cat: 46, chan: 54, member: 48 };
+function sidebarRows(state, s) {
+  const rows = [];
+  let y = 0;
+  const push = (r) => { rows.push({ ...r, y, h: ROW[r.kind] * s }); y += ROW[r.kind] * s; };
+  push({ key: 'head', kind: 'head' });
+  for (const [cat, chans] of START) {
+    push({ key: 'cat:' + cat, kind: 'cat', label: cat });
+    for (const [name] of chans) {
+      push({ key: 'ch:' + name, kind: 'chan', label: name });
+      for (const m of state.members.get(name)) push({ key: 'm:' + m, kind: 'member', label: m, channel: name });
+    }
+  }
+  return { rows, h: y };
+}
+const sidebarHeight = (s) => 18 * s * 2 + Math.max(...states().map((st) => sidebarRows(st, s).h));
+
+function chevron(x, cy, size, color) {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = size * 0.22; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x, cy - size * 0.22); ctx.lineTo(x + size * 0.4, cy + size * 0.2); ctx.lineTo(x + size * 0.8, cy - size * 0.22); ctx.stroke();
+  ctx.restore();
+}
+
+/** A status tag, sized for its letter spacing, its right edge at xr. */
+function statusTag(label, xr, cy, s, color, alpha = 1) {
+  const size = 18 * s, sp = 1.5 * s;
+  const w = textWidth(label, size, 800) + sp * label.length + 22 * s, h = 34 * s;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(xr - w, cy - h / 2, w, h, 8 * s); ctx.fillStyle = color + '26'; ctx.fill();
+  ctx.lineWidth = 1.5 * s; ctx.strokeStyle = color + '80'; ctx.stroke();
+  drawText(label, xr - w + 11 * s, cy, { size, weight: 800, color, baseline: 'middle', spacing: sp });
+  ctx.restore();
+}
+
+function appBadge(x, cy, s) {
+  rr(x, cy - 12 * s, 46 * s, 24 * s, 5 * s); ctx.fillStyle = C.dBlurple; ctx.fill();
+  drawText('APP', x + 23 * s, cy, { size: 15 * s, weight: 800, color: '#fff', align: 'center', baseline: 'middle' });
+}
+
+function drawRow(r, x, y, w, s, t, o) {
+  const pad = 18 * s, cy = y + r.h / 2;
+  ctx.save();
+  ctx.globalAlpha *= o.alpha;
+  if (r.kind === 'head') {
+    drawText('Los Santos RP', x + pad + 6 * s, cy, { size: 28 * s, weight: 800, color: '#fff', baseline: 'middle' });
+    chevron(x + w - pad - 26 * s, cy, 24 * s, C.dText);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + r.h - 2 * s, w, 2 * s);
+  } else if (r.kind === 'cat') {
+    chevron(x + pad, cy + 2 * s, 14 * s, C.dMuted);
+    drawText(r.label.toUpperCase(), x + pad + 22 * s, cy + 2 * s, { size: 18 * s, weight: 800, color: C.dMuted, baseline: 'middle', spacing: 1.2 * s });
+  } else if (r.kind === 'chan') {
+    const busy = o.state.members.get(r.label).length > 0;
+    speakerIcon(x + pad + 4 * s, cy, 28 * s, busy ? C.dText : C.dMuted);
+    drawText(r.label, x + pad + 46 * s, cy, { size: 27 * s, weight: 600, color: busy ? C.dText : C.dMuted, baseline: 'middle' });
+    const tag = o.state.tags.get(r.label) || o.lastTag;
+    if (tag) {
+      const color = tag === '10-80' ? C.red : C.amber;
+      const pulse = tag === '10-80' ? 0.7 + 0.3 * Math.sin(t * 9) : 1;
+      statusTag(tag, x + w - pad, cy, s, color, o.tagAlpha * pulse);
+    }
+  } else {
+    const m = CAST[r.label];
+    const on = o.speaking === r.label;
+    if (o.glow > 0.01) {
+      rr(x + 8 * s, y + 3 * s, w - 16 * s, r.h - 6 * s, 10 * s);
+      ctx.fillStyle = `rgba(88,101,242,${(0.38 * o.glow).toFixed(3)})`; ctx.fill();
+    }
+    const ax = x + pad + 58 * s;
+    avatar(ax, cy, 18 * s, m, on, t);
+    const nx = ax + 32 * s;
+    drawText(r.label, nx, cy, { size: 25 * s, weight: on ? 700 : 500, color: on ? '#fff' : C.dText, baseline: 'middle' });
+    if (m.app) appBadge(nx + textWidth(r.label, 25 * s, on ? 700 : 500) + 10 * s, cy, s);
+    if (on) waveform(x + w - pad - 110 * s, cy, 110 * s, 26 * s, t, C.dGreen);
+  }
+  ctx.restore();
+}
+
+/** The voice channel list, everyone sliding to where the bot moves them. */
+function sidebar(x, y, w, s, t, alpha) {
+  const st = states(), ev = TL.cc.events;
+  let n = 0;
+  while (n < ev.length && ev[n].at <= t) n++;
+  const e = n > 0 ? ev[n - 1] : null;
+  const p = e ? ease((t - e.at) / 0.5) : 1;
+  const cur = sidebarRows(st[n], s);
+  const prev = e && p < 1 ? sidebarRows(st[n - 1], s) : null;
+  const line = TL.cc.lines.find((l) => t >= l.from && t < l.end);
+  const h = sidebarHeight(s);
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 22 * s); ctx.fillStyle = C.dEmbed; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * s; ctx.stroke();
+  const top = y + 18 * s;
+  // A tag that was just taken off fades out where it was.
+  const gone = e && e.kind === 'tag' && !e.code && p < 1 ? st[n - 1].tags.get(e.channel) : null;
+  for (const r of cur.rows) {
+    const was = prev && prev.rows.find((q) => q.key === r.key);
+    const ry = was ? lerp(was.y, r.y, p) : r.y;
+    const moved = [...ev.slice(0, n)].reverse().find((q) => (q.kind === 'move' || q.kind === 'join') && 'm:' + q.member === r.key);
+    const glow = moved ? clamp(1 - (t - moved.at - 0.3) / 0.9) : 0;
+    const tagEvent = [...ev.slice(0, n)].reverse().find((q) => q.kind === 'tag' && 'ch:' + q.channel === r.key);
+    drawRow(r, x, top + ry, w, s, t, {
+      alpha: prev && !was ? p : 1, state: st[n], speaking: line?.who, glow,
+      tagAlpha: tagEvent && tagEvent.code ? prog(t, tagEvent.at, 0.3) : 1 - p,
+      lastTag: gone && r.key === 'ch:' + e.channel ? gone : null,
+    });
+  }
+  if (prev) {
+    for (const r of prev.rows) {
+      if (!cur.rows.some((q) => q.key === r.key)) drawRow(r, x, top + r.y, w, s, t, { alpha: 1 - p, state: st[n - 1], glow: 0, tagAlpha: 1 });
+    }
+  }
+  ctx.restore();
+  return h;
+}
+
+// What is said, as captions: the newest line under the one before it.
+const captionLabel = (l) => `${l.who}  ·  ${l.where}`;
+function captions(x, y, w, s, t, slots, alpha) {
+  const lines = TL.cc.lines;
+  const lead = 0.15;
+  let n = -1;
+  for (let i = 0; i < lines.length; i++) if (lines[i].from - lead <= t) n = i;
+  if (n < 0) return;
+  const p = ease((t - (lines[n].from - lead)) / 0.45);
+  const gap = 16 * s;
+  const hOf = (i) => radioLine(0, 0, w, s, captionLabel(lines[i]), lines[i].text, 1, '#fff', 1, false);
+  const layout = (a, b) => { const pos = {}; let yy = y; for (let i = Math.max(0, a); i <= b; i++) { pos[i] = yy; yy += hOf(i) + gap; } return pos; };
+  const before = layout(n - slots, n - 1), after = layout(n - slots + 1, n);
+  for (let i = Math.max(0, n - slots); i <= n; i++) {
+    const y0 = before[i], y1 = after[i];
+    let yy, a;
+    if (y0 !== undefined && y1 !== undefined) { yy = lerp(y0, y1, p); a = i === n - 1 ? 1 - 0.45 * p : 0.55; }
+    else if (y0 !== undefined) { yy = y0 - 20 * s * p; a = (i === n - 1 ? 1 : 0.55) * (1 - p); }
+    else { yy = y1 + (1 - p) * 24 * s; a = p; }
+    const l = lines[i];
+    const said = i < n ? 1 : clamp((t - l.at) / Math.max(0.1, (l.end - l.at) * 0.92));
+    radioLine(x, yy, w, s, captionLabel(l), l.text, alpha * a, accentOf(l.who), said);
+  }
+}
+
+const SECTIONS = {
+  stop: { eyebrow: 'RPM CyberCom', title: 'Traffic stops\nby voice', body: 'Call the stop on the radio. The bot moves you to a free traffic stop and asks the driver if they want to join.' },
+  pursuit: { eyebrow: 'RPM CyberCom', title: '10-80s reach\nevery unit', body: 'The pursuit goes out on the police radio. Units say "Dispatch, attach me to the 10-80" and are moved straight in.' },
+  clear: { eyebrow: 'RPM CyberCom', title: 'Clear it and\neveryone goes back', body: 'Everyone in the stop is moved back to the channel they came from. Anyone who wants to stay just says no.' },
+  civilian: { eyebrow: 'RPM CyberCom', title: 'Civilians move\nby voice too', body: 'Say "RPM, move me to" and a name to join a friend. No more waiting for staff to drag you.' },
+};
+// In portrait the captions say what the body would.
+const sectionSpec = (id) => (PORTRAIT ? { eyebrow: SECTIONS[id].eyebrow, title: SECTIONS[id].title } : SECTIONS[id]);
+const SECTION_FADE = 0.25;
+function sectionText(t, top) {
+  const secs = TL.cc.sections;
+  secs.forEach((sec, i) => {
+    const next = secs[i + 1]?.at ?? Infinity;
+    if (t < sec.at || t > next) return;
+    ctx.save();
+    ctx.globalAlpha *= 1 - ease((t - (next - SECTION_FADE)) / SECTION_FADE);
+    textBlock(t - sec.at, sectionSpec(sec.id), top);
+    ctx.restore();
+  });
+}
+
+function sceneCyberCom(t) {
+  const L = PORTRAIT;
+  const s = S;
+  const textH = Math.max(...Object.keys(SECTIONS).map((id) => textBlockHeight(sectionSpec(id))));
+  const sw = (L ? 900 : 640) * s, sh = sidebarHeight(s);
+  const pin = prog(t, 0.1, 0.6);
+  if (L) {
+    const capW = 900 * s, capH = 190 * s;
+    const total = textH + 46 * s + sh + 34 * s + capH;
+    const top = 300 * S + Math.max(0, ((1560 - 300) * S - total) / 2);
+    sectionText(t, top);
+    const sy = top + textH + 46 * s;
+    sidebar((W - sw) / 2, sy + (1 - pin) * 40 * s, sw, s, t, pin);
+    captions((W - capW) / 2, sy + sh + 34 * s, capW, s, t, 1, 1);
+  } else {
+    const top = 150 * S;
+    sectionText(t, top);
+    captions(150 * S, top + textH + 52 * S, 760 * S, s, t, 2, 1);
+    sidebar(visualX(sw), (H - sh) / 2 + (1 - pin) * 40 * s, sw, s, t, pin);
+  }
+}
+
+/** The police lights come up for the 10-80 and go down when it is cleared. */
+function cyberComLights(t) {
+  if (!TL) return 0.2;
+  const on = TL.cc.events.find((e) => e.kind === 'tag' && e.code === '10-80');
+  const off = on && TL.cc.events.find((e) => e.kind === 'tag' && !e.code && e.at > on.at);
+  return 0.2 + (on ? 0.75 * prog(t, on.at, 0.4) * (off ? 1 - prog(t, off.at, 0.8) : 1) : 0);
+}
+
+// ── Into the drop ───────────────────────────────────────────────────────────
+function sceneBridge(t) {
+  const size = (PORTRAIT ? 128 : 124) * S;
+  const y = H / 2 - size * 1.12;
+  staggerLine('And it listens', W / 2, y, size, t, 0.02, TL.beat / 2, 0);
+  emphasisLine('for trouble.', W / 2, y + size * 1.12, size, t, BT(2) - 0.15);
+}
+
+// ── Discord look-alikes: a text channel, the bot's messages, embeds ─────────
+// Rich text is a list of [kind, text]: text, bold, user, role, voice (a voice
+// channel), channel, spoiler, time (a Discord timestamp), code.
+const PILL = { user: 1, role: 1, voice: 1, channel: 1 };
+function segWidth([kind, str], size) {
+  if (PILL[kind]) return textWidth(str, size, 500) + size * (kind === 'voice' ? 1.35 : kind === 'channel' ? 0.95 : 0.4);
+  if (kind === 'spoiler') return textWidth(str, size, 500) + size * 0.3;
+  if (kind === 'time') return textWidth(str, size, 500) + size * 0.4;
+  if (kind === 'code') return textWidth(str, size * 0.9, 500, MONO) + size * 0.5;
+  return textWidth(str, size, kind === 'bold' ? 700 : 500);
+}
+function richLine(segs, x, cy, size, color = C.dText) {
+  let cx = x;
+  for (const seg of segs) {
+    const [kind, str] = seg;
+    const sw = segWidth(seg, size);
+    const ph = size * 1.3;
+    if (PILL[kind]) {
+      rr(cx, cy - ph / 2, sw, ph, size * 0.2); ctx.fillStyle = 'rgba(88,101,242,0.3)'; ctx.fill();
+      let tx = cx + size * 0.2;
+      if (kind === 'voice') { speakerIcon(tx, cy, size * 0.85, '#c9cdfb'); tx += size * 0.95; }
+      if (kind === 'channel') { drawText('#', tx, cy, { size, weight: 500, color: '#c9cdfb', baseline: 'middle' }); tx += size * 0.75; }
+      drawText(str, tx, cy, { size, weight: 500, color: '#c9cdfb', baseline: 'middle' });
+    } else if (kind === 'spoiler') {
+      rr(cx, cy - ph / 2, sw, ph, size * 0.2); ctx.fillStyle = '#1e1f22'; ctx.fill();
+    } else if (kind === 'time') {
+      rr(cx, cy - ph / 2, sw, ph, size * 0.2); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill();
+      drawText(str, cx + size * 0.2, cy, { size, weight: 500, color, baseline: 'middle' });
+    } else if (kind === 'code') {
+      rr(cx, cy - ph / 2, sw, ph, size * 0.2); ctx.fillStyle = '#1e1f22'; ctx.fill();
+      drawText(str, cx + size * 0.25, cy, { size: size * 0.9, weight: 500, fam: MONO, color, baseline: 'middle' });
+    } else {
+      drawText(str, cx, cy, { size, weight: kind === 'bold' ? 700 : 500, color: kind === 'bold' ? '#f2f3f5' : color, baseline: 'middle' });
+    }
+    cx += sw + (PILL[kind] || kind === 'time' ? size * 0.14 : 0);
+  }
+  return cx - x;
+}
+
+/** An embed: { color, title, lines, footer }. A line is segments, null for a gap, or { small: text }. */
+function embedBox(x, y, w, s, em, draw = true) {
+  const pad = 18 * s, size = 22 * s;
+  let h = pad + 34 * s;
+  for (const l of em.lines) h += l === null ? 12 * s : l.small ? 26 * s : size * 1.55;
+  if (em.footer) h += 34 * s;
+  h += pad - 6 * s;
+  if (!draw) return h;
+  rr(x, y, w, h, 8 * s); ctx.fillStyle = C.dEmbed; ctx.fill();
+  rr(x, y, 5 * s, h, 3 * s); ctx.fillStyle = em.color; ctx.fill();
+  const ix = x + 5 * s + pad;
+  let cy = y + pad;
+  drawText(em.title, ix, cy, { size: 24 * s, weight: 800, color: '#fff' });
+  cy += 34 * s;
+  for (const l of em.lines) {
+    if (l === null) { cy += 12 * s; continue; }
+    if (l.small) { drawText(l.small, ix, cy + 13 * s, { size: 17 * s, weight: 500, color: C.dMuted, baseline: 'middle' }); cy += 26 * s; continue; }
+    richLine(l, ix, cy + size * 0.78, size);
+    cy += size * 1.55;
+  }
+  if (em.footer) drawText(em.footer, ix, cy + 12 * s, { size: 16 * s, weight: 500, color: C.dMuted });
+  return h;
+}
+
+/** A message from the bot: { time, content?, ping?, embed, button?, ephemeral? }. */
+function botMessage(x, y, w, s, msg, alpha, draw = true) {
+  const pad = 16 * s, av = 46 * s, bx = x + pad + av + 16 * s, bw = x + w - pad - bx;
+  let h = pad + 32 * s;
+  if (msg.content) h += 34 * s;
+  h += 8 * s + embedBox(0, 0, bw, s, msg.embed, false);
+  if (msg.button) h += 14 * s + 44 * s;
+  if (msg.ephemeral) h += 34 * s;
+  h += pad;
+  if (!draw) return h;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (msg.ping) {
+    ctx.fillStyle = 'rgba(250,168,26,0.10)'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#f0b232'; ctx.fillRect(x, y, 4 * s, h);
+  }
+  drawLogo(x + pad + av / 2, y + pad + av / 2, av);
+  drawText('RolePlayManager', bx, y + pad + 2 * s, { size: 24 * s, weight: 700, color: '#fff' });
+  const ax = bx + textWidth('RolePlayManager', 24 * s, 700) + 10 * s;
+  appBadge(ax, y + pad + 15 * s, s);
+  drawText('Today at ' + msg.time, ax + 58 * s, y + pad + 6 * s, { size: 17 * s, weight: 500, color: C.dMuted });
+  let cy = y + pad + 32 * s;
+  if (msg.content) { richLine(msg.content, bx, cy + 17 * s, 22 * s); cy += 34 * s; }
+  cy += 8 * s;
+  cy += embedBox(bx, cy, bw, s, msg.embed);
+  if (msg.button) {
+    cy += 14 * s;
+    const tw = textWidth(msg.button, 19 * s, 600) + 36 * s;
+    rr(bx, cy, tw, 44 * s, 8 * s); ctx.fillStyle = msg.pressed ? '#6d6f78' : C.dGray; ctx.fill();
+    drawText(msg.button, bx + tw / 2, cy + 22 * s, { size: 19 * s, weight: 600, color: '#fff', align: 'center', baseline: 'middle' });
+    msg.buttonAt = { x: bx + tw / 2, y: cy + 22 * s };
+    cy += 44 * s;
+  }
+  if (msg.ephemeral) drawText('Only you can see this  ·  Dismiss message', bx, cy + 12 * s, { size: 17 * s, weight: 500, color: C.dMuted });
+  ctx.restore();
+  return h;
+}
+
+/** A text channel with messages that arrive at their times. */
+function channelPanel(x, y, w, s, name, msgs, t, alpha) {
+  const head = 64 * s, gap = 6 * s;
+  const hs = msgs.map((m) => botMessage(0, 0, w, s, m, 1, false));
+  const h = head + 10 * s + hs.reduce((a, b) => a + b + gap, 0);
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 20 * s); ctx.fillStyle = C.dBg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * s; ctx.stroke();
+  drawText('#', x + 24 * s, y + head / 2, { size: 30 * s, weight: 600, color: C.dMuted, baseline: 'middle' });
+  drawText(name, x + 54 * s, y + head / 2, { size: 26 * s, weight: 700, color: '#fff', baseline: 'middle' });
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y + head - 2 * s, w, 2 * s);
+  let my = y + head + 10 * s;
+  msgs.forEach((m, i) => {
+    const p = prog(t, m.at, 0.35);
+    if (p > 0) botMessage(x, my + (1 - p) * 30 * s, w, s, m, p);
+    my += hs[i] + gap;
+  });
+  ctx.restore();
+  return h;
+}
+
+// ── Voice moderation ────────────────────────────────────────────────────────
+// The bot's own wording: flags.js and voiceModSetupHandler.js.
+const FOOTER = 'RPM CyberCom voice moderation  ·  Today at ';
+function flagMessages() {
+  return [
+    {
+      at: 0, time: '9:41 PM',
+      embed: { color: '#ed4245', title: 'Voice flag: Slur', footer: FOOTER + '9:41 PM', lines: [
+        [['user', '@xRaiderx'], ['text', ' in '], ['voice', 'Lobby']], null,
+        [['time', '9:41:07 PM'], ['text', ' '], ['spoiler', 'nothing to see here']],
+      ] },
+      button: 'What was said around it',
+    },
+    {
+      at: BT(4), time: '9:42 PM', ping: true, content: [['role', '@Staff']],
+      embed: { color: '#ed4245', title: 'Voice flag: Real life threat', footer: FOOTER + '9:42 PM', lines: [
+        [['user', '@Ghost'], ['text', ' in '], ['voice', 'Civilian 2']], null,
+        [['time', '9:42:15 PM'], ['text', ' Blade, I know where you live IRL.']],
+        { small: 'AI check: an out of character threat to a real person' },
+      ] },
+      button: 'What was said around it',
+    },
+  ];
+}
+
+function sceneFlags(t) {
+  const L = PORTRAIT;
+  const w = (L ? 940 : 760) * S;
+  const msgs = flagMessages();
+  // Staff open what was said around the threat.
+  const press = BT(10);
+  msgs[1].pressed = t >= press && t < press + 0.3;
+  const h = 64 * S + 10 * S + msgs.reduce((a, m) => a + botMessage(0, 0, w, S, m, 1, false) + 6 * S, 0);
+  const spec = L
+    ? { eyebrow: 'Voice moderation', title: 'Real problems\nget flagged' }
+    : { eyebrow: 'Voice moderation', title: 'Real problems\nget flagged', body: 'Slurs, real life threats and possible self harm go straight to your staff, with who said it and where.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, h, 60 * S) : null);
+  const p = prog(t, 0, 0.4);
+  const x = visualX(w), y = (L ? bottom + 60 * S : (H - h) / 2) + (1 - p) * 40 * S;
+  channelPanel(x, y, w, S, 'voice-flags', msgs, t, p);
+  if (t > BT(8) && msgs[1].buttonAt) {
+    const pp = prog(t, BT(8), 0.8);
+    const b = msgs[1].buttonAt;
+    pointer(b.x + 30 * S + (1 - pp) * 200 * S, b.y + 6 * S + (1 - pp) * 140 * S, 34 * S, Math.min(1, (t - BT(8)) * 4));
+  }
+}
+
+// What was said around the threat: roleplay is not flagged.
+const AROUND = [
+  { line: [['code', '02:41:58'], ['text', ' '], ['bold', 'Blade'], ['text', ': Hands up! Nobody move!']], ok: true },
+  { line: [['code', '02:42:03'], ['text', ' '], ['bold', 'Mia'], ['text', ': Fill the bag or I shoot!']], ok: true },
+  { line: [['code', '02:42:09'], ['text', ' '], ['bold', 'Blade'], ['text', ': Cops are here, out the back!']], ok: true },
+  { line: [['code', '02:42:15'], ['text', ' '], ['bold', 'Ghost'], ['text', ': Blade, I know where you live IRL. '], ['bold', '(flagged)']], ok: false },
+];
+
+function sceneRoleplay(t) {
+  const L = PORTRAIT;
+  const w = (L ? 940 : 900) * S;
+  const msg = {
+    time: '9:43 PM', ephemeral: true,
+    embed: { color: '#2d2d2d', title: 'Around the flagged line', footer: 'RPM CyberCom voice moderation', lines: [
+      [['voice', 'Civilian 2'], ['text', ', three minutes either side. Times are UTC.']], null,
+      ...AROUND.map(() => []),
+    ] },
+  };
+  const h = botMessage(0, 0, w, S, msg, 1, false);
+  const spec = L
+    ? { eyebrow: 'Voice moderation', title: 'Roleplay is\nnever flagged' }
+    : { eyebrow: 'Voice moderation', title: 'Roleplay is\nnever flagged', body: 'Threats and self harm are checked by AI first, so robberies, shootouts and threats between characters stay in the game.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, h + 40 * S, 60 * S) : null);
+  const p = prog(t, 0, 0.4);
+  const x = L ? (W - w) / 2 : W - 80 * S - w;
+  const y = (L ? bottom + 60 * S : (H - h) / 2) + (1 - p) * 40 * S;
+  ctx.save();
+  ctx.globalAlpha *= p;
+  rr(x, y, w, h, 20 * S); ctx.fillStyle = C.dBg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * S; ctx.stroke();
+  botMessage(x, y, w, S, msg, 1);
+  // The transcript lines, one a beat, each marked as it lands.
+  const bx = x + 16 * S + 46 * S + 16 * S + 5 * S + 18 * S;
+  const size = 22 * S;
+  let cy = y + 16 * S + 32 * S + 8 * S + 18 * S + 34 * S + size * 1.55 + 12 * S;
+  AROUND.forEach((row, i) => {
+    const pl = prog(t, BT(1 + i), 0.3);
+    ctx.save(); ctx.globalAlpha *= pl;
+    richLine(row.line, bx + (1 - pl) * 16 * S, cy + size * 0.78, size);
+    ctx.restore();
+    const pc = prog(t, BT(1 + i) + TL.beat / 2, 0.3);
+    if (pc > 0) statusTag(row.ok ? 'Roleplay' : 'Flagged', x + w - 26 * S, cy + size * 0.78, S, row.ok ? C.green : C.red, pc);
+    cy += size * 1.55;
+  });
+  ctx.restore();
+}
+
+function sceneSettings(t) {
+  const L = PORTRAIT;
+  const w = (L ? 940 : 800) * S;
+  const msg = {
+    time: '9:45 PM', ephemeral: true,
+    embed: { color: '#2d2d2d', title: 'RPM CyberCom: Voice moderation', footer: 'RPM  ·  Pick a menu to change a setting', lines: [
+      [['bold', 'Flags go to: '], ['channel', 'voice-flags']],
+      [['bold', 'Flagged: '], ['text', 'Slurs, Self harm, Real life threats,']],
+      [['text', 'Other Discord rule breaks']],
+      [['bold', 'Your words and phrases: '], ['text', '3: '], ['spoiler', 'word'], ['text', ', '], ['spoiler', 'two'], ['text', ', '], ['spoiler', 'a phrase']],
+      [['bold', 'Who can read transcripts and flags: '], ['role', '@Staff']],
+      [['bold', 'Kept for: '], ['text', '7 days']],
+    ] },
+  };
+  const menus = ['voice-flags', '@Staff', 'Keep transcripts 7 days', 'Slurs, Self harm, Real life threats, Other Discord rule breaks'];
+  const mh = 52 * S, mg = 10 * S;
+  const msgH = botMessage(0, 0, w, S, msg, 1, false);
+  const h = msgH + menus.length * (mh + mg) + 56 * S + 26 * S;
+  const spec = L
+    ? { eyebrow: 'Voice moderation', title: 'Your server,\nyour rules' }
+    : { eyebrow: 'Voice moderation', title: 'Your server,\nyour rules', body: 'Add your own words and phrases, choose who reads transcripts and keep them 3, 7 or 14 days. All in /config voicemoderation.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, h, 60 * S) : null);
+  const p = prog(t, 0, 0.4);
+  const x = visualX(w), y = (L ? bottom + 60 * S : (H - h) / 2) + (1 - p) * 40 * S;
+  ctx.save();
+  ctx.globalAlpha *= p;
+  rr(x, y, w, h, 20 * S); ctx.fillStyle = C.dBg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2 * S; ctx.stroke();
+  botMessage(x, y, w, S, { ...msg, ephemeral: false }, 1);
+  const mx = x + 16 * S + 46 * S + 16 * S, mw = x + w - 16 * S - mx;
+  let my = y + msgH - 34 * S;
+  menus.forEach((label, i) => {
+    const pm = prog(t, BT(1 + i), 0.3);
+    ctx.save(); ctx.globalAlpha *= pm;
+    rr(mx, my + (1 - pm) * 12 * S, mw, mh, 8 * S); ctx.fillStyle = '#1e1f22'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1.5 * S; ctx.stroke();
+    const cy = my + (1 - pm) * 12 * S + mh / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(mx, my, mw - 50 * S, mh + 20 * S); ctx.clip();
+    if (i === 0) richLine([['channel', label]], mx + 16 * S, cy, 21 * S);
+    else if (i === 1) richLine([['role', label]], mx + 16 * S, cy, 21 * S);
+    else drawText(fitText(label, 21 * S, 500, mw - 80 * S), mx + 18 * S, cy, { size: 21 * S, weight: 500, color: C.dText, baseline: 'middle' });
+    ctx.restore();
+    chevron(mx + mw - 34 * S, cy, 18 * S, C.dText);
+    ctx.restore();
+    my += mh + mg;
+  });
+  const pb = prog(t, BT(5), 0.3);
+  ctx.save(); ctx.globalAlpha *= pb;
+  let bx = mx;
+  [['Your words and phrases', C.dBlurple], ['Back to RPM CyberCom', C.dGray]].forEach(([label, color]) => {
+    const bw = textWidth(label, 19 * S, 600) + 36 * S;
+    rr(bx, my + 2 * S, bw, 44 * S, 8 * S); ctx.fillStyle = color; ctx.fill();
+    drawText(label, bx + bw / 2, my + 24 * S, { size: 19 * S, weight: 600, color: '#fff', align: 'center', baseline: 'middle' });
+    bx += bw + 10 * S;
+  });
+  ctx.restore();
+  drawText('Only you can see this  ·  Dismiss message', mx, my + 62 * S, { size: 17 * S, weight: 500, color: C.dMuted, alpha: pb });
+  ctx.restore();
+}
+
+// ── The offer ───────────────────────────────────────────────────────────────
+function sceneCta(t) {
+  const L = PORTRAIT;
+  const size = (L ? 230 : 170) * S;
+  const cy = L ? H * 0.3 : H * 0.26;
+  const p = prog(t, 0.0, 0.6);
+  ctx.save(); ctx.globalAlpha *= p; glowAt(W / 2, cy, size * 1.2, 'rgba(96,165,250,0.14)'); ctx.restore();
+  drawLogo(W / 2, cy, size * (0.9 + 0.1 * p), p);
+  let y = cy + size / 2 + (L ? 100 : 86) * S;
+  const pw = prog(t, BT(1) - 0.1, 0.5);
+  ccWordmark(W / 2, y + (1 - pw) * 16 * S, (L ? 66 : 62) * S, pw);
+  y += (L ? 40 : 34) * S;
+  // The price lands on the bar.
+  const pp = prog(t, BT(4) - 0.12, 0.4);
+  const ps = (L ? 120 : 112) * S;
+  ctx.save();
+  ctx.translate(W / 2, y + ps * 0.55); ctx.scale(1.12 - 0.12 * pp, 1.12 - 0.12 * pp);
+  drawText('$9.99 a month', 0, -ps * 0.55, { size: ps, weight: 800, color: '#fff', align: 'center', alpha: pp });
+  ctx.restore();
+  y += ps * 1.18;
+  drawText(`With or without Premium.${L ? '\n' : ' '}Includes the AI voice dispatcher.`, W / 2, y, { size: (L ? 36 : 34) * S, weight: 500, color: C.muted, align: 'center', alpha: prog(t, BT(5) - 0.1, 0.5), maxW: (L ? 900 : 1500) * S, lh: 1.3 });
+  y += (L ? 130 : 84) * S;
+  const us = (L ? 46 : 44) * S;
+  urlPill('roleplaymanager.xyz/pricing', W / 2, y + us * 0.95, us, prog(t, BT(6) - 0.1, 0.5));
+  y += us * 1.9 + (L ? 76 : 60) * S;
+  beatChips(['Traffic stops', '10-80s', 'Voice moderation'], W / 2, y, 28 * S, t, BT(8) - 0.1);
+}
+
+// ── After the drop the background pulses with the beat ──────────────────────
+function backdrop(t) {
+  if (!TL || t < TL.drop - 0.02) return;
+  const k = Math.floor((t - TL.beat0) / TL.beat + 1e-6);
+  const since = t - beatTime(k);
+  const drop = Math.abs(beatTime(k) - TL.drop) < 0.02;
+  const bar = (k - 2) % 4 === 0;
+  const a = (drop ? 0.24 : bar ? 0.075 : 0.04) * Math.exp(-since / (drop ? 0.5 : 0.2));
+  glowAt(W / 2, H / 2, Math.max(W, H) * 0.8, `rgba(${drop ? '255,255,255' : '96,165,250'},${a.toFixed(3)})`);
+}
+
+startPromo({
+  draw: {
+    hook: sceneHook, brand: sceneBrand, cybercom: sceneCyberCom, bridge: sceneBridge,
+    flags: sceneFlags, roleplay: sceneRoleplay, settings: sceneSettings, cta: sceneCta,
+  },
+  lights: { hook: 0.85, cybercom: cyberComLights },
+  marked: ['cybercom', 'flags', 'roleplay', 'settings'],
+  backdrop,
+});
+</script>
+</body>
+</html>
