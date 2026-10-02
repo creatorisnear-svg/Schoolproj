@@ -1,9 +1,9 @@
 import CyberComSubscription from '../models/CyberComSubscription.js';
-import { hasPremiumAccess, premiumEvents } from '../utils/premiumCheck.js';
 
 /**
- * Who has RPM CyberCom. It is its own subscription, $9.99 a month, and it
- * sits on top of Premium: it extends the AI dispatcher, which is Premium.
+ * Who has RPM CyberCom: its own subscription, $9.99 a month, with or without
+ * Premium. Without Premium the helper bots also cover the police radio,
+ * which Premium's AI dispatcher covers otherwise (coordinator.js).
  */
 export const CYBERCOM_PRICE_CENTS = 999;
 const ACTIVE = ['active', 'trialing', 'past_due', 'cancelling'];
@@ -15,16 +15,12 @@ export async function cyberComSubscribed(guildId) {
   return !!sub && ACTIVE.includes(sub.status);
 }
 
-/** Bought and backed by Premium (paid, or the free trial). */
 export async function isCyberComActive(guildId) {
   if (!guildId) return false;
   const hit = cache.get(guildId);
   if (hit && Date.now() - hit.at < TTL) return hit.value;
   let value = false;
-  try {
-    const [sub, premium] = await Promise.all([cyberComSubscribed(guildId), hasPremiumAccess(guildId)]);
-    value = sub && premium;
-  } catch {}
+  try { value = await cyberComSubscribed(guildId); } catch {}
   cache.set(guildId, { at: Date.now(), value });
   return value;
 }
@@ -32,6 +28,3 @@ export async function isCyberComActive(guildId) {
 export function clearCyberComCache(guildId) {
   if (guildId) cache.delete(guildId); else cache.clear();
 }
-
-// Premium starting or ending changes CyberCom too.
-premiumEvents.on('changed', (guildId) => clearCyberComCache(guildId));

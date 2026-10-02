@@ -403,13 +403,14 @@
       </div>
 
       <div class="trial-banner chipin-banner" id="cybercom">
-        <h2>RPM CyberCom: $9.99 a month, on top of Premium</h2>
+        <h2>RPM CyberCom: $9.99 a month, with or without Premium</h2>
         <p>
           A bot in every voice channel. Officers say "Dispatch, show me on a 10-11 with" and a name, the
           bot moves them to a free traffic stop, and the person being pulled over is asked if they want to
           be moved in. Plates and names are run inside the stop. A 10-80 goes out on the police radio, and
           units say "Dispatch, attach me to the 10-80" to be moved straight there. Civilians say "RPM, move
           me to" and a name to join someone. Everything said is transcribed for your staff and kept 14 days.
+          It works on its own; with Premium, the AI dispatcher runs your police radio as well.
         </p>
         <button class="plan-cta primary chipin-cta" onclick="openCheckout('cybercom')">Get RPM CyberCom</button>
       </div>
@@ -611,7 +612,7 @@
       if (selectedPlan === 'cybercom') {
         if (label) label.textContent = 'Add RPM CyberCom to';
         sel.innerHTML = me.guilds.length ? me.guilds.map(opt).join('') : '<option value="">You do not run a server the bot is in</option>';
-        document.getElementById('modal-signed-as').textContent = 'Signed in as ' + me.user.username + '. Servers you run are listed. RPM CyberCom needs Premium on the server.';
+        document.getElementById('modal-signed-as').textContent = 'Signed in as ' + me.user.username + '. Servers you run are listed.';
         return;
       }
       if (selectedPlan === 'chipin') {
@@ -717,7 +718,7 @@
       renderAccount();
       if (plan === 'cybercom') {
         title.textContent = 'Get RPM CyberCom';
-        sub.textContent = '$9.99 a month on top of Premium. Cancel any time.';
+        sub.textContent = '$9.99 a month, with or without Premium. Cancel any time.';
       } else if (chip) {
         title.textContent = 'Chip in for Premium';
         sub.textContent = "A one-off payment toward a server's Premium, not a subscription. Every $5 raised turns Premium on for a month.";

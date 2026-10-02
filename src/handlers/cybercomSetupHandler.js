@@ -5,6 +5,7 @@ import CyberComConfig from '../models/CyberComConfig.js';
 import DispatchConfig from '../models/DispatchConfig.js';
 import { backRow } from '../utils/setupNav.js';
 import { cyberComSubscribed, isCyberComActive, clearCyberComCache } from '../cybercom/access.js';
+import { hasPremiumAccess } from '../utils/premiumCheck.js';
 import { allHelpers, helperCount, inviteUrl } from '../cybercom/helpers.js';
 import { forgetConfig } from '../cybercom/coordinator.js';
 import { TRANSCRIPT_DAYS } from '../models/VoiceTranscript.js';
@@ -19,11 +20,12 @@ const SITE = 'https://roleplaymanager.xyz';
 const mentions = (ids) => (ids || []).map((id) => `<#${id}>`).join(', ') || 'none';
 
 export async function cyberComView(guild, note = '') {
-  const [subscribed, active, cfg, dc] = await Promise.all([
+  const [subscribed, active, cfg, dc, premium] = await Promise.all([
     cyberComSubscribed(guild.id).catch(() => false),
     isCyberComActive(guild.id).catch(() => false),
     CyberComConfig.findOne({ guildId: guild.id }).lean(),
     DispatchConfig.findOne({ guildId: guild.id }).lean(),
+    hasPremiumAccess(guild.id).catch(() => false),
   ]);
   const helpers = allHelpers();
   const added = helpers.filter((h) => h.client.guilds.cache.has(guild.id));
@@ -36,8 +38,10 @@ export async function cyberComView(guild, note = '') {
     '',
   );
   if (active) lines.push('**Status:** on');
-  else if (subscribed) lines.push('**Status:** bought, but this server needs Premium for it to work. Run `/premium`.');
-  else lines.push('**Status:** off. RPM CyberCom is $9.99 a month on top of Premium.');
+  else lines.push('**Status:** off. RPM CyberCom is $9.99 a month, with or without Premium.');
+  if (!premium) {
+    lines.push('-# Without Premium, the helper bots also cover your patrol radio channels, so officers can use traffic stops and 10-80s there. With Premium, the AI dispatcher runs the radio.');
+  }
   lines.push('');
 
   if (helperCount()) {

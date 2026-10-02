@@ -3,6 +3,7 @@ import DispatchConfig from '../models/DispatchConfig.js';
 import { Session } from './session.js';
 import { startHelpers, freeHelper, everyHelper } from './helpers.js';
 import { isCyberComActive } from './access.js';
+import { hasPremiumAccess } from '../utils/premiumCheck.js';
 import { handleUtterance, GREETING } from './brain.js';
 import { setMainClient, setSessionLookup } from './stops.js';
 
@@ -13,7 +14,8 @@ import { setMainClient, setSessionLookup } from './stops.js';
  *
  * Covered channels: civilian channels and extra police radios
  * (CyberComConfig), and traffic stop channels (DispatchConfig). The
- * dispatcher's own patrol channels are the main bot's, never a helper's.
+ * dispatcher's own patrol channels are the main bot's on Premium servers,
+ * and the helpers' radios on servers without Premium.
  */
 
 const sessions = new Map();     // `${guildId}:${channelId}` → Session
@@ -43,7 +45,13 @@ export async function coveredChannels(guildId) {
   for (const id of cc?.civilianChannelIds || []) map.set(id, 'civilian');
   for (const id of cc?.radioChannelIds || []) map.set(id, 'radio');
   for (const id of dc?.trafficStopChannelIds || []) map.set(id, 'stop');
-  for (const id of dc?.patrolChannelIds || []) map.delete(id);
+  // With Premium the AI dispatcher listens on the patrol channels, so they
+  // are the main bot's. Without it nothing listens there, so the helpers
+  // cover them as police radios.
+  const premium = await hasPremiumAccess(guildId).catch(() => false);
+  for (const id of dc?.patrolChannelIds || []) {
+    if (premium) map.delete(id); else map.set(id, 'radio');
+  }
   const entry = { at: Date.now(), map, greet: cc?.greet !== false };
   configs.set(guildId, entry);
   return entry;

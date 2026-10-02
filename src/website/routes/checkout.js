@@ -245,7 +245,7 @@ export async function applyFundFromSession(session, ctx = {}) {
   return { ...result, guildId: m.guildId, guildName, amount };
 }
 
-// ── RPM CyberCom: the voice add-on, $9.99 a month on top of Premium ─────────
+// ── RPM CyberCom: the voice add-on, $9.99 a month, with or without Premium ─────────
 
 const CYBERCOM_NICK = 'RPM CyberCom monthly v1';
 let _cyberComPrice = null;
@@ -265,7 +265,7 @@ async function getOrCreateCyberComPrice(stripe) {
   if (!id) {
     const product = await stripe.products.create({
       name: 'RPM CyberCom',
-      description: 'A RolePlayManager bot in every voice channel: traffic stops, 10-80s, civilian moves and voice transcripts for staff. Works on top of Premium.',
+      description: 'A RolePlayManager bot in every voice channel: traffic stops, 10-80s, civilian moves and voice transcripts for staff. Works with or without Premium.',
     });
     const price = await stripe.prices.create({
       product: product.id, unit_amount: CYBERCOM_PRICE_CENTS, currency: 'usd', recurring: { interval: 'month' }, nickname: CYBERCOM_NICK,
@@ -1013,7 +1013,7 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
-  // POST /checkout/cybercom - RPM CyberCom for a server, on top of Premium
+  // POST /checkout/cybercom - RPM CyberCom for a server, with or without Premium
   router.post('/cybercom', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     if (limited(_rateLimitMap, ip, RATE_MAX)) {
@@ -1033,10 +1033,6 @@ export function createCheckoutRouter(client, deps = {}) {
       if (!g || !g.admin) return res.status(403).json({ error: "Only the server's owner or admins can add RPM CyberCom." });
       if (client && client.guilds?.cache && !client.guilds.cache.has(gid)) {
         return res.status(400).json({ error: 'The bot is not in that server yet. Invite it first, then come back.' });
-      }
-      const { isPremiumGuild } = await import('../../utils/premiumCheck.js');
-      if (!(await isPremiumGuild(gid))) {
-        return res.status(409).json({ error: 'RPM CyberCom works on top of Premium. Turn Premium on for this server first.' });
       }
       if (await cyberComSubscribed(gid)) return res.status(409).json({ error: 'That server already has RPM CyberCom.' });
 
