@@ -1,14 +1,9 @@
 {
-  "version": "1.18.0",
-  "title": "Voice moderation and flagging",
+  "version": "1.18.1",
+  "title": "Everything in one place in /setup",
   "changes": [
-    "New for RPM CyberCom: voice flagging. Slurs, possible self harm, real life threats and other breaks of Discord's rules are posted to a channel you pick, with what was said around it one click away. Self harm, threats and rule breaks are checked by AI first, so roleplay is not flagged",
-    "Add your own words and phrases to flag, choose which roles can read transcripts and flags, and keep transcripts for 3, 7 or 14 days. It is all under Voice moderation in /setup, RPM CyberCom",
-    "A 10-80 now goes out over the radio only, with no message in the dispatch channel. Saying 10-80 again during a pursuit confirms it instead of calling every unit again",
-    "Fixed: calling a 10-80 from a patrol channel could make the dispatcher stop following officers into that channel",
-    "Fixed: an RPM CyberCom helper could stop talking in the middle of a question. Two helper bots never sit in the same channel",
-    "Helper bots no longer act on words nobody said. On background noise, speech to text sometimes repeated its own examples back; those are not acted on or kept in transcripts",
-    "Dispatch understands \"show me ...\" with a ten code even when the word \"dispatch\" is misheard, and a brief hiccup in speech to text no longer loses what was said",
-    "If RPM cannot post the status board, the RPM CyberCom screen in /setup and View Settings in /config dispatch say which channel and which permissions it needs"
+    "/setup now lists the add-ons too, with whether each one is on: Server Directory, Safety Network, RPM CyberCom, Voice moderation and Session Recaps",
+    "Voice moderation has its own place: /config voicemoderation, and Voice moderation in the /setup menu",
+    "New: /config cybercom and /config safetynetwork open those settings straight away, and /help has an Add-ons page"
   ]
 }

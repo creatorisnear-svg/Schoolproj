@@ -69,6 +69,12 @@ function menuRow(selected) {
       default: selected === 'group:' + group,
     })),
     {
+      label: 'Add-ons',
+      value: 'addons',
+      description: 'RPM CyberCom, voice moderation, directory, recaps',
+      default: selected === 'addons',
+    },
+    {
       label: 'Every command',
       value: 'commands',
       description: 'The full list of slash commands',
@@ -108,6 +114,21 @@ export async function buildHelpView(interaction, choice = 'start') {
     return embed;
   }
 
+  // Things that are not in the feature registry, so the groups never showed them.
+  if (choice === 'addons') {
+    embed
+      .setTitle('Add-ons')
+      .setDescription('More the bot does, beside the features in the other groups.')
+      .addFields(...chunkField('Add-ons', [
+        '**Server Directory**\nList this server where PS5 and Xbox players look for a GTA RP server, and bump it.\nSet up with `/directory`',
+        '**Safety Network**\nGet warned when someone banned by other servers in the network joins.\nSet up with `/config safetynetwork`',
+        '**RPM CyberCom**  `$9.99 a month`\nA bot in every voice channel: traffic stops, 10-80s, civilians moving by voice, transcripts. Includes the AI voice dispatcher.\nSet up with `/config cybercom`',
+        '**Voice moderation**\nFlags slurs, possible self harm, real life threats and your own words to your staff. Part of RPM CyberCom.\nSet up with `/config voicemoderation`, read transcripts with `/voicemoderation`',
+        '**Session Recaps**\nPatrol time, 911 calls, arrests, tickets and the top officers after each session.\n`/recap now` posts one, `/recap channel` sets where they go',
+      ]).slice(0, 6));
+    return embed;
+  }
+
   if (choice.startsWith('group:')) {
     const wanted = choice.slice(6);
     const entry = groups.find(([g]) => g === wanted);
@@ -144,7 +165,7 @@ export async function buildHelpView(interaction, choice = 'start') {
           ? '-# Features marked Premium need a subscription. Run `/premium` to switch it on.'
           : '-# Features marked Premium need a subscription. Run `/premium` to try everything free for 7 days.')
     )
-    .addFields({ name: 'Categories', value: groupNames.map((g) => `**${g}**`).join(' · ') });
+    .addFields({ name: 'Categories', value: [...groupNames, 'Add-ons'].map((g) => `**${g}**`).join(' · ') });
   return embed;
 }
 

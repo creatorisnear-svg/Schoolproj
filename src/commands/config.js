@@ -757,6 +757,12 @@ async function handleHelp(interaction) {
           '**Premium Only**\n' +
           '`/config appys`: Application panels with DM Q&A\n' +
           '`/config dispatch`: AI voice dispatch\n\n' +
+          '**Add-ons**\n' +
+          '`/config cybercom`: RPM CyberCom, a bot in every voice channel\n' +
+          '`/config voicemoderation`: Voice flags, transcript access and how long they are kept\n' +
+          '`/config safetynetwork`: Warnings when people banned elsewhere join\n' +
+          '`/directory`: List this server in the server directory\n' +
+          '`/recap channel`: Where session recaps are posted\n\n' +
           '-# You can also configure everything at **roleplaymanager.xyz/dashboard**'
         )
         .setFooter({ text: 'RPM • /config help' }),
@@ -787,9 +793,24 @@ async function handleGeneral(interaction) {
   return interaction.reply(generalMenu(config));
 }
 
+// RPM CyberCom, its voice moderation and the Safety Network have their own
+// screens in /setup. These open the same screens straight away.
+function openScreen(load) {
+  return async (interaction) => {
+    await interaction.deferReply({ flags: 64 });
+    return interaction.editReply(await load(interaction));
+  };
+}
+const handleCyberCom = openScreen(async (i) => (await import('../handlers/cybercomSetupHandler.js')).cyberComView(i.guild, '', i.member));
+const handleVoiceModeration = openScreen(async (i) => (await import('../handlers/voiceModSetupHandler.js')).voiceModView(i.guild));
+const handleSafetyNetwork = openScreen(async (i) => (await import('../handlers/safetyNetworkHandler.js')).safetyNetworkView(i.guild));
+
 // ─── subcommand dispatch ──────────────────────────────────────────────────────
 
 const subcommandHandlers = {
+  cybercom: handleCyberCom,
+  voicemoderation: handleVoiceModeration,
+  safetynetwork: handleSafetyNetwork,
   verify: handleVerify,
   tickets: handleTickets,
   economy: handleEconomy,
@@ -840,7 +861,10 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('civjobs').setDescription('Civilian Jobs, job board with timed shift roles'))
   .addSubcommand(s => s.setName('sticky').setDescription('Sticky Messages, auto-reposting messages that stay visible'))
   .addSubcommand(s => s.setName('reactionroles').setDescription('Reaction Roles, members react to a message to get a role'))
-  .addSubcommand(s => s.setName('business').setDescription('Business Accounts, shared economy accounts in your server'));
+  .addSubcommand(s => s.setName('business').setDescription('Business Accounts, shared economy accounts in your server'))
+  .addSubcommand(s => s.setName('cybercom').setDescription('RPM CyberCom, a bot in every voice channel: traffic stops, 10-80s, transcripts'))
+  .addSubcommand(s => s.setName('voicemoderation').setDescription('Voice moderation, flag slurs, threats and your own words, transcript access'))
+  .addSubcommand(s => s.setName('safetynetwork').setDescription('Safety Network, get warned when people banned by other servers join'));
 
 export async function execute(interaction) {
   if (!await checkStaffPermission(interaction)) {

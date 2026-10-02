@@ -28,6 +28,49 @@ function missingText(missing) {
 }
 
 /**
+ * The add-ons that are not in the feature registry, with their state, so
+ * /setup lists everything the bot does and not only the registry.
+ */
+async function addonStatuses(guildId) {
+  const load = (path, fn) => import(path).then(fn).catch(() => null);
+  const [listing, net, cyber, vmod, duty] = await Promise.all([
+    load('../models/DirectoryListing.js', (m) => m.default.findOne({ guildId }).lean()),
+    load('../models/SafetyNetworkConfig.js', (m) => m.default.findOne({ guildId }).lean()),
+    load('../cybercom/access.js', (m) => m.cyberComSubscribed(guildId)),
+    load('../models/VoiceModConfig.js', (m) => m.default.findOne({ guildId }).lean()),
+    load('../models/DutyConfig.js', (m) => m.default.findOne({ guildId }).lean()),
+  ]);
+  const recapChannel = duty?.recapChannelId || duty?.reportChannelId;
+  return [
+    {
+      label: 'Server Directory',
+      status: listing?.listed && !listing.hidden ? 'ready' : 'off',
+      detail: listing?.hidden ? ': hidden by RPM staff' : '',
+    },
+    {
+      label: 'Safety Network',
+      status: net?.share || net?.alerts ? 'ready' : 'off',
+      detail: '',
+    },
+    {
+      label: 'RPM CyberCom',
+      status: cyber ? 'ready' : 'off',
+      detail: cyber ? '' : ': $9.99 a month, with or without Premium',
+    },
+    {
+      label: 'Voice moderation',
+      status: !cyber ? 'off' : vmod?.flagChannelId ? 'ready' : 'incomplete',
+      detail: !cyber ? ': part of RPM CyberCom' : vmod?.flagChannelId ? `: flags go to <#${vmod.flagChannelId}>` : ': needs a channel for flags',
+    },
+    {
+      label: 'Session Recaps',
+      status: duty?.recapOff ? 'off' : recapChannel ? 'ready' : 'incomplete',
+      detail: duty?.recapOff ? '' : recapChannel ? `: posted in <#${recapChannel}>` : ': needs a channel, set it with `/recap channel`',
+    },
+  ];
+}
+
+/**
  * Build the setup screen for a guild.
  *
  * Exported because the screen is reachable three ways now: the /setup command,
@@ -39,9 +82,10 @@ function missingText(missing) {
  */
 export async function buildSetupPayload(guildId) {
   // One registry-driven pass instead of thirteen hand-maintained model reads.
-  const [config, statuses] = await Promise.all([
+  const [config, statuses, addons] = await Promise.all([
     Config.findOne({ guildId }),
     getAllFeatureStatus(guildId),
+    addonStatuses(guildId).catch(() => []),
   ]);
 
   // Whether this server can still take the free week. Asked here because
@@ -74,6 +118,8 @@ export async function buildSetupPayload(guildId) {
     Object.entries(statuses).filter(([key]) => getFeature(key)?.group !== 'Foundation')
   );
   const counts = summarize(listedStatuses);
+  // The add-ons are listed too, so they count too.
+  for (const a of addons) counts[a.status] = (counts[a.status] || 0) + 1;
 
   // ── Next step ──────────────────────────────────────────────────────────────
   // No /staff gate here. checkStaffPermission already passes any administrator,
@@ -124,6 +170,9 @@ export async function buildSetupPayload(guildId) {
       return `${MARK[s.status] || MARK.off} **${f.label}**${premium}${detail}`;
     });
     sections.push(`### ${group}\n${lines.join('\n')}`);
+  }
+  if (addons.length) {
+    sections.push('### Add-ons\n' + addons.map((a) => `${MARK[a.status] || MARK.off} **${a.label}**${a.detail}`).join('\n'));
   }
 
   const descParts = [];
@@ -185,6 +234,13 @@ export async function buildSetupPayload(guildId) {
       label: 'RPM CyberCom',
       description: 'A bot in every voice channel: traffic stops, 10-80s, transcripts',
       value: 'cybercom',
+    });
+  }
+  if (SUPPORTED_MODULES.includes('voicemoderation')) {
+    menuOptions.push({
+      label: 'Voice moderation',
+      description: 'Flag slurs, threats and your own words; who reads transcripts',
+      value: 'voicemoderation',
     });
   }
   for (const [, features] of featureGroups()) {

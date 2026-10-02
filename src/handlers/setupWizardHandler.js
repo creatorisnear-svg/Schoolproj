@@ -629,6 +629,12 @@ moduleResponses.cybercom = async (interaction) => {
   return interaction.update(await cyberComView(interaction.guild, '', interaction.member));
 };
 
+// Voice moderation, inside RPM CyberCom: listed on its own so it can be found.
+moduleResponses.voicemoderation = async (interaction) => {
+  const { voiceModView } = await import('./voiceModSetupHandler.js');
+  return interaction.update(await voiceModView(interaction.guild));
+};
+
 moduleResponses.safetynetwork = async (interaction) => {
   const { safetyNetworkView } = await import('./safetyNetworkHandler.js');
   return interaction.update(await safetyNetworkView(interaction.guild));
