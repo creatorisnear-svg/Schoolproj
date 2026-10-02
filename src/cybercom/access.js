@@ -2,8 +2,8 @@ import CyberComSubscription from '../models/CyberComSubscription.js';
 
 /**
  * Who has RPM CyberCom: its own subscription, $9.99 a month, with or without
- * Premium. Without Premium the helper bots also cover the police radio,
- * which Premium's AI dispatcher covers otherwise (coordinator.js).
+ * Premium. It includes the AI voice dispatcher on the police radio
+ * (checkFeatureAccess in premiumCheck.js lets 'dispatch' through for it).
  */
 export const CYBERCOM_PRICE_CENTS = 999;
 const ACTIVE = ['active', 'trialing', 'past_due', 'cancelling'];

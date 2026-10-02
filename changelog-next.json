@@ -3,6 +3,7 @@
   "title": "RPM CyberCom: a bot in every voice channel",
   "changes": [
     "New: RPM CyberCom, $9.99 a month, with or without Premium. Officers say \"Dispatch, show me on a 10-11 with\" and a name: the bot moves them to a free traffic stop channel and asks the other person if they want to be moved in. Plates and names can be run inside the stop, and \"Dispatch, show me off my 10-11\" offers to move everyone back where they were",
+    "RPM CyberCom includes the AI voice dispatcher on your police radio, the same one Premium has: it listens, answers, runs plates and names and keeps the status board",
     "With RPM CyberCom, a 10-80 from a traffic stop goes out on the police radio, and units say \"Dispatch, attach me to the 10-80\" to be moved straight there. Every status change shows in the CAD and on the status board",
     "With RPM CyberCom, civilians say \"RPM, move me to\" and a name to join someone's voice channel, and \"RPM help\" to hear what it can do",
     "New for staff: /voicemoderation shows what was said in a voice channel on any of the last 14 days, for everyone or one member. The bots tell people a channel is transcribed when they join it",

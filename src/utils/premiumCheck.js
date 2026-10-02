@@ -170,6 +170,12 @@ export async function checkFeatureAccess(guildId, featureKey) {
   const onTrial = await isGuildOnTrial(guildId);
   if (onTrial) return { allowed: true, viaTrial: true };
 
+  // RPM CyberCom includes the AI voice dispatcher, with or without Premium.
+  if (featureKey === 'dispatch') {
+    const { isCyberComActive } = await import('../cybercom/access.js');
+    if (await isCyberComActive(guildId)) return { allowed: true, viaCyberCom: true };
+  }
+
   // Last, because it costs a query and the three above answer most calls.
   if (await isGrandfathered(guildId, featureKey)) {
     return { allowed: true, grandfathered: true };

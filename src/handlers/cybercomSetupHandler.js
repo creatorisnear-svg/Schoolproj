@@ -39,9 +39,9 @@ export async function cyberComView(guild, note = '') {
   );
   if (active) lines.push('**Status:** on');
   else lines.push('**Status:** off. RPM CyberCom is $9.99 a month, with or without Premium.');
-  if (!premium) {
-    lines.push('-# Without Premium, the helper bots also cover your patrol radio channels, so officers can use traffic stops and 10-80s there. With Premium, the AI dispatcher runs the radio.');
-  }
+  lines.push(premium
+    ? '-# The AI voice dispatcher runs your police radio.'
+    : '-# RPM CyberCom includes the AI voice dispatcher for your police radio. Set your patrol channels in `/setup` under AI Voice Dispatch.');
   lines.push('');
 
   if (helperCount()) {

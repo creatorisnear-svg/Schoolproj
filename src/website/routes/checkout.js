@@ -265,7 +265,7 @@ async function getOrCreateCyberComPrice(stripe) {
   if (!id) {
     const product = await stripe.products.create({
       name: 'RPM CyberCom',
-      description: 'A RolePlayManager bot in every voice channel: traffic stops, 10-80s, civilian moves and voice transcripts for staff. Works with or without Premium.',
+      description: 'A RolePlayManager bot in every voice channel: traffic stops, 10-80s, civilian moves and voice transcripts for staff. Includes the AI voice dispatcher, with or without Premium.',
     });
     const price = await stripe.prices.create({
       product: product.id, unit_amount: CYBERCOM_PRICE_CENTS, currency: 'usd', recurring: { interval: 'month' }, nickname: CYBERCOM_NICK,
@@ -275,6 +275,16 @@ async function getOrCreateCyberComPrice(stripe) {
   }
   _cyberComPrice = id;
   return id;
+}
+
+/**
+ * CyberCom started or stopped. It includes the AI dispatcher, so the
+ * Premium change event goes out too: index.js re-checks what dispatch may do.
+ */
+async function cyberComChanged(guildId) {
+  clearCyberComCache(guildId);
+  const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+  clearPremiumCache(guildId);
 }
 
 /** Switch CyberCom on from a completed checkout. Idempotent: webhook and success page both call it. */
@@ -296,7 +306,7 @@ export async function applyCyberComFromSession(session, ctx = {}) {
     },
     { upsert: true },
   );
-  clearCyberComCache(m.guildId);
+  await cyberComChanged(m.guildId);
   const client = ctx.client || null;
   const guildName = client?.guilds?.cache?.get(m.guildId)?.name || m.guildName || 'your server';
   if (fresh) {
@@ -337,7 +347,7 @@ async function cyberComSubscriptionEvent(event, ctx = {}) {
   }
   sub.updatedAt = new Date();
   await sub.save();
-  clearCyberComCache(sub.guildId);
+  await cyberComChanged(sub.guildId);
   console.log('[CyberCom] subscription ' + subId + ' is now ' + sub.status);
 }
 
