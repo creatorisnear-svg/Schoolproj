@@ -1,8 +1,8 @@
 {
-  "version": "1.17.2",
-  "title": "See what dispatch heard",
+  "version": "1.17.3",
+  "title": "The AI dispatcher hears you again",
   "changes": [
-    "Say \"Dispatch, radio check\" and the AI dispatcher answers loud and clear, so you can test that it hears you. It used to stay silent on a radio check",
-    "RPM CyberCom in /setup and View Settings in /config dispatch now show what the dispatcher last heard on the radio, and why it did not answer if it did not: no dispatch channel, no officer role, no audio coming through, or a line that did not start with \"dispatch\""
+    "Fixed: the AI dispatcher could join your patrol channel, speak, and then never hear anyone. If someone talked while Discord's voice encryption was still being set up, that scrambled audio broke listening for everything said after it. It now skips audio it cannot read and keeps listening",
+    "The same fix for the RPM CyberCom helper bots"
   ]
 }

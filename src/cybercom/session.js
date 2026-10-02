@@ -2,9 +2,8 @@ import {
   joinVoiceChannel, EndBehaviorType, VoiceConnectionStatus, entersState,
   createAudioPlayer, createAudioResource, StreamType, AudioPlayerStatus,
 } from '@discordjs/voice';
-import prism from 'prism-media';
 import { Readable } from 'stream';
-import { createWavBuffer, RADIO_WAVE_BUFFER } from '../utils/voiceListener.js';
+import { createWavBuffer, RADIO_WAVE_BUFFER, TolerantDecoder } from '../utils/voiceListener.js';
 import { helperUserIds } from './helpers.js';
 import { yesOrNo } from './text.js';
 
@@ -139,8 +138,16 @@ export class Session {
       };
       const safety = setTimeout(finish, 30000);
       try {
+        // A fresh subscription every time (see voiceListener's receiver), and a
+        // decoder that skips a scrambled packet rather than losing the line.
+        const stale = receiver.subscriptions.get(userId);
+        if (stale) {
+          stale.removeAllListeners('close');
+          receiver.subscriptions.delete(userId);
+          try { stale.destroy(); } catch {}
+        }
         stream = receiver.subscribe(userId, { end: { behavior: EndBehaviorType.AfterSilence, duration: SILENCE_MS } });
-        decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+        decoder = new TolerantDecoder({ frameSize: 960, channels: 2, rate: 48000 });
       } catch {
         clearTimeout(safety);
         finish();

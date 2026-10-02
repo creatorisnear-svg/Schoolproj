@@ -75,6 +75,37 @@ export function traceRadio(guildId, userId, what, { log = true } = {}) {
 export function getRadioTrace(guildId) {
   return radioTrace.get(guildId) || [];
 }
+
+/**
+ * An Opus decoder that skips a packet it cannot decode instead of dying on it.
+ * Right after the bot joins, packets can arrive before Discord's voice
+ * encryption (DAVE) is set up, still scrambled. The stock decoder threw on the
+ * first one and the whole sentence was lost.
+ */
+export class TolerantDecoder extends prism.opus.Decoder {
+  constructor(options) {
+    super(options);
+    this.badPackets = 0;
+  }
+  _transform(chunk, encoding, done) {
+    try {
+      this.push(this._decode(chunk));
+    } catch {
+      this.badPackets++;
+    }
+    done();
+  }
+}
+
+/** A line that came through scrambled: traced at most every 20 seconds per person. */
+const scrambledNoted = new Map();
+function noteScrambled(guildId, userId, packets) {
+  const k = guildId + ':' + userId;
+  if (Date.now() - (scrambledNoted.get(k) || 0) < 20000) return;
+  scrambledNoted.set(k, Date.now());
+  if (scrambledNoted.size > 2000) scrambledNoted.clear();
+  traceRadio(guildId, userId, `spoke, but the audio arrived still encrypted (${packets} packets), so it could not be heard`);
+}
 /** The latest of it as Discord lines, newest first. */
 export function radioTraceLines(guildId, n = 4) {
   return getRadioTrace(guildId).slice(-n).reverse()
@@ -736,6 +767,8 @@ export async function moveToChannel(channel) {
   return connection;
 }
 
+export const __setupReceiverForTest = (...args) => _setupReceiver(...args);
+
 function _setupReceiver(connection, guild, state, guildId) {
   const receiver = connection.receiver;
 
@@ -765,17 +798,31 @@ function _setupReceiver(connection, guild, state, guildId) {
     recordingUsers.add(key);
     // Recording started (debug-level, suppressed in production)
 
+    let stream;
+    let decoder;
     const safetyTimeout = setTimeout(() => {
       if (recordingUsers.has(key)) {
         console.warn(`[Dispatch] Safety timeout - clearing stuck recording for user ${userId}`);
-        traceRadio(guildId, userId, 'spoke, but no audio came through for 30 seconds (it could not be decrypted)');
+        traceRadio(guildId, userId, 'spoke, but no audio came through for 30 seconds');
         recordingUsers.delete(key);
         try { stream?.destroy(); } catch {}
         try { decoder?.destroy(); } catch {}
       }
     }, 30000);
 
-    let stream;
+    // Always a fresh subscription. The library hands back one that is still
+    // open, and one left over from a line whose decoder had died (scrambled
+    // audio while voice encryption was still being set up) spoiled every line
+    // after it: that was the dispatcher that joined, spoke and never heard.
+    // Its own clean-up deletes by user id when it closes, which would take out
+    // the new subscription too, so that is removed and the map cleared here.
+    const stale = receiver.subscriptions.get(userId);
+    if (stale) {
+      stale.removeAllListeners('close');
+      receiver.subscriptions.delete(userId);
+      try { stale.destroy(); } catch {}
+    }
+
     try {
       // 600ms silence - faster cutoff for quicker response times
       const silenceDuration = 600;
@@ -788,9 +835,8 @@ function _setupReceiver(connection, guild, state, guildId) {
       return;
     }
 
-    let decoder;
     try {
-      decoder = new prism.opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
+      decoder = new TolerantDecoder({ frameSize: 960, channels: 2, rate: 48000 });
     } catch (err) {
       console.error('[Dispatch] Failed to create Opus decoder:', err.message);
       clearTimeout(safetyTimeout);
@@ -811,7 +857,8 @@ function _setupReceiver(connection, guild, state, guildId) {
       // Require at least 20 chunks (~400ms) to filter out noise bursts and mic pops.
       // Threshold reduced from 40 to allow short-but-valid transmissions (e.g. "dispatch, 10-8").
       if (pcmChunks.length < 20) {
-        if (pcmChunks.length === 0) traceRadio(guildId, userId, 'spoke, but no audio came through');
+        if (decoder.badPackets > 0) noteScrambled(guildId, userId, decoder.badPackets);
+        else if (pcmChunks.length === 0) traceRadio(guildId, userId, 'spoke, but no audio came through');
         return;
       }
       const wav = createWavBuffer(pcmChunks);
@@ -835,15 +882,18 @@ function _setupReceiver(connection, guild, state, guildId) {
       }
     });
 
+    // Either side failing ends both, so nothing half-open is left to be reused.
     decoder.on('error', (err) => {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
+      try { stream.destroy(); } catch {}
       console.error('[Dispatch] Decoder error:', err.message);
     });
 
     stream.on('error', (err) => {
       clearTimeout(safetyTimeout);
       recordingUsers.delete(key);
+      try { decoder.destroy(); } catch {}
       console.error('[Dispatch] Stream error:', err.message);
     });
   });
