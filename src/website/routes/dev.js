@@ -37,6 +37,17 @@ const ALL_FEATURES = FEATURES
 // No fallback. This is a public repository, so a default here is a published
 // password for anybody who deploys without setting the variable.
 const DEV_PASSWORD = process.env.DEV_PASSWORD || null;
+
+// The radio lines in the promo video (marketing/promo.html), in the bot's own
+// words. Officers start with "Dispatch": the AI dispatcher only answers
+// sentences that do. A list of voices is tried in order (Groq, then OpenAI).
+const PROMO_VOICE_LINES = [
+  { id: 'call', voices: 'dispatch', text: 'Attention all units. Nine one one emergency call. Shots fired at Grove Street. All available units respond.' },
+  { id: 'respond', voices: ['troy', 'daniel', 'echo'], text: 'Dispatch, Unit 12, show me responding to call 14.' },
+  { id: 'respondAck', voices: 'dispatch', text: 'Copy Unit 12, ten seventy-six to call 14.' },
+  { id: 'plate', voices: ['austin', 'daniel', 'fable'], text: 'Dispatch, run plate A B C 1 2 3.' },
+  { id: 'plateReply', voices: 'dispatch', text: 'Plate A B C 1 2 3 comes back to Tony Russo, black 2019 Bravado Buffalo. Record shows WANTED for armed robbery.' },
+];
 if (!DEV_PASSWORD) {
   console.warn('[DEV] DEV_PASSWORD is not set. The dev panel is disabled.');
 }
@@ -197,6 +208,40 @@ export function createDevRouter(client) {
   router.get('/check', (req, res) => {
     const token = req.cookies?.dev_session;
     res.json({ authorized: token ? sessions.has(token) : false });
+  });
+
+  // GET /dev/promo-voice: the promo video's radio lines in the bot's real
+  // voices, as one JSON download for marketing/render.mjs. The voice key only
+  // exists on the server, so the clips are made here.
+  router.get('/promo-voice', devAuth, async (req, res) => {
+    try {
+      const { generateDispatchTTSPublic, synthesizeWithVoice } = await import('../../handlers/dispatchHandler.js');
+      const lines = [];
+      for (const line of PROMO_VOICE_LINES) {
+        const entry = { id: line.id, text: line.text, voice: null };
+        if (line.voices === 'dispatch') {
+          try {
+            entry.audio = (await generateDispatchTTSPublic(line.text)).toString('base64');
+            entry.voice = 'dispatch';
+          } catch (err) { entry.error = err.message; }
+        } else {
+          for (const voice of line.voices) {
+            try {
+              entry.audio = (await synthesizeWithVoice(line.text, voice)).toString('base64');
+              entry.voice = voice;
+              delete entry.error;
+              break;
+            } catch (err) { entry.error = voice + ': ' + err.message; }
+          }
+        }
+        lines.push(entry);
+      }
+      res.setHeader('Content-Disposition', 'attachment; filename="rpm-promo-voice.json"');
+      res.json({ generatedAt: new Date().toISOString(), lines });
+    } catch (err) {
+      console.error('[DEV] Promo voice error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.get('/announcements', devAuth, async (req, res) => {

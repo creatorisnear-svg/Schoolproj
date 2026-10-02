@@ -1197,6 +1197,24 @@ export async function generateDispatchTTSPublic(text) {
   return generateDispatchTTS(text);
 }
 
+/**
+ * One line in a voice other than the dispatcher's: the same model and the
+ * same clean-up, no cache. Used for the officers in the promo video
+ * (routes/dev.js, /dev/promo-voice).
+ */
+export async function synthesizeWithVoice(text, voice) {
+  const spoken = formatCodeForSpeech(String(text || '').replace(/\b911\b/g, '9 1 1'));
+  const { client, provider } = getAIClient();
+  const response = await client.audio.speech.create({
+    model: provider === 'groq' ? 'canopylabs/orpheus-v1-english' : 'tts-1',
+    voice,
+    input: spoken,
+    response_format: provider === 'groq' ? 'wav' : 'opus',
+  });
+  recordAI('*', { [provider]: 1 });
+  return Buffer.from(await response.arrayBuffer());
+}
+
 async function generateDispatchTTS(text) {
   // Strip all action/emote descriptions regardless of bracket style: *text*, (text), [text], <text>
   text = text

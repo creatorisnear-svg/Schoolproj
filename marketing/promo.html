@@ -19,7 +19,8 @@
 <script>
 const q = new URLSearchParams(location.search);
 const W = +q.get('w') || 1080, H = +q.get('h') || 1920;
-const FPS = 30, DUR = 31;
+const FPS = 30;
+let DUR = 31;
 const cv = document.getElementById('c');
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
@@ -275,7 +276,8 @@ function voiceCard(x, y, w, s, members, speaking, t, alpha = 1) {
   return h;
 }
 
-function radioLine(x, y, w, s, who, text, alpha, accent, draw = true) {
+/** One radio line. `said` (0 to 1) lights up the words as they are spoken. */
+function radioLine(x, y, w, s, who, text, alpha, accent, said = 1, draw = true) {
   const pad = 22 * s, size = 29 * s;
   const lines = wrapLines(text, w - pad * 2, font(size, 500)).length;
   const h = pad * 2 + 36 * s + lines * size * 1.35;
@@ -285,7 +287,12 @@ function radioLine(x, y, w, s, who, text, alpha, accent, draw = true) {
   rr(x, y, w, h, 18 * s); ctx.fillStyle = C.card; ctx.fill();
   ctx.strokeStyle = C.border; ctx.lineWidth = 2 * s; ctx.stroke();
   drawText(who.toUpperCase(), x + pad, y + pad, { size: 20 * s, weight: 800, color: accent, spacing: 3 * s });
-  drawText(text, x + pad, y + pad + 36 * s, { size, weight: 500, color: C.text, maxW: w - pad * 2, lh: 1.35 });
+  const body = { size, weight: 500, maxW: w - pad * 2, lh: 1.35 };
+  drawText(text, x + pad, y + pad + 36 * s, { ...body, color: said < 1 ? 'rgba(232,234,237,0.3)' : C.text });
+  if (said > 0 && said < 1) {
+    const words = text.split(' ');
+    drawText(words.slice(0, Math.ceil(said * words.length)).join(' '), x + pad, y + pad + 36 * s, { ...body, color: C.text });
+  }
   ctx.restore();
   return h;
 }
@@ -547,37 +554,55 @@ function sceneBrand(t) {
   chipRow(['PS5', 'Xbox', 'Free to add'], W / 2, wy + (L ? 200 : 150) * S, 30 * S, prog(t, 1.1, 0.6));
 }
 
-const RADIO = [
-  { who: 'Dispatch', at: 1.1, end: 2.8, text: 'Shots fired near Grove Street. Units respond.' },
-  { who: 'Unit 12', at: 2.8, end: 3.7, text: '10-4, en route.' },
-  { who: 'Dispatch', at: 3.7, end: 5.4, text: 'Copy, Unit 12. Plate ABC123 comes back stolen.' },
-];
+// What is said on the radio, as captions. The spoken versions, in the bot's
+// own voice, come from /dev/promo-voice (routes/dev.js); the timeline from
+// render.mjs says when each one plays. Officers always start with "Dispatch":
+// the AI dispatcher only answers sentences that do.
+const CAPTIONS = {
+  call: { who: 'Dispatch', text: 'Attention all units. 911 emergency call. Shots fired at Grove Street. All available units respond.' },
+  respond: { who: 'Unit 12', text: 'Dispatch, Unit 12, show me responding to call 14.' },
+  respondAck: { who: 'Dispatch', text: 'Copy Unit 12, 10-76 to call 14.' },
+  plate: { who: 'Unit 7', text: 'Dispatch, run plate ABC123.' },
+  plateReply: { who: 'Dispatch', text: 'Plate ABC123 comes back to Tony Russo, black 2019 Bravado Buffalo. Record shows WANTED for armed robbery.' },
+};
 const MEMBERS = [
   { name: 'Dispatch', logo: true, app: true },
   { name: 'Unit 12', initials: '12', color: '#3b5bdb' },
   { name: 'Unit 7', initials: '7', color: '#2b8a3e' },
 ];
 
-function sceneDispatch(t) {
+/** A patrol channel and its radio lines, which appear as they are spoken. */
+function radioScene(t, id, spec) {
   const L = PORTRAIT;
   const w = (L ? 900 : 700) * S;
   const x = visualX(w);
-  const speaking = (RADIO.find((r) => t >= r.at && t < r.end) || {}).who || null;
+  const lines = TL.radio[id];
+  const now = lines.find((r) => t >= r.from && t < r.end);
+  const speaking = now ? CAPTIONS[now.id].who : null;
   const cardH = 26 * S * 2 + 60 * S + MEMBERS.length * 76 * S;
-  const lineHs = RADIO.map((r) => radioLine(0, 0, w, S, r.who, r.text, 1, '#fff', false));
+  const lineHs = lines.map((r) => radioLine(0, 0, w, S, CAPTIONS[r.id].who, CAPTIONS[r.id].text, 1, '#fff', 1, false));
   const gap = 16 * S;
   const totalH = cardH + 28 * S + lineHs.reduce((a, b) => a + b + gap, 0);
-  const spec = { eyebrow: 'AI voice dispatch', title: 'An AI dispatcher on your patrol radio', body: 'It reads out 911 calls, answers your officers and runs plates by voice.' };
   const bottom = textBlock(t, spec, L ? portraitTop(spec, totalH, 64 * S) : null);
   let y = L ? bottom + 64 * S : (H - totalH) / 2;
-  const pc = prog(t, 0.35, 0.55);
+  const pc = prog(t, 0.25, 0.5);
   voiceCard(x, y + (1 - pc) * 40 * S, w, S, MEMBERS, speaking, t, pc);
   y += cardH + 28 * S;
-  RADIO.forEach((r, i) => {
-    const p = prog(t, r.at, 0.4);
-    if (p > 0) radioLine(x, y + (1 - p) * 24 * S, w, S, r.who, r.text, p, r.who === 'Dispatch' ? C.green : C.blue);
+  lines.forEach((r, i) => {
+    const c = CAPTIONS[r.id];
+    const p = prog(t, r.at - 0.15, 0.35);
+    const said = clamp((t - r.at) / Math.max(0.1, (r.end - r.at) * 0.92));
+    if (p > 0) radioLine(x, y + (1 - p) * 24 * S, w, S, c.who, c.text, p, c.who === 'Dispatch' ? C.green : C.blue, said);
     y += lineHs[i] + gap;
   });
+}
+
+function sceneCall911(t) {
+  radioScene(t, 'call911', { eyebrow: 'AI voice dispatch', title: '911 calls, read out on your patrol radio', body: 'Officers hear every call the moment it comes in, and answer by voice.' });
+}
+
+function scenePlate(t) {
+  radioScene(t, 'plate', { eyebrow: 'AI voice dispatch', title: 'Run plates by voice', body: 'Start with "Dispatch" and ask. It checks your CAD and answers on the radio.' });
 }
 
 function sceneCad(t) {
@@ -595,6 +620,84 @@ function sceneCad(t) {
   }
 }
 
+// ── Mock server directory ───────────────────────────────────────────────────
+const DIR_SERVERS = [
+  { name: 'Los Santos Roleplay', initials: 'LS', color: '#1d4ed8', members: '1,240', platforms: 'PS5 · Xbox Series X|S', tags: ['Serious RP', 'Law Enforcement', 'Fire and EMS'], votes: 312, featured: true },
+  { name: 'Blaine County RP', initials: 'BC', color: '#b45309', members: '860', platforms: 'PS5', tags: ['Gangs', 'Economy', 'Civilian'], votes: 188 },
+  { name: 'Vice City Roleplay', initials: 'VC', color: '#be185d', members: '410', platforms: 'PS5 · Xbox Series X|S', tags: ['Getting ready for GTA 6', 'New server'], votes: 96 },
+];
+
+function serverCard(x, y, w, h, s, srv, alpha, pressed) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rr(x, y, w, h, 16 * s); ctx.fillStyle = C.card; ctx.fill();
+  ctx.lineWidth = 2 * s; ctx.strokeStyle = srv.featured ? 'rgba(251,191,36,0.55)' : C.border; ctx.stroke();
+  const r = 34 * s, cx = x + 22 * s + r, cy = y + h / 2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = srv.color; ctx.fill();
+  drawText(srv.initials, cx, cy, { size: 24 * s, weight: 800, color: '#fff', align: 'center', baseline: 'middle' });
+  const tx = cx + r + 20 * s;
+  drawText(srv.name, tx, y + 20 * s, { size: 26 * s, weight: 800, color: '#fff' });
+  if (srv.featured) badge('FEATURED', tx + textWidth(srv.name, 26 * s, 800) + 12 * s, y + 18 * s, s, C.amber);
+  drawText(srv.members + ' members  ·  ' + srv.platforms, tx, y + 56 * s, { size: 18 * s, weight: 500, color: C.muted });
+  let chipX = tx;
+  srv.tags.forEach((tag) => { chipX += chip(tag, chipX, y + 104 * s, { size: 15 * s, align: 'left' }) + 8 * s; });
+  const bw = 104 * s, bh = 48 * s, bx = x + w - 20 * s - bw, by = cy - 4 * s;
+  drawText(srv.votes + ' votes', bx + bw / 2, by - 30 * s, { size: 17 * s, weight: 600, color: C.muted, align: 'center' });
+  ctx.save();
+  ctx.translate(bx + bw / 2, by + bh / 2);
+  if (pressed) ctx.scale(0.94, 0.94);
+  rr(-bw / 2, -bh / 2, bw, bh, 10 * s); ctx.fillStyle = pressed ? '#d4d4d4' : '#fff'; ctx.fill();
+  drawText('Join', 0, 0, { size: 20 * s, weight: 800, color: C.bg, align: 'center', baseline: 'middle' });
+  ctx.restore();
+  ctx.restore();
+  return { joinX: bx + bw / 2, joinY: by + bh / 2 };
+}
+
+function sceneDirectory(t) {
+  const L = PORTRAIT;
+  const w = (L ? 940 : 760) * S;
+  const x = visualX(w);
+  const cardH = 150 * S, gap = 14 * S, barH = 64 * S, headH = 96 * S;
+  const panelH = barH + headH + DIR_SERVERS.length * (cardH + gap) + 12 * S;
+  const spec = { eyebrow: 'Server directory', title: 'Get found by new players', body: 'PS5 and Xbox players browse roleplaymanager.xyz/servers to find a server to join. Listing yours is free.' };
+  const bottom = textBlock(t, spec, L ? portraitTop(spec, panelH, 64 * S) : null);
+  const p = prog(t, 0.25, 0.6);
+  const y = (L ? bottom + 64 * S : (H - panelH) / 2) + (1 - p) * 40 * S;
+
+  ctx.save();
+  ctx.globalAlpha *= p;
+  rr(x, y, w, panelH, 20 * S); ctx.fillStyle = '#0e1015'; ctx.fill();
+  ctx.lineWidth = 2 * S; ctx.strokeStyle = '#2a2e37'; ctx.stroke();
+  ['#f87171', '#fbbf24', '#34d399'].forEach((c, i) => { ctx.beginPath(); ctx.arc(x + 30 * S + i * 24 * S, y + barH / 2, 7 * S, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill(); });
+  rr(x + 120 * S, y + 14 * S, w - 150 * S, barH - 28 * S, (barH - 28 * S) / 2); ctx.fillStyle = C.input; ctx.fill();
+  drawText('roleplaymanager.xyz/servers', x + 142 * S, y + barH / 2, { size: 18 * S, weight: 600, color: C.muted, baseline: 'middle' });
+  ctx.fillStyle = C.border; ctx.fillRect(x, y + barH, w, 1.5 * S);
+
+  const hy = y + barH + headH / 2;
+  rr(x + 20 * S, hy - 26 * S, L ? 330 * S : 260 * S, 52 * S, 12 * S); ctx.fillStyle = C.input; ctx.fill();
+  drawText('Search servers', x + 40 * S, hy, { size: 19 * S, weight: 500, color: C.muted, baseline: 'middle' });
+  let fx = x + (L ? 366 : 296) * S;
+  ['PS5', 'Xbox', 'Serious RP', 'GTA 6'].forEach((f, i) => {
+    fx += chip(f, fx, hy, { size: 16 * S, align: 'left', fill: i === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)' }) + 8 * S;
+  });
+
+  let cy = y + barH + headH;
+  let join = null;
+  DIR_SERVERS.forEach((srv, i) => {
+    const pc = prog(t, 0.55 + i * 0.18, 0.45);
+    const pos = serverCard(x + 16 * S, cy + (1 - pc) * 24 * S, w - 32 * S, cardH, S, srv, pc, i === 0 && t >= 3.2 && t < 3.55);
+    if (i === 0) join = pos;
+    cy += cardH + gap;
+  });
+  ctx.restore();
+
+  // A player heads for Join on the featured server.
+  if (join && t > 2.2) {
+    const pp = prog(t, 2.3, 0.8);
+    pointer(join.joinX + 4 * S + (1 - pp) * 220 * S, join.joinY + 6 * S + (1 - pp) * 160 * S, 34 * S, Math.min(1, (t - 2.2) * 4));
+  }
+}
+
 function sceneSafety(t) {
   const L = PORTRAIT;
   const w = (L ? 940 : 720) * S;
@@ -607,7 +710,7 @@ function sceneSafety(t) {
   safetyMessage(x, y, w, S, t, p);
 }
 
-const FEATURES = ['Priority cooldowns', 'Session recaps', 'Applications', 'Economy and jobs', 'Tickets and strikes', 'Verification', 'Patrol hours', 'Server directory'];
+const FEATURES = ['Priority cooldowns', 'Session recaps', 'Applications', 'Economy and jobs', 'Tickets and strikes', 'Verification', 'Patrol hours', 'Web dashboard'];
 
 function featureCard(x, y, w, h, label, alpha) {
   ctx.save();
@@ -669,15 +772,23 @@ function watermark(alpha) {
   ctx.restore();
 }
 
-const SCENES = [
-  { start: 0.0, end: 3.8, draw: sceneHook, lights: 1 },
-  { start: 3.8, end: 7.6, draw: sceneBrand },
-  { start: 7.6, end: 13.4, draw: sceneDispatch, lights: 0.55, mark: true },
-  { start: 13.4, end: 18.6, draw: sceneCad, mark: true },
-  { start: 18.6, end: 23.0, draw: sceneSafety, mark: true },
-  { start: 23.0, end: 26.6, draw: sceneFeatures, mark: true },
-  { start: 26.6, end: DUR, draw: sceneCta, last: true },
-];
+// Scene times come from render.mjs (/timeline.json), because the two radio
+// scenes last as long as their voice clips do.
+const DRAW = {
+  hook: sceneHook, brand: sceneBrand, call911: sceneCall911, plate: scenePlate,
+  cad: sceneCad, directory: sceneDirectory, safety: sceneSafety, features: sceneFeatures, cta: sceneCta,
+};
+const LIGHTS = { hook: 1, call911: 0.55, plate: 0.35 };
+const MARKED = new Set(['call911', 'plate', 'cad', 'directory', 'safety', 'features']);
+let TL = null;
+let SCENES = [];
+function useTimeline(tl) {
+  TL = tl;
+  DUR = tl.duration;
+  SCENES = tl.scenes.map((s, i) => ({
+    ...s, draw: DRAW[s.id], lights: LIGHTS[s.id] || 0, mark: MARKED.has(s.id), last: i === tl.scenes.length - 1,
+  }));
+}
 const XF = 0.35;
 function sceneAlpha(s, t) {
   if (t < s.start || t > s.end + XF) return 0;
@@ -729,7 +840,7 @@ const STILLS = {
     drawText('An AI dispatcher for your PS5 and Xbox RP server', W / 2, 140 * S, { size: 66 * S, weight: 800, color: '#fff', align: 'center', maxW: 940 * S, lh: 1.08 });
     const w = 900 * S, x = (W - w) / 2;
     const h = voiceCard(x, 330 * S, w, S, MEMBERS, 'Dispatch', 1.7);
-    radioLine(x, 330 * S + h + 24 * S, w, S, 'Dispatch', 'Shots fired near Grove Street. Units respond.', 1, C.green);
+    radioLine(x, 330 * S + h + 24 * S, w, S, 'Dispatch', CAPTIONS.call.text, 1, C.green);
     drawText('Free to add at roleplaymanager.xyz', W / 2, 990 * S, { size: 32 * S, weight: 600, color: C.muted, align: 'center' });
   },
   // 1080 x 1920: a story or status post.
@@ -755,6 +866,7 @@ async function ready() {
   await Promise.all(['300 40px Montserrat', '800 40px Montserrat', '500 40px Inter', '600 40px Inter', '700 40px Inter', '800 40px Inter']
     .map((f) => document.fonts.load(f)));
   if (!logoImg.complete || !logoImg.naturalWidth) await new Promise((r) => { logoImg.onload = r; logoImg.onerror = r; });
+  useTimeline(await (await fetch('/timeline.json')).json());
 }
 const send = (path, body) => fetch(path, { method: 'POST', body });
 const blobOf = (type, quality) => new Promise((r) => cv.toBlob(r, type, quality));

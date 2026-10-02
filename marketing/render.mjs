@@ -2,11 +2,19 @@
  * Render the RolePlayManager promo videos and ads.
  *
  *   node marketing/render.mjs [out folder] [only this file]
+ *   node marketing/render.mjs [out folder] frames 1080x1920 3,11.5   single frames, to check
+ *   node marketing/render.mjs import-voice rpm-promo-voice.json        the radio voices
  *
  * Opens marketing/promo.html in headless Edge (or Chrome) once per output.
  * Video frames come back as PNGs and go straight into ffmpeg, so the result
  * is frame exact however fast the machine is. Needs ffmpeg on the PATH, or
  * FFMPEG set to it.
+ *
+ * The radio voices are the bot's own: the dispatcher's "diana" voice and two
+ * officer voices, made on the live server at /dev/promo-voice (the voice key
+ * only exists there) and imported into marketing/voice/. The two radio
+ * scenes last as long as their clips. Without clips the video renders
+ * silent, with estimated timings.
  */
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
@@ -17,15 +25,114 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
-const OUT = path.resolve(process.argv[2] || path.join(HERE, 'out'));
-const ONLY = process.argv[3] && process.argv[3] !== 'frames' ? process.argv[3] : null;
+const VOICE_DIR = path.join(HERE, 'voice');
+const CLICK_FILE = path.join(REPO, 'src/assets/radio_wave.mp3');
 const FFMPEG = process.env.FFMPEG || 'ffmpeg';
+const FFPROBE = process.env.FFPROBE || FFMPEG.replace(/ffmpeg(?=(\.exe)?$)/i, 'ffprobe');
 const BROWSER = process.env.BROWSER_PATH || [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
 ].find((p) => fs.existsSync(p));
 
-// node render.mjs <out> frames 1080x1920 3,11.5,17 renders single frames to check.
+// ── import-voice: the JSON downloaded from /dev/promo-voice ─────────────────
+if (process.argv[2] === 'import-voice') {
+  const data = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+  fs.mkdirSync(VOICE_DIR, { recursive: true });
+  for (const line of data.lines || []) {
+    if (!line.audio) { console.log(line.id + ': no audio, ' + (line.error || 'unknown error')); continue; }
+    const raw = path.join(os.tmpdir(), 'rpm-voice-' + line.id + '.bin');
+    fs.writeFileSync(raw, Buffer.from(line.audio, 'base64'));
+    // A clean WAV with the silence trimmed from both ends, so timings are exact.
+    const trim = 'silenceremove=start_periods=1:start_silence=0.05:start_threshold=-45dB';
+    const r = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-af', `${trim},areverse,${trim},areverse`,
+      '-ar', '48000', '-ac', '1', path.join(VOICE_DIR, line.id + '.wav')], { stdio: 'inherit' });
+    fs.rmSync(raw, { force: true });
+    console.log(line.id + ': ' + (r.status === 0 ? 'imported, voice ' + line.voice : 'failed'));
+  }
+  process.exit(0);
+}
+
+const OUT = path.resolve(process.argv[2] || path.join(HERE, 'out'));
+const ONLY = process.argv[3] && process.argv[3] !== 'frames' ? process.argv[3] : null;
+
+// ── The timeline ────────────────────────────────────────────────────────────
+// The bot plays its radio click before every dispatcher line; the voice comes
+// in this far into the click.
+const CLICK_LEAD = 1.0;
+const GAP = 0.35;
+// Until the real clips are imported.
+const ESTIMATES = { call: 6.2, respond: 2.6, respondAck: 2.4, plate: 1.9, plateReply: 6.4 };
+// [clip, spoken by the dispatcher?]
+const RADIO_SCENES = {
+  call911: [['call', true], ['respond', false], ['respondAck', true]],
+  plate: [['plate', false], ['plateReply', true]],
+};
+
+const clipFile = (id) => {
+  const f = path.join(VOICE_DIR, id + '.wav');
+  return fs.existsSync(f) ? f : null;
+};
+const durationOf = (file) => {
+  const r = spawnSync(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
+  return Number(String(r.stdout).trim()) || null;
+};
+
+function buildTimeline() {
+  const scenes = []; const radio = {}; const clips = []; const clicks = [];
+  let t = 0;
+  const add = (id, len) => { scenes.push({ id, start: t, end: t + len }); t += len; };
+  add('hook', 3.8);
+  add('brand', 3.8);
+  for (const [id, lines] of Object.entries(RADIO_SCENES)) {
+    const start = t;
+    let local = 0.7;
+    radio[id] = [];
+    for (const [clip, dispatcher] of lines) {
+      const file = clipFile(clip);
+      const dur = (file && durationOf(file)) || ESTIMATES[clip];
+      const from = local;
+      if (dispatcher) { clicks.push(start + local); local += CLICK_LEAD; }
+      radio[id].push({ id: clip, from, at: local, end: local + dur });
+      if (file) clips.push({ id: clip, file, at: start + local, officer: !dispatcher });
+      local += dur + GAP;
+    }
+    add(id, local + 0.55);
+  }
+  add('cad', 5.2);
+  add('directory', 4.8);
+  add('safety', 4.4);
+  add('features', 3.6);
+  add('cta', 4.4);
+  const voiced = clips.length > 0;
+  return { scenes, radio, clips, clicks: voiced ? clicks : [], duration: Math.round(t * 30) / 30, voiced };
+}
+const TIMELINE = buildTimeline();
+
+// ── ffmpeg: frames from the page, the radio click and the voices ────────────
+const ENCODE = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+const ms = (s) => Math.max(0, Math.round(s * 1000));
+
+function videoArgs(out) {
+  const args = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'png', '-i', '-'];
+  const { clips, clicks, duration } = TIMELINE;
+  if (!clips.length) return [...args, ...ENCODE, out];
+  args.push('-i', CLICK_FILE);
+  clips.forEach((c) => args.push('-i', c.file));
+  const norm = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo';
+  const parts = [`[1:a]${norm},asplit=${clicks.length}${clicks.map((_, i) => `[k${i}]`).join('')}`];
+  clicks.forEach((at, i) => parts.push(`[k${i}]adelay=${ms(at)}:all=1,volume=0.6[c${i}]`));
+  clips.forEach((c, i) => {
+    // Officers come through a radio; the dispatcher sounds as the bot does.
+    const radio = c.officer ? 'highpass=f=280,lowpass=f=3400,acompressor=threshold=0.1:ratio=3:attack=5:release=80,volume=1.4,' : '';
+    parts.push(`[${i + 2}:a]${norm},${radio}adelay=${ms(c.at)}:all=1[v${i}]`);
+  });
+  const all = [...clicks.map((_, i) => `[c${i}]`), ...clips.map((_, i) => `[v${i}]`)].join('');
+  parts.push(`${all}amix=inputs=${clicks.length + clips.length}:normalize=0,alimiter=limit=0.95,apad=whole_dur=${duration}[aout]`);
+  return [...args, '-filter_complex', parts.join(';'), '-map', '0:v', '-map', '[aout]',
+    ...ENCODE, '-c:a', 'aac', '-b:a', '160k', '-shortest', out];
+}
+
+// ── Jobs ────────────────────────────────────────────────────────────────────
 const FRAMES = process.argv[3] === 'frames'
   ? process.argv[5].split(',').map((t) => {
     const [w, h] = process.argv[4].split('x').map(Number);
@@ -49,6 +156,11 @@ let current = null;
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://local');
   if (req.method === 'GET') {
+    if (url.pathname === '/timeline.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(TIMELINE));
+      return;
+    }
     const file = url.pathname === '/' ? path.join(HERE, 'promo.html')
       : url.pathname === '/logo.png' ? path.join(REPO, 'site/img/logo.png') : null;
     if (!file) { res.writeHead(404); res.end(); return; }
@@ -78,14 +190,13 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
+console.log((TIMELINE.voiced ? 'With the radio voices, ' : 'Silent (no voices imported yet), ') + TIMELINE.duration.toFixed(1) + 's');
 for (const job of JOBS) {
   if (ONLY && job.name !== ONLY) continue;
   const started = Date.now();
   let ff = null;
   if (job.kind === 'video') {
-    ff = spawn(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'png', '-i', '-',
-      '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
-      path.join(OUT, job.name)], { stdio: ['pipe', 'inherit', 'inherit'] });
+    ff = spawn(FFMPEG, videoArgs(path.join(OUT, job.name)), { stdio: ['pipe', 'inherit', 'inherit'] });
   }
   const done = new Promise((resolve, reject) => {
     current = { ff, frames: 0, resolve, reject };
