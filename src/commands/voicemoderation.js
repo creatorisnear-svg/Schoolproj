@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChannelType, EmbedBuilder, AttachmentBuilder } from 'discord.js';
-import { checkStaffPermission } from '../utils/permissions.js';
 import { readTranscript, transcriptText } from '../cybercom/transcripts.js';
 import { cyberComSubscribed } from '../cybercom/access.js';
+import { canReadTranscripts, retentionDays, getVoiceModConfig } from '../cybercom/flags.js';
 import { TRANSCRIPT_DAYS } from '../models/VoiceTranscript.js';
 
 export const data = new SlashCommandBuilder()
@@ -23,10 +23,10 @@ export const data = new SlashCommandBuilder()
 
 const ymd = (d) => d.toISOString().slice(0, 10);
 
-/** The last 14 days, newest first, as autocomplete choices. Days are UTC. */
-export function dayChoices(now = new Date()) {
+/** The days transcripts are kept (14 unless the server chose fewer), newest first. Days are UTC. */
+export function dayChoices(now = new Date(), days = TRANSCRIPT_DAYS) {
   const out = [];
-  for (let i = 0; i < TRANSCRIPT_DAYS; i++) {
+  for (let i = 0; i < days; i++) {
     const d = new Date(now.getTime() - i * 86400000);
     const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
     out.push({ name: (i === 0 ? 'Today, ' : i === 1 ? 'Yesterday, ' : '') + label, value: ymd(d) });
@@ -36,15 +36,24 @@ export function dayChoices(now = new Date()) {
 
 export async function autocomplete(interaction) {
   const typed = String(interaction.options.getFocused() || '').toLowerCase();
-  const choices = dayChoices().filter((c) => !typed || c.name.toLowerCase().includes(typed) || c.value.includes(typed));
+  const days = await retentionDays(interaction.guildId).catch(() => TRANSCRIPT_DAYS);
+  const choices = dayChoices(new Date(), days).filter((c) => !typed || c.name.toLowerCase().includes(typed) || c.value.includes(typed));
   return interaction.respond(choices.slice(0, 25));
 }
 
 export async function execute(interaction) {
   if (!interaction.inGuild()) return;
-  if (!await checkStaffPermission(interaction)) {
-    return interaction.reply({ content: 'Only staff can read voice transcripts.', flags: 64 });
+  if (!await canReadTranscripts(interaction)) {
+    const roles = (await getVoiceModConfig(interaction.guildId))?.readerRoleIds || [];
+    return interaction.reply({
+      content: roles.length
+        ? `Only ${roles.map((r) => `<@&${r}>`).join(', ')} can read voice transcripts here.`
+        : 'Only staff can read voice transcripts.',
+      flags: 64,
+      allowedMentions: { parse: [] },
+    });
   }
+  const keptDays = await retentionDays(interaction.guildId).catch(() => TRANSCRIPT_DAYS);
   const channel = interaction.options.getChannel('channel');
   let day = String(interaction.options.getString('day') || '').trim().toLowerCase();
   if (day === 'today') day = ymd(new Date());
@@ -60,7 +69,7 @@ export async function execute(interaction) {
     const subscribed = await cyberComSubscribed(interaction.guildId).catch(() => false);
     return interaction.editReply({
       content: subscribed
-        ? `Nothing was said in <#${channel.id}> on ${day}${member ? ` by <@${member.id}>` : ''}. Only channels RPM CyberCom covers are transcribed, and transcripts are kept ${TRANSCRIPT_DAYS} days.`
+        ? `Nothing was said in <#${channel.id}> on ${day}${member ? ` by <@${member.id}>` : ''}. Only channels RPM CyberCom covers are transcribed, and transcripts are kept ${keptDays} days.`
         : 'Voice transcripts are part of RPM CyberCom, the add-on that puts a bot in every voice channel. Run `/setup` and open RPM CyberCom to see it.',
       allowedMentions: { parse: [] },
     });
@@ -81,6 +90,6 @@ export async function execute(interaction) {
       `**${lines.length}** ${lines.length === 1 ? 'line' : 'lines'} on ${day}${member ? ` from <@${member.id}>` : ''}. Times are UTC. The whole day is in the file.\n\n` +
       '**Last lines**\n' + preview.slice(0, 3600)
     )
-    .setFooter({ text: `RPM CyberCom · Transcripts are kept ${TRANSCRIPT_DAYS} days` });
+    .setFooter({ text: `RPM CyberCom · Transcripts are kept ${keptDays} days` });
   return interaction.editReply({ embeds: [embed], files: [file], allowedMentions: { parse: [] } });
 }

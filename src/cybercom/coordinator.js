@@ -1,7 +1,7 @@
 import CyberComConfig from '../models/CyberComConfig.js';
 import DispatchConfig from '../models/DispatchConfig.js';
 import { Session } from './session.js';
-import { startHelpers, freeHelper, everyHelper } from './helpers.js';
+import { startHelpers, freeHelper, everyHelper, allHelpers, helperUserIds } from './helpers.js';
 import { isCyberComActive } from './access.js';
 import { handleUtterance, GREETING } from './brain.js';
 import { setMainClient, setSessionLookup } from './stops.js';
@@ -73,7 +73,25 @@ async function ensureSession(guild, channelId, role) {
     existing.role = role;
     return existing;
   }
-  const helper = freeHelper(guild.id);
+  // One helper per channel. One already in it with no session here (the old
+  // instance during a deploy, or someone dragged it in) is taken over if it
+  // is ours and free; otherwise none is sent, rather than a second bot that
+  // answers everything twice.
+  const helperIds = helperUserIds();
+  const present = guild.channels.cache.get(channelId)?.members?.filter?.((m) => helperIds.has(m.id));
+  let helper;
+  if (present?.size) {
+    helper = allHelpers().find((h) => present.has(h.client.user?.id) && !h.busy.has(guild.id));
+    if (!helper) {
+      if (Date.now() - (warned.get(key) || 0) > 10 * 60000) {
+        warned.set(key, Date.now());
+        console.log(`[CyberCom] ${guild.name}: a helper bot is already in channel ${channelId}, not sending another`);
+      }
+      return null;
+    }
+  } else {
+    helper = freeHelper(guild.id);
+  }
   if (!helper) {
     if (Date.now() - (warned.get(guild.id) || 0) > 10 * 60000) {
       warned.set(guild.id, Date.now());

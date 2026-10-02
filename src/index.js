@@ -1650,6 +1650,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId === 'dirsetup_description_modal') {
         const { handleDirectorySetup } = await import('./handlers/directorySetupHandler.js');
         await handleDirectorySetup(interaction);
+      } else if (interaction.customId.startsWith('cybercom_')) {
+        const { handleCyberCom } = await import('./handlers/cybercomSetupHandler.js');
+        await handleCyberCom(interaction);
       } else if (interaction.customId.startsWith('business_password_')) {
         const { handleBusinessPasswordModal } = await import('./handlers/economyActions.js');
         await handleBusinessPasswordModal(interaction);

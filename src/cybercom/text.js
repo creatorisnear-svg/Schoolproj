@@ -78,6 +78,34 @@ export function cleanName(raw) {
  *   civilian: move_to, help
  */
 /**
+ * Speech to text is given a prompt with example sentences, and on noise or
+ * silence it sometimes "hears" one of them: a civilian channel acted on
+ * "RPM, take me to Jordan" that nobody said. True when every word of the
+ * transcript, in order, is lifted straight from the prompt.
+ */
+export function echoesPrompt(transcript, prompt) {
+  const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = words(transcript);
+  const n = t ? t.split(' ').length : 0;
+  if (n < 3) return false;
+  // A long run of the prompt word for word is never real speech.
+  if (n >= 8 && ` ${words(prompt)} `.includes(` ${t} `)) return true;
+  // Or exactly one of its sentences or quoted examples. Only exactly: part
+  // of one ("Dispatch, requesting backup") is something officers really say.
+  return String(prompt || '').split(/["“”]|[.!?](?:\s|$)/).map(words).includes(t);
+}
+
+/**
+ * "Show me ..." with a ten code is only ever said to dispatch, so it counts
+ * even when "dispatch" itself was misheard ("That, show me on a 10-11 with
+ * Blade"). Returns the line from "show me" on, or null.
+ */
+export function showMeLine(text) {
+  const m = normalize(text).match(/^(?:\S+ ){0,2}(show me\b.*\b10-\d{1,2}\b.*)$/);
+  return m ? m[1] : null;
+}
+
+/**
  * Only the wake word, maybe with "over" or "come in": someone calling, who
  * will say what they want after the reply. Answered with "go ahead".
  */

@@ -18,6 +18,7 @@ import { errorEmbed } from '../utils/embedBuilder.js';
 import { addToRadioLog, getRadioLog } from '../utils/radioSession.js';
 import statusEvents from '../utils/statusEvents.js';
 import { recordAI, withinAllowance, claimAllowanceNotice, PREMIUM_UTTERANCES_PER_MONTH } from '../utils/aiUsage.js';
+import { showMeLine, echoesPrompt } from '../cybercom/text.js';
 
 // Pre-load panic alert sound (MP3 played urgently over voice on 10-99)
 const _panicSoundPath = join(dirname(fileURLToPath(import.meta.url)), '../assets/panic_alert.mp3');
@@ -235,6 +236,40 @@ function markModelRetired(model) {
 export function hasAIKey() {
   if (!groqKeysLoaded) loadGroqKeys();
   return !!(groqKeys.length > 0 || process.env.OPENAI_API_KEY);
+}
+
+/**
+ * A short JSON answer from the chat model, for voice moderation: is this line
+ * a real problem or roleplay. Same keys and model fallback as the dispatcher.
+ * Throws when no answer could be had; the caller decides what that means.
+ */
+export async function askAIForJSON(guildId, system, user) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { client, provider } = getAIClient();
+    const model = provider === 'groq' ? groqModel() : 'gpt-4o-mini';
+    const reasoning = provider === 'groq' && /gpt-oss/i.test(model);
+    try {
+      const res = await client.chat.completions.create({
+        model,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        max_tokens: reasoning ? 500 : 120,
+        temperature: 0,
+        ...(reasoning ? { reasoning_effort: 'low' } : {}),
+      });
+      if (provider === 'groq') resolvedGroqModel = model;
+      recordAI(guildId, { llm: 1, [provider]: 1 });
+      const match = String(res.choices[0]?.message?.content || '').match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('no JSON in the answer');
+      return JSON.parse(match[0]);
+    } catch (err) {
+      lastErr = err;
+      if (provider === 'groq' && isModelRetired(err) && markModelRetired(model)) continue;
+      if (err.status === 429 && provider === 'groq' && rotateGroqKey()) continue;
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -915,9 +950,9 @@ function parseTranscript(text) {
   };
 }
 
-const WHISPER_PROMPT =
+export const WHISPER_PROMPT =
   'GTA V FiveM police radio. Officers address dispatch by saying "Dispatch" clearly at the start. ' +
-  'Example transmissions: "Dispatch, ten eleven at Vinewood." "Dispatch, I am ten eight." "Dispatch, requesting backup at Legion Square." ' +
+  'Example transmissions: "Dispatch, ten eleven at Vinewood." "Dispatch, I am ten eight." "Dispatch, requesting backup at Legion Square, ten seventy eight." ' +
   'Call signs use LAPD phonetic alphabet: Adam, Baker, Charles, David, Edward, Frank, George, Henry, Ida, John, King, Lincoln, Mary, Nora, Ocean, Paul, Queen, Robert, Sam, Tom, Union, Victor, William, X-ray, Young, Zebra. ' +
   'Example call signs: "1 Adam 22", "2 Lincoln 40", "3 Baker 15", "Adam 22", "Lincoln 4". ' +
   'Also valid: "Dispatch", "Marshal Command", "County Command", "Central Dispatch". ' +
@@ -937,7 +972,8 @@ export async function transcribeAudio(wavBuffer, prompt = WHISPER_PROMPT) {
   writeFileSync(tempPath, wavBuffer);
   try {
     let lastErr;
-    const maxTries = Math.max(1, groqKeys.length);
+    let retriedServerError = false;
+    const maxTries = Math.max(1, groqKeys.length) + 1;
     for (let attempt = 0; attempt < maxTries; attempt++) {
       const { client, provider } = getAIClient();
       // Hardcoded, unlike the chat model. If Groq retires this one it will
@@ -956,6 +992,14 @@ export async function transcribeAudio(wavBuffer, prompt = WHISPER_PROMPT) {
         lastErr = err;
         if (err.status === 429 && provider === 'groq' && rotateGroqKey()) {
           console.log(`[Transcribe] Rate limited on key ${attempt + 1}, trying next key...`);
+          continue;
+        }
+        // A gateway timeout (Groq answered 524) or a dropped connection is
+        // usually gone a moment later: one retry rather than losing the line.
+        if (!retriedServerError && (!err.status || err.status >= 500)) {
+          retriedServerError = true;
+          console.log(`[Transcribe] ${err.status || err.code || 'connection error'}, trying once more...`);
+          await new Promise((r) => setTimeout(r, 400));
           continue;
         }
         throw err;
@@ -2080,6 +2124,11 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     }
 
     if (!transcript || transcript.trim().length < 3) return traceRadio(guild.id, userId, 'spoke, but no words could be made out');
+    // An example from the speech to text prompt "heard" in noise, not said.
+    if (echoesPrompt(transcript, WHISPER_PROMPT)) {
+      console.log(`[Dispatch] Dropping prompt echo: "${transcript.trim().slice(0, 60)}"`);
+      return;
+    }
     traceRadio(guild.id, userId, `said "${transcript.trim().slice(0, 120)}"`, { log: false });
 
     // ── Noise / Whisper hallucination filter ─────────────────────────────────
@@ -2381,6 +2430,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
             commandText = raw;
             hadTrigger = true;
             console.log(`[Dispatch] ${officerName} after "go ahead": "${raw.slice(0, 60)}"`);
+          } else if (showMeLine(raw)) {
+            // "Dispatch" misheard ("That show me on a 10-11 with Blade"): a
+            // status given as "show me ..." is only ever said to dispatch.
+            commandText = showMeLine(raw);
+            hadTrigger = true;
+            console.log(`[Dispatch] ${officerName} "show me" without a heard trigger: "${commandText.slice(0, 60)}"`);
           } else if (rollCallExpiry && Date.now() < rollCallExpiry) {
             const normalized = normalizeSpokenCodes(raw);
             if (ROLL_CALL_STATUS_RE.test(normalized)) {
@@ -3955,9 +4010,22 @@ export async function rebuildStatusBoard(guild, config) {
     await msg.pin().catch(() => {});
     await DispatchConfig.updateOne({ guildId: guild.id }, { statusBoardMessageId: msg.id });
   } catch (err) {
+    // No access to the channel: say which and what is needed, now and then,
+    // instead of a bare "Missing Access" on every status change.
+    if (err.code === 50001 || err.code === 50013) {
+      if (Date.now() - (_boardNoAccess.get(guild.id) || 0) > 30 * 60000) {
+        _boardNoAccess.set(guild.id, Date.now());
+        const why = `cannot post the status board in #${channel.name}: RPM needs View Channel, Send Messages, Embed Links and Read Message History there`;
+        console.warn(`[Dispatch] ${guild.name}: ${why}`);
+        const { traceRadio } = await import('../utils/voiceListener.js');
+        traceRadio(guild.id, null, why, { log: false });
+      }
+      return;
+    }
     console.error('[Dispatch] Status board update error:', err.message);
   }
 }
+const _boardNoAccess = new Map();
 
 export async function handleClearStatusButton(interaction) {
   try {
@@ -4317,8 +4385,10 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
     if (patrolChannelId) {
       const { getDispatchState, moveToChannel } = await import('../utils/voiceListener.js');
       const state = getDispatchState(guild.id);
-      if (state) {
-        // Remove pursuit channel from temp patrol set if it was added
+      // Remove the pursuit channel from the patrol set only if it was added
+      // for the pursuit. A 10-80 called from a real patrol channel took that
+      // channel off the list, and the bot stopped following officers into it.
+      if (state && !(config.patrolChannelIds || []).includes(pursuitChannelId)) {
         state.patrolChannelIds.delete(pursuitChannelId);
       }
       const patrolCh = guild.channels.cache.get(patrolChannelId) ||
@@ -4342,36 +4412,9 @@ async function triggerPursuitBroadcast(guild, config, officerId, officerName, pu
       console.error('[Dispatch] Pursuit broadcast audio error:', err.message);
     }
 
-    // ── Post embed in dispatch channel with Respond button ───────────────
-    if (config.dispatchChannelId) {
-      const dispatchCh = guild.channels.cache.get(config.dispatchChannelId) ||
-        await guild.channels.fetch(config.dispatchChannelId).catch(() => null);
-      if (dispatchCh?.isTextBased()) {
-        const embed = new EmbedBuilder()
-          .setColor('#FF0000')
-          .setTitle('10-80 - Active Pursuit')
-          .setDescription(
-            `**Officer:** <@${officerId}> (${cleanNameForTTS(officerName)})\n` +
-            `**Status:** Active pursuit in progress\n` +
-            `**Pursuit Channel:** <#${pursuitChannelId}>\n\n` +
-            `Officer ${cleanNameForTTS(officerName)} has initiated a **10-80 pursuit**. Any available unit, please respond.\n` +
-            `Pressing **"Respond to Pursuit"** will move you to the pursuit channel.`
-          )
-          .setFooter({ text: 'RPM • Dispatch' })
-          .setTimestamp();
-
-        const respondBtn = new ButtonBuilder()
-          .setCustomId(`dispatch_pursuit_respond_${guild.id}`)
-          .setLabel('Respond to Pursuit')
-          .setStyle(ButtonStyle.Danger);
-
-        await dispatchCh.send({
-          content: '@here',
-          embeds: [embed],
-          components: [new ActionRowBuilder().addComponents(respondBtn)],
-        }).catch(() => {});
-      }
-    }
+    // No post in the dispatch channel: the owner asked for 10-80s over the
+    // radio only (it was an @here embed with a Respond button). Units respond
+    // by voice; old messages' buttons still work.
 
     console.log(`[Dispatch] 10-80 pursuit broadcast triggered for ${officerName} in ${guild.name}, pursuit channel: ${pursuitChannelId}`);
 

@@ -36,6 +36,12 @@ async function dispatchProblems(guild, dc, viewer) {
     return ch && me && !ch.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]);
   });
   if (cantJoin.length) out.push(`RPM cannot join or talk in ${mentions(cantJoin)}. Give it View Channel, Connect and Speak there.`);
+  for (const [id, what] of [[dc.dispatchChannelId, 'dispatch channel'], [dc.statusBoardChannelId, 'status board channel']]) {
+    const ch = id ? guild.channels.cache.get(id) : null;
+    if (ch && me && !ch.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+      out.push(`RPM cannot post in the ${what} <#${id}>. Give it View Channel, Send Messages and Embed Links there.`);
+    }
+  }
 
   const { default: CADConfig } = await import('../models/CADConfig.js');
   const cad = dc.leoRoleIds?.length ? null : await CADConfig.findOne({ guildId: guild.id }).lean();
@@ -55,6 +61,8 @@ export async function cyberComView(guild, note = '', viewer = null) {
     hasPremiumAccess(guild.id).catch(() => false),
   ]);
   const problems = (active || premium) ? await dispatchProblems(guild, dc, viewer).catch(() => []) : [];
+  const { retentionDays } = await import('../cybercom/flags.js');
+  const keptDays = await retentionDays(guild.id).catch(() => TRANSCRIPT_DAYS);
   const helpers = allHelpers();
   const added = helpers.filter((h) => h.client.guilds.cache.has(guild.id));
   const missing = helpers.filter((h) => !h.client.guilds.cache.has(guild.id));
@@ -101,7 +109,7 @@ export async function cyberComView(guild, note = '', viewer = null) {
     `**Civilian channels** (they answer to "RPM"): ${mentions(cfg?.civilianChannelIds)}`,
     `**Greeting people who join:** ${cfg?.greet === false ? 'off' : 'on'}`,
     '',
-    `-# Everything said in these channels is transcribed, and people are told when they join. Staff read it with \`/voicemoderation\`. Transcripts are deleted after ${TRANSCRIPT_DAYS} days.`,
+    `-# Everything said in these channels is transcribed, and people are told when they join. Staff read it with \`/voicemoderation\`. Transcripts are deleted after ${keptDays} days. Flags, who can read transcripts and how long they are kept are under Voice moderation.`,
   );
 
   const embed = new EmbedBuilder().setColor(0x2d2d2d).setTitle('RPM CyberCom').setDescription(lines.join('\n').slice(0, 4000))
@@ -119,6 +127,7 @@ export async function cyberComView(guild, note = '', viewer = null) {
   if (!subscribed) {
     buttons.push(new ButtonBuilder().setLabel('Get RPM CyberCom').setStyle(ButtonStyle.Link).setURL(`${SITE}/pricing?from=cybercom&guild=${guild.id}#cybercom`));
   }
+  buttons.push(new ButtonBuilder().setCustomId('cybercom_vmod_open').setLabel('Voice moderation').setStyle(ButtonStyle.Primary));
   buttons.push(new ButtonBuilder().setCustomId('cybercom_greet').setLabel(cfg?.greet === false ? 'Turn greetings on' : 'Turn greetings off').setStyle(ButtonStyle.Secondary));
 
   return {
@@ -136,9 +145,18 @@ export async function cyberComView(guild, note = '', viewer = null) {
 export async function handleCyberCom(interaction) {
   const id = interaction.customId;
   if (/^cybercom_(join|stay|back|attach)_/.test(id)) return handleCyberComButton(interaction);
+  // A flag's "What was said around it": for the people who read transcripts.
+  if (id.startsWith('cybercom_flagctx_')) {
+    const { handleFlagContext } = await import('../cybercom/flags.js');
+    return handleFlagContext(interaction);
+  }
   if (!interaction.inGuild()) return;
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
     return interaction.reply({ content: 'Only members with the Manage Server permission can change RPM CyberCom.', flags: 64 });
+  }
+  if (id.startsWith('cybercom_vmod_')) {
+    const { handleVoiceMod } = await import('./voiceModSetupHandler.js');
+    return handleVoiceMod(interaction);
   }
   const guild = interaction.guild;
   let note = '';

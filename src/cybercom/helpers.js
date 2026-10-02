@@ -14,7 +14,14 @@ export const HELPER_PERMISSIONS = '3146752';
 let helpers = [];
 
 export async function startHelpers() {
-  const tokens = String(process.env.VOICE_HELPER_TOKENS || '').split(/[\s,]+/).filter(Boolean);
+  const listed = String(process.env.VOICE_HELPER_TOKENS || '').split(/[\s,]+/).filter(Boolean);
+  // The same token twice is the same bot twice, and one bot can only be in one
+  // voice channel per server: sending "the other helper" somewhere pulled it
+  // out of the channel it was talking in, mid sentence.
+  const tokens = [...new Set(listed)];
+  if (tokens.length < listed.length) {
+    console.warn(`[CyberCom] VOICE_HELPER_TOKENS lists the same token ${listed.length - tokens.length} extra time(s). Each bot is used once; put a different bot's token there to get another helper.`);
+  }
   if (!tokens.length) {
     console.log('[CyberCom] No helper bots set up (VOICE_HELPER_TOKENS is empty)');
     return 0;
@@ -33,6 +40,14 @@ export async function startHelpers() {
     });
     const helper = { index: i + 1, client, ready: false, busy: new Map(), token };
     client.once('clientReady', () => {
+      // Two different tokens for one bot: the same problem as a repeated token.
+      const twin = helpers.find((o) => o !== helper && o.ready && o.client.user?.id === client.user.id);
+      if (twin) {
+        console.warn(`[CyberCom] Helper ${helper.index} is the same bot as helper ${twin.index} (${client.user.tag}), so it is not used. Put a different bot's token in VOICE_HELPER_TOKENS.`);
+        helpers = helpers.filter((o) => o !== helper);
+        Promise.resolve(client.destroy()).catch(() => {});
+        return;
+      }
       helper.ready = true;
       console.log(`[CyberCom] Helper ${helper.index} ready as ${client.user.tag} in ${client.guilds.cache.size} server(s)`);
     });

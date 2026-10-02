@@ -2,7 +2,7 @@ import VoiceTranscript from '../models/VoiceTranscript.js';
 
 /**
  * Everything said in channels RPM CyberCom covers, for /voicemoderation.
- * Kept 14 days by the model's TTL index.
+ * Kept for the server's retention (3, 7 or 14 days), and checked for flags.
  */
 
 const NOISE = new Set(['', 'thank you', 'thanks', 'you', 'thank you for watching', 'thanks for watching', 'bye', 'uh', 'um']);
@@ -14,10 +14,15 @@ export function isNoise(text) {
 
 export async function saveTranscript({ guildId, channelId, channelName, userId, username, text, at = new Date() }) {
   if (!guildId || !channelId || !userId || isNoise(text)) return null;
-  return VoiceTranscript.create({
+  const flags = await import('./flags.js');
+  const days = await flags.retentionDays(guildId).catch(() => 14);
+  const doc = await VoiceTranscript.create({
     guildId, channelId, channelName: channelName || null, userId, username: username || null,
-    text: String(text).trim().slice(0, 1000), at,
+    text: String(text).trim().slice(0, 1000), at, expireAt: new Date(new Date(at).getTime() + days * 86400000),
   }).catch((err) => { console.warn('[CyberCom] transcript not saved:', err.message); return null; });
+  // Flagged in the background: saying something never waits on the check.
+  if (doc) flags.checkLine(doc).catch(() => {});
+  return doc;
 }
 
 /** One UTC day of a channel, optionally one member. day is YYYY-MM-DD. */

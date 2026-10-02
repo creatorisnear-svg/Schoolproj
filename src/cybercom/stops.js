@@ -271,7 +271,12 @@ export async function announceToRadio(guild, text) {
 
 /** "Dispatch, show me in a 10-80." from the traffic stop. */
 export async function startPursuit({ guild, member, said, reply }) {
-  let stop = await CyberComStop.findOne({ guildId: guild.id, channelId: member.voice?.channelId, status: { $in: ['active', 'pursuit'] } });
+  // The stop in their channel, or theirs when they call it from the patrol radio.
+  let stop = await CyberComStop.findOne({ guildId: guild.id, channelId: member.voice?.channelId, status: OPEN })
+    || await openStopFor(guild.id, member.id);
+  // Already out to all units: saying it again only confirms it. Every repeat
+  // used to go out on the radio again.
+  if (stop?.status === 'pursuit') return reply(`Copy ${say(member)}, the ten eighty is already out to all units.`);
   if (!stop && member.voice?.channelId) {
     // A 10-80 from outside a stop: the pursuit is wherever this officer is.
     stop = await CyberComStop.create({
@@ -290,19 +295,9 @@ export async function startPursuit({ guild, member, said, reply }) {
     rawText: said || null,
   });
   await reply(`Copy ${say(member)}, ten eighty. Letting all units know.`);
+  // Over the radio only: the owner asked for no 10-80 post in the dispatch
+  // channel. Units attach by saying "Dispatch, attach me to the 10-80".
   await announceToRadio(guild, `${say(member)} is in a ten eighty. Any units wanting to respond, say dispatch, attach me to the ten eighty.`);
-
-  // And in writing, with a button, for officers who would rather click.
-  const config = await DispatchConfig.findOne({ guildId: guild.id }).lean();
-  const text = config?.dispatchChannelId ? guild.channels.cache.get(config.dispatchChannelId) : null;
-  if (text?.isTextBased?.()) {
-    await text.send({
-      embeds: [new EmbedBuilder().setColor(0xed4245).setTitle('10-80 Pursuit')
-        .setDescription(`**${member.displayName}** is in a pursuit${stop.subjectName ? ' of **' + stop.subjectName + '**' : ''} in **${channel?.name || 'their channel'}**.\nSay "Dispatch, attach me to the 10-80" on the radio, or press the button.`)
-        .setFooter({ text: 'RPM CyberCom' }).setTimestamp()],
-      components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`cybercom_attach_${stop._id}`).setLabel('Attach me').setStyle(ButtonStyle.Danger))],
-    }).catch(() => null);
-  }
   return stop;
 }
 

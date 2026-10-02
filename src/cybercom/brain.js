@@ -1,4 +1,4 @@
-import { afterWakeWord, parseIntent, speakableName, isJustCalling } from './text.js';
+import { afterWakeWord, parseIntent, speakableName, isJustCalling, showMeLine, echoesPrompt } from './text.js';
 import { saveTranscript, isNoise } from './transcripts.js';
 import { isCyberComActive } from './access.js';
 import * as stops from './stops.js';
@@ -13,8 +13,10 @@ import * as stops from './stops.js';
  * channels. Only officers can use the police commands.
  */
 
-// Speech to text hears "RPM" better when told to expect it.
-const CIVILIAN_PROMPT = 'RPM. RPM help. RPM, move me to Blade. RPM, take me to Jordan.';
+// Speech to text hears "RPM" better when told to expect it. No example
+// requests in it: on noise it can repeat the prompt back, and "RPM, take me
+// to Jordan" was acted on when nobody had said it.
+const CIVILIAN_PROMPT = 'Voice chat with RPM, the server bot.';
 
 export const HELP = {
   civilian: 'Say R P M, then move me to, and a name, to join that person\'s channel. Say R P M help to hear this again.',
@@ -53,18 +55,21 @@ export async function handleUtterance(session, userId, wav, seconds) {
   const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
   if (!member || member.user.bot) return;
 
-  const { transcribeAudio } = await import('../handlers/dispatchHandler.js');
+  const { transcribeAudio, WHISPER_PROMPT } = await import('../handlers/dispatchHandler.js');
   const { recordAI } = await import('../utils/aiUsage.js');
   recordAI(guild.id, { cybercom: 1, cybercomSeconds: Math.round(seconds || 0) });
 
   let text = '';
+  const prompt = session.role === 'civilian' ? CIVILIAN_PROMPT : WHISPER_PROMPT;
   try {
-    text = String(await transcribeAudio(wav, session.role === 'civilian' ? CIVILIAN_PROMPT : undefined) || '').trim();
+    text = String(await transcribeAudio(wav, prompt) || '').trim();
   } catch (err) {
     console.error('[CyberCom] transcription failed:', err.message);
     return;
   }
-  if (isNoise(text)) return;
+  // Noise, or the prompt "heard" back: acting on it, or keeping it as
+  // something this person said for staff to read, would both be wrong.
+  if (isNoise(text) || echoesPrompt(text, prompt)) return;
 
   await saveTranscript({
     guildId: guild.id, channelId: session.channelId, channelName: session.channel?.name || null,
@@ -81,6 +86,7 @@ export async function handleUtterance(session, userId, wav, seconds) {
   const calledAt = goAhead.get(userId);
   goAhead.delete(userId);
   if (rest === null && calledAt && Date.now() - calledAt < GO_AHEAD_MS) rest = text;
+  if (rest === null && kind === 'police') rest = showMeLine(text);
   if (rest === null) {
     // "Dispatch" said in a civilian channel: say how this channel works rather than go quiet.
     if (kind === 'civilian' && afterWakeWord(text, 'police') !== null && nudgeOnce(guild.id + ':' + userId + ':civilian')) {
@@ -174,13 +180,14 @@ export async function fromDispatcher({ guild, member, transcript, afterGoAhead =
   // After the dispatcher's "go ahead" the line is meant for it without the word.
   let rest = afterWakeWord(transcript, 'police');
   if (rest === null && afterGoAhead) rest = transcript;
+  if (rest === null) rest = showMeLine(transcript);
   if (rest === null) return false;
   const intent = parseIntent(rest, 'police');
   // Ending a stop is CyberCom's too when they are on one: on the patrol radio
   // "show me off my 10-11" went to the AI dispatcher, which set them to 10-11
   // (and once flagged them as needing backup) and left the stop open.
   if (intent?.type === 'stop_start'
-    || (intent?.type === 'stop_end' && await stops.openStopFor(guild.id, member.id))
+    || ((intent?.type === 'stop_end' || intent?.type === 'pursuit') && await stops.openStopFor(guild.id, member.id))
     || (intent?.type === 'attach_pursuit' && await stops.activePursuit(guild.id))) {
     await act({ guild, member, role: 'radio', intent, text: transcript, reply: (line) => dispatcherSay(guild.id, line) });
     return true;

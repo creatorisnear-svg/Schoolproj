@@ -1,9 +1,14 @@
 {
-  "version": "1.17.6",
-  "title": "Traffic stops end the way they should",
+  "version": "1.18.0",
+  "title": "Voice moderation and flagging",
   "changes": [
-    "When an RPM CyberCom traffic stop ends, everyone in it is moved back to the channel they came from, the person pulled over included. Say no if you want to stay. Before, anyone who did not answer was left in the stop channel",
-    "Anyone in a traffic stop channel, officer or not, can say \"Dispatch, take me back\" (or \"RPM, take me back\") to go back to their channel",
-    "When the dispatcher or a helper bot asks you something, or asks you to say it again, you can answer without saying \"dispatch\" first"
+    "New for RPM CyberCom: voice flagging. Slurs, possible self harm, real life threats and other breaks of Discord's rules are posted to a channel you pick, with what was said around it one click away. Self harm, threats and rule breaks are checked by AI first, so roleplay is not flagged",
+    "Add your own words and phrases to flag, choose which roles can read transcripts and flags, and keep transcripts for 3, 7 or 14 days. It is all under Voice moderation in /setup, RPM CyberCom",
+    "A 10-80 now goes out over the radio only, with no message in the dispatch channel. Saying 10-80 again during a pursuit confirms it instead of calling every unit again",
+    "Fixed: calling a 10-80 from a patrol channel could make the dispatcher stop following officers into that channel",
+    "Fixed: an RPM CyberCom helper could stop talking in the middle of a question. Two helper bots never sit in the same channel",
+    "Helper bots no longer act on words nobody said. On background noise, speech to text sometimes repeated its own examples back; those are not acted on or kept in transcripts",
+    "Dispatch understands \"show me ...\" with a ten code even when the word \"dispatch\" is misheard, and a brief hiccup in speech to text no longer loses what was said",
+    "If RPM cannot post the status board, the RPM CyberCom screen in /setup and View Settings in /config dispatch say which channel and which permissions it needs"
   ]
 }
