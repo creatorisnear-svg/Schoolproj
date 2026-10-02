@@ -81,7 +81,20 @@ export async function setStatus(guild, member, code, parsed = {}, stopChannelId 
   if (config) dispatch.rebuildStatusBoard(guild, config).catch(() => {});
 }
 
-const openStops = (guildId) => CyberComStop.find({ guildId, status: { $in: ['active', 'pursuit'] } });
+const OPEN = { $in: ['active', 'pursuit'] };
+const openStops = (guildId) => CyberComStop.find({ guildId, status: OPEN });
+
+/** The open stop someone is on, as the officer who started it or a unit on it. */
+export function openStopFor(guildId, userId) {
+  return CyberComStop.findOne({ guildId, status: OPEN, $or: [{ officerId: userId }, { unitIds: userId }] });
+}
+
+async function closeStop(stop) {
+  stop.status = 'closed';
+  stop.closedAt = new Date();
+  stop.expireAt = new Date(Date.now() + 2 * 86400000);
+  await stop.save();
+}
 
 function addReturn(stop, userId, channelId) {
   if (channelId && channelId !== stop.channelId && !stop.returnTo.some((r) => r.userId === userId)) {
@@ -100,9 +113,16 @@ export async function startStop({ guild, officer, subjectName, said, reply }) {
   const stopIds = config?.trafficStopChannelIds || [];
   if (!stopIds.length) return reply(`Negative ${say(officer)}, this server has no traffic stop channels set up.`);
 
-  const open = await openStops(guild.id);
-  if (open.some((s) => s.officerId === officer.id)) {
-    return reply(`${say(officer)}, you're already on a ten eleven. Say show me off my ten eleven first.`);
+  let open = await openStops(guild.id);
+  const mine = open.find((s) => s.officerId === officer.id);
+  if (mine) {
+    // Still in it: one at a time. Already left it without clearing it: that
+    // stop is over, so it no longer stands in the way of a new one.
+    if (officer.voice?.channelId === mine.channelId) {
+      return reply(`${say(officer)}, you're already on a ten eleven. Say show me off my ten eleven first.`);
+    }
+    await closeStop(mine);
+    open = open.filter((s) => s !== mine);
   }
   const busy = new Set(open.map((s) => s.channelId));
   const channel = stopIds.map((id) => guild.channels.cache.get(id)).find((ch) => ch && !busy.has(ch.id) && humans(ch) === 0);
@@ -166,14 +186,10 @@ export async function joinStop(guild, stopId, userId) {
 /** "Dispatch, show me off my 10-11." Everyone involved is offered a move back. */
 export async function endStop({ guild, member, reply, session }) {
   const channelId = session?.channelId || member.voice?.channelId;
-  const stop = await CyberComStop.findOne({ guildId: guild.id, channelId, status: { $in: ['active', 'pursuit'] } })
-    || await CyberComStop.findOne({ guildId: guild.id, officerId: member.id, status: { $in: ['active', 'pursuit'] } });
+  const stop = await CyberComStop.findOne({ guildId: guild.id, channelId, status: OPEN })
+    || await openStopFor(guild.id, member.id);
   if (!stop) return reply(`${say(member)}, there's no ten eleven to clear.`);
-
-  stop.status = 'closed';
-  stop.closedAt = new Date();
-  stop.expireAt = new Date(Date.now() + 2 * 86400000);
-  await stop.save();
+  await closeStop(stop);
 
   for (const unitId of new Set([stop.officerId, ...(stop.unitIds || [])])) {
     const unit = guild.members.cache.get(unitId) || await guild.members.fetch(unitId).catch(() => null);
@@ -182,16 +198,25 @@ export async function endStop({ guild, member, reply, session }) {
 
   const here = stop.returnTo.filter((r) => guild.members.cache.get(r.userId)?.voice?.channelId === stop.channelId
     && guild.channels.cache.has(r.channelId));
-  const helper = session || sessionLookup(guild.id, stop.channelId);
-  if (!here.length) return reply(`Copy ${say(member)}, ten eight.`);
+  const helper = sessionLookup(guild.id, stop.channelId) || (session?.channelId === stop.channelId ? session : null);
+  // Cleared from the patrol radio, not from inside the stop: the officer hears
+  // it there, and anyone still in the stop is asked by the helper in it.
+  const fromInside = member.voice?.channelId === stop.channelId;
+  if (!fromInside || !here.length) await reply(`Copy ${say(member)}, ten eight.`);
+  if (!here.length) return true;
   if (helper) {
-    const answers = await helper.ask(here.map((r) => r.userId), 'Copy, ten eight. Would you like to be moved back to your channels?');
-    for (const r of here) {
-      if (answers.get(r.userId) === 'yes') await moveMember(guild, r.userId, r.channelId);
-    }
+    const asking = helper.ask(here.map((r) => r.userId), fromInside
+      ? 'Copy, ten eight. Would you like to be moved back to your channels?'
+      : 'This ten eleven is over. Would you like to be moved back to your channel?')
+      .then(async (answers) => {
+        for (const r of here) {
+          if (answers.get(r.userId) === 'yes') await moveMember(guild, r.userId, r.channelId);
+        }
+      });
+    if (fromInside) await asking; else asking.catch(() => {});
     return true;
   }
-  await reply(`Copy ${say(member)}, ten eight.`);
+  if (fromInside) await reply(`Copy ${say(member)}, ten eight.`);
   const channel = guild.channels.cache.get(stop.channelId);
   if (channel?.isTextBased?.()) {
     await channel.send({

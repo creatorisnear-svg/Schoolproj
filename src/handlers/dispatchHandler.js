@@ -847,16 +847,25 @@ function normalizeSpokenCodes(text) {
   return result;
 }
 
+export const __parseTranscriptForTest = (text) => parseTranscript(text);
+
 function parseTranscript(text) {
   const normalized = normalizeSpokenCodes(text);
   const lower = normalized.toLowerCase();
 
   let detectedCode = null;
+  // "Show me off my 10-11", "clear from the 10-97", "the 10-11 is over": the
+  // officer is leaving that status, not going into it, so it is a 10-8. The
+  // first code mentioned used to win, and "off my 10-11" set them to 10-11.
+  if (/\b(?:off|out of|clear(?:ed)? (?:from|of)|done with|finished with)\s+(?:of\s+)?(?:(?:my|the|this|that|our)\s+)?10[-\s]\d{1,2}\b/i.test(lower)
+    || /\b10[-\s]\d{1,2}\s+(?:is|has been|was)\s+(?:over|done|finished|clear|cleared|complete|completed)\b/i.test(lower)) {
+    detectedCode = '10-8';
+  }
   // Emergency/high-priority codes are checked FIRST so they are never shadowed
   // by phrase-alias conversions (e.g. "on scene" → 10-97 must not hide a 10-99).
   const PRIORITY_CODES = ['10-99', '10-80', '10-78'];
   const _checkOrder = [...PRIORITY_CODES, ...Object.keys(TEN_CODES).filter(c => !PRIORITY_CODES.includes(c))];
-  for (const code of _checkOrder) {
+  for (const code of detectedCode ? [] : _checkOrder) {
     // Require an explicit separator (dash or space) so e.g. "1080" never
     // triggers 10-80 - only "10-80" or "10 80" should match.
     const escaped = code.replace('-', '[-\\s]');

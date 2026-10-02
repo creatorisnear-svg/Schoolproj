@@ -163,7 +163,11 @@ export async function fromDispatcher({ guild, member, transcript, afterGoAhead =
   if (rest === null && afterGoAhead) rest = transcript;
   if (rest === null) return false;
   const intent = parseIntent(rest, 'police');
+  // Ending a stop is CyberCom's too when they are on one: on the patrol radio
+  // "show me off my 10-11" went to the AI dispatcher, which set them to 10-11
+  // (and once flagged them as needing backup) and left the stop open.
   if (intent?.type === 'stop_start'
+    || (intent?.type === 'stop_end' && await stops.openStopFor(guild.id, member.id))
     || (intent?.type === 'attach_pursuit' && await stops.activePursuit(guild.id))) {
     await act({ guild, member, role: 'radio', intent, text: transcript, reply: (line) => dispatcherSay(guild.id, line) });
     return true;

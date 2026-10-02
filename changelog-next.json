@@ -1,10 +1,9 @@
 {
-  "version": "1.17.4",
-  "title": "Dispatch understands you better",
+  "version": "1.17.5",
+  "title": "Ending a traffic stop from the radio",
   "changes": [
-    "Say just \"Dispatch\" and pause, like on a real radio: the dispatcher answers \"Go ahead\" and takes whatever you say next. Before, it ignored both",
-    "The dispatcher waits a moment longer before deciding you have finished talking, so a pause in the middle of a sentence no longer cuts it in half",
-    "In RPM CyberCom traffic stops, \"the 10-11 is over\", \"10-11 done\" and \"code 4\" now end the stop. \"Dispatch, radio check\" gets \"loud and clear\" from the helper bots too",
-    "If RPM cannot join a patrol channel because of its permissions or a full channel, it stops retrying and says why under Last heard in /config dispatch"
+    "Fixed: \"Dispatch, show me off my 10-11\" on the patrol radio set officers to 10-11 instead of 10-8. Leaving a status now puts you back to 10-8",
+    "With RPM CyberCom, clearing a traffic stop from the patrol radio closes it properly, and anyone still in the stop channel is asked if they want to be moved back",
+    "If you leave a traffic stop channel without clearing the stop, starting your next 10-11 closes the old one instead of saying you are already on one"
   ]
 }
