@@ -44,7 +44,12 @@ if (process.argv[2] === 'import-voice') {
     fs.writeFileSync(raw, Buffer.from(line.audio, 'base64'));
     // A clean WAV with the silence trimmed from both ends, so timings are exact.
     const trim = 'silenceremove=start_periods=1:start_silence=0.05:start_threshold=-45dB';
-    const r = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-af', `${trim},areverse,${trim},areverse`,
+    // Officers are people on a radio: the voice model spells a plate out with
+    // long gaps between letters, so long pauses are cut and the pace lifted a
+    // little. The dispatcher is left exactly as the bot says it.
+    const officer = line.voice === 'dispatch' ? ''
+      : ',silenceremove=stop_periods=-1:stop_duration=0.25:stop_threshold=-38dB:stop_silence=0.18,atempo=1.08';
+    const r = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-af', `${trim},areverse,${trim},areverse${officer}`,
       '-ar', '48000', '-ac', '1', path.join(VOICE_DIR, line.id + '.wav')], { stdio: 'inherit' });
     fs.rmSync(raw, { force: true });
     console.log(line.id + ': ' + (r.status === 0 ? 'imported, voice ' + line.voice : 'failed'));
