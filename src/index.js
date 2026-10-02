@@ -571,6 +571,7 @@ client.on('guildCreate', async (guild) => {
         `### How to get started\n` +
         `**Type \`/setup\` in any channel.** It shows you exactly what to do, step by step. Takes less than 5 minutes.\n\n` +
         `That's it. The bot guides you from there.\n\n` +
+        `**Prefer commands?** Every feature has its own, for example \`/config tickets\`, \`/config verify\` or \`/config economy\`. Run \`/config help\` to see them all.\n\n` +
         `### What you can set up\n` +
         `**Verification** · members fill out a form to join\n` +
         `**Tickets** · private support channels with a button\n` +

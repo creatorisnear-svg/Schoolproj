@@ -349,7 +349,7 @@ export function setupDispatchForGuild(guildId, patrolChannelIds, options, joinAu
 
 /**
  * Register an additional patrol channel for a guild that already has state.
- * Used when the admin adds a new patrol channel via /dispatchconfig.
+ * Used when the admin adds a new patrol channel via /config dispatch.
  */
 export function addPatrolChannel(guildId, channelId, options) {
   const state = dispatchState.get(guildId);
@@ -815,7 +815,7 @@ export function disconnectDispatchChannel(guildId) {
 
 /**
  * Full teardown: destroy the voice connection AND remove all state for this guild.
- * Use this only for explicit unconfigure flows (e.g., system disabled via /dispatchconfig).
+ * Use this only for explicit unconfigure flows (e.g., system disabled via /config dispatch).
  */
 export function leaveDispatchChannel(guildId) {
   const state = dispatchState.get(guildId);

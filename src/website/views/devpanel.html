@@ -44,25 +44,16 @@
       position: relative;
       margin-bottom: 28px;
     }
-    .tabs-wrapper::after {
-      content: '';
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 1px;
-      width: 48px;
-      background: linear-gradient(to right, transparent, #0a0a0a);
-      pointer-events: none;
-    }
+    /* Eleven tabs do not fit one row of a 1000px page. They used to sit in a
+       sideways scroller with its scrollbar hidden, which a mouse wheel cannot
+       move, so the last tabs could not be reached. They wrap instead. */
     .tabs {
       display: flex;
-      gap: 4px;
+      flex-wrap: wrap;
+      gap: 2px 4px;
       border-bottom: 1px solid #1e1e1e;
       padding-bottom: 0;
-      overflow-x: auto;
-      scrollbar-width: none;
     }
-    .tabs::-webkit-scrollbar { display: none; }
     .tab {
       padding: 9px 18px;
       border: none;

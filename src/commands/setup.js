@@ -138,7 +138,7 @@ export async function buildSetupPayload(guildId) {
   descParts.push(...sections);
   descParts.push(
     `-# ${counts.ready} ready · ${counts.incomplete} need finishing · ${counts.off} off. ` +
-    'Pick anything below to set it up, or use the dashboard at roleplaymanager.xyz/dashboard.'
+    'Pick anything below to set it up. Every feature also has its own command, for example `/config tickets`, and `/config help` lists them all. Or use the dashboard at roleplaymanager.xyz/dashboard.'
   );
 
   // Recruiting is what owners care about most, and listing costs nothing.

@@ -46,7 +46,7 @@ export async function execute(interaction) {
         description:
           'This server now has **Premium** access.\n\n' +
           '**Unlocked:**\n' +
-          '> AI Voice Dispatch (`/dispatchconfig`)\n' +
+          '> AI Voice Dispatch (`/config dispatch`)\n' +
           '> Blackjack & Roulette (`/gamble`)\n' +
           '> Unlimited CAD characters, vehicles, firearms & BOLOs\n' +
           '> Unlimited sticky messages\n' +

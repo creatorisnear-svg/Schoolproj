@@ -465,7 +465,7 @@ export async function handleRoleplayCommandsEnableMenu(interaction) {
       await roleplayConfig.save();
 
       return interaction.reply({
-        embeds: [successEmbed('Roleplay Commands Enabled', 'Members now have access to roleplay commands. Run `/roleplaycommandconfig` to configure.')],
+        embeds: [successEmbed('Roleplay Commands Enabled', 'Members now have access to roleplay commands. Run `/config roleplay` to configure.')],
         flags: 64,
       });
     }

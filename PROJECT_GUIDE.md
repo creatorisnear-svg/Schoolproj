@@ -306,9 +306,9 @@ When adding a new premium feature, gate ALL of these:
 - **Utilities** (`src/utils/`): `premiumCheck.js` (`checkFeatureAccess`, `isPremiumGuild`, `isFeaturePremiumGated`, `getGuildLimits`, `buildPremiumEmbed`, `clearPremiumCache`, `clearFeatureFlagCache`, cached 5 min), `embedBuilder.js` (`successEmbed`/`errorEmbed`), `permissions.js` (`checkStaffPermission`), `voiceListener.js` (AI dispatch voice pipeline + UDP bypass, see Critical section)
 - **Slash commands** (`src/commands/`), registered globally:
   - **Setup & Config**: `/setup` (server status dashboard + jump-to-feature wizard), `/config <module>` (unified config — subcommands: `general`, `features`, `verify`, `tickets`, `economy`, `strikes`, `welcome`, `antipromo`, `roles`, `priority`, `calendar`, `moveme`, `roleplay`, `appys`, `dispatch`)
-  - **Legacy config** (still work, show a hint pointing to `/config`): `/verifysystemconfig`, `/ticketsupportconfig`, `/strikesystemconfig`, `/welcomesystemconfig`, `/antipromotingconfig`, `/movemeconfig`, `/rolerequestadd`, `/dispatchconfig`, `/economyconfig`, `/roleplaycommandconfig`, `/prioritytrackerconfig`, `/roleplaycalenderconfig`, `/appyconfig`
+  - **Legacy config** (still work, show a hint pointing to `/config`): `/config verify`, `/config tickets`, `/config strikes`, `/config welcome`, `/config antipromo`, `/config moveme`, `/config roles`, `/config dispatch`, `/config economy`, `/config roleplay`, `/config priority`, `/config calendar`, `/config appys`
   - **Databases**: `/civiliandatabase`, `/leodatabase`, `/firedepartmentdatabase`
-  - **Staff & Permissions**: `/staff`, `/setlogchannel`, `/enablecommands`, `/reloadconfig`
+  - **Staff & Permissions**: `/staff`, `/config general`, `/config features`, `/reloadconfig`
   - **Economy** (member commands): `/balance`, `/work`, `/crime`, `/rob`, `/gamble`, `/shop`, `/buy`, `/sell`, `/inventory`, `/give`, `/giveitems`, `/deposit`, `/withdraw`, `/leaderboard`, `/income`, `/use`
   - **RP**: `/setrp`, `/unsetrp`, `/activepriority`, `/deactivatepriority`, `/priorityrequest`, `/rolerequest`
   - **Premium**: `/activatepremium`, `/activatetrial`, `/premium`
@@ -321,13 +321,13 @@ When adding a new premium feature, gate ALL of these:
 - **Permissions**: Discord `Administrator` = full access; `Staff` model = staff access; general members = roleplay/verification commands only.
 - **Feature flags**: `FeatureFlag` model marks premium-gated features. `GET /api/public/features` (public), `PATCH /dev/features/:feature` (dev-password protected). See Premium System section for defaults.
 - **Premium**: See Premium System section above.
-- **Logging**: `/setlogchannel` sets a guild log channel (`Config` model); most moderation actions post there.
+- **Logging**: `/config general` sets a guild log channel (`Config` model); most moderation actions post there.
 - **AI Voice Dispatch** — premium: Officers speak in patrol voice channels → Whisper transcription → GPT-4o-mini dispatcher reply. Parses 10-codes (10-4, 10-8, 10-11, 10-80, 10-99 panic). Voice CAD queries ("dispatch, run plate/name [X]"). Live status board embed + 911 repeat announcements every 2 min. Configured via `/dispatchsetup`; requires `OPENAI_API_KEY`. Models: `DispatchConfig`, `OfficerStatus`.
 - **Economy**: `EconomyConfig` per guild. Cash/bank (`EconomyBalance`), work/crime/rob, gambling (blackjack, roulette, slots, dice, russian roulette, cockfight), role income, chat money, store + inventory (`EconomyStore`, `EconomyInventory`). ~140 built-in GTA V vehicles (`src/data/gtaVehicles.js`), merged at display time (not seeded to DB). Business system: `BusinessAccount`/`BusinessInventory`/`BusinessTransaction` models; commands: `/business`, `/paybusiness`, `/businessleaderboard`, `/businessinfo`, `/businesstransfer`, `/businessadjust`; handlers in `economyActions.js`; dashboard section in `site/js/dashboard.js`.
 - **Civilian Jobs**: `CivilianJobConfig` (jobs list + job board channel), `JobAssignment` (active assignments with `expiresAt`). Job board panel via buttons; role auto-removed after `durationHours` via interval in `src/index.js`.
 - **Voice Mover**: `MemberMovementConfig` (`enabled`, `panelChannelId`, `allowedChannelIds`). Members click a panel button to self-move between allowed voice channels.
 - **Applications (Appys)** — premium: Custom application panels for any purpose (staff, whitelist, events, etc.). Models: `AppyConfig`, `AppyPanel`, `AppySubmission`, `AppyDraft`.
-  - Staff define application types via dashboard or `/appyconfig`. Each type has: `name`, `description`, `questions[]`, `acceptRoleId` (optional — assigned on accept), `acceptMessage` (optional — custom message appended to the acceptance DM), `reviewChannelId`, `reviewPingRoleIds[]`.
+  - Staff define application types via dashboard or `/config appys`. Each type has: `name`, `description`, `questions[]`, `acceptRoleId` (optional — assigned on accept), `acceptMessage` (optional — custom message appended to the acceptance DM), `reviewChannelId`, `reviewPingRoleIds[]`.
   - Members pick a type from a select menu panel → bot DMs questions one-by-one (30 min inactivity timeout, blocks re-apply while pending) → submission posted with Accept/Deny buttons → user DM'd (with `acceptMessage` if set) + role assigned on accept.
   - `AppyDraft` — persists in-progress sessions to MongoDB so a bot restart mid-application doesn't lose answers. Restored on startup via `restoreAppyDrafts()`.
   - Routing: `src/handlers/appyHandler.js`. DMs routed via `messageCreate` in `src/index.js`.

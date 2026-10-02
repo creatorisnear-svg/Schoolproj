@@ -1550,7 +1550,7 @@ export function createApiRouter(client) {
         }
 
         case 'rolerequest': {
-          // Role request roles are managed via /rolerequestadd in Discord - nothing to save here
+          // Role request roles are managed via /config roles in Discord - nothing to save here
           break;
         }
 
@@ -3089,7 +3089,7 @@ export function createApiRouter(client) {
       const { default: TicketConfig } = await import('../../models/TicketConfig.js');
       const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = await import('discord.js');
       const tc = await TicketConfig.findOne({ guildId: req.params.id });
-      if (!tc || !tc.enabled) return res.status(400).json({ error: 'Ticket system is not enabled. Enable it in Discord first with /enablecommands.' });
+      if (!tc || !tc.enabled) return res.status(400).json({ error: 'Ticket system is not enabled. Set it up in Discord first with /config tickets.' });
       if (!tc.panelChannelId) return res.status(400).json({ error: 'No panel channel set. Configure the Panel Channel above and save first.' });
       if (!tc.ticketTypes || tc.ticketTypes.length === 0) return res.status(400).json({ error: 'No ticket types configured. Add at least one type above first.' });
       const channel = guild.channels.cache.get(tc.panelChannelId);
@@ -3138,7 +3138,7 @@ export function createApiRouter(client) {
       const { default: RoleplayCalendar } = await import('../../models/RoleplayCalendar.js');
       const { buildCalendarEmbed } = await import('../../utils/calendarBuilder.js');
       const rc = await RoleplayCalendar.findOne({ guildId: req.params.id });
-      if (!rc || !rc.enabled) return res.status(400).json({ error: 'Calendar not enabled. Enable it in Discord first with /enablecommands.' });
+      if (!rc || !rc.enabled) return res.status(400).json({ error: 'Calendar not enabled. Set it up in Discord first with /config calendar.' });
       if (!rc.channelId) return res.status(400).json({ error: 'No calendar channel set. Configure the Calendar Channel above and save first.' });
       const channel = guild.channels.cache.get(rc.channelId);
       if (!channel) return res.status(400).json({ error: 'Calendar channel not found in this server.' });

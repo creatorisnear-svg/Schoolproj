@@ -217,23 +217,23 @@ export async function handleEnableCommandButton(interaction) {
     if (customId === 'enable_roleplay') {
       featureName = 'Roleplay Commands';
       model = RoleplayCommands;
-      setupCommand = 'Run `/roleplaycommandconfig` to configure.';
+      setupCommand = 'Run `/config roleplay` to configure.';
     } else if (customId === 'enable_priority') {
       featureName = 'Priority Tracker';
       model = Priority;
-      setupCommand = 'Run `/prioritytrackerconfig` to configure.';
+      setupCommand = 'Run `/config priority` to configure.';
     } else if (customId === 'enable_strike') {
       featureName = 'Strike System';
       model = StrikeConfig;
-      setupCommand = 'Run `/strikesystemconfig` to configure.';
+      setupCommand = 'Run `/config strikes` to configure.';
     } else if (customId === 'enable_calendar') {
       featureName = 'Roleplay Calendar';
       model = RoleplayCalendar;
-      setupCommand = 'Run `/roleplaycalenderconfig` to configure.';
+      setupCommand = 'Run `/config calendar` to configure.';
     } else if (customId === 'enable_ticket') {
       featureName = 'Ticket Support';
       model = TicketConfig;
-      setupCommand = 'Run `/ticketsupportconfig` to configure.';
+      setupCommand = 'Run `/config tickets` to configure.';
     } else if (customId === 'enable_antipromote') {
       featureName = 'Anti-Promoting';
       let config = await Config.findOne({ guildId }) || new Config({ guildId });
@@ -246,19 +246,19 @@ export async function handleEnableCommandButton(interaction) {
     } else if (customId === 'enable_rolerequest') {
       featureName = 'Role Request';
       model = RoleRequestConfig;
-      setupCommand = 'Run `/rolerequestadd` to add role request types.';
+      setupCommand = 'Run `/config roles` to add role request types.';
     } else if (customId === 'enable_verification') {
       featureName = 'Verification System';
       model = Verification;
-      setupCommand = 'Run `/verifysystemconfig` to configure.';
+      setupCommand = 'Run `/config verify` to configure.';
     } else if (customId === 'enable_welcome') {
       featureName = 'Welcome System';
       model = Welcome;
-      setupCommand = 'Run `/welcomesystemconfig` to configure.';
+      setupCommand = 'Run `/config welcome` to configure.';
     } else if (customId === 'enable_membermove') {
       featureName = 'Member Movement';
       model = MemberMovementConfig;
-      setupCommand = 'Run `/movemeconfig` to configure and send the Voice Mover panel.';
+      setupCommand = 'Run `/config moveme` to configure and send the Voice Mover panel.';
     }
 
     // Premium gate. Without this the enable panel is a way to switch on a

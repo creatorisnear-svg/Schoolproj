@@ -559,7 +559,7 @@ export async function handleSelectMenu(interaction) {
     return handleRoleplayCommandsEnableMenu(interaction);
   }
 
-  // Enable/disable choice buttons from /enablecommands
+  // Enable/disable choice buttons from /config features
   if (customId === 'choice_enable' || customId === 'choice_disable' || customId === 'choice_done') {
     const { handleEnableChoiceButton } = await import('./enableCommandsHandler.js');
     return handleEnableChoiceButton(interaction);

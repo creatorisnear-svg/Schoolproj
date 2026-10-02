@@ -25,14 +25,14 @@ export async function execute(interaction) {
 
     if (!priority || !priority.enabled) {
       return interaction.reply({
-        embeds: [errorEmbed('Priority tracker is not enabled. Run `/prioritytrackerconfig` first.')],
+        embeds: [errorEmbed('Priority tracker is not enabled. Run `/config priority` first.')],
         flags: 64,
       });
     }
 
     if (!priority.channelId) {
       return interaction.reply({
-        embeds: [errorEmbed('Priority tracker channel is not configured. Use `/prioritytrackerconfig` to set it up.')],
+        embeds: [errorEmbed('Priority tracker channel is not configured. Use `/config priority` to set it up.')],
         flags: 64,
       });
     }
