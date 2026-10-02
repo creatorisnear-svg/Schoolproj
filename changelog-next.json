@@ -1,9 +1,9 @@
 {
-  "version": "1.17.5",
-  "title": "Ending a traffic stop from the radio",
+  "version": "1.17.6",
+  "title": "Traffic stops end the way they should",
   "changes": [
-    "Fixed: \"Dispatch, show me off my 10-11\" on the patrol radio set officers to 10-11 instead of 10-8. Leaving a status now puts you back to 10-8",
-    "With RPM CyberCom, clearing a traffic stop from the patrol radio closes it properly, and anyone still in the stop channel is asked if they want to be moved back",
-    "If you leave a traffic stop channel without clearing the stop, starting your next 10-11 closes the old one instead of saying you are already on one"
+    "When an RPM CyberCom traffic stop ends, everyone in it is moved back to the channel they came from, the person pulled over included. Say no if you want to stay. Before, anyone who did not answer was left in the stop channel",
+    "Anyone in a traffic stop channel, officer or not, can say \"Dispatch, take me back\" (or \"RPM, take me back\") to go back to their channel",
+    "When the dispatcher or a helper bot asks you something, or asks you to say it again, you can answer without saying \"dispatch\" first"
   ]
 }

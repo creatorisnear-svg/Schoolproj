@@ -74,6 +74,8 @@ export async function handleUtterance(session, userId, wav, seconds) {
 
   const kind = session.role === 'civilian' ? 'civilian' : 'police';
   let rest = afterWakeWord(text, kind);
+  // In a traffic stop the civilian may use their own wake word, "RPM".
+  if (rest === null && session.role === 'stop') rest = afterWakeWord(text, 'civilian');
   // The line after "go ahead" is for us even without the wake word.
   const goAhead = session.goAhead || (session.goAhead = new Map());
   const calledAt = goAhead.get(userId);
@@ -92,14 +94,25 @@ export async function handleUtterance(session, userId, wav, seconds) {
     goAhead.set(userId, Date.now());
     return session.speak(`Go ahead, ${speakableName(member.displayName)}.`);
   }
-  return act({ guild, member, role: session.role, intent: parseIntent(rest, session.role), text, reply: (line) => session.speak(line), session });
+  // Asked them something, or to say it again: they answer without the wake
+  // word, the same as after "go ahead". The clock starts once it is heard.
+  const reply = async (line) => {
+    await session.speak(line);
+    if (ASKS_RE.test(line)) goAhead.set(userId, Date.now());
+  };
+  return act({ guild, member, role: session.role, intent: parseIntent(rest, session.role), text, reply, session });
 }
 
 const GO_AHEAD_MS = 12000;
+const ASKS_RE = /\?\s*$|\bsay again\b/i;
 
 /** Do what was asked. reply(text) speaks in the right place and resolves once heard. */
 export async function act({ guild, member, role, intent, text, reply, session = null }) {
   if (intent?.type === 'radio_check') return reply(`${speakableName(member.displayName)}, loud and clear.`);
+  // Anyone in a traffic stop, officer or not.
+  if (intent?.type === 'move_back') {
+    return stops.moveBackFromStop({ guild, member, channelId: session?.channelId || member.voice?.channelId, reply });
+  }
   if (role === 'civilian') {
     if (intent?.type === 'move_to') {
       return stops.moveToPerson({ guild, member, name: intent.name, reply, policeChannelIds: await policeChannels(guild.id) });

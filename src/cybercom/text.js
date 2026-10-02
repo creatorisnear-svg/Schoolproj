@@ -56,6 +56,8 @@ export function yesOrNo(text) {
   if (!t) return null;
   if (/\b(?:no|nah|nope|negative|don't|do not|dont|stay|i'm good|im good|not now|no thanks)\b/.test(t)) return 'no';
   if (/\b(?:yes|yeah|yea|yep|yup|ya|sure|ok|okay|please|affirmative|absolutely|do it|go ahead|move me|alright|of course|copy|10-4)\b/.test(t)) return 'yes';
+  // "Take me back", "send me back", "I want to go back": said to a question about moving back.
+  if (/\b(?:(?:take|put|send|bring|get) me (?:back|out)|go back|back to my channel)\b/.test(t)) return 'yes';
   return null;
 }
 
@@ -91,6 +93,8 @@ export function parseIntent(rest, role) {
   if (!t) return null;
   if (/^(?:help|commands|what can you do|what do you do|how do i use you)\b/.test(t)) return { type: 'help' };
   if (/\b(?:radio check|comms? check|mic check|can you hear me|do you hear me|how copy|how do you copy|testing)\b/.test(t)) return { type: 'radio_check' };
+  // Anyone in a traffic stop channel, officer or not, can ask to go back.
+  if (role === 'stop' && /\b(?:(?:move|take|put|send|bring|get) me (?:back|out)|i want to go back|go back to my channel)\b/.test(t)) return { type: 'move_back' };
 
   if (role === 'civilian') {
     const m = t.match(/\b(?:move|take|put|send|bring|drag) me (?:to|into|in|with|over to) (.+)$/)

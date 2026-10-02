@@ -2011,6 +2011,8 @@ const _notOfficerHeard = new Map();
 // long counts as addressed to dispatch. "Dispatch, over" and "come in" too.
 const _goAhead = new Map(); // `${guildId}:${userId}` → when
 const GO_AHEAD_MS = 12000;
+// A reply that waits for an answer: a question, or "say again".
+const ASKS_RE = /\?\s*$|\bsay again\b/i;
 const JUST_CALLING_RE = /^[\s,.!?]*(?:(?:over|come in|do you copy|you copy)[\s,.!?]*)*$/i;
 async function tellNotAnOfficer(guild, member, wavBuffer) {
   const key = guild.id + ':' + member.id;
@@ -3351,6 +3353,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     // TTS was already generating - just play it now (usually already done)
     await playTTS(ttsPMain, guild.id);
+
+    // Dispatch asked them something (or to say it again): their answer counts
+    // without "dispatch" in front, from when the question has been heard.
+    if (dispatchResponse && ASKS_RE.test(dispatchResponse)) {
+      _goAhead.set(guild.id + ':' + userId, Date.now() + dispatchResponse.length * 70);
+    }
 
     if (isSimpleAck) {
       console.log(`[Dispatch] Skipping TTS for simple ${parsed.code} acknowledgment (saving tokens)`);

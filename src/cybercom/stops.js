@@ -196,42 +196,63 @@ export async function endStop({ guild, member, reply, session }) {
     if (unit) await setStatus(guild, unit, '10-8', {}, null);
   }
 
-  const here = stop.returnTo.filter((r) => guild.members.cache.get(r.userId)?.voice?.channelId === stop.channelId
-    && guild.channels.cache.has(r.channelId));
+  const inStop = (userId) => guild.members.cache.get(userId)?.voice?.channelId === stop.channelId;
+  const here = stop.returnTo.filter((r) => inStop(r.userId) && guild.channels.cache.has(r.channelId));
   const helper = sessionLookup(guild.id, stop.channelId) || (session?.channelId === stop.channelId ? session : null);
   // Cleared from the patrol radio, not from inside the stop: the officer hears
-  // it there, and anyone still in the stop is asked by the helper in it.
+  // it there, and anyone still in the stop is told by the helper in it.
   const fromInside = member.voice?.channelId === stop.channelId;
   if (!fromInside || !here.length) await reply(`Copy ${say(member)}, ten eight.`);
   if (!here.length) return true;
+
+  // Everyone goes back where they came from unless they say no. Asking and
+  // waiting for a yes left whoever did not answer (often the civilian) sitting
+  // in an empty stop channel.
+  const sendBack = async (answers) => {
+    for (const r of here) {
+      if (answers?.get(r.userId) !== 'no' && inStop(r.userId)) await moveMember(guild, r.userId, r.channelId);
+    }
+  };
   if (helper) {
     const asking = helper.ask(here.map((r) => r.userId), fromInside
-      ? 'Copy, ten eight. Would you like to be moved back to your channels?'
-      : 'This ten eleven is over. Would you like to be moved back to your channel?')
-      .then(async (answers) => {
-        for (const r of here) {
-          if (answers.get(r.userId) === 'yes') await moveMember(guild, r.userId, r.channelId);
-        }
-      });
+      ? 'Copy, ten eight. Moving everyone back to their channels. Say no to stay.'
+      : 'This ten eleven is over. Moving you back to your channel. Say no to stay.', BACK_WAIT_MS)
+      .then(sendBack);
     if (fromInside) await asking; else asking.catch(() => {});
     return true;
   }
   if (fromInside) await reply(`Copy ${say(member)}, ten eight.`);
-  const channel = guild.channels.cache.get(stop.channelId);
-  if (channel?.isTextBased?.()) {
-    await channel.send({
-      embeds: [new EmbedBuilder().setColor(0x2d2d2d).setDescription('The traffic stop is over. Press the button to go back to the channel you were in.').setFooter({ text: 'RPM CyberCom' })],
-      components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`cybercom_back_${stop._id}`).setLabel('Move me back').setStyle(ButtonStyle.Primary))],
-    }).catch(() => null);
-  }
+  await sendBack(null);
   return true;
 }
 
+// How long people have to say "no" before everyone is moved back.
+const BACK_WAIT_MS = 8000;
+
+/** The "Move me back" button on messages posted before stops moved everyone back. */
 export async function moveBack(guild, stopId, userId) {
   const stop = await CyberComStop.findById(stopId);
   const entry = stop?.returnTo.find((r) => r.userId === userId);
   if (!entry) return false;
   return moveMember(guild, userId, entry.channelId);
+}
+
+/**
+ * "Dispatch, move me back" from inside a traffic stop channel, by anyone in
+ * it, officer or not: back to where the bot moved them in from, during the
+ * stop or up to half an hour after it ended.
+ */
+export async function moveBackFromStop({ guild, member, channelId, reply }) {
+  const stop = await CyberComStop.findOne({
+    guildId: guild.id, channelId, 'returnTo.userId': member.id,
+    $or: [{ status: OPEN }, { closedAt: { $gte: new Date(Date.now() - 30 * 60000) } }],
+  }).sort({ createdAt: -1 });
+  const entry = stop?.returnTo.find((r) => r.userId === member.id);
+  if (!entry || !guild.channels.cache.has(entry.channelId)) {
+    return reply(`${say(member)}, I don't know which channel you were in before this stop.`);
+  }
+  await reply(`Copy ${say(member)}, moving you back.`);
+  return moveMember(guild, member.id, entry.channelId);
 }
 
 // ── Pursuits ────────────────────────────────────────────────────────────────
