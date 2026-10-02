@@ -550,6 +550,70 @@ export function createDevRouter(client) {
     }
   });
 
+  // ── RPM CyberCom given by hand ──────────────────────────────────────────
+  // For the owner's own servers and for comps. The server sees it exactly as
+  // if it had bought it: /setup says it is on and the AI dispatcher starts.
+  router.get('/cybercom', devAuth, async (req, res) => {
+    try {
+      const { default: CyberComSubscription } = await import('../../models/CyberComSubscription.js');
+      const { allHelpers, helperCount } = await import('../../cybercom/helpers.js');
+      const subs = await CyberComSubscription.find({}).sort({ updatedAt: -1 }).lean();
+      const ready = allHelpers();
+      res.json({
+        helpers: helperCount(),
+        helpersReady: ready.length,
+        servers: subs.map((s) => ({
+          guildId: s.guildId,
+          name: client?.guilds.cache.get(s.guildId)?.name || s.guildId,
+          status: s.status,
+          source: s.source || 'stripe',
+          since: s.createdAt,
+          helpersIn: ready.filter((h) => h.client.guilds.cache.has(s.guildId)).length,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Could not load CyberCom: ' + err.message });
+    }
+  });
+
+  router.post('/cybercom/grant', devAuth, async (req, res) => {
+    const { default: CyberComSubscription } = await import('../../models/CyberComSubscription.js');
+    const { cyberComChanged, sendCyberComWelcome } = await import('../../cybercom/access.js');
+    const gid = String((req.body && req.body.guildId) || '').trim();
+    if (!/^\d{17,20}$/.test(gid)) return res.status(400).json({ error: 'That is not a server ID.' });
+    const guild = client?.guilds.cache.get(gid);
+    if (!guild) return res.status(400).json({ error: 'The bot is not in that server.' });
+    const existing = await CyberComSubscription.findOne({ guildId: gid }).lean();
+    if (existing && existing.source !== 'dev' && ['active', 'trialing', 'past_due', 'cancelling'].includes(existing.status)) {
+      return res.status(409).json({ error: guild.name + ' already pays for RPM CyberCom.' });
+    }
+    await CyberComSubscription.findOneAndUpdate(
+      { guildId: gid },
+      {
+        $set: { status: 'active', source: 'dev', purchasedBy: guild.ownerId || null, stripeSubscriptionId: null, updatedAt: new Date() },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true },
+    );
+    await cyberComChanged(gid);
+    if (!req.body || req.body.notify !== false) sendCyberComWelcome(client, guild.ownerId, guild.name).catch(() => {});
+    console.log('[Dev] RPM CyberCom given to ' + guild.name + ' (' + gid + ')');
+    res.json({ ok: true, name: guild.name });
+  });
+
+  router.post('/cybercom/:guildId/remove', devAuth, async (req, res) => {
+    const { default: CyberComSubscription } = await import('../../models/CyberComSubscription.js');
+    const { cyberComChanged } = await import('../../cybercom/access.js');
+    const sub = await CyberComSubscription.findOne({ guildId: String(req.params.guildId) });
+    if (!sub) return res.status(404).json({ error: 'That server has no CyberCom.' });
+    if (sub.source !== 'dev') return res.status(409).json({ error: 'This server pays through Stripe. Cancel the subscription in Stripe instead.' });
+    sub.status = 'cancelled';
+    sub.updatedAt = new Date();
+    await sub.save();
+    await cyberComChanged(sub.guildId);
+    res.json({ ok: true });
+  });
+
   router.post('/directory/:guildId/hide', devAuth, async (req, res) => {
     const { default: DirectoryListing } = await import('../../models/DirectoryListing.js');
     const { invalidateDirectory } = await import('../../utils/directory.js');

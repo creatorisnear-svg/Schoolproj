@@ -9,7 +9,7 @@ import { recordFunnel } from '../../utils/funnel.js';
 import { attachKeyToGuild } from '../../utils/premiumKeys.js';
 import { CHIP_AMOUNTS, FUND_GOAL_CENTS, applyContribution, fundStatus, dollars } from '../../utils/premiumFund.js';
 import CyberComSubscription from '../../models/CyberComSubscription.js';
-import { cyberComSubscribed, clearCyberComCache, CYBERCOM_PRICE_CENTS } from '../../cybercom/access.js';
+import { cyberComSubscribed, cyberComChanged, sendCyberComWelcome, CYBERCOM_PRICE_CENTS } from '../../cybercom/access.js';
 import {
   premiumContacts, dmUsers,
   paymentFailedMessage, subscriptionEndedMessage, premiumActivatedMessage,
@@ -277,15 +277,6 @@ async function getOrCreateCyberComPrice(stripe) {
   return id;
 }
 
-/**
- * CyberCom started or stopped. It includes the AI dispatcher, so the
- * Premium change event goes out too: index.js re-checks what dispatch may do.
- */
-async function cyberComChanged(guildId) {
-  clearCyberComCache(guildId);
-  const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
-  clearPremiumCache(guildId);
-}
 
 /** Switch CyberCom on from a completed checkout. Idempotent: webhook and success page both call it. */
 export async function applyCyberComFromSession(session, ctx = {}) {
@@ -312,12 +303,7 @@ export async function applyCyberComFromSession(session, ctx = {}) {
   if (fresh) {
     console.log('[CyberCom] subscription started for ' + m.guildId + ' (session ' + session.id + ')');
     recordFunnel({ kind: 'paid', guildId: m.guildId, userId: buyer, plan: 'cybercom', source: clip(m.source, 40) });
-    if (client && buyer) {
-      const { EmbedBuilder } = await import('discord.js');
-      dmUsers(client, [buyer], { embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('RPM CyberCom is on')
-        .setDescription('**' + guildName + '** has RPM CyberCom.\n\nNext, in your server: run `/setup` and open **RPM CyberCom**. Add the helper bots there, then pick your civilian, traffic stop and police radio channels.')
-        .setFooter({ text: 'RPM' })] }).catch(() => {});
-    }
+    sendCyberComWelcome(client, buyer, guildName).catch(() => {});
   }
   return { guildId: m.guildId, guildName, fresh };
 }

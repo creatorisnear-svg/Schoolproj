@@ -351,6 +351,7 @@
       <button class="tab" onclick="switchTab('stripe')">Stripe Testing</button>
       <button class="tab" onclick="switchTab('verified')">Verified Members</button>
       <button class="tab" onclick="switchTab('directory')">Directory</button>
+      <button class="tab" onclick="switchTab('cybercom')">CyberCom</button>
     </div>
   </div>
 
@@ -635,6 +636,23 @@
     </div>
   </div>
 
+  <div id="panel-cybercom" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">Give a server RPM CyberCom</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">It works exactly as if the server bought it: <code>/setup</code> shows it as on, the AI dispatcher switches on, and nothing tells the server it was given. Find a server's ID by right clicking its icon in Discord and pressing Copy Server ID.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input id="cc-guild" class="form-input" placeholder="Server ID" style="flex:1;min-width:220px;">
+        <label style="font-size:12.5px;color:#aaa;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="cc-notify" checked> Send the owner the "RPM CyberCom is on" message</label>
+        <button class="btn btn-primary" onclick="grantCyberCom()">Give CyberCom</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">Servers with RPM CyberCom</div>
+      <div id="cc-helpers" style="color:#7a818e;font-size:12.5px;margin-bottom:10px;"></div>
+      <div id="cc-list"><div style="color:#7a818e;font-size:13px;">Loading...</div></div>
+    </div>
+  </div>
+
   <div id="panel-verified" class="panel">
     <div class="card" style="margin-bottom:20px;">
       <div class="section-label" style="margin-bottom:14px;">Select Server</div>
@@ -692,7 +710,7 @@
 </div>
 
 <script>
-  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory'];
+  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory', 'cybercom'];
 
   function funnelStat(label, value, hint, tone) {
     var colour = tone === 'good' ? '#34d399' : tone === 'bad' ? '#f87171' : '#e8eaed';
@@ -794,6 +812,49 @@
     }).then(function () { loadDirectory(); });
   }
 
+  function loadCyberCom() {
+    fetch('/dev/cybercom', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { document.getElementById('cc-list').innerHTML = '<div style="color:#f87171;font-size:13px;">' + esc(d.error) + '</div>'; return; }
+      document.getElementById('cc-helpers').textContent = d.helpers
+        ? d.helpersReady + ' of ' + d.helpers + ' helper bots are online.'
+        : 'No helper bots are set up yet: add their tokens to VOICE_HELPER_TOKENS on Koyeb.';
+      var th = 'style="text-align:left;font-weight:500;"';
+      document.getElementById('cc-list').innerHTML = (d.servers || []).length
+        ? '<table style="width:100%;font-size:12.5px;border-collapse:collapse;"><tr style="color:#7a818e;"><th ' + th + '>Server</th><th ' + th + '>Status</th><th ' + th + '>How</th><th ' + th + '>Helpers added</th><th></th></tr>'
+          + d.servers.map(function (s) {
+            var on = ['active', 'trialing', 'past_due', 'cancelling'].indexOf(s.status) !== -1;
+            return '<tr><td>' + esc(s.name) + '</td><td>' + (on ? 'On' : 'Off') + (s.status === 'cancelling' ? ' (ends soon)' : '') + '</td><td>' + (s.source === 'dev' ? 'Given' : 'Bought') + '</td><td>' + s.helpersIn + '</td><td style="text-align:right;">'
+              + (s.source === 'dev' && on ? '<button class="btn" style="font-size:12px;padding:4px 10px;" onclick="removeCyberCom(\'' + esc(s.guildId) + '\')">Remove</button>' : '')
+              + '</td></tr>';
+          }).join('') + '</table>'
+        : '<div style="color:#7a818e;font-size:13px;">No server has RPM CyberCom yet.</div>';
+    }).catch(function (err) {
+      document.getElementById('cc-list').innerHTML = '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
+    });
+  }
+
+  function grantCyberCom() {
+    var id = document.getElementById('cc-guild').value.trim();
+    if (!id) { showAlert('Enter a server ID first.', 'error'); return; }
+    fetch('/dev/cybercom/grant', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId: id, notify: document.getElementById('cc-notify').checked })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { showAlert(d.error, 'error'); return; }
+      showAlert('RPM CyberCom is on for ' + d.name + '.', 'success');
+      document.getElementById('cc-guild').value = '';
+      loadCyberCom();
+    }).catch(function () { showAlert('Could not reach the server.', 'error'); });
+  }
+
+  function removeCyberCom(guildId) {
+    if (!confirm('Take RPM CyberCom off this server?')) return;
+    fetch('/dev/cybercom/' + guildId + '/remove', { method: 'POST', credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.error) showAlert(d.error, 'error'); loadCyberCom(); });
+  }
+
   function resolveReport(id) {
     fetch('/dev/directory/reports/' + id + '/resolve', { method: 'POST', credentials: 'same-origin' }).then(function () { loadDirectory(); });
   }
@@ -870,6 +931,7 @@
     if (name === 'keys') loadKeys();
     if (name === 'verified') initVerifiedTab();
     if (name === 'directory') loadDirectory();
+    if (name === 'cybercom') loadCyberCom();
   }
 
   function showAlert(msg, type) {

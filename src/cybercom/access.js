@@ -28,3 +28,23 @@ export async function isCyberComActive(guildId) {
 export function clearCyberComCache(guildId) {
   if (guildId) cache.delete(guildId); else cache.clear();
 }
+
+/**
+ * CyberCom started or stopped. It includes the AI dispatcher, so the Premium
+ * change event goes out too: index.js re-checks what dispatch may do there.
+ */
+export async function cyberComChanged(guildId) {
+  clearCyberComCache(guildId);
+  const { clearPremiumCache } = await import('../utils/premiumCheck.js');
+  clearPremiumCache(guildId);
+}
+
+/** The message a buyer gets: what to do next. */
+export async function sendCyberComWelcome(client, userId, guildName) {
+  if (!client || !userId) return;
+  const { EmbedBuilder } = await import('discord.js');
+  const { dmUsers } = await import('../utils/premiumNotify.js');
+  await dmUsers(client, [userId], { embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('RPM CyberCom is on')
+    .setDescription('**' + (guildName || 'Your server') + '** has RPM CyberCom.\n\nNext, in your server: run `/setup` and open **RPM CyberCom**. Add the helper bots there, then pick your civilian, traffic stop and police radio channels.')
+    .setFooter({ text: 'RPM' })] }).catch(() => {});
+}
