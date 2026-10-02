@@ -762,7 +762,6 @@ function renderDispatchExtras(data) {
   }).join('');
 
   var patrolCount = (data.currentPatrolChannels || []).length;
-  var trafficCount = (data.currentTrafficChannels || []).length;
   var leoCount = (data.leoRoles || []).length;
 
   html += '<div class="config-section" style="margin-top:14px;background:rgba(88,101,242,0.03);">' +
@@ -775,14 +774,13 @@ function renderDispatchExtras(data) {
     dispatchStep('4', 'Set a dispatch channel', 'AI responses and logs are posted in this text channel', null) +
     '</div>' +
     '<div style="font-size:12px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:10px;width:100%;">' +
-    'Officers speak 10-codes (e.g. "10-11 traffic stop") into patrol voice channels - the bot transcribes the audio, ' +
-    'generates an AI dispatcher reply, and reads it back in the channel. On a 10-11, the officer is automatically moved to a traffic stop channel.' +
+    'Officers speak 10-codes into patrol voice channels. The bot transcribes the audio, ' +
+    'generates an AI dispatcher reply, and reads it back in the channel. Traffic stop channels are part of RPM CyberCom: set them in /setup under RPM CyberCom in Discord.' +
     '</div>' +
     '</div></div>';
 
   var statusItems = [
     { label: 'Patrol channels', count: patrolCount, ok: patrolCount > 0 },
-    { label: 'Traffic stop channels', count: trafficCount, ok: true },
     { label: 'LEO roles', count: leoCount, ok: leoCount > 0 },
   ];
   html += '<div class="config-section" style="margin-top:14px;">' +
@@ -814,24 +812,6 @@ function renderDispatchExtras(data) {
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
     '<select class="config-select" id="patrol-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
     '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'patrol\')">Add</button>' +
-    '</div></div></div>';
-
-  html += '<div class="config-section" style="margin-top:14px;">' +
-    '<div class="config-section-header"><h3>Traffic Stop Channels</h3>' +
-    '<span style="font-size:11px;color:var(--text-dim);">Officers auto-moved here on 10-11</span></div>';
-
-  var trafficTags = (data.currentTrafficChannels || []).map(function(id) {
-    var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
-    var name = ch ? ch.label : id;
-    return '<span class="channel-tag">' + esc(name) +
-      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'traffic\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
-  }).join('');
-
-  html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
-    '<div class="channel-tags" id="traffic-tags">' + (trafficTags || '<span style="font-size:12px;color:var(--text-dim);">Optional - officers move here when they call a 10-11.</span>') + '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-    '<select class="config-select" id="traffic-channel-select"><option value="">Select a voice channel...</option>' + voiceOpts + '</select>' +
-    '<button class="btn btn-secondary btn-sm" onclick="addDispatchChannel(\'traffic\')">Add</button>' +
     '</div></div></div>';
 
   html += '<div class="config-section" style="margin-top:14px;">' +
@@ -881,15 +861,14 @@ window._dispatchState = {};
 function initDispatchState(data) {
   window._dispatchState = {
     patrolChannelIds: (data.currentPatrolChannels || []).slice(),
-    trafficStopChannelIds: (data.currentTrafficChannels || []).slice(),
     leoRoleIds: (data.leoRoles || []).slice()
   };
 }
 
 function addDispatchChannel(type) {
-  var selectId = type === 'leo' ? 'leo-role-select' : (type === 'patrol' ? 'patrol-channel-select' : 'traffic-channel-select');
-  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
-  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  var selectId = type === 'leo' ? 'leo-role-select' : 'patrol-channel-select';
+  var tagsId   = type === 'leo' ? 'leo-tags' : 'patrol-tags';
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : 'patrolChannelIds';
   var sel = document.getElementById(selectId);
   if (!sel || !sel.value) { toast('Please select a ' + (type === 'leo' ? 'role' : 'channel') + ' first', 'error'); return; }
   var id = sel.value;
@@ -913,8 +892,8 @@ function addDispatchChannel(type) {
 }
 
 function removeDispatchChannel(type, id) {
-  var tagsId   = type === 'leo' ? 'leo-tags' : (type === 'patrol' ? 'patrol-tags' : 'traffic-tags');
-  var fieldKey = type === 'leo' ? 'leoRoleIds' : (type === 'patrol' ? 'patrolChannelIds' : 'trafficStopChannelIds');
+  var tagsId   = type === 'leo' ? 'leo-tags' : 'patrol-tags';
+  var fieldKey = type === 'leo' ? 'leoRoleIds' : 'patrolChannelIds';
   if (!window._dispatchState[fieldKey]) {
     window._dispatchState[fieldKey] = JSON.parse(JSON.stringify(pendingChanges[fieldKey] || []));
   }

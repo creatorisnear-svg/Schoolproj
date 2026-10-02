@@ -743,14 +743,11 @@ export async function handleSelectMenu(interaction) {
   if (customId === 'dispatch_leo_role_select') {
     return handleDispatchLeoRoleSelect(interaction);
   }
-  if (customId === 'dispatch_stop_channel_select') {
-    return handleDispatchStopChannelSelect(interaction);
+  if (customId === 'dispatch_stop_channel_select' || customId === 'dispatch_remove_stop_select') {
+    return trafficStopsMoved(interaction);
   }
   if (customId === 'dispatch_remove_patrol_select') {
     return handleDispatchRemovePatrolSelect(interaction);
-  }
-  if (customId === 'dispatch_remove_stop_select') {
-    return handleDispatchRemoveStopSelect(interaction);
   }
 
 }
@@ -2757,8 +2754,6 @@ function buildDispatchSetupMenu() {
         { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
         { label: 'Set LEO Role(s)', value: 'set_leo_roles', description: 'Roles the bot will listen to in patrol channels' },
         { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
-        { label: 'Add Traffic Stop Channel', value: 'add_stop_channel', description: 'Add a voice channel officers are moved to during 10-11' },
-        { label: 'Remove Traffic Stop Channel', value: 'remove_stop_channel', description: 'Remove a traffic stop channel' },
         { label: 'Turn Dispatch On', value: 'enable_system', description: 'Start 911 read-outs, and with Premium the AI dispatcher' },
         { label: 'Turn Dispatch Off', value: 'disable_system', description: 'Stop dispatch and leave the voice channel' },
         { label: 'Toggle AI Responses', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
@@ -2817,37 +2812,7 @@ async function handleDispatchSetupMenu(interaction) {
       });
     }
 
-    if (choice === 'add_stop_channel') {
-      const selector = new ChannelSelectMenuBuilder()
-        .setCustomId('dispatch_stop_channel_select')
-        .setPlaceholder('Select a traffic stop voice channel to add...')
-        .setChannelTypes(ChannelType.GuildVoice);
-      return interaction.update({
-        embeds: [menuEmbed('AI Dispatch Setup', 'Select the **voice channel** officers will be moved to when they call a **10-11** (traffic stop).')],
-        components: [new ActionRowBuilder().addComponents(selector)],
-      });
-    }
-
-    if (choice === 'remove_stop_channel') {
-      const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
-      if (!config?.trafficStopChannelIds?.length) {
-        return interaction.update({
-          embeds: [errorEmbed('No traffic stop channels are configured yet.')],
-          components: [buildDispatchSetupMenu()],
-        });
-      }
-      const selector = new StringSelectMenuBuilder()
-        .setCustomId('dispatch_remove_stop_select')
-        .setPlaceholder('Select a channel to remove...')
-        .addOptions(config.trafficStopChannelIds.map(id => ({
-          label: `#${interaction.guild.channels.cache.get(id)?.name ?? id}`,
-          value: id,
-        })));
-      return interaction.update({
-        embeds: [menuEmbed('Remove Traffic Stop Channel', 'Select the traffic stop channel you want to remove.')],
-        components: [new ActionRowBuilder().addComponents(selector)],
-      });
-    }
+    if (choice === 'add_stop_channel' || choice === 'remove_stop_channel') return trafficStopsMoved(interaction);
 
     // Explicit on and off. Step 5 used to be a toggle, and since step 1
     // already switches dispatch on, following the steps in order switched it
@@ -2942,9 +2907,9 @@ async function handleDispatchSetupMenu(interaction) {
       const patrol = config.patrolChannelIds.length > 0
         ? config.patrolChannelIds.map(id => `<#${id}>`).join(', ')
         : '*None*';
-      const stopCh = config.trafficStopChannelIds?.length > 0
+      const stopCh = (config.trafficStopChannelIds?.length > 0
         ? config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ')
-        : '*None*';
+        : '*None*') + '\nSet in `/setup` under RPM CyberCom.';
       const leoRoles = config.leoRoleIds?.length > 0
         ? config.leoRoleIds.map(id => `<@&${id}>`).join(', ')
         : '*Not set (using CAD config)*';
@@ -3030,29 +2995,10 @@ async function handleDispatchPatrolChannelSelect(interaction) {
       await config.save();
     }
 
-    try {
-      const channel = interaction.guild.channels.cache.get(channelId);
-      if (channel) {
-        const { addPatrolChannel, moveToChannel, getDispatchState } = await import('../utils/voiceListener.js');
-        const { processVoiceCall } = await import('./dispatchHandler.js');
-        const CADConfig = (await import('../models/CADConfig.js')).default;
-        const cadConfig = await CADConfig.findOne({ guildId: interaction.guildId });
-        const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
-
-        const options = {
-          onTranscription: (wav, uid) => processVoiceCall(wav, uid, interaction.guild, null),
-          userFilter: async () => true,
-        };
-
-        addPatrolChannel(interaction.guildId, channelId, options);
-
-        if (config.enabled && !getDispatchState(interaction.guildId)?.connection) {
-          await moveToChannel(channel);
-        }
-      }
-    } catch (joinErr) {
-      console.error('[Dispatch] Failed to register patrol channel:', joinErr.message);
-    }
+    // Not awaited: joining a channel can take longer than Discord waits for an answer.
+    const { applyPatrolChannels } = await import('./dispatchHandler.js');
+    applyPatrolChannels(interaction.guild, interaction.client)
+      .catch((joinErr) => console.error('[Dispatch] Failed to register patrol channel:', joinErr.message));
 
     const list = config.patrolChannelIds.map(id => `<#${id}>`).join(', ');
     return interaction.update({
@@ -3084,47 +3030,15 @@ async function handleDispatchLeoRoleSelect(interaction) {
   }
 }
 
-async function handleDispatchStopChannelSelect(interaction) {
-  try {
-    const channelId = interaction.values[0];
-    const config = await DispatchConfig.findOne({ guildId: interaction.guildId }) || new DispatchConfig({ guildId: interaction.guildId });
-    if (!config.trafficStopChannelIds.includes(channelId)) {
-      config.trafficStopChannelIds.push(channelId);
-      config.markModified('trafficStopChannelIds');
-      await config.save();
-    }
-    const list = config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ');
-    return interaction.update({
-      embeds: [successEmbed('Traffic Stop Channel Added', `<#${channelId}> added as a traffic stop channel.\n\n**Current traffic stop channels:** ${list}\n\nSelect your next option below.`)],
-      components: [buildDispatchSetupMenu()],
-    });
-  } catch (err) {
-    console.error('[Dispatch] Stop channel select error:', err.message);
-    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
-  }
-}
-
-async function handleDispatchRemoveStopSelect(interaction) {
-  try {
-    const channelId = interaction.values[0];
-    const config = await DispatchConfig.findOne({ guildId: interaction.guildId });
-    if (!config) return interaction.update({ embeds: [errorEmbed('No dispatch config found.')], components: [buildDispatchSetupMenu()] });
-
-    config.trafficStopChannelIds = config.trafficStopChannelIds.filter(id => id !== channelId);
-    config.markModified('trafficStopChannelIds');
-    await config.save();
-
-    const remaining = config.trafficStopChannelIds.length > 0
-      ? config.trafficStopChannelIds.map(id => `<#${id}>`).join(', ')
-      : '*None*';
-    return interaction.update({
-      embeds: [successEmbed('Traffic Stop Channel Removed', `<#${channelId}> has been removed.\n\n**Remaining traffic stop channels:** ${remaining}\n\nSelect your next option below.`)],
-      components: [buildDispatchSetupMenu()],
-    });
-  } catch (err) {
-    console.error('[Dispatch] Remove stop channel error:', err.message);
-    return interaction.reply({ embeds: [errorEmbed('An error occurred. Please try again.')], flags: 64 }).catch(() => {});
-  }
+/**
+ * Traffic stop channels are part of RPM CyberCom and set there. This answers
+ * the old options on dispatch menus that are still on screen.
+ */
+function trafficStopsMoved(interaction) {
+  return interaction.update({
+    embeds: [infoEmbed('Traffic Stop Channels', 'Traffic stop channels are set in `/setup` under **RPM CyberCom** now.\n\nSelect your next option below.')],
+    components: [buildDispatchSetupMenu()],
+  });
 }
 
 async function handleDispatchRemovePatrolSelect(interaction) {

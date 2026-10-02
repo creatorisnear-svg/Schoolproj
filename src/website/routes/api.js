@@ -1378,7 +1378,8 @@ export function createApiRouter(client) {
 
         case 'dispatch': {
           const { default: DispatchConfig } = await import('../../models/DispatchConfig.js');
-          const allowed = ['aiEnabled', 'dispatchChannelId', 'statusBoardChannelId', 'patrolChannelIds', 'trafficStopChannelIds', 'leoRoleIds'];
+          // Traffic stop channels are set in RPM CyberCom (/setup), not here.
+          const allowed = ['aiEnabled', 'dispatchChannelId', 'statusBoardChannelId', 'patrolChannelIds', 'leoRoleIds'];
           const update = {};
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
@@ -1391,11 +1392,8 @@ export function createApiRouter(client) {
           await DispatchConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           // Reload bot dispatch state in-process so patrol channels / LEO roles take effect immediately
           try {
-            const dc = await DispatchConfig.findOne({ guildId: guild.id });
-            if (dc?.enabled) {
-              const { initDispatchForGuild } = await import('../../handlers/dispatchHandler.js');
-              await initDispatchForGuild(guild, client);
-            }
+            const { applyPatrolChannels } = await import('../../handlers/dispatchHandler.js');
+            await applyPatrolChannels(guild, client);
           } catch (e) { console.error('[Dashboard] dispatch reload on settings save:', e.message); }
           break;
         }

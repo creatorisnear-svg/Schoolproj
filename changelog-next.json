@@ -1,12 +1,11 @@
 {
-  "version": "1.17.0",
-  "title": "RPM CyberCom: a bot in every voice channel",
+  "version": "1.17.1",
+  "title": "Dispatch fixes and a simpler RPM CyberCom setup",
   "changes": [
-    "New: RPM CyberCom, $9.99 a month, with or without Premium. Officers say \"Dispatch, show me on a 10-11 with\" and a name: the bot moves them to a free traffic stop channel and asks the other person if they want to be moved in. Plates and names can be run inside the stop, and \"Dispatch, show me off my 10-11\" offers to move everyone back where they were",
-    "RPM CyberCom includes the AI voice dispatcher on your police radio, the same one Premium has: it listens, answers, runs plates and names and keeps the status board",
-    "With RPM CyberCom, a 10-80 from a traffic stop goes out on the police radio, and units say \"Dispatch, attach me to the 10-80\" to be moved straight there. Every status change shows in the CAD and on the status board",
-    "With RPM CyberCom, civilians say \"RPM, move me to\" and a name to join someone's voice channel, and \"RPM help\" to hear what it can do",
-    "New for staff: /voicemoderation shows what was said in a voice channel on any of the last 14 days, for everyone or one member. The bots tell people a channel is transcribed when they join it",
-    "Set it up in /setup under RPM CyberCom: add the helper bots and pick your civilian, traffic stop and police radio channels"
+    "Fixed: the AI dispatcher sometimes stayed silent after a server got Premium, a trial or RPM CyberCom, until the bot restarted. It now starts listening straight away",
+    "Dispatch no longer ignores people without the officer role. When they say \"dispatch\", it tells them only officers can talk to dispatch. Saying \"dispatch\" in a civilian channel tells you to start with \"RPM\" there instead",
+    "RPM CyberCom in /setup now shows why dispatch might not answer: no police radio channels, no dispatch channel, the bot missing voice permissions, or you not having the officer role",
+    "Police radio channels in RPM CyberCom are the same channels as the patrol channels in AI Voice Dispatch. Set them once, in either place, and they show in both",
+    "Traffic stop channels are now set only in /setup under RPM CyberCom. They are no longer in the AI Voice Dispatch setup or on the dashboard"
   ]
 }

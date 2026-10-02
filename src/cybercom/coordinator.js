@@ -11,10 +11,11 @@ import { setMainClient, setSessionLookup } from './stops.js';
  * covers, a free helper joins it; when the channel has been empty for 15
  * seconds, the helper leaves and is free for another channel.
  *
- * Covered channels: civilian channels and extra police radios
- * (CyberComConfig), and traffic stop channels (DispatchConfig). The
- * dispatcher's own patrol channels are the main bot's: CyberCom includes
- * the AI dispatcher, with or without Premium.
+ * Covered channels: civilian channels (CyberComConfig) and traffic stop
+ * channels (DispatchConfig). The police radio channels are the dispatcher's
+ * patrol channels and the main bot's: CyberCom includes the AI dispatcher,
+ * with or without Premium. Radios picked before the two were one list are
+ * still covered by a helper until the owner next saves the radio menu.
  */
 
 const sessions = new Map();     // `${guildId}:${channelId}` → Session

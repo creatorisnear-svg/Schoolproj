@@ -1261,7 +1261,7 @@ client.once('clientReady', async () => {
     // DB not connected or no cooldowns - safe to ignore
   }
 
-  // RPM CyberCom: the helper bots in civilian, traffic stop and extra radio channels.
+  // RPM CyberCom: the helper bots in civilian and traffic stop channels.
   import('./cybercom/coordinator.js').then((m) => m.startCyberCom(client))
     .catch((err) => console.error('[CyberCom] could not start:', err.message));
 

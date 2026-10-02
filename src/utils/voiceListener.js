@@ -697,10 +697,13 @@ export async function moveToChannel(channel) {
 }
 
 function _setupReceiver(connection, guild, state, guildId) {
-  const { onTranscription, userFilter } = state.options;
   const receiver = connection.receiver;
 
   receiver.speaking.on('start', async (userId) => {
+    // Read each time, not once per connection: a server that starts a trial,
+    // buys Premium or gets RPM CyberCom while the bot is already in the channel
+    // kept the free listener, which lets nobody through, until it reconnected.
+    const { onTranscription, userFilter } = state.options || {};
     if (userId === guild.client?.user?.id) return;
     // Other bots too: RPM CyberCom's helpers speak in the dispatcher's voice.
     if (guild.members.cache.get(userId)?.user?.bot) return;

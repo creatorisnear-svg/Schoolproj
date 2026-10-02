@@ -1985,6 +1985,31 @@ async function generateDispatchResponse(officerName, parsed, guildId, fullVoiceC
 // officer's mic key landing as two near-identical transcriptions.
 const _lastAIResponseTime = new Map(); // `${guildId}:${userId}` → timestamp
 
+/**
+ * Someone without an officer role said "dispatch" on the radio. They used to
+ * get silence, which looks exactly like the bot being broken (an owner testing
+ * without the role). Heard at most once a minute each and told at most every
+ * 10 minutes, so a civilian sitting in a patrol channel costs next to nothing.
+ */
+const _notOfficerHeard = new Map();
+async function tellNotAnOfficer(guild, member, wavBuffer) {
+  const key = guild.id + ':' + member.id;
+  const now = Date.now();
+  const last = _notOfficerHeard.get(key) || { heard: 0, told: 0 };
+  if (now - last.heard < 60000 || now - last.told < 10 * 60000) return;
+  _notOfficerHeard.set(key, { heard: now, told: last.told });
+  if (_notOfficerHeard.size > 2000) _notOfficerHeard.clear();
+
+  const text = await transcribeAudio(wavBuffer).catch(() => '');
+  const { afterWakeWord } = await import('../cybercom/text.js');
+  if (afterWakeWord(text || '', 'police') === null) return;
+  _notOfficerHeard.set(key, { heard: now, told: now });
+  console.log(`[Dispatch] ${member.displayName} said dispatch but has no officer role`);
+  const name = cleanNameForTTS(member.displayName || member.user.username);
+  const { playDispatchVoice } = await import('../utils/voiceListener.js');
+  playDispatchVoice(guild.id, await generateDispatchTTS(`${name}, only officers can talk to dispatch. Ask your staff for the officer role.`));
+}
+
 export async function processVoiceCall(wavBuffer, userId, guild, client, opts = {}) {
   try {
     /* Run the three independent lookups in parallel instead of sequentially */
@@ -1999,7 +2024,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
     const leoRoleIds = config.leoRoleIds?.length > 0 ? config.leoRoleIds : (cadConfig?.leoRoleIds ?? []);
     const isLeo = leoRoleIds.length === 0 || member.roles.cache.some(r => leoRoleIds.includes(r.id));
-    if (!isLeo) return;
+    if (!isLeo) {
+      tellNotAnOfficer(guild, member, wavBuffer).catch(() => {});
+      return;
+    }
 
     // A fair monthly allowance, checked before anything is sent to be
     // transcribed, so one very busy server cannot run up a bill its $5 does
@@ -4895,6 +4923,38 @@ export async function refreshDispatchTier(guild, client) {
   return true;
 }
 
+/**
+ * The patrol channels changed: in AI Voice Dispatch setup, on the dashboard,
+ * or as the police radio channels in RPM CyberCom (the same list). Starts the
+ * dispatcher in the tier the server has. The setup menu used to hand the bot
+ * the full AI listener here whatever the tier, so a free server that added a
+ * patrol channel got paid AI dispatch until the next restart.
+ */
+export async function applyPatrolChannels(guild, client) {
+  const config = await DispatchConfig.findOne({ guildId: guild.id });
+  if (!config) return;
+  // A police radio is not also a traffic stop or a civilian channel.
+  const patrol = config.patrolChannelIds || [];
+  if (patrol.length) {
+    if ((config.trafficStopChannelIds || []).some((c) => patrol.includes(c))) {
+      config.trafficStopChannelIds = config.trafficStopChannelIds.filter((c) => !patrol.includes(c));
+      await config.save();
+    }
+    const { default: CyberComConfig } = await import('../models/CyberComConfig.js');
+    await CyberComConfig.updateOne({ guildId: guild.id }, { $pull: { civilianChannelIds: { $in: patrol }, radioChannelIds: { $in: patrol } } });
+  }
+  const { forgetConfig } = await import('../cybercom/coordinator.js');
+  forgetConfig(guild.id);
+  if (!config.enabled) return;
+  if (!(config.patrolChannelIds || []).length) {
+    const { leaveDispatchChannel } = await import('../utils/voiceListener.js');
+    leaveDispatchChannel(guild.id);
+    dispatchTier.delete(guild.id);
+    return;
+  }
+  await initDispatchForGuild(guild, client);
+}
+
 /** Once a month, say in the dispatch channel that the voice allowance is used. */
 async function noticeAllowanceUsed(guild, config) {
   if (!(await claimAllowanceNotice(guild.id))) return;
@@ -4963,8 +5023,11 @@ export async function initDispatchForGuild(guild, client) {
 
     // Only the paid tier takes up residence. On the free tier the bot joins
     // when there is a 911 to read out and leaves again afterwards, so there is
-    // nothing to do here.
-    if (fullDispatch) {
+    // nothing to do here. Already in one of the patrol channels: stay there
+    // rather than hop to the first one on the list.
+    const { getCurrentChannelId } = await import('../utils/voiceListener.js');
+    const here = getCurrentChannelId(guild.id);
+    if (fullDispatch && !(here && config.patrolChannelIds.includes(here))) {
       for (const channelId of config.patrolChannelIds) {
         const channel = guild.channels.cache.get(channelId) ||
           await guild.channels.fetch(channelId).catch(() => null);

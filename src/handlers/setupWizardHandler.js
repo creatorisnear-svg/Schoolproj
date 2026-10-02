@@ -458,7 +458,8 @@ export const moduleResponses = {
             '`2.` Set Status Board Channel · text channel for the live status board\n' +
             '`3.` Add Patrol Voice Channel · voice channel(s) the bot sits in\n' +
             '`4.` Set LEO Role(s) · so the bot knows whose channel to join\n' +
-            '`5.` Turn Dispatch On · once the steps above are done' +
+            '`5.` Turn Dispatch On · once the steps above are done\n\n' +
+            '-# Traffic stop channels are part of RPM CyberCom: set them in `/setup` under RPM CyberCom. The patrol channels here are its police radio channels too.' +
             warning
           )
           .setFooter({ text: 'RPM · run /setup to go back' }),
@@ -482,7 +483,6 @@ export const moduleResponses = {
               { label: '2. Set Status Board Channel', description: 'Text channel for the live officer status board', value: 'set_status_channel' },
               { label: '3. Add Patrol Voice Channel', description: 'Voice channel the bot will listen and talk in', value: 'add_patrol_channel' },
               { label: '4. Set LEO Role(s)', description: 'Roles the bot will listen to in patrol channels', value: 'set_leo_roles' },
-              { label: 'Set Traffic Stop Channel', description: 'Voice channel officers are moved to on 10-11', value: 'add_stop_channel' },
               { label: '5. Turn Dispatch On', description: 'Start 911 read-outs, and with Premium the AI dispatcher', value: 'enable_system' },
               { label: 'Turn Dispatch Off', description: 'Stop dispatch and leave the voice channel', value: 'disable_system' },
               { label: 'Toggle AI Responses', description: 'Enable or disable AI-generated dispatcher replies', value: 'toggle_ai' },
@@ -626,7 +626,7 @@ moduleResponses.directory = async (interaction) => {
 // RPM CyberCom: the paid voice add-on.
 moduleResponses.cybercom = async (interaction) => {
   const { cyberComView } = await import('./cybercomSetupHandler.js');
-  return interaction.update(await cyberComView(interaction.guild));
+  return interaction.update(await cyberComView(interaction.guild, '', interaction.member));
 };
 
 moduleResponses.safetynetwork = async (interaction) => {

@@ -263,7 +263,6 @@ export async function handleBackToMenu(interaction) {
               { label: 'Set Dispatch Channel', value: 'set_dispatch_channel', description: 'Text channel for AI dispatch logs and responses' },
               { label: 'Set Status Board Channel', value: 'set_status_channel', description: 'Text channel for the live officer status board' },
               { label: 'Add Patrol Voice Channel', value: 'add_patrol_channel', description: 'Voice channel the bot will listen to' },
-              { label: 'Set Traffic Stop Channel', value: 'add_stop_channel', description: 'Voice channel officers are moved to during 10-11' },
               { label: 'Toggle AI Dispatch', value: 'toggle_ai', description: 'Enable or disable AI-generated dispatcher responses' },
               { label: 'View Settings', value: 'view_settings', description: 'See current configuration' },
               { label: 'Finish Setup', value: 'setup_done', description: 'Close the setup menu' }

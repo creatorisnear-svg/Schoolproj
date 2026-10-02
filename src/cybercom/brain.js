@@ -37,6 +37,15 @@ async function policeChannels(guildId) {
   return [...(dc?.patrolChannelIds || []), ...(dc?.trafficStopChannelIds || []), ...(cc?.radioChannelIds || [])];
 }
 
+// Explaining why something was not done, at most every 10 minutes per person.
+const nudged = new Map();
+function nudgeOnce(key, everyMs = 10 * 60000) {
+  if (Date.now() - (nudged.get(key) || 0) < everyMs) return false;
+  nudged.set(key, Date.now());
+  if (nudged.size > 2000) nudged.clear();
+  return true;
+}
+
 /** Speech heard by a helper. */
 export async function handleUtterance(session, userId, wav, seconds) {
   const guild = stops.mainGuild(session.guildId);
@@ -65,7 +74,13 @@ export async function handleUtterance(session, userId, wav, seconds) {
 
   const kind = session.role === 'civilian' ? 'civilian' : 'police';
   const rest = afterWakeWord(text, kind);
-  if (rest === null) return;
+  if (rest === null) {
+    // "Dispatch" said in a civilian channel: say how this channel works rather than go quiet.
+    if (kind === 'civilian' && afterWakeWord(text, 'police') !== null && nudgeOnce(guild.id + ':' + userId + ':civilian')) {
+      return session.speak('In this channel, say R P M first. Dispatch is for the police radio and traffic stops.');
+    }
+    return;
+  }
   return act({ guild, member, role: session.role, intent: parseIntent(rest, kind), text, reply: (line) => session.speak(line), session });
 }
 
@@ -79,8 +94,11 @@ export async function act({ guild, member, role, intent, text, reply, session = 
     return reply('Sorry, I didn\'t catch that. Say R P M help for commands.');
   }
 
-  // Police commands are for officers.
-  if (!(await stops.isLeo(guild, member))) return null;
+  // Police commands are for officers. Others are told, once in a while, rather than ignored.
+  if (!(await stops.isLeo(guild, member))) {
+    if (nudgeOnce(guild.id + ':' + member.id + ':leo')) return reply('Only officers can talk to dispatch. Ask your staff for the officer role.');
+    return null;
+  }
   switch (intent?.type) {
     case 'help': return reply(HELP[role] || HELP.radio);
     case 'stop_start': return stops.startStop({ guild, officer: member, subjectName: intent.name, said: text, reply });

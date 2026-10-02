@@ -18,8 +18,35 @@ import { TRANSCRIPT_DAYS } from '../models/VoiceTranscript.js';
 
 const SITE = 'https://roleplaymanager.xyz';
 const mentions = (ids) => (ids || []).map((id) => `<#${id}>`).join(', ') || 'none';
+const WHERE = 'in `/setup` under AI Voice Dispatch';
 
-export async function cyberComView(guild, note = '') {
+/**
+ * Why "dispatch" might get no answer, in plain words. Every one of these used
+ * to fail silently, which from the owner's chair looks like a broken bot.
+ */
+async function dispatchProblems(guild, dc, viewer) {
+  if (!dc || !dc.enabled) return [`The AI dispatcher is off. Turn it on ${WHERE}.`];
+  const out = [];
+  if (!(dc.patrolChannelIds || []).length) out.push('No police radio channels are set, so the dispatcher never joins one. Pick them in the police radio menu below.');
+  if (!dc.dispatchChannelId) out.push(`No dispatch channel is set, and the dispatcher does not answer without one. Set it ${WHERE}.`);
+
+  const me = guild.members.me;
+  const cantJoin = (dc.patrolChannelIds || []).filter((id) => {
+    const ch = guild.channels.cache.get(id);
+    return ch && me && !ch.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]);
+  });
+  if (cantJoin.length) out.push(`RPM cannot join or talk in ${mentions(cantJoin)}. Give it View Channel, Connect and Speak there.`);
+
+  const { default: CADConfig } = await import('../models/CADConfig.js');
+  const cad = dc.leoRoleIds?.length ? null : await CADConfig.findOne({ guildId: guild.id }).lean();
+  const roles = dc.leoRoleIds?.length ? dc.leoRoleIds : (cad?.leoRoleIds || []);
+  if (roles.length && viewer && !viewer.roles.cache.some((r) => roles.includes(r.id))) {
+    out.push(`You do not have an officer role (${roles.map((r) => `<@&${r}>`).join(', ')}). Dispatch only answers officers, and only joins a patrol channel when an officer is in it.`);
+  }
+  return out;
+}
+
+export async function cyberComView(guild, note = '', viewer = null) {
   const [subscribed, active, cfg, dc, premium] = await Promise.all([
     cyberComSubscribed(guild.id).catch(() => false),
     isCyberComActive(guild.id).catch(() => false),
@@ -27,9 +54,14 @@ export async function cyberComView(guild, note = '') {
     DispatchConfig.findOne({ guildId: guild.id }).lean(),
     hasPremiumAccess(guild.id).catch(() => false),
   ]);
+  const problems = (active || premium) ? await dispatchProblems(guild, dc, viewer).catch(() => []) : [];
   const helpers = allHelpers();
   const added = helpers.filter((h) => h.client.guilds.cache.has(guild.id));
   const missing = helpers.filter((h) => !h.client.guilds.cache.has(guild.id));
+  // The police radios are the dispatcher's patrol channels, so whatever was set
+  // in AI Voice Dispatch shows here already. Radios picked before the two were
+  // one list are shown with them until the menu is next saved.
+  const radios = [...new Set([...(dc?.patrolChannelIds || []), ...(cfg?.radioChannelIds || [])])];
 
   const lines = [];
   if (note) lines.push(note, '');
@@ -41,7 +73,12 @@ export async function cyberComView(guild, note = '') {
   else lines.push('**Status:** off. RPM CyberCom is $9.99 a month, with or without Premium.');
   lines.push(premium
     ? '-# The AI voice dispatcher runs your police radio.'
-    : '-# RPM CyberCom includes the AI voice dispatcher for your police radio. Set your patrol channels in `/setup` under AI Voice Dispatch.');
+    : '-# RPM CyberCom includes the AI voice dispatcher for your police radio.');
+  if (problems.length) {
+    lines.push('', '**Why dispatch may not answer:**', ...problems.map((p) => '- ' + p));
+  } else if (active || premium) {
+    lines.push('**Dispatch check:** all set. Officers start with "dispatch" in a police radio channel.');
+  }
   lines.push('');
 
   if (helperCount()) {
@@ -52,9 +89,10 @@ export async function cyberComView(guild, note = '') {
   }
   lines.push(
     '',
-    `**Civilian channels** (they answer to "RPM"): ${mentions(cfg?.civilianChannelIds)}`,
+    `**Police radio channels** (the AI dispatcher, answers to "dispatch"): ${mentions(radios)}`,
+    '-# These are the patrol channels in AI Voice Dispatch too. Set them in either place.',
     `**Traffic stop channels:** ${mentions(dc?.trafficStopChannelIds)}`,
-    `**Extra police radios** (they answer to "dispatch"): ${mentions(cfg?.radioChannelIds)}`,
+    `**Civilian channels** (they answer to "RPM"): ${mentions(cfg?.civilianChannelIds)}`,
     `**Greeting people who join:** ${cfg?.greet === false ? 'off' : 'on'}`,
     '',
     `-# Everything said in these channels is transcribed, and people are told when they join. Staff read it with \`/voicemoderation\`. Transcripts are deleted after ${TRANSCRIPT_DAYS} days.`,
@@ -80,9 +118,9 @@ export async function cyberComView(guild, note = '') {
   return {
     embeds: [embed],
     components: [
-      pick('cybercom_civ', 'Civilian voice channels', cfg?.civilianChannelIds),
+      pick('cybercom_radio', 'Police radio channels (the dispatcher\'s patrol channels)', radios),
       pick('cybercom_stops', 'Traffic stop voice channels', dc?.trafficStopChannelIds),
-      pick('cybercom_radio', 'Extra police radio channels', cfg?.radioChannelIds),
+      pick('cybercom_civ', 'Civilian voice channels', cfg?.civilianChannelIds),
       new ActionRowBuilder().addComponents(...buttons),
       backRow(),
     ],
@@ -99,28 +137,37 @@ export async function handleCyberCom(interaction) {
   const guild = interaction.guild;
   let note = '';
   const values = interaction.values || [];
-  if (id === 'cybercom_civ' || id === 'cybercom_radio') {
+  // A channel is one kind only: police radio, traffic stop or civilian.
+  const ONE_KIND = ' A channel can be only one kind, so channels already used as another kind were left out.';
+  if (id === 'cybercom_radio') {
+    // The police radios are the dispatcher's patrol channels: one list, set
+    // here or in AI Voice Dispatch. Radios picked before that join it now.
+    const dc = await DispatchConfig.findOne({ guildId: guild.id }) || new DispatchConfig({ guildId: guild.id });
+    dc.patrolChannelIds = values;
+    dc.trafficStopChannelIds = (dc.trafficStopChannelIds || []).filter((c) => !values.includes(c));
+    await dc.save();
+    await CyberComConfig.updateOne({ guildId: guild.id }, { $set: { radioChannelIds: [] }, $pull: { civilianChannelIds: { $in: values } } });
+    // Not awaited: joining a channel can take longer than Discord waits for an answer.
+    const { applyPatrolChannels } = await import('./dispatchHandler.js');
+    applyPatrolChannels(guild, interaction.client).catch((err) => console.error('[CyberCom] patrol channels:', err.message));
+    note = '**Police radio channels saved.** They are the AI dispatcher\'s patrol channels too.';
+  } else if (id === 'cybercom_civ') {
     const cfg = await CyberComConfig.findOne({ guildId: guild.id }) || new CyberComConfig({ guildId: guild.id });
     const dc = await DispatchConfig.findOne({ guildId: guild.id }).lean();
-    const taken = new Set([...(dc?.patrolChannelIds || []), ...(dc?.trafficStopChannelIds || [])]);
+    const taken = new Set([...(dc?.patrolChannelIds || []), ...(dc?.trafficStopChannelIds || []), ...(cfg.radioChannelIds || [])]);
     const chosen = values.filter((v) => !taken.has(v));
-    if (id === 'cybercom_civ') {
-      cfg.civilianChannelIds = chosen;
-      cfg.radioChannelIds = (cfg.radioChannelIds || []).filter((c) => !chosen.includes(c));
-      note = '**Civilian channels saved.**';
-    } else {
-      cfg.radioChannelIds = chosen;
-      cfg.civilianChannelIds = (cfg.civilianChannelIds || []).filter((c) => !chosen.includes(c));
-      note = '**Extra police radios saved.**';
-    }
-    if (chosen.length < values.length) note += ' Channels the dispatcher already uses were left out.';
+    cfg.civilianChannelIds = chosen;
     cfg.updatedBy = interaction.user.id;
     cfg.updatedAt = new Date();
     await cfg.save();
+    note = '**Civilian channels saved.**' + (chosen.length < values.length ? ONE_KIND : '');
   } else if (id === 'cybercom_stops') {
-    await DispatchConfig.findOneAndUpdate({ guildId: guild.id }, { $set: { trafficStopChannelIds: values } }, { upsert: true });
-    await CyberComConfig.updateOne({ guildId: guild.id }, { $pull: { civilianChannelIds: { $in: values }, radioChannelIds: { $in: values } } });
-    note = '**Traffic stop channels saved.**';
+    const dc = await DispatchConfig.findOne({ guildId: guild.id }) || new DispatchConfig({ guildId: guild.id });
+    const chosen = values.filter((v) => !(dc.patrolChannelIds || []).includes(v));
+    dc.trafficStopChannelIds = chosen;
+    await dc.save();
+    await CyberComConfig.updateOne({ guildId: guild.id }, { $pull: { civilianChannelIds: { $in: chosen }, radioChannelIds: { $in: chosen } } });
+    note = '**Traffic stop channels saved.**' + (chosen.length < values.length ? ONE_KIND : '');
   } else if (id === 'cybercom_greet') {
     const cfg = await CyberComConfig.findOne({ guildId: guild.id }) || new CyberComConfig({ guildId: guild.id });
     cfg.greet = cfg.greet === false;
@@ -129,7 +176,7 @@ export async function handleCyberCom(interaction) {
   }
   forgetConfig(guild.id);
   clearCyberComCache(guild.id);
-  return interaction.update(await cyberComView(guild, note));
+  return interaction.update(await cyberComView(guild, note, interaction.member));
 }
 
 /** Buttons on CyberCom's own messages. */
