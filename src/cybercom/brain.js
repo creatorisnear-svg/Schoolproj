@@ -1,4 +1,4 @@
-import { afterWakeWord, parseIntent, speakableName } from './text.js';
+import { afterWakeWord, parseIntent, speakableName, isJustCalling } from './text.js';
 import { saveTranscript, isNoise } from './transcripts.js';
 import { isCyberComActive } from './access.js';
 import * as stops from './stops.js';
@@ -73,7 +73,12 @@ export async function handleUtterance(session, userId, wav, seconds) {
   if (session.answer(userId, text)) return;
 
   const kind = session.role === 'civilian' ? 'civilian' : 'police';
-  const rest = afterWakeWord(text, kind);
+  let rest = afterWakeWord(text, kind);
+  // The line after "go ahead" is for us even without the wake word.
+  const goAhead = session.goAhead || (session.goAhead = new Map());
+  const calledAt = goAhead.get(userId);
+  goAhead.delete(userId);
+  if (rest === null && calledAt && Date.now() - calledAt < GO_AHEAD_MS) rest = text;
   if (rest === null) {
     // "Dispatch" said in a civilian channel: say how this channel works rather than go quiet.
     if (kind === 'civilian' && afterWakeWord(text, 'police') !== null && nudgeOnce(guild.id + ':' + userId + ':civilian')) {
@@ -81,11 +86,20 @@ export async function handleUtterance(session, userId, wav, seconds) {
     }
     return;
   }
-  return act({ guild, member, role: session.role, intent: parseIntent(rest, kind), text, reply: (line) => session.speak(line), session });
+  // "Dispatch." and a pause before the rest, as on a real radio: it used to
+  // be "say again" and the rest was ignored for having no wake word.
+  if (isJustCalling(rest)) {
+    goAhead.set(userId, Date.now());
+    return session.speak(`Go ahead, ${speakableName(member.displayName)}.`);
+  }
+  return act({ guild, member, role: session.role, intent: parseIntent(rest, session.role), text, reply: (line) => session.speak(line), session });
 }
+
+const GO_AHEAD_MS = 12000;
 
 /** Do what was asked. reply(text) speaks in the right place and resolves once heard. */
 export async function act({ guild, member, role, intent, text, reply, session = null }) {
+  if (intent?.type === 'radio_check') return reply(`${speakableName(member.displayName)}, loud and clear.`);
   if (role === 'civilian') {
     if (intent?.type === 'move_to') {
       return stops.moveToPerson({ guild, member, name: intent.name, reply, policeChannelIds: await policeChannels(guild.id) });
@@ -138,13 +152,15 @@ async function dispatcherSay(guildId, text) {
  * on its own radio. Keeps it for staff, and handles traffic stops and
  * attaching to a 10-80. True when CyberCom handled it.
  */
-export async function fromDispatcher({ guild, member, transcript }) {
+export async function fromDispatcher({ guild, member, transcript, afterGoAhead = false }) {
   if (!(await isCyberComActive(guild.id))) return false;
   await saveTranscript({
     guildId: guild.id, channelId: member.voice?.channelId || 'radio', channelName: member.voice?.channel?.name || null,
     userId: member.id, username: member.displayName, text: transcript,
   });
-  const rest = afterWakeWord(transcript, 'police');
+  // After the dispatcher's "go ahead" the line is meant for it without the word.
+  let rest = afterWakeWord(transcript, 'police');
+  if (rest === null && afterGoAhead) rest = transcript;
   if (rest === null) return false;
   const intent = parseIntent(rest, 'police');
   if (intent?.type === 'stop_start'

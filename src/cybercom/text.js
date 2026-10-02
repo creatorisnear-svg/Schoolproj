@@ -75,10 +75,22 @@ export function cleanName(raw) {
  *   police / stop / radio: stop_start, stop_end, pursuit, attach_pursuit, status, help
  *   civilian: move_to, help
  */
+/**
+ * Only the wake word, maybe with "over" or "come in": someone calling, who
+ * will say what they want after the reply. Answered with "go ahead".
+ */
+export function isJustCalling(rest) {
+  return /^(?:(?:over|come in|do you copy|you copy)\s*)*$/.test(normalize(rest));
+}
+
+// Words speech to text leaves where a name should be: "the 10-11 is over".
+const NOT_A_NAME = /^(?:is|it|its|it's|that|this|these|them|him|her|me|my|over|done|now|here|there|clear|ended|finished|a|an|the|on|in|with|for|to|of|and|please|yes|no)$/;
+
 export function parseIntent(rest, role) {
   const t = normalize(rest);
   if (!t) return null;
   if (/^(?:help|commands|what can you do|what do you do|how do i use you)\b/.test(t)) return { type: 'help' };
+  if (/\b(?:radio check|comms? check|mic check|can you hear me|do you hear me|how copy|how do you copy|testing)\b/.test(t)) return { type: 'radio_check' };
 
   if (role === 'civilian') {
     const m = t.match(/\b(?:move|take|put|send|bring|drag) me (?:to|into|in|with|over to) (.+)$/)
@@ -98,7 +110,12 @@ export function parseIntent(rest, role) {
 
   if (/\b(?:off|out of) (?:of )?(?:my |the |this |our )?(?:10-11|traffic stop|stop)\b/.test(t)
     || /\b(?:clear|end|finish|close|wrap up|done with|finished with) (?:the |my |this |our )?(?:10-11|traffic stop|stop)\b/.test(t)
-    || /\b(?:stop is (?:clear|done|over)|show me 10-8|back 10-8|10-8 from (?:the |my )?(?:stop|10-11))\b/.test(t)) {
+    || /\b(?:stop is (?:clear|done|over)|show me 10-8|back 10-8|10-8 from (?:the |my )?(?:stop|10-11))\b/.test(t)
+    // "the 10-11 is over", "10-11 done". On the radio a bare "10-11, over"
+    // is the sign-off "over", so that and "code 4" only count inside a stop.
+    || /\b(?:10-11|traffic stop) (?:is|has been|was) (?:over|done|finished|complete|completed|clear|cleared|ended|wrapped up)\b/.test(t)
+    || /\b(?:10-11|traffic stop) (?:done|finished|completed|cleared|ended|wrapped up)\b/.test(t)
+    || (role === 'stop' && /\b(?:10-11 over|10-11 clear|code (?:4|four)|we're clear|were clear|all clear)\b/.test(t))) {
     return { type: 'stop_end' };
   }
 
@@ -107,7 +124,7 @@ export function parseIntent(rest, role) {
     || t.match(/\bpull(?:ing|ed)? (.+?) over$/);
   if (start) {
     const name = cleanName(start[1].replace(/^(?:with|on|for)\s+/, ''));
-    if (name && !/^(?:a|the|car|vehicle)$/.test(name)) return { type: 'stop_start', name };
+    if (name && name.length > 1 && !NOT_A_NAME.test(name) && !/^(?:a|the|car|vehicle)$/.test(name)) return { type: 'stop_start', name };
   }
 
   if (/\b10-80\b|\bpursuit\b|\b(?:he's|hes|she's|shes|they're|theyre|suspect is|subject is) (?:running|fleeing|taking off|bailing)\b|\b(?:took|taking) off\b/.test(t)) {

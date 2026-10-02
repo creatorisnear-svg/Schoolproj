@@ -189,11 +189,13 @@ function getAIClient() {
  *
  * Set GROQ_MODEL to pin a specific one without waiting for a deploy.
  */
+// Groq retired the two Llama 3 models by October 2026, and trying them first
+// cost two failed calls before the first reply after every restart.
 const GROQ_MODEL_CANDIDATES = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
   'openai/gpt-oss-20b',
   'meta-llama/llama-4-scout-17b-16e-instruct',
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
 ];
 
 let resolvedGroqModel = null;
@@ -1995,6 +1997,12 @@ const _lastAIResponseTime = new Map(); // `${guildId}:${userId}` → timestamp
  * 10 minutes, so a civilian sitting in a patrol channel costs next to nothing.
  */
 const _notOfficerHeard = new Map();
+
+// "Dispatch." on its own gets "go ahead", and their next line within this
+// long counts as addressed to dispatch. "Dispatch, over" and "come in" too.
+const _goAhead = new Map(); // `${guildId}:${userId}` → when
+const GO_AHEAD_MS = 12000;
+const JUST_CALLING_RE = /^[\s,.!?]*(?:(?:over|come in|do you copy|you copy)[\s,.!?]*)*$/i;
 async function tellNotAnOfficer(guild, member, wavBuffer) {
   const key = guild.id + ':' + member.id;
   const now = Date.now();
@@ -2165,7 +2173,12 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
     // 10-80 attachments through the helper bots. True when it handled it.
     try {
       const { fromDispatcher } = await import('../cybercom/brain.js');
-      if (await fromDispatcher({ guild, member, transcript })) return;
+      const goKey = guild.id + ':' + userId;
+      const afterGoAhead = Date.now() - (_goAhead.get(goKey) || 0) < GO_AHEAD_MS;
+      if (await fromDispatcher({ guild, member, transcript, afterGoAhead })) {
+        _goAhead.delete(goKey);
+        return;
+      }
     } catch (err) {
       console.error('[CyberCom] radio hook:', err.message);
     }
@@ -2331,6 +2344,10 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
         let preContext = '';
         let commandText = '';
+        // Did dispatch just say "go ahead" to them? Used once, by their next line.
+        const goKey = guild.id + ':' + userId;
+        const calledAt = _goAhead.get(goKey) || 0;
+        _goAhead.delete(goKey);
 
         if (callSignResult && callSignResult.remainder.trim().length > 2) {
           // Officer opened with their call sign - the remainder is the command for dispatch
@@ -2348,12 +2365,17 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
           // No trigger word or call sign detected.
           // Check if we're in roll call mode - if so, allow bare status codes through.
           const rollCallExpiry = statusRollCallMode.get(guild.id);
-          if (rollCallExpiry && Date.now() < rollCallExpiry) {
+          if (Date.now() - calledAt < GO_AHEAD_MS) {
+            // The answer to our "go ahead": meant for dispatch without the word.
+            commandText = raw;
+            hadTrigger = true;
+            console.log(`[Dispatch] ${officerName} after "go ahead": "${raw.slice(0, 60)}"`);
+          } else if (rollCallExpiry && Date.now() < rollCallExpiry) {
             const normalized = normalizeSpokenCodes(raw);
             if (ROLL_CALL_STATUS_RE.test(normalized)) {
               hadTrigger = true;
-              transcript = raw;
-              fullVoiceContext = raw;
+              // Was left empty, so the check below dropped every bare status.
+              commandText = raw;
               console.log(`[Dispatch] Roll call mode - bare status from ${officerName}: "${raw.slice(0, 40)}"`);
             } else {
               console.log(`[Dispatch] Ignoring - no trigger in roll call window: "${raw.slice(0, 60)}"`);
@@ -2369,12 +2391,20 @@ export async function processVoiceCall(wavBuffer, userId, guild, client, opts = 
 
         // If nothing came after the trigger (e.g. "One Adam 84 to dispatch"),
         // use the pre-trigger context so the bot can acknowledge the officer.
+        if (JUST_CALLING_RE.test(commandText)) commandText = '';
         if (commandText.length < 2) {
           if (preContext.length > 2) {
             commandText = preContext;
             preContext = '';
           } else {
-            return traceRadio(guild.id, userId, 'said only "dispatch", with nothing after it to answer');
+            // "Dispatch." and a pause before the rest, as on a real radio. It
+            // used to be ignored, and the rest too for having no "dispatch".
+            if (_goAhead.size > 2000) _goAhead.clear();
+            _goAhead.set(goKey, Date.now());
+            traceRadio(guild.id, userId, 'said "dispatch" on its own, and was told to go ahead');
+            const { playDispatchVoice } = await import('../utils/voiceListener.js');
+            playDispatchVoice(guild.id, await generateDispatchTTS(`Go ahead, ${ttsName}.`));
+            return;
           }
         }
         transcript = commandText;

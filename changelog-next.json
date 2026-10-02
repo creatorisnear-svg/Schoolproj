@@ -1,8 +1,10 @@
 {
-  "version": "1.17.3",
-  "title": "The AI dispatcher hears you again",
+  "version": "1.17.4",
+  "title": "Dispatch understands you better",
   "changes": [
-    "Fixed: the AI dispatcher could join your patrol channel, speak, and then never hear anyone. If someone talked while Discord's voice encryption was still being set up, that scrambled audio broke listening for everything said after it. It now skips audio it cannot read and keeps listening",
-    "The same fix for the RPM CyberCom helper bots"
+    "Say just \"Dispatch\" and pause, like on a real radio: the dispatcher answers \"Go ahead\" and takes whatever you say next. Before, it ignored both",
+    "The dispatcher waits a moment longer before deciding you have finished talking, so a pause in the middle of a sentence no longer cuts it in half",
+    "In RPM CyberCom traffic stops, \"the 10-11 is over\", \"10-11 done\" and \"code 4\" now end the stop. \"Dispatch, radio check\" gets \"loud and clear\" from the helper bots too",
+    "If RPM cannot join a patrol channel because of its permissions or a full channel, it stops retrying and says why under Last heard in /config dispatch"
   ]
 }

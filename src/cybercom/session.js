@@ -19,7 +19,7 @@ import { yesOrNo } from './text.js';
  * group: @discordjs/voice otherwise keeps one connection per server.
  */
 
-const SILENCE_MS = 700;
+const SILENCE_MS = 800;          // a radio pause mid sentence is not the end of it
 const MIN_CHUNKS = 15;          // about 300 ms: shorter is a cough or a click
 const GREET_EVERY_MS = 30 * 60 * 1000;
 const GREET_GAP_MS = 20 * 1000;
@@ -94,6 +94,7 @@ export class Session {
     this.playing = false;
     this.recording = new Set();
     this.pending = new Map();     // userId → answer callback
+    this.goAhead = new Map();     // userId → when they called with just the wake word
     this.greeted = new Map();     // userId → when
     this.lastGreet = 0;
     this.closed = false;
@@ -106,6 +107,9 @@ export class Session {
   async join() {
     const guild = this.guild;
     if (!guild) throw new Error('helper ' + this.helper.index + ' is not in this server');
+    let canJoin = true;
+    try { canJoin = this.channel?.joinable !== false && this.channel?.speakable !== false; } catch {}
+    if (!canJoin) throw new Error('no View Channel, Connect or Speak permission there, or the channel is full');
     const connection = joinVoiceChannel({
       channelId: this.channelId,
       guildId: this.guildId,

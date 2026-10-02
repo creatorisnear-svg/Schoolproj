@@ -97,6 +97,8 @@ export class TolerantDecoder extends prism.opus.Decoder {
   }
 }
 
+const cannotJoinNoted = new Map();
+
 /** A line that came through scrambled: traced at most every 20 seconds per person. */
 const scrambledNoted = new Map();
 function noteScrambled(guildId, userId, packets) {
@@ -452,6 +454,20 @@ export async function moveToChannel(channel) {
     return state.connection;
   }
 
+  // Without Connect (or with the channel full) Discord never answers the
+  // join, the connection sits in "signalling", and the watchdog retried it
+  // forever. Say why once in a while instead.
+  let canJoin = true;
+  try { canJoin = channel.joinable !== false && channel.speakable !== false; } catch {}
+  if (!canJoin) {
+    const k = guildId + ':' + channel.id;
+    if (Date.now() - (cannotJoinNoted.get(k) || 0) > 10 * 60000) {
+      cannotJoinNoted.set(k, Date.now());
+      traceRadio(guildId, null, `cannot join #${channel.name}: RPM needs View Channel, Connect and Speak there, or the channel is full`);
+    }
+    return null;
+  }
+
   // Prevent concurrent joins for the same guild
   if (joiningGuilds.has(guildId)) return null;
   joiningGuilds.add(guildId);
@@ -800,10 +816,13 @@ function _setupReceiver(connection, guild, state, guildId) {
 
     let stream;
     let decoder;
+    const pcmChunks = [];
     const safetyTimeout = setTimeout(() => {
       if (recordingUsers.has(key)) {
         console.warn(`[Dispatch] Safety timeout - clearing stuck recording for user ${userId}`);
-        traceRadio(guildId, userId, 'spoke, but no audio came through for 30 seconds');
+        // Nothing at all came through: a cough or a click that was over before
+        // the recording started, not something said. Not worth showing.
+        if (pcmChunks.length || decoder?.badPackets) traceRadio(guildId, userId, 'spoke, but the line never finished coming through');
         recordingUsers.delete(key);
         try { stream?.destroy(); } catch {}
         try { decoder?.destroy(); } catch {}
@@ -824,8 +843,10 @@ function _setupReceiver(connection, guild, state, guildId) {
     }
 
     try {
-      // 600ms silence - faster cutoff for quicker response times
-      const silenceDuration = 600;
+      // 800ms of silence ends a line. At 600 a radio pause mid sentence
+      // ("Dispatch, ... show me 10-8") split it in two, and the half without
+      // "dispatch" was ignored.
+      const silenceDuration = 800;
       stream = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: silenceDuration },
       });
@@ -845,7 +866,6 @@ function _setupReceiver(connection, guild, state, guildId) {
       return;
     }
 
-    const pcmChunks = [];
     stream.pipe(decoder);
 
     decoder.on('data', chunk => pcmChunks.push(chunk));
