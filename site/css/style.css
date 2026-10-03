@@ -693,6 +693,12 @@ input[type="number"].config-input { width: 100px; min-width: 80px; }
   .features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* A nav with more links than fit beside the logo below this width folds into the menu sooner. */
+@media (max-width: 1020px) {
+  nav .nav-links.nav-links-wide { display: none; }
+  nav .nav-links-wide ~ .nav-hamburger { display: flex; }
+}
+
 @media (max-width: 768px) {
   /* Nav */
   nav .nav-links { display: none; }

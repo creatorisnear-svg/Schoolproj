@@ -422,3 +422,7 @@
   .lp-cta-btns { flex-direction: column; align-items: center; }
   .lp-cta-btns .btn { width: 100%; max-width: 300px; justify-content: center; }
 }
+
+/* Three cards (RPM CyberCom on the home page): three across, then one column, never two and one alone. */
+.lp-features-grid.lp-features-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .lp-features-grid.lp-features-3 { grid-template-columns: 1fr; } }

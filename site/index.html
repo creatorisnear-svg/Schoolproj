@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/lp-styles.css?v=2">
+  <link rel="stylesheet" href="/css/lp-styles.css?v=3">
 </head>
 <body>
   <a href="#main-content" class="skip-nav">Skip to main content</a>
@@ -31,10 +31,11 @@
         <img src="/img/logo.png" alt="RPM">
         <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
       </a>
-      <ul class="nav-links">
+      <ul class="nav-links nav-links-wide">
         <li><a href="#features">Features</a></li>
         <li><a href="#commands">Commands</a></li>
         <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/">CyberCom</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a href="#contact">Support</a></li>
@@ -51,6 +52,7 @@
     <a href="#features" onclick="closeMobileNav()">Features</a>
     <a href="#commands" onclick="closeMobileNav()">Commands</a>
     <a href="/servers/" onclick="closeMobileNav()">Servers</a>
+    <a href="/cybercom/" onclick="closeMobileNav()">CyberCom</a>
     <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
     <a href="#faq" onclick="closeMobileNav()">FAQ</a>
     <a href="#contact" onclick="closeMobileNav()">Support</a>
@@ -106,6 +108,53 @@
       <video src="/video/promo.mp4?v=2" poster="/video/promo-poster.jpg?v=2" autoplay muted loop playsinline controls preload="metadata"
         aria-label="RolePlayManager in a minute: AI voice dispatch with 911 calls and plate checks, the web CAD, the server directory, the Safety Network and more"
         style="display:block;width:100%;max-width:960px;aspect-ratio:16/9;margin:0 auto;border-radius:16px;border:1px solid var(--border);background:#000;"></video>
+    </div>
+  </section>
+
+  <!-- ── RPM CYBERCOM ── -->
+  <section class="lp-section lp-section-alt" id="cybercom">
+    <div class="container">
+      <div class="lp-section-header">
+        <div class="lp-section-eyebrow">New: RPM CyberCom</div>
+        <h2 class="lp-section-title">A bot in every voice channel</h2>
+        <p class="lp-section-sub">Officers call traffic stops and 10-80s on the radio and the bot moves everyone. Civilians move by voice, and voice moderation flags real problems to your staff while roleplay stays in the game. $9.99 a month, with or without Premium, and it includes the AI voice dispatcher.</p>
+      </div>
+      <video id="cybercom-video" src="/video/cybercom.mp4" poster="/video/cybercom-poster.jpg" muted loop playsinline controls preload="none"
+        aria-label="RPM CyberCom in 90 seconds: a traffic stop called by voice, a 10-80 that units attach to, everyone moved back, a civilian joining a friend, and voice moderation flags"
+        style="display:block;width:100%;max-width:960px;aspect-ratio:16/9;margin:0 auto 32px;border-radius:16px;border:1px solid var(--border);background:#000;"></video>
+      <div class="lp-features-grid lp-features-3">
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon lp-icon-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <div class="lp-feature-body">
+            <div class="lp-feature-name">Traffic stops and 10-80s by voice</div>
+            <div class="lp-feature-desc">"Dispatch, show me on a 10-11 with" and a name moves you to a free traffic stop and asks the driver in. A 10-80 goes out on the radio, and units say "Dispatch, attach me to the 10-80".</div>
+          </div>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon lp-icon-amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="lp-feature-body">
+            <div class="lp-feature-name">Nobody waits to be dragged</div>
+            <div class="lp-feature-desc">Civilians say "RPM, move me to" and a name to join a friend. Clear a stop and everyone in it goes back to the channel they came from.</div>
+          </div>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon lp-icon-red">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </div>
+          <div class="lp-feature-body">
+            <div class="lp-feature-name">Voice moderation</div>
+            <div class="lp-feature-desc">Slurs, real life threats and possible self harm are flagged to your staff. Threats are checked by AI first, so roleplay is never flagged.</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:28px;">
+        <a href="/cybercom/" class="btn btn-primary">See how it works</a>
+        <a href="/pricing?from=cybercom" class="btn btn-secondary">Get RPM CyberCom</a>
+      </div>
     </div>
   </section>
 
@@ -636,6 +685,7 @@
       <ul class="lp-footer-links">
         <li><a href="/dashboard/">Dashboard</a></li>
         <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/">CyberCom</a></li>
         <li><a href="/pricing">Pricing</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#commands">Commands</a></li>
@@ -864,6 +914,17 @@
       }).catch(function() {
         if (loadEl) loadEl.textContent = 'Could not load uptime history.';
       });
+    })();
+
+    // ── RPM CyberCom video: plays (muted) while it is on screen, so the page
+    // does not load two videos up front ──
+    (function () {
+      var v = document.getElementById('cybercom-video');
+      if (!v || !('IntersectionObserver' in window)) return;
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+        else v.pause();
+      }, { threshold: 0.35 }).observe(v);
     })();
 
     // ── Announcements ──

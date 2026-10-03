@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPM CyberCom: Traffic Stops, 10-80s and Voice Moderation by Voice | RolePlayManager</title>
+  <meta name="description" content="RPM CyberCom puts a bot in every voice channel of your GTA RP Discord server: traffic stops and 10-80s by voice, civilians moving by voice, and voice moderation that flags real problems to your staff. $9.99 a month, with or without Premium.">
+  <link rel="canonical" href="https://roleplaymanager.xyz/cybercom/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="RPM CyberCom: a bot in every voice channel">
+  <meta property="og:description" content="Traffic stops, 10-80s and civilians moved by voice, and voice moderation that flags real problems to your staff. $9.99 a month, with or without Premium.">
+  <meta property="og:url" content="https://roleplaymanager.xyz/cybercom/">
+  <meta property="og:image" content="https://roleplaymanager.xyz/img/og-cybercom.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:video" content="https://roleplaymanager.xyz/video/cybercom.mp4">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://roleplaymanager.xyz/img/og-cybercom.png">
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/lp-styles.css?v=3">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Do I need Premium for RPM CyberCom?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. RPM CyberCom is $9.99 a month on its own and includes the AI voice dispatcher on your police radio. If your server also has Premium, both keep working together." } },
+      { "@type": "Question", "name": "Does RPM CyberCom work for PS5 and Xbox servers?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Everything happens in your Discord voice channels, so it works the same whichever console your members play on." } },
+      { "@type": "Question", "name": "Do members know the voice channels are transcribed?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. In every channel it covers, the helper bot's name ends in (transcribing), and when greetings are on it tells people who join how to talk to it and that the channel is transcribed." } },
+      { "@type": "Question", "name": "Who can read the transcripts?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Your staff: admins and people added with /staff, or the roles you pick in /config voicemoderation." } },
+      { "@type": "Question", "name": "How long are transcripts kept?",
+        "acceptedAnswer": { "@type": "Answer", "text": "14 days unless you choose 3 or 7 in /config voicemoderation. After that they are deleted." } }
+    ]
+  }
+  </script>
+  <style>
+    .cc-page { padding: 96px 0 80px; }
+    .cc-hero { text-align: center; max-width: 820px; margin: 0 auto 40px; }
+    .cc-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--blue); background: var(--blue-bg); border: 1px solid rgba(96,165,250,0.25); border-radius: 999px; padding: 6px 12px; margin-bottom: 16px; }
+    .cc-hero h1 { font-size: 46px; font-weight: 800; line-height: 1.08; margin-bottom: 16px; letter-spacing: -0.5px; }
+    .cc-hero p { color: var(--text-muted); font-size: 17px; line-height: 1.65; margin: 0 auto 18px; max-width: 700px; }
+    .cc-price { display: inline-block; font-size: 14px; color: var(--text); background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; margin-bottom: 22px; }
+    .cc-price strong { font-weight: 800; }
+    .cc-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .cc-video { display: block; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; margin: 0 auto 64px; border-radius: 16px; border: 1px solid var(--border); background: #000; }
+    .cc-section { max-width: 1040px; margin: 0 auto 64px; }
+    .cc-section h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; text-align: center; }
+    .cc-section > p { color: var(--text-muted); text-align: center; max-width: 680px; margin: 0 auto 24px; line-height: 1.6; }
+    .cc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .cc-grid.two { grid-template-columns: repeat(2, 1fr); max-width: 860px; margin: 0 auto; }
+    @media (max-width: 900px) { .cc-grid { grid-template-columns: repeat(2, 1fr); } }
+    .cc-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+    .cc-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .cc-card p { color: var(--text-muted); font-size: 14px; line-height: 1.65; margin: 0; }
+    .cc-say { display: block; font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; color: var(--text); background: var(--bg-secondary); border: 1px solid var(--border); border-left: 3px solid var(--blue); border-radius: 8px; padding: 9px 12px; margin: 12px 0 0; }
+    .cc-say.civ { border-left-color: var(--amber); }
+    .cc-say.bot { border-left-color: var(--green); }
+    .cc-steps { max-width: 760px; margin: 0 auto; counter-reset: step; list-style: none; padding: 0; }
+    .cc-steps li { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px 16px 62px; margin-bottom: 10px; color: var(--text-muted); font-size: 15px; line-height: 1.6; }
+    .cc-steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 18px; top: 15px; width: 28px; height: 28px; border-radius: 50%; background: var(--text); color: var(--bg); font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .cc-steps strong { color: var(--text); }
+    .cc-steps code, .cc-faq code, .cc-card code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--text); }
+    .cc-faq { max-width: 760px; margin: 0 auto; }
+    .cc-faq h3 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; }
+    .cc-faq p { color: var(--text-muted); font-size: 15px; line-height: 1.65; margin: 0; }
+    .cc-cta { max-width: 760px; margin: 0 auto; text-align: center; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 40px 24px; }
+    .cc-cta h2 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+    .cc-cta p { color: var(--text-muted); margin: 0 auto 22px; line-height: 1.6; max-width: 560px; }
+    .nav-links a[aria-current="page"] { color: var(--text); }
+    @media (max-width: 620px) {
+      .cc-hero h1 { font-size: 32px; }
+      .cc-hero p { font-size: 15px; }
+      .cc-section h2, .cc-cta h2 { font-size: 23px; }
+      .cc-grid, .cc-grid.two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+  <nav aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="logo" aria-label="RolePlayManager home">
+        <img src="/img/logo.png" alt="RolePlayManager logo">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="nav-links nav-links-wide" role="list">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/" aria-current="page">CyberCom</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
+        <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
+      </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-overlay">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="/#features" onclick="closeMobileNav()">Features</a>
+    <a href="/servers/" onclick="closeMobileNav()">Servers</a>
+    <a href="/cybercom/" onclick="closeMobileNav()">CyberCom</a>
+    <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+    <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
+  </div>
+
+  <main id="main-content" class="cc-page">
+    <div class="container">
+      <header class="cc-hero">
+        <div class="cc-eyebrow">RPM CyberCom</div>
+        <h1>A bot in every voice channel</h1>
+        <p>Officers call traffic stops and 10-80s on the radio, and the bot moves everyone where they need to be. Civilians move by voice too. Voice moderation flags real problems to your staff, while roleplay stays in the game.</p>
+        <div class="cc-price"><strong>$9.99 a month</strong>, with or without Premium. Includes the AI voice dispatcher.</div>
+        <div class="cc-actions">
+          <a href="/pricing?from=cybercom" class="btn btn-primary btn-lg">Get RPM CyberCom</a>
+          <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-secondary btn-lg">Add the bot free</a>
+        </div>
+      </header>
+
+      <video class="cc-video" src="/video/cybercom.mp4" poster="/video/cybercom-poster.jpg" autoplay muted loop playsinline controls preload="metadata"
+        aria-label="RPM CyberCom in 90 seconds: a traffic stop called by voice, a 10-80 that units attach to, everyone moved back, a civilian joining a friend, and voice moderation flags"></video>
+
+      <section class="cc-section" aria-labelledby="radio-title">
+        <h2 id="radio-title">On the police radio</h2>
+        <p>Officers start with "Dispatch", the same as with the AI dispatcher. The bot answers on the radio and does the moving.</p>
+        <div class="cc-grid">
+          <div class="cc-card">
+            <h3>Traffic stops by voice</h3>
+            <p>The bot moves you to a free traffic stop channel, and the helper in the driver's channel asks if they want to be moved in.</p>
+            <span class="cc-say">"Dispatch, show me on a 10-11 with Blade."</span>
+          </div>
+          <div class="cc-card">
+            <h3>Plates and names in the stop</h3>
+            <p>Run plates and names from inside the traffic stop, without going back to the patrol channel.</p>
+            <span class="cc-say">"Dispatch, run plate ABC123."</span>
+          </div>
+          <div class="cc-card">
+            <h3>10-80s reach every unit</h3>
+            <p>The pursuit goes out on the police radio, and any unit can ask to be moved straight in.</p>
+            <span class="cc-say">"Dispatch, attach me to the 10-80."</span>
+          </div>
+          <div class="cc-card">
+            <h3>Everyone goes back</h3>
+            <p>Clear the stop and everyone in it is moved back to the channel they came from. Anyone who wants to stay just says no.</p>
+            <span class="cc-say">"Dispatch, show me off my 10-11."</span>
+          </div>
+          <div class="cc-card">
+            <h3>Your CAD keeps up</h3>
+            <p>Every 10-11, 10-80 and 10-8 called by voice updates the officer's status in your CAD, so the status board is always right.</p>
+          </div>
+          <div class="cc-card">
+            <h3>The AI dispatcher, included</h3>
+            <p>Your patrol channels get the full AI voice dispatcher: 911 calls read out on the radio and officers answered by voice, with or without Premium.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-section" aria-labelledby="civ-title">
+        <h2 id="civ-title">For civilians</h2>
+        <p>In civilian channels the wake word is "RPM".</p>
+        <div class="cc-grid two">
+          <div class="cc-card">
+            <h3>Move by voice</h3>
+            <p>Join a friend without waiting for staff to drag you.</p>
+            <span class="cc-say civ">"RPM, move me to Mia."</span>
+          </div>
+          <div class="cc-card">
+            <h3>Asked, never dragged</h3>
+            <p>When an officer pulls someone over, the bot asks before moving them, and they answer yes or no without a wake word.</p>
+            <span class="cc-say bot">"Blade, would you like to be moved into the 10-11 channel?"</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-section" aria-labelledby="mod-title">
+        <h2 id="mod-title">Voice moderation</h2>
+        <p>Everything said in the channels RPM CyberCom covers is transcribed, so your staff hear about real problems even when nobody reports them.</p>
+        <div class="cc-grid two">
+          <div class="cc-card">
+            <h3>Real problems get flagged</h3>
+            <p>Slurs, real life threats, possible self harm and other Discord rule breaks are posted to your flag channel with who said it and where. Threat and self harm flags ping the staff roles you choose.</p>
+          </div>
+          <div class="cc-card">
+            <h3>Roleplay is never flagged</h3>
+            <p>Threats and self harm are checked by AI first, so robberies, shootouts and threats between characters stay in the game.</p>
+          </div>
+          <div class="cc-card">
+            <h3>Your own words and phrases</h3>
+            <p>Add the words and phrases your rules ban, and they are flagged as soon as they are said.</p>
+          </div>
+          <div class="cc-card">
+            <h3>Transcripts for your staff</h3>
+            <p>Staff read what was said with <code>/voicemoderation</code>, by channel, day and member. Every flag can show the three minutes around it. Transcripts are kept 3, 7 or 14 days.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-section" aria-labelledby="setup-title">
+        <h2 id="setup-title">Set it up in a few minutes</h2>
+        <p>No hosting and nothing to install in the game.</p>
+        <ol class="cc-steps">
+          <li><strong>Get RPM CyberCom</strong> for your server on the <a href="/pricing?from=cybercom">pricing page</a>.</li>
+          <li>In your server, run <code>/setup</code> and open <strong>RPM CyberCom</strong>, or run <code>/config cybercom</code>. Add the helper bots from there.</li>
+          <li>Pick your police radio, traffic stop and civilian channels.</li>
+          <li>Run <code>/config voicemoderation</code> to choose where flags go, who can read transcripts and how long they are kept.</li>
+        </ol>
+      </section>
+
+      <section class="cc-section" aria-labelledby="faq-title">
+        <h2 id="faq-title">Questions</h2>
+        <div class="cc-faq">
+          <h3>Do I need Premium?</h3>
+          <p>No. RPM CyberCom is $9.99 a month on its own and includes the AI voice dispatcher on your police radio. If your server also has Premium, both keep working together.</p>
+          <h3>Does it work for PS5 and Xbox servers?</h3>
+          <p>Yes. Everything happens in your Discord voice channels, so it works the same whichever console your members play on.</p>
+          <h3>Do members know the channels are transcribed?</h3>
+          <p>Yes. In every channel it covers, the helper bot's name ends in (transcribing), and when greetings are on it tells people who join how to talk to it and that the channel is transcribed. See the <a href="/privacy">privacy policy</a>.</p>
+          <h3>Who can read the transcripts?</h3>
+          <p>Your staff: admins and people added with <code>/staff</code>, or the roles you pick in <code>/config voicemoderation</code>.</p>
+          <h3>How long are transcripts kept?</h3>
+          <p>14 days unless you choose 3 or 7 in <code>/config voicemoderation</code>. After that they are deleted.</p>
+          <h3>Can I cancel?</h3>
+          <p>Yes, any time. Questions first? Ask in the <a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">support server</a>.</p>
+        </div>
+      </section>
+
+      <div class="cc-cta">
+        <h2>Stop dragging people into traffic stops</h2>
+        <p>$9.99 a month, with or without Premium. It includes the AI voice dispatcher.</p>
+        <div class="cc-actions">
+          <a href="/pricing?from=cybercom" class="btn btn-primary btn-lg">Get RPM CyberCom</a>
+          <a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">Ask in the support server</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="container lp-footer-inner">
+      <a href="/" class="logo lp-footer-logo">
+        <img src="/img/logo.png" alt="RPM" width="28" height="28" style="width:28px;height:28px;max-width:28px;border-radius:50%;object-fit:cover;">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="lp-footer-links">
+        <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/">CyberCom</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">Support</a></li>
+        <li><a href="/tos">Terms</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+      </ul>
+      <p class="lp-footer-copy">RolePlayManager &copy; 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    function toggleMobileNav() {
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var btn = document.getElementById('nav-hamburger');
+      var open = !overlay.classList.contains('open');
+      overlay.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function closeMobileNav() {
+      document.getElementById('mobile-nav-overlay').classList.remove('open');
+      document.getElementById('nav-hamburger').setAttribute('aria-expanded', 'false');
+    }
+  </script>
+</body>
+</html>

@@ -100,11 +100,12 @@ function sceneBrand(t) {
 // ── The voice channels ──────────────────────────────────────────────────────
 // Who is in the video, and the server's voice channels as it opens, each
 // channel's members in the order they joined. The renderer's story moves them.
+// A helper renames itself "(transcribing)" in a channel it covers (session.js).
 const CAST = {
   Dispatch: { logo: true, app: true },
-  'RPM CyberCom 1': { logo: true, app: true },
-  'RPM CyberCom 2': { logo: true, app: true },
-  'RPM CyberCom 3': { logo: true, app: true },
+  'RPM CyberCom 1': { logo: true, app: true, shown: 'RPM CyberCom 1 (transcribing)' },
+  'RPM CyberCom 2': { logo: true, app: true, shown: 'RPM CyberCom 2 (transcribing)' },
+  'RPM CyberCom 3': { logo: true, app: true, shown: 'RPM CyberCom 3 (transcribing)' },
   Reyes: { initials: 'R', color: '#3b5bdb' },
   'Unit 12': { initials: '12', color: '#0c8599' },
   Blade: { initials: 'B', color: '#e8590c' },
@@ -209,8 +210,9 @@ function drawRow(r, x, y, w, s, t, o) {
     const ax = x + pad + 58 * s;
     avatar(ax, cy, 18 * s, m, on, t);
     const nx = ax + 32 * s;
-    drawText(r.label, nx, cy, { size: 25 * s, weight: on ? 700 : 500, color: on ? '#fff' : C.dText, baseline: 'middle' });
-    if (m.app) appBadge(nx + textWidth(r.label, 25 * s, on ? 700 : 500) + 10 * s, cy, s);
+    const name = m.shown || r.label;
+    drawText(name, nx, cy, { size: 25 * s, weight: on ? 700 : 500, color: on ? '#fff' : C.dText, baseline: 'middle' });
+    if (m.app) appBadge(nx + textWidth(name, 25 * s, on ? 700 : 500) + 10 * s, cy, s);
     if (on) waveform(x + w - pad - 110 * s, cy, 110 * s, 26 * s, t, C.dGreen);
   }
   ctx.restore();
@@ -305,7 +307,7 @@ function sceneCyberCom(t) {
   const L = PORTRAIT;
   const s = S;
   const textH = Math.max(...Object.keys(SECTIONS).map((id) => textBlockHeight(sectionSpec(id))));
-  const sw = (L ? 900 : 640) * s, sh = sidebarHeight(s);
+  const sw = (L ? 900 : 700) * s, sh = sidebarHeight(s);
   const pin = prog(t, 0.1, 0.6);
   if (L) {
     const capW = 900 * s, capH = 190 * s;
