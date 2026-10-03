@@ -1,5 +1,5 @@
 (function () {
-  var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+  var API_BASE = 'https://roleplaymanager.tail6dd18c.ts.net';
   var app = document.getElementById('app');
 
   function esc(s) {

@@ -192,7 +192,7 @@
     // Featured servers first, then the top voted: the home page is the most
     // visited place to be featured.
     (function () {
-      var api = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app/api/directory?limit=12';
+      var api = 'https://roleplaymanager.tail6dd18c.ts.net/api/directory?limit=12';
       function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
       fetch(api).then(function (r) { return r.json(); }).then(function (d) {
         var seen = {};
@@ -209,7 +209,7 @@
             '<div style="font-size:12px;color:var(--text-muted);">' + Number(s.members || 0).toLocaleString('en-US') + ' members' +
             ((s.platforms || []).length ? ' · ' + esc(s.platforms.map(function (p) { return plat[p] || p; }).join(', ')) : '') +
             (s.featured ? ' · <span style="color:#fbbf24;">Featured</span>' : '') + '</div></div>' +
-            '<a class="btn btn-primary btn-sm" href="https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app/api/directory/join/' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">Join</a></div>';
+            '<a class="btn btn-primary btn-sm" href="https://roleplaymanager.tail6dd18c.ts.net/api/directory/join/' + encodeURIComponent(s.id) + '" target="_blank" rel="noopener">Join</a></div>';
         }).join('');
       }).catch(function () { document.getElementById('home-servers').style.display = 'none'; });
     })();
@@ -713,7 +713,7 @@
   </main>
 
   <script>
-    var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+    var API_BASE = 'https://roleplaymanager.tail6dd18c.ts.net';
 
     // ── Bot status ──
     //

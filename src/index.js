@@ -140,7 +140,7 @@ async function logGuildLoaded(guild) {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-app.set('trust proxy', 1); // Trust first proxy (Koyeb) so req.ip = real client IP
+app.set('trust proxy', 1); // Trust the first proxy (Tailscale Funnel) so req.ip is the real client IP
 
 app.use(cookieParser());
 // Stripe webhooks need the raw body - must be registered BEFORE express.json()
@@ -341,7 +341,7 @@ app.get('/auth/site/callback', async (req, res) => {
   // Still an exact-origin comparison; a suffix match would reopen the redirect.
   const ALLOWED_REDIRECT_ORIGINS = [
     'https://roleplaymanager.xyz',
-    'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app',
+    'https://roleplaymanager.tail6dd18c.ts.net',
     process.env.CAD_DOMAIN ? `https://${process.env.CAD_DOMAIN}` : null,
     process.env.SITE_ORIGIN || null,
   ].filter(Boolean);

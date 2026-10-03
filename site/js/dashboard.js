@@ -1,4 +1,4 @@
-var API_BASE = 'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+var API_BASE = 'https://roleplaymanager.tail6dd18c.ts.net';
 var SITE_URL = 'https://roleplaymanager.xyz';
 var BILLING_PORTAL_URL = 'https://billing.stripe.com/p/login/3cIdR9aKdaXpgnA9vs33W00';
 
