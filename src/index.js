@@ -550,6 +550,8 @@ client.on('guildCreate', async (guild) => {
     const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
     await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), { body: commandData });
     console.log(`[guildCreate] Registered ${commandData.length} commands to "${guild.name}" (${guild.id})`);
+    const { markSynced } = await import('./utils/commandSync.js');
+    await markSynced(guild.id, commandData);
   } catch (err) {
     console.error(`[guildCreate] Failed to register commands to "${guild.name}":`, err.message);
   }
@@ -1106,47 +1108,15 @@ client.once('clientReady', async () => {
     console.error('[Loans] Failed to restore drafts on startup:', err.message);
   }
   
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  const commandData = Array.from(client.commands.values()).map(c => c.data.toJSON());
-
-  try {
-    const existingGlobal = await rest.get(Routes.applicationCommands(client.user.id));
-    if (existingGlobal.length > 0) {
-      console.log(`[CLEAR] Found ${existingGlobal.length} global command(s) to clear: ${existingGlobal.map(c => c.name).join(', ')}`);
-      await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-      console.log('[DONE] Global commands cleared');
-    } else {
-      console.log('[OK] No global commands found - nothing to clear');
-    }
-  } catch (e) {
-    console.error('[WARN] Could not clear global commands:', e.message);
-  }
-
-  console.log(`[SYNC] Registering commands to ${client.guilds.cache.size} server(s)...`);
-  console.log('');
-  console.log('[STATS] COMMAND SYNC DETAILS:');
-  console.log(`  Total servers: ${client.guilds.cache.size}`);
-  console.log(`  Commands to register: ${commandData.length}`);
-  console.log('');
-
-  let count = 0;
-  let syncOk = 0;
-  let syncFailed = 0;
-  for (const [guildId, guild] of client.guilds.cache) {
-    count++;
-    console.log(`[${count}/${client.guilds.cache.size}] [PROC] Processing: "${guild.name}" (ID: ${guildId}, Members: ${guild.memberCount})`);
-    try {
-      const startTime = Date.now();
-      await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commandData });
-      const endTime = Date.now();
-      syncOk++;
-      console.log(`  [OK] ${commandData.length} commands registered in ${endTime - startTime}ms`);
-    } catch (error) {
-      syncFailed++;
-      console.log(`  [FAIL] ${guild.name} (${guildId}) - ${error.message}`);
-    }
-    await logGuildLoaded(guild);
-  }
+  // Slash commands go only to the servers missing the current set, in the
+  // background, so voice dispatch and RPM CyberCom start straight away
+  // instead of after two minutes (src/utils/commandSync.js). Then the usual
+  // "[SERVER LOADED]" line and invite for every server, five at a time.
+  const { syncCommands, eachLimit } = await import('./utils/commandSync.js');
+  console.log(`[SYNC] Checking commands for ${client.guilds.cache.size} server(s) in the background...`);
+  syncCommands(client)
+    .then(() => eachLimit([...client.guilds.cache.values()], 5, logGuildLoaded))
+    .catch((err) => console.error('[SYNC] Command sync failed:', err.message));
 
   // Set per-guild nicknames
   const guildNicknames = {
@@ -1158,15 +1128,6 @@ client.once('clientReady', async () => {
       await guild.members.me.setNickname(nickname).catch(() => {});
     }
   }
-
-  console.log('');
-  console.log('============================================================');
-  console.log('[DONE] Command sync completed');
-  console.log('[STATS] SYNC SUMMARY:');
-  console.log(`  Successful: ${syncOk}/${client.guilds.cache.size}`);
-  console.log(`  Failed: ${syncFailed}/${client.guilds.cache.size}`);
-  console.log('============================================================');
-  console.log('');
 
   setTimeout(() => refreshAllVerifyPanels(client), 5000);
 
