@@ -34,8 +34,11 @@ import { isMaintenanceMode } from './utils/maintenanceMode.js';
 import { attachLinks } from './utils/replyLinks.js';
 import { attachFunnel } from './utils/funnelHook.js';
 import { premiumEvents, hasPremiumAccess } from './utils/premiumCheck.js';
+import { captureConsole } from './utils/logStream.js';
 
 dotenv.config();
+// The dev panel's Logs tab: a copy of the console, for hosts without a journal.
+captureConsole();
 
 // Koyeb-style Startup Logs
 console.log('Instance created. Preparing to start...');

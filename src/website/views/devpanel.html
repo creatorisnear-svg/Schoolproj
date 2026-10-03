@@ -167,6 +167,37 @@
     .changes-list li::before { content: '•'; position: absolute; left: 0; color: #5865f2; }
 
     .tag-inactive { opacity: 0.4; }
+
+    /* Logs: the bot's console, live, the way Koyeb's console showed it */
+    .console { background: #08090b; border: 1px solid #1e1e1e; border-radius: 12px; overflow: hidden; position: relative; }
+    .console-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; background: #101114; border-bottom: 1px solid #1e1e1e; }
+    .console-bar input { width: auto; flex: 1; min-width: 160px; padding: 6px 10px; font-size: 12.5px; }
+    .console-bar select { width: auto; padding: 6px 10px; font-size: 12.5px; }
+    .console-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #9aa0aa; padding: 0 8px 0 2px; white-space: nowrap; }
+    .console-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+    .console-status.live .dot { background: #22c55e; animation: livepulse 1.6s infinite; }
+    .console-status.paused .dot { background: #f59e0b; }
+    .console-status.down .dot { background: #ef4444; }
+    @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); } 70% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
+    .console-body { height: 68vh; overflow: auto; padding: 8px 0; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6; }
+    .log-line { display: grid; grid-template-columns: 148px 54px 1fr; gap: 14px; padding: 0 16px; }
+    .log-line:hover { background: #121318; }
+    .log-time { color: #4f5562; white-space: nowrap; }
+    .log-from { color: #4f5562; }
+    .log-from.deploy { color: #60a5fa; }
+    .log-from.system { color: #a78bfa; }
+    .log-msg { color: #d4d4d8; white-space: pre-wrap; word-break: break-word; }
+    .log-line.warn .log-msg { color: #fbbf24; }
+    .log-line.error .log-msg { color: #f87171; }
+    .log-line mark { background: #5865f2; color: #fff; border-radius: 2px; }
+    .log-divider { margin: 8px 16px; padding-top: 6px; border-top: 1px dashed #2a2d36; color: #6b7280; font-size: 11.5px; font-family: 'Inter', sans-serif; }
+    .console-empty { color: #4f5562; padding: 16px; font-family: 'Inter', sans-serif; font-size: 12.5px; }
+    .console-jump { position: absolute; right: 18px; bottom: 44px; display: none; }
+    .console-foot { display: flex; justify-content: space-between; gap: 12px; padding: 7px 14px; border-top: 1px solid #1e1e1e; background: #101114; font-size: 11.5px; color: #6b7280; }
+    @media (max-width: 640px) {
+      .log-line { grid-template-columns: 1fr; gap: 0; padding: 3px 12px; }
+      .log-time, .log-from { display: inline; }
+    }
     .actions { display: flex; gap: 8px; flex-shrink: 0; }
 
     .feature-card {
@@ -352,6 +383,7 @@
       <button class="tab" onclick="switchTab('verified')">Verified Members</button>
       <button class="tab" onclick="switchTab('directory')">Directory</button>
       <button class="tab" onclick="switchTab('cybercom')">CyberCom</button>
+      <button class="tab" onclick="switchTab('logs')">Logs</button>
     </div>
   </div>
 
@@ -653,6 +685,25 @@
     </div>
   </div>
 
+  <div id="panel-logs" class="panel">
+    <div class="console">
+      <div class="console-bar">
+        <span class="console-status" id="log-status"><span class="dot"></span><span id="log-status-text">Connecting</span></span>
+        <input id="log-filter" placeholder="Filter logs" oninput="renderLogs()">
+        <select id="log-level" onchange="renderLogs()">
+          <option value="all">All lines</option>
+          <option value="warn">Warnings and errors</option>
+          <option value="error">Errors only</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="log-pause" onclick="toggleLogPause()">Pause</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadLogs()">Download</button>
+      </div>
+      <div class="console-body" id="log-body" onscroll="logScrolled()"><div class="console-empty">Waiting for the first lines...</div></div>
+      <button class="btn btn-primary btn-sm console-jump" id="log-jump" onclick="jumpToLatest()">Jump to latest</button>
+      <div class="console-foot"><span id="log-source">Bot console</span><span id="log-count">0 lines</span></div>
+    </div>
+  </div>
+
   <div id="panel-verified" class="panel">
     <div class="card" style="margin-bottom:20px;">
       <div class="section-label" style="margin-bottom:14px;">Select Server</div>
@@ -710,7 +761,7 @@
 </div>
 
 <script>
-  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory', 'cybercom'];
+  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory', 'cybercom', 'logs'];
 
   function funnelStat(label, value, hint, tone) {
     var colour = tone === 'good' ? '#34d399' : tone === 'bad' ? '#f87171' : '#e8eaed';
@@ -932,6 +983,7 @@
     if (name === 'verified') initVerifiedTab();
     if (name === 'directory') loadDirectory();
     if (name === 'cybercom') loadCyberCom();
+    if (name === 'logs') startLogs();
   }
 
   function showAlert(msg, type) {
@@ -1634,6 +1686,200 @@
     wrap.innerHTML = html;
   }
   // ── End Verified Members ──────────────────────────────────────────────────
+
+  /* ── Logs: the bot's console, live, from /dev/logs ── */
+  var LOG_KEEP = 5000;
+  var _logs = [];
+  var _logES = null;
+  var _logPaused = false;
+  var _logQueued = false;
+  var _logFull = false;     // the screen must be drawn again from _logs
+  var _logRendered = 0;     // lines of _logs already looked at for the screen
+  var _logLastPid = null;   // the bot's process, to mark a restart
+
+  // "error" at the end of a word catches MongooseError and [DB] Error, not "0 errors".
+  function logLevel(text) {
+    if (/error\b|\b(failed|fatal|exception|unhandled|crash(ed)?)\b|❌/i.test(text)) return 'error';
+    if (/\b(warn(ing)?|deprecated|timed? ?out|rate ?limit(ed)?|retry(ing)?)\b|⚠/i.test(text)) return 'warn';
+    return '';
+  }
+
+  function setLogStatus(state, text) {
+    document.getElementById('log-status').className = 'console-status ' + state;
+    document.getElementById('log-status-text').textContent = text;
+  }
+
+  function startLogs() {
+    if (_logES) return;
+    setLogStatus('', 'Connecting');
+    // A dropped stream (the bot restarting, a deploy) reconnects by itself and
+    // carries on after the last line it had.
+    _logES = new EventSource('/dev/logs');
+    _logES.onopen = function () { setLogStatus(_logPaused ? 'paused' : 'live', _logPaused ? 'Paused' : 'Live'); };
+    _logES.onerror = function () { setLogStatus('down', 'Reconnecting'); };
+    _logES.addEventListener('source', function (e) {
+      var s = {};
+      try { s = JSON.parse(e.data); } catch (_) {}
+      document.getElementById('log-source').textContent = s.journal
+        ? 'System journal for ' + s.unit + ', restarts and deploys included'
+        : 'This run of the bot, since it started';
+    });
+    _logES.onmessage = function (e) {
+      var line;
+      try { line = JSON.parse(e.data); } catch (_) { return; }
+      // A stack trace's "at ..." lines belong to the error above them.
+      var prev = _logs[_logs.length - 1];
+      line.level = prev && /^\s+(at |\.\.\.)/.test(line.text) ? prev.level : logLevel(line.text);
+      _logs.push(line);
+      if (_logs.length > LOG_KEEP + 1000) { _logs.splice(0, 1000); _logFull = true; }
+      if (!_logQueued) { _logQueued = true; requestAnimationFrame(flushLogs); }
+    };
+  }
+
+  function logMatches(line, q, level) {
+    if (level === 'error' && line.level !== 'error') return false;
+    if (level === 'warn' && !line.level) return false;
+    return !q || line.text.toLowerCase().indexOf(q) !== -1;
+  }
+
+  function logTime(t) {
+    var d = new Date(t);
+    var p = function (n, w) { return String(n).padStart(w || 2, '0'); };
+    return d.toLocaleString('en-US', { month: 'short' }) + ' ' + p(d.getDate()) + ' '
+      + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p(d.getMilliseconds(), 3);
+  }
+
+  function logNode(line, q) {
+    var row = document.createElement('div');
+    row.className = 'log-line' + (line.level ? ' ' + line.level : '');
+    var time = document.createElement('span');
+    time.className = 'log-time';
+    time.textContent = logTime(line.t);
+    var from = document.createElement('span');
+    from.className = 'log-from ' + line.from;
+    from.textContent = line.from;
+    var msg = document.createElement('span');
+    msg.className = 'log-msg';
+    if (q) {
+      var lower = line.text.toLowerCase(), at = 0, i;
+      while ((i = lower.indexOf(q, at)) !== -1) {
+        msg.appendChild(document.createTextNode(line.text.slice(at, i)));
+        var mark = document.createElement('mark');
+        mark.textContent = line.text.slice(i, i + q.length);
+        msg.appendChild(mark);
+        at = i + q.length;
+      }
+      msg.appendChild(document.createTextNode(line.text.slice(at)));
+    } else {
+      msg.textContent = line.text;
+    }
+    row.appendChild(time);
+    row.appendChild(from);
+    row.appendChild(msg);
+    return row;
+  }
+
+  // Lines from start onward, as nodes; marks where the bot's process changed.
+  function logNodes(start, q, level) {
+    var frag = document.createDocumentFragment();
+    for (var i = start; i < _logs.length; i++) {
+      var line = _logs[i];
+      if (line.from === 'bot' && line.pid) {
+        if (_logLastPid !== null && line.pid !== _logLastPid && !q && level === 'all') {
+          var div = document.createElement('div');
+          div.className = 'log-divider';
+          div.textContent = 'The bot restarted at ' + logTime(line.t);
+          frag.appendChild(div);
+        }
+        _logLastPid = line.pid;
+      }
+      if (logMatches(line, q, level)) frag.appendChild(logNode(line, q));
+    }
+    _logRendered = _logs.length;
+    return frag;
+  }
+
+  function logFilters() {
+    return { q: document.getElementById('log-filter').value.trim().toLowerCase(), level: document.getElementById('log-level').value };
+  }
+
+  function renderLogs() {
+    var body = document.getElementById('log-body');
+    var f = logFilters();
+    _logLastPid = null;
+    var frag = logNodes(0, f.q, f.level);
+    body.textContent = '';
+    if (!frag.childNodes.length) {
+      var empty = document.createElement('div');
+      empty.className = 'console-empty';
+      empty.textContent = _logs.length ? 'No lines match.' : 'Waiting for the first lines...';
+      body.appendChild(empty);
+    } else {
+      body.appendChild(frag);
+    }
+    updateLogCount();
+    body.scrollTop = body.scrollHeight;
+    document.getElementById('log-jump').style.display = 'none';
+  }
+
+  function flushLogs() {
+    _logQueued = false;
+    if (_logPaused) { updateLogCount(); return; }
+    if (_logFull) { _logFull = false; renderLogs(); return; }
+    var body = document.getElementById('log-body');
+    var atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40;
+    var f = logFilters();
+    var frag = logNodes(_logRendered, f.q, f.level);
+    if (frag.childNodes.length) {
+      var empty = body.querySelector('.console-empty');
+      if (empty) empty.remove();
+      body.appendChild(frag);
+    }
+    updateLogCount();
+    if (atBottom) body.scrollTop = body.scrollHeight;
+    else document.getElementById('log-jump').style.display = 'block';
+  }
+
+  function updateLogCount() {
+    var waiting = _logs.length - _logRendered;
+    document.getElementById('log-count').textContent = _logs.length + ' lines'
+      + (_logPaused && waiting > 0 ? ', ' + waiting + ' new while paused' : '');
+  }
+
+  function toggleLogPause() {
+    _logPaused = !_logPaused;
+    document.getElementById('log-pause').textContent = _logPaused ? 'Resume' : 'Pause';
+    var open = _logES && _logES.readyState === 1;
+    if (_logPaused) setLogStatus('paused', 'Paused');
+    else setLogStatus(open ? 'live' : 'down', open ? 'Live' : 'Reconnecting');
+    if (!_logPaused) flushLogs();
+  }
+
+  function logScrolled() {
+    var body = document.getElementById('log-body');
+    if (body.scrollHeight - body.scrollTop - body.clientHeight < 40) document.getElementById('log-jump').style.display = 'none';
+  }
+
+  function jumpToLatest() {
+    var body = document.getElementById('log-body');
+    body.scrollTop = body.scrollHeight;
+    document.getElementById('log-jump').style.display = 'none';
+  }
+
+  // What is on screen (the filters apply), as a .log file.
+  function downloadLogs() {
+    var f = logFilters();
+    var text = _logs.filter(function (l) { return logMatches(l, f.q, f.level); })
+      .map(function (l) { return new Date(l.t).toISOString() + ' [' + l.from + '] ' + l.text; }).join('\n');
+    var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text + '\n'], { type: 'text/plain' }));
+    a.download = 'roleplaymanager-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.log';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
 
   async function init() {
     var check = await fetch('/dev/check').then(function(r) { return r.json(); });

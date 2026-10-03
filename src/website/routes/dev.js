@@ -228,6 +228,25 @@ export function createDevRouter(client) {
     res.json({ authorized: token ? sessions.has(token) : false });
   });
 
+  // GET /dev/logs: the bot's console as it prints, for the Logs tab, as
+  // Server-Sent Events. A tab that reconnects (the bot restarted, a deploy)
+  // sends the id of its last line and carries on from there.
+  router.get('/logs', devAuth, async (req, res) => {
+    const { followLogs, logSource } = await import('../../utils/logStream.js');
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write(`event: source\ndata: ${JSON.stringify(logSource())}\n\n`);
+    const send = (line) => res.write(`id: ${line.id}\ndata: ${JSON.stringify(line)}\n\n`);
+    const stop = followLogs({ after: req.headers['last-event-id'] || null, onLine: send, onEnd: () => res.end() });
+    // Proxies drop a stream that stays silent too long.
+    const ping = setInterval(() => res.write('event: ping\ndata: {}\n\n'), 25000);
+    req.on('close', () => { clearInterval(ping); stop(); });
+  });
+
   // GET /dev/promo-voice: the promo video's radio lines in the bot's real
   // voices, as one JSON download for marketing/render.mjs (?set=cybercom:
   // the RPM CyberCom promo's, for render-cybercom.mjs). The voice key only
