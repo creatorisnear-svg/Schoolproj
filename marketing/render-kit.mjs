@@ -53,6 +53,12 @@ export const durationOf = (file) => {
   const r = spawnSync(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
   return Number(String(r.stdout).trim()) || null;
 };
+/** Integrated loudness (EBU R128) in LUFS, or null. */
+export const loudnessOf = (file) => {
+  const r = spawnSync(FFMPEG, ['-hide_banner', '-nostats', '-i', file, '-af', 'ebur128', '-f', 'null', '-']);
+  const m = String(r.stderr).split('Summary:').pop().match(/I:\s+(-?[\d.]+) LUFS/);
+  return m ? Number(m[1]) : null;
+};
 
 export const ENCODE = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
 export const ms = (s) => Math.max(0, Math.round(s * 1000));

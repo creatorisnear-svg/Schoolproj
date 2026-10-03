@@ -362,10 +362,12 @@ let TL = null;
 let SCENES = [];
 let BACKDROP = null;
 const XF = 0.35;
+// A scene fades in over the one before it, unless the timeline cuts to it
+// (cut: true on the scene), as on a beat.
 function sceneAlpha(s, t) {
-  if (t < s.start || t > s.end + XF) return 0;
-  const fin = s.start === 0 ? 1 : ease((t - s.start) / XF);
-  const fout = s.last ? 1 : 1 - ease((t - s.end) / XF);
+  if (t < s.start || (s.cutOut ? t >= s.end : t > s.end + XF)) return 0;
+  const fin = s.start === 0 || s.cutIn ? 1 : ease((t - s.start) / XF);
+  const fout = s.last || s.cutOut ? 1 : 1 - ease((t - s.end) / XF);
   return Math.min(fin, fout);
 }
 
@@ -408,6 +410,7 @@ function startPromo({ draw, lights = {}, marked = [], stills = {}, backdrop = nu
       const mark = new Set(marked);
       SCENES = TL.scenes.map((s, i) => ({
         ...s, draw: draw[s.id], lights: lights[s.id] || 0, mark: mark.has(s.id), last: i === TL.scenes.length - 1,
+        cutIn: !!s.cut, cutOut: !!TL.scenes[i + 1]?.cut,
       }));
       if (q.get('job') === 'video') {
         const n = Math.round(DUR * FPS);
