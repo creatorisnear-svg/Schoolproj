@@ -1,9 +1,8 @@
 {
-  "version": "1.18.1",
-  "title": "Everything in one place in /setup",
+  "version": "1.18.2",
+  "title": "Easier RPM CyberCom setup",
   "changes": [
-    "/setup now lists the add-ons too, with whether each one is on: Server Directory, Safety Network, RPM CyberCom, Voice moderation and Session Recaps",
-    "Voice moderation has its own place: /config voicemoderation, and Voice moderation in the /setup menu",
-    "New: /config cybercom and /config safetynetwork open those settings straight away, and /help has an Add-ons page"
+    "After you pick your traffic stop and civilian channels in /config cybercom, it walks you through adding one helper bot for each channel, one at a time",
+    "Each Add button opens Discord with your server already picked, and the screen moves on to the next helper by itself as each one joins"
   ]
 }

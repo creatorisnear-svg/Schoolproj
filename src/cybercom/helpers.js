@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { Client, GatewayIntentBits, Options } from 'discord.js';
 
 /**
@@ -12,6 +13,10 @@ import { Client, GatewayIntentBits, Options } from 'discord.js';
 export const HELPER_PERMISSIONS = '3146752';
 
 let helpers = [];
+
+// "guild" (guildId) when a helper is added to a server or removed from one,
+// so the setup screen can move on to the next helper by itself.
+export const helperEvents = new EventEmitter();
 
 export async function startHelpers() {
   const listed = String(process.env.VOICE_HELPER_TOKENS || '').split(/[\s,]+/).filter(Boolean);
@@ -52,6 +57,8 @@ export async function startHelpers() {
       console.log(`[CyberCom] Helper ${helper.index} ready as ${client.user.tag} in ${client.guilds.cache.size} server(s)`);
     });
     client.on('error', (err) => console.error(`[CyberCom] Helper ${helper.index} error:`, err.message));
+    client.on('guildCreate', (guild) => helperEvents.emit('guild', guild.id));
+    client.on('guildDelete', (guild) => helperEvents.emit('guild', guild.id));
     return helper;
   });
   // One after another, a moment apart: 16 accounts connecting at the same
@@ -83,9 +90,11 @@ export function freeHelper(guildId) {
   return helpersInGuild(guildId).find((h) => !h.busy.has(guildId)) || null;
 }
 
-export function inviteUrl(helper) {
+/** The link that adds a helper; with a server, that server is already picked. */
+export function inviteUrl(helper, guildId = null) {
   const id = helper.client.application?.id || helper.client.user?.id;
-  return `https://discord.com/oauth2/authorize?client_id=${id}&permissions=${HELPER_PERMISSIONS}&scope=bot`;
+  const server = guildId ? `&guild_id=${guildId}&disable_guild_select=true` : '';
+  return `https://discord.com/oauth2/authorize?client_id=${id}&permissions=${HELPER_PERMISSIONS}&scope=bot${server}`;
 }
 
 /** Tests only: stand-in helpers. */

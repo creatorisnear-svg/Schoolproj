@@ -45,6 +45,6 @@ export async function sendCyberComWelcome(client, userId, guildName) {
   const { EmbedBuilder } = await import('discord.js');
   const { dmUsers } = await import('../utils/premiumNotify.js');
   await dmUsers(client, [userId], { embeds: [new EmbedBuilder().setColor(0x43b581).setTitle('RPM CyberCom is on')
-    .setDescription('**' + (guildName || 'Your server') + '** has RPM CyberCom.\n\nNext, in your server: run `/setup` and open **RPM CyberCom**. Add the helper bots there, then pick your civilian, traffic stop and police radio channels.')
+    .setDescription('**' + (guildName || 'Your server') + '** has RPM CyberCom.\n\nNext, in your server: run `/config cybercom` and pick your police radio, traffic stop and civilian channels. It then walks you through adding one helper bot for each channel, one at a time.')
     .setFooter({ text: 'RPM' })] }).catch(() => {});
 }

@@ -6,19 +6,106 @@ import DispatchConfig from '../models/DispatchConfig.js';
 import { backRow } from '../utils/setupNav.js';
 import { cyberComSubscribed, isCyberComActive, clearCyberComCache } from '../cybercom/access.js';
 import { hasPremiumAccess } from '../utils/premiumCheck.js';
-import { allHelpers, helperCount, inviteUrl } from '../cybercom/helpers.js';
-import { forgetConfig } from '../cybercom/coordinator.js';
+import { allHelpers, helperCount, helperEvents, inviteUrl } from '../cybercom/helpers.js';
+import { coveredChannels, forgetConfig } from '../cybercom/coordinator.js';
 import { TRANSCRIPT_DAYS } from '../models/VoiceTranscript.js';
 
 /**
- * The RPM CyberCom screen inside /setup: status, the helper bots to add, and
- * which voice channels it covers. Plus the buttons on CyberCom's own messages
- * (move me into a stop, move me back, attach me to a 10-80).
+ * The RPM CyberCom screen inside /setup: status and which voice channels it
+ * covers, then the helper bots, added one at a time, one for each channel.
+ * Plus the buttons on CyberCom's own messages (move me into a stop, move me
+ * back, attach me to a 10-80).
  */
 
 const SITE = 'https://roleplaymanager.xyz';
 const mentions = (ids) => (ids || []).map((id) => `<#${id}>`).join(', ') || 'none';
 const WHERE = 'in `/setup` under AI Voice Dispatch';
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const joinList = (items) => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1]);
+
+// ── Helper bots: one for each channel they cover, added one at a time ──────
+
+/**
+ * Where this server stands with helper bots. They sit in the traffic stop and
+ * civilian channels (the police radio is the main bot's), one channel each,
+ * so it needs as many as it has of those channels, as far as there are
+ * helpers. `next` is the one to add now.
+ */
+async function helperPlan(guild) {
+  const { map } = await coveredChannels(guild.id);
+  const kinds = [...map].filter(([id]) => guild.channels.cache.has(id)).map(([, kind]) => kind);
+  const ready = allHelpers();
+  const added = ready.filter((h) => h.client.guilds.cache.has(guild.id)).length;
+  const needed = Math.min(kinds.length, ready.length);
+  return {
+    channels: kinds.length, needed, added, available: ready.length,
+    stops: kinds.filter((k) => k === 'stop').length,
+    civilian: kinds.filter((k) => k === 'civilian').length,
+    radio: kinds.filter((k) => k === 'radio').length,
+    next: added < needed ? ready.find((h) => !h.client.guilds.cache.has(guild.id)) : null,
+  };
+}
+
+/** The helper bots, one at a time: the next one to add, with its own button. */
+export async function helperStepView(guild, note = '') {
+  const plan = await helperPlan(guild);
+  const lines = [];
+  if (note) lines.push(note, '');
+  if (!plan.channels) {
+    lines.push('Pick your traffic stop and civilian channels first. Then you add one helper bot for each, one at a time.');
+  } else {
+    const kinds = [[plan.stops, 'traffic stop'], [plan.civilian, 'civilian'], [plan.radio, 'radio']].filter(([n]) => n).map(([n, kind]) => `${n} ${kind}`);
+    lines.push(`You picked ${plural(plan.channels, 'channel')} for the helpers (${joinList(kinds)}). Each needs its own helper bot, because a Discord bot can only be in one voice channel of a server at a time.`, '');
+    if (plan.next) {
+      lines.push(
+        `**Helper ${plan.added + 1} of ${plan.needed}: RPM CyberCom ${plan.next.index}**`,
+        `1. Press **Add RPM CyberCom ${plan.next.index}** below. Discord opens with this server already picked.`,
+        '2. Press **Authorize**.',
+        '3. Come back here. This moves on to the next helper by itself, or press **Check again**.',
+      );
+    } else {
+      lines.push(`**All ${plan.needed} helper bots are in.** Each one joins a channel when people are in it and leaves when it empties.`);
+    }
+    lines.push('');
+    if (plan.channels > plan.available) {
+      lines.push(`-# There are ${plural(plan.available, 'helper bot')}, so up to ${plan.available} of your ${plan.channels} channels can have people in them at the same time.`);
+    }
+    lines.push(
+      '-# Police radio channels need no helper: RolePlayManager runs them itself.',
+      '-# Helpers only listen and speak, so they ask for View Channel, Connect and Speak, nothing more.',
+    );
+  }
+  const embed = new EmbedBuilder().setColor(0x2d2d2d)
+    .setTitle(plan.next ? `RPM CyberCom: helper bots (${plan.added} of ${plan.needed} added)` : 'RPM CyberCom: helper bots')
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'RPM' });
+  const buttons = [];
+  if (plan.next) {
+    buttons.push(
+      new ButtonBuilder().setLabel(`Add RPM CyberCom ${plan.next.index}`).setStyle(ButtonStyle.Link).setURL(inviteUrl(plan.next, guild.id)),
+      new ButtonBuilder().setCustomId('cybercom_helpers_check').setLabel('Check again').setStyle(ButtonStyle.Secondary),
+    );
+  }
+  buttons.push(new ButtonBuilder().setCustomId('cybercom_helpers_back').setLabel('Back to RPM CyberCom')
+    .setStyle(plan.next ? ButtonStyle.Secondary : ButtonStyle.Primary));
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(...buttons)] };
+}
+
+// Helper screens open right now, by server, so they move on by themselves as
+// each helper joins. Discord lets an answer be edited for 15 minutes.
+const openSteps = new Map();
+const EDITABLE_MS = 14 * 60000;
+helperEvents.on('guild', (guildId) => {
+  const open = openSteps.get(guildId);
+  if (!open) return;
+  if (Date.now() - open.at > EDITABLE_MS) { openSteps.delete(guildId); return; }
+  helperStepView(open.interaction.guild).then((view) => open.interaction.editReply(view)).catch(() => openSteps.delete(guildId));
+});
+
+function showSteps(interaction, note = '') {
+  openSteps.set(interaction.guild.id, { interaction, at: interaction.createdTimestamp || Date.now() });
+  return helperStepView(interaction.guild, note).then((view) => interaction.update(view));
+}
 
 /**
  * Why "dispatch" might get no answer, in plain words. Every one of these used
@@ -63,9 +150,7 @@ export async function cyberComView(guild, note = '', viewer = null) {
   const problems = (active || premium) ? await dispatchProblems(guild, dc, viewer).catch(() => []) : [];
   const { retentionDays } = await import('../cybercom/flags.js');
   const keptDays = await retentionDays(guild.id).catch(() => TRANSCRIPT_DAYS);
-  const helpers = allHelpers();
-  const added = helpers.filter((h) => h.client.guilds.cache.has(guild.id));
-  const missing = helpers.filter((h) => !h.client.guilds.cache.has(guild.id));
+  const plan = await helperPlan(guild);
   // The police radios are the dispatcher's patrol channels, so whatever was set
   // in AI Voice Dispatch shows here already. Radios picked before the two were
   // one list are shown with them until the menu is next saved.
@@ -95,11 +180,15 @@ export async function cyberComView(guild, note = '', viewer = null) {
   }
   lines.push('');
 
-  if (helperCount()) {
-    lines.push(`**Helper bots:** ${added.length} of ${helpers.length} added. Each covers one busy channel at a time.`);
-    if (missing.length) lines.push('Add: ' + missing.map((h) => `[CyberCom ${h.index}](${inviteUrl(h)})`).join(' · '));
-  } else {
+  if (!helperCount()) {
     lines.push('**Helper bots:** not available yet.');
+  } else if (!plan.channels) {
+    lines.push('**Helper bots:** pick your traffic stop and civilian channels below, then add one helper bot for each, one at a time.');
+  } else if (plan.next) {
+    lines.push(`**Helper bots:** ${plan.added} of ${plan.needed} added, one for each channel. Press **Add helper bots** for the next one.`);
+  } else {
+    lines.push(`**Helper bots:** all ${plan.added} added.`
+      + (plan.channels > plan.available ? ` Up to ${plan.available} of your ${plan.channels} channels can have people in them at the same time.` : ''));
   }
   lines.push(
     '',
@@ -126,6 +215,9 @@ export async function cyberComView(guild, note = '', viewer = null) {
   const buttons = [];
   if (!subscribed) {
     buttons.push(new ButtonBuilder().setLabel('Get RPM CyberCom').setStyle(ButtonStyle.Link).setURL(`${SITE}/pricing?from=cybercom&guild=${guild.id}#cybercom`));
+  }
+  if (plan.next) {
+    buttons.push(new ButtonBuilder().setCustomId('cybercom_helpers').setLabel(`Add helper bots (${plan.needed - plan.added} to go)`).setStyle(ButtonStyle.Success));
   }
   buttons.push(new ButtonBuilder().setCustomId('cybercom_vmod_open').setLabel('Voice moderation').setStyle(ButtonStyle.Primary));
   buttons.push(new ButtonBuilder().setCustomId('cybercom_greet').setLabel(cfg?.greet === false ? 'Turn greetings on' : 'Turn greetings off').setStyle(ButtonStyle.Secondary));
@@ -159,6 +251,11 @@ export async function handleCyberCom(interaction) {
     return handleVoiceMod(interaction);
   }
   const guild = interaction.guild;
+  if (id === 'cybercom_helpers' || id === 'cybercom_helpers_check') return showSteps(interaction);
+  if (id === 'cybercom_helpers_back') {
+    openSteps.delete(guild.id);
+    return interaction.update(await cyberComView(guild, '', interaction.member));
+  }
   let note = '';
   const values = interaction.values || [];
   // A channel is one kind only: police radio, traffic stop or civilian.
@@ -200,6 +297,9 @@ export async function handleCyberCom(interaction) {
   }
   forgetConfig(guild.id);
   clearCyberComCache(guild.id);
+  // Channels picked: on to the helper bots, one for each, while any are missing.
+  if ((id === 'cybercom_stops' || id === 'cybercom_civ') && (await helperPlan(guild)).next) return showSteps(interaction, note);
+  openSteps.delete(guild.id);
   return interaction.update(await cyberComView(guild, note, interaction.member));
 }
 
