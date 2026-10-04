@@ -485,7 +485,9 @@
         devPassword = '';
         return;
       }
-      localStorage.setItem('dev_pw', devPassword);
+      // This tab only: in localStorage the master password stayed in the
+      // browser for good, readable by any script that ever ran on the site.
+      sessionStorage.setItem('dev_pw', devPassword);
       showMain();
     } catch (e) {
       document.getElementById('login-error').textContent = 'Could not connect to server.';
@@ -505,7 +507,7 @@
   }
 
   function signOut() {
-    localStorage.removeItem('dev_pw');
+    sessionStorage.removeItem('dev_pw');
     devPassword = '';
     document.getElementById('main-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
@@ -654,7 +656,7 @@
         (v.ipAddress ? '<div style="font-size:12px;color:#666;margin-top:2px;font-family:monospace;">IP: ' + esc(v.ipAddress) + '</div>' : '') +
         '</div>' +
         '<div class="actions">' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteVerifiedMember(\'' + esc(guildId) + '\',\'' + esc(v.userId) + '\',\'' + esc(v.discordName || v.userId) + '\')">Delete</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteVerifiedMember(' + jsArg(guildId) + ',' + jsArg(v.userId) + ',' + jsArg(v.discordName || v.userId) + ')">Delete</button>' +
         '</div>' +
         '</div>' +
         '</div>';
@@ -678,8 +680,14 @@
   }
 
   function esc(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // A value passed to an inline handler: JSON-encoded, then escaped, because
+  // the browser turns &#39; back into ' before the handler runs.
+  function jsArg(v) {
+    return esc(JSON.stringify(String(v == null ? '' : v)));
   }
 
   function toEmbedUrl(url) {
@@ -945,7 +953,7 @@
             ${isActive ? `<div style="font-size:12px;color:#888;">Server: <strong style="color:#ccc;">${esc(k.guildName||k.guildId)}</strong> &mdash; activated ${new Date(k.activatedAt).toLocaleDateString()}</div>` : `<div style="font-size:12px;color:#555;">Created ${new Date(k.createdAt).toLocaleDateString()}</div>`}
           </div>
           <div class="actions">
-            <button class="btn btn-danger btn-sm" onclick="deleteKey('${esc(k.key)}')">Revoke</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteKey(${jsArg(k.key)})">Revoke</button>
           </div>
         </div>
       </div>`;
@@ -1144,7 +1152,8 @@
 
   /* ── Init ── */
   (function init() {
-    const saved = localStorage.getItem('dev_pw');
+    try { localStorage.removeItem('dev_pw'); } catch (e) {} // copies saved by older versions
+    const saved = sessionStorage.getItem('dev_pw');
     if (saved) { devPassword = saved; verifyAndLoad(); }
   })();
 </script>

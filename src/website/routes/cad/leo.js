@@ -156,7 +156,7 @@ export function createLeoRouter(client) {
   router.post('/warrants', async (req, res) => {
     const charges = str(req.body.charges, 300);
     if (!charges) return badRequest(res, 'List the charges.');
-    const character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+    const character = await CADCharacter.findOne({ _id: String(req.body.characterId), guildId: req.guildId }).lean();
     if (!character) return notFound(res, 'Character');
     const warrant = await Warrant.create({
       guildId: req.guildId,
@@ -254,7 +254,7 @@ export function createLeoRouter(client) {
     if (!description) return badRequest(res, 'Describe the item.');
     let character = null;
     if (req.body.characterId) {
-      character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+      character = await CADCharacter.findOne({ _id: String(req.body.characterId), guildId: req.guildId }).lean();
     }
     const item = await Evidence.create({
       guildId: req.guildId,
@@ -282,7 +282,7 @@ export function createLeoRouter(client) {
     const reason = str(req.body.reason, 300);
     if (!reason) return badRequest(res, 'A reason is required.');
 
-    const character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+    const character = await CADCharacter.findOne({ _id: String(req.body.characterId), guildId: req.guildId }).lean();
     if (!character) return notFound(res, 'Character');
 
     const limits = await getGuildLimits(req.guildId);
@@ -340,7 +340,7 @@ export function createLeoRouter(client) {
     const violation = str(req.body.violation, 300);
     if (!violation) return badRequest(res, 'A violation is required.');
 
-    const character = await CADCharacter.findOne({ _id: req.body.characterId, guildId: req.guildId }).lean();
+    const character = await CADCharacter.findOne({ _id: String(req.body.characterId), guildId: req.guildId }).lean();
     if (!character) return notFound(res, 'Character');
 
     const ticket = await TrafficTicket.create({

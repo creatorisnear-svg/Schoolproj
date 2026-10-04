@@ -13,8 +13,6 @@ import axios from 'axios';
 import { createApiRouter } from './website/routes/api.js';
 import { createAuthRouter } from './website/routes/auth.js';
 import { createDevRouter } from './website/routes/dev.js';
-import { createPortalRouter } from './website/routes/portal.js';
-import { createPortalApiRouter } from './website/routes/portalApi.js';
 import { createCheckoutRouter } from './website/routes/checkout.js';
 import { createWebhooksRouter } from './website/routes/webhooks.js';
 import { createCadApiRouter } from './website/routes/cadApi.js';
@@ -142,6 +140,7 @@ async function logGuildLoaded(guild) {
 }
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 5000;
 app.set('trust proxy', 1); // Trust the first proxy (Tailscale Funnel) so req.ip is the real client IP
 
@@ -349,11 +348,19 @@ app.get('/auth/site/callback', async (req, res) => {
     process.env.SITE_ORIGIN || null,
   ].filter(Boolean);
   const DEFAULT_REDIRECT = 'https://roleplaymanager.xyz/dashboard/';
+  // The sign-in token rides along in the URL fragment, so on this server's own
+  // address only the CAD may receive it: every other page here (the dev login,
+  // JSON routes) has no business holding a visitor's Discord token. The website
+  // itself is static and keeps the token anyway, so any page there is fine.
+  const SITE_ORIGINS = ['https://roleplaymanager.xyz', process.env.SITE_ORIGIN].filter(Boolean);
+  const pathAllowed = (u) => SITE_ORIGINS.includes(u.origin) || u.pathname === '/cad' || u.pathname.startsWith('/cad/')
+    || (process.env.CAD_DOMAIN && u.origin === `https://${process.env.CAD_DOMAIN}` && u.pathname === '/');
   let safeRedirect = DEFAULT_REDIRECT;
   if (state) {
     try {
       const stateUrl = new URL(state);
-      if (ALLOWED_REDIRECT_ORIGINS.includes(stateUrl.origin)) {
+      if (ALLOWED_REDIRECT_ORIGINS.includes(stateUrl.origin) && pathAllowed(stateUrl)) {
+        stateUrl.hash = '';
         safeRedirect = stateUrl.href;
       } else {
         console.warn(`[SITE AUTH] Rejected untrusted state redirect: ${stateUrl.origin}`);
@@ -435,8 +442,9 @@ app.use('/checkout', apiRateLimit, createCheckoutRouter(client));
   });
 }
 app.use('/webhooks', createWebhooksRouter(client));
-app.use('/portal', createPortalRouter(client));
-app.use('/api/portal', apiRateLimit, createPortalApiRouter(client));
+// The old portal (/portal, /api/portal) is gone: the web CAD below replaced it,
+// and its pages put officers' and callers' text into the page unescaped on
+// this same origin, where the CAD keeps its sign-in.
 
 // ── Web CAD ───────────────────────────────────────────────────────────────────
 // Served from this process rather than Cloudflare Pages so the browser is
@@ -492,7 +500,9 @@ app.get('/callback', async (req, res) => {
       const connectionsResponse = await axios.get('https://discord.com/api/users/@me/connections', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
-      console.log(`[AUTH] User ${userData.id} connections:`, connectionsResponse.data);
+      // A count only: the list is the user's linked accounts, and the log is
+      // readable in the dev panel.
+      console.log(`[AUTH] User ${userData.id} has ${connectionsResponse.data?.length ?? 0} linked account(s)`);
     } catch (e) {
       console.error(`[AUTH] Failed to fetch connections:`, e.message);
     }
@@ -542,6 +552,16 @@ app.get('/callback', async (req, res) => {
     console.error('OAuth Error:', error.response?.data || error.message);
     res.status(500).send('Authentication failed');
   }
+});
+
+// Last in line, after every route: an error thrown anywhere (a malformed JSON
+// body, say) gets a short answer instead of Express's default page, which
+// without NODE_ENV=production includes the stack trace and file paths.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err.status || err.statusCode) || 500;
+  if (status >= 500) console.error(`[HTTP] ${req.method} ${req.path}:`, err.message);
+  res.status(status).json({ error: status >= 500 ? 'Something went wrong.' : 'Bad request.' });
 });
 
 client.on('guildCreate', async (guild) => {
@@ -1728,7 +1748,10 @@ connectDatabase().then(async () => {
   client.login(process.env.DISCORD_TOKEN).catch((error) => {
     console.error('[DISCORD ERROR] Login failed:', error.message);
   });
-  app.listen(PORT, '0.0.0.0', () => {
+  // On the Dell, LISTEN_HOST=127.0.0.1: Tailscale Funnel connects from the same
+  // machine, and the rest of the home network has no business reaching the bot
+  // directly (it could also fake X-Forwarded-For past 'trust proxy').
+  app.listen(PORT, process.env.LISTEN_HOST || '0.0.0.0', () => {
     console.log(`HTTP server running on port ${PORT}`);
     console.log(`Health check available at /health`);
   });

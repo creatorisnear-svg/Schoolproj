@@ -193,7 +193,7 @@
     // visited place to be featured.
     (function () {
       var api = 'https://roleplaymanager.tail6dd18c.ts.net/api/directory?limit=12';
-      function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+      function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
       fetch(api).then(function (r) { return r.json(); }).then(function (d) {
         var seen = {};
         var list = (d.featured || []).concat(d.servers || []).filter(function (s) { if (seen[s.id]) return false; seen[s.id] = 1; return true; }).slice(0, 6);
@@ -1023,8 +1023,8 @@
 
     // ── Cookie banner ──
     function esc(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
     (function() {
       var banner = document.getElementById('cookie-banner');

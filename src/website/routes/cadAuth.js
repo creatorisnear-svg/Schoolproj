@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'crypto';
-import axios from 'axios';
+import { discordUserGet } from '../../utils/discordUserApi.js';
 
 /**
  * Authentication for the web CAD.
@@ -47,10 +47,7 @@ async function identify(token) {
   const cached = identityCache.get(token);
   if (cached && cached.exp > Date.now()) return cached.user;
 
-  const res = await axios.get('https://discord.com/api/users/@me', {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 10000,
-  });
+  const res = await discordUserGet('/users/@me', token);
 
   const user = {
     userId: res.data.id,

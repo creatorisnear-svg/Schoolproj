@@ -475,7 +475,7 @@ civilian or (with a LEO role) as law enforcement.
 
 - **Superseded by the web CAD above.** Kept only until the new CAD is confirmed working in production, then deleted.
 - Two separate implementations exist, and neither is what this section used to describe:
-  - **Live**: `src/website/routes/portal.js` + `portalApi.js`, mounted at `/portal` and `/api/portal` by `src/index.js`, serving `src/website/views/portal.html`.
+  - **Removed** (Oct 2026 security review): `src/website/routes/portal.js` + `portalApi.js`, their page and script, and the `/api/internal/panic` relay. The web CAD at `/cad` replaced them; the old pages rendered user text unescaped on the API's origin.
   - **Dead**: the `portal/` directory is a standalone Express app with its own `server.js`. It does **not** import `src/index.js`, is not mounted anywhere, and only runs via `npm run portal`.
 - Both are locked to a single server through `PORTAL_GUILD_ID`, which is why the new CAD was written rather than extended.
 - **Auth**: Discord OAuth2 → HMAC-signed `portal_session` cookie (`portal/routes/auth.js`), callback at `/portal/auth/callback`. All API routes under `/api/portal/*` require `portalAuth` middleware.
@@ -483,8 +483,7 @@ civilian or (with a LEO role) as law enforcement.
 - **Modes**: Civilian (default) vs LEO (requires LEO Discord role, `isLeo: true`); stored in `localStorage.portalMode`.
 - **Key API routes** (`/api/portal/`): `GET /me`, `GET/POST/DELETE /characters`, `GET/POST /vehicles`, `GET /officers/overview`, `GET /voice/channels`, `POST /voice/move`, `GET /civjobs`, `POST /civjobs/checkin/:jobId` + `checkout`, `POST /emergency`, `GET /priority`.
 - **Priority status**: civilians and LEOs both poll `GET /priority` every 5s via `startGlobalPriorityPoll()` in `portal-app.js`, which updates the global bar, the Overview widget, and the Priority tab immediately on change, and fires a browser push notification (`fireBrowserNotification`) the moment priority goes active or enters cooldown.
-- **Panic button flow**: portal upserts `OfficerStatus` with `tenCode: '10-99', panicAnnounced: false`. Bot's `voiceListener.js` runs `_startPanicPoller` every 5s for any guild with dispatch configured, finds unannounced panics, and fires TTS + embed in the dispatch channel. Optional direct trigger via `BOT_INTERNAL_URL/internal/panic`.
-
+- **Panic button flow**: portal upserts `OfficerStatus` with `tenCode: '10-99', panicAnnounced: false`. Bot's `voiceListener.js` runs `_startPanicPoller` every 5s for any guild with dispatch configured, finds unannounced panics, and fires TTS + embed in the dispatch channel.
 ---
 
 ## Stripe / Payments (`src/website/routes/checkout.js`)

@@ -14,9 +14,11 @@ production, then deleted. Do not build on it.
 Two separate implementations, and earlier versions of this note described
 neither of them correctly:
 
-- **Live**: `src/website/routes/portal.js` + `portalApi.js`, mounted at
-  `/portal` and `/api/portal` by `src/index.js`. Serves
-  `src/website/views/portal.html` and `public/js/portal-app.js`.
+- **Deleted on 2026-10-04** (security review): `src/website/routes/portal.js`
+  + `portalApi.js`, `src/website/views/portal.html`, `public/js/portal-app.js`
+  and the `/api/internal/panic` relay. They were still mounted at `/portal` and
+  `/api/portal`, and rendered officers' and callers' text unescaped on the same
+  origin where the CAD keeps its sign-in token.
 - **Dead**: the `portal/` directory is a standalone Express app with its own
   `server.js`. It does **not** import `src/index.js` (verified: its imports are
   express, cookie-parser, mongoose, dotenv, url, path, and its own routers), it

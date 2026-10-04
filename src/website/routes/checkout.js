@@ -281,6 +281,9 @@ async function getOrCreateCyberComPrice(stripe) {
 /** Switch CyberCom on from a completed checkout. Idempotent: webhook and success page both call it. */
 export async function applyCyberComFromSession(session, ctx = {}) {
   if (!session || session.status !== 'complete' || session.mode !== 'subscription' || !session.subscription) return null;
+  // Complete is not the same as paid: a delayed payment method completes the
+  // checkout first and pays (or fails) later. Premium already checks this.
+  if (!['paid', 'no_payment_required'].includes(session.payment_status)) return null;
   const m = session.metadata || {};
   if (m.kind !== 'cybercom' || !ID.test(m.guildId || '')) return null;
   const buyer = ID.test(m.discordId || '') ? m.discordId : null;

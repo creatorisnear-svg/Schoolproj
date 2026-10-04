@@ -165,10 +165,26 @@ function api(path, opts) {
 }
 
 /* ── Escape HTML ── */
+// Quotes too: names from Discord (servers, nicknames) end up inside
+// attributes, and the old textContent/innerHTML trick left " and ' as they
+// were, so a name with a quote in it could add its own attributes.
 function esc(str) {
-  var d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// For a value passed to an inline handler, onclick="fn(' + jsArg(x) + ')".
+// esc() alone is not enough there: the browser decodes &#39; back to ' before
+// the handler runs. JSON-encoding first keeps the value inside its string.
+function jsArg(v) {
+  return esc(JSON.stringify(String(v == null ? '' : v)));
+}
+
+/** Whether an element's onclick passes this value (either quoting style). */
+function handlerMentions(el, v) {
+  var h = el.getAttribute('onclick') || '';
+  return h.indexOf('\'' + v + '\'') !== -1 || h.indexOf(JSON.stringify(String(v))) !== -1;
 }
 
 /* ── Login / Auth ── */
@@ -353,7 +369,7 @@ function renderServerSelect() {
         '<p style="color:var(--text-dim);font-size:12px;">Make sure the bot is in your server and you have the <strong>Administrator</strong> permission, then refresh this page.</p>' +
         '</div>'
       : guilds.map(function(g) {
-          return '<div class="server-card" onclick="selectServer(\'' + g.id + '\')">' +
+          return '<div class="server-card" onclick="selectServer(' + jsArg(g.id) + ')">' +
             '<div class="server-icon">' +
             (g.icon ? '<img src="https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png?size=64" alt="">' : esc(g.name.charAt(0))) +
             '</div><div style="flex:1;min-width:0;">' +
@@ -495,7 +511,7 @@ function renderSidebar(active) {
   var groupedSections = SIDEBAR_GROUPS.map(function(g) {
     return '<div class="sidebar-section"><div class="sidebar-section-title">' + g.title + '</div>' +
       g.items.map(function(m) {
-        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(\'' + m.id + '\')">' + m.label + (m.premium ? ' <span title="' + (m.freeTier ? 'Free servers get ' + esc(m.freeTier) : 'Premium only') + '" style="font-size:9px;background:' + (m.freeTier ? 'var(--blue, #5865f2)' : 'var(--accent)') + ';color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">' + (m.freeTier ? 'PART' : 'PRO') + '</span>' : '') + '</div>';
+        return '<div class="sidebar-item ' + (active === m.id ? 'active' : '') + '" onclick="closeSidebar();renderSettings(' + jsArg(m.id) + ')">' + m.label + (m.premium ? ' <span title="' + (m.freeTier ? 'Free servers get ' + esc(m.freeTier) : 'Premium only') + '" style="font-size:9px;background:' + (m.freeTier ? 'var(--blue, #5865f2)' : 'var(--accent)') + ';color:#fff;padding:1px 5px;border-radius:3px;vertical-align:middle;font-weight:700;letter-spacing:0.3px;margin-left:2px;">' + (m.freeTier ? 'PART' : 'PRO') + '</span>' : '') + '</div>';
       }).join('') +
       '</div>';
   }).join('');
@@ -625,7 +641,7 @@ function renderDashboard() {
                     (incompleteNames.length > 3 ? ' and ' + (incompleteNames.length - 3) + ' more' : '') +
                     '. Each is switched on but still missing something.</div>' +
                 '</div>' +
-                '<button class="btn btn-primary btn-sm" onclick="renderSettings(\'' + esc(firstIncompleteMod || 'general') + '\')">Finish Setup &rsaquo;</button>' +
+                '<button class="btn btn-primary btn-sm" onclick="renderSettings(' + jsArg(firstIncompleteMod || 'general') + ')">Finish Setup &rsaquo;</button>' +
               '</div>'
             : '<div class="setup-step">' +
                 '<div class="setup-step-num">3</div>' +
@@ -682,7 +698,7 @@ function renderDashboard() {
         (m.featureKey
           ? '<div class="toggle ' + (enabled ? 'active' : '') + '" data-feature="' + (m.feature || '') + '" data-key="' + m.featureKey + '" data-mod="' + m.id + '" onclick="toggleFeature(this)" title="' + (enabled ? 'Disable' : 'Enable') + ' ' + m.label + '"></div>'
           : '') +
-        '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(\'' + m.id + '\')" title="Configure ' + m.label + '">Configure</button>' +
+        '<button class="btn btn-secondary btn-sm feature-configure-btn" onclick="renderSettings(' + jsArg(m.id) + ')" title="Configure ' + m.label + '">Configure</button>' +
       '</div>' +
       '</div>';
   }
@@ -729,7 +745,7 @@ function transferPremium() {
           '<span class="config-label">Key released successfully. Copy it below to activate on another server.</span>' +
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
           '<code style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:13px;letter-spacing:1px;">' + result.key + '</code>' +
-          '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + result.key + '\').then(function(){toast(\'Key copied!\')})">Copy Key</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(' + jsArg(result.key) + ').then(function(){toast(\'Key copied!\')})">Copy Key</button>' +
           '</div></div>';
       }
     } else {
@@ -1322,7 +1338,7 @@ function renderBlacklistSettings(data) {
         '</div>' +
         '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + esc(e.reason || '') + (date ? ' - ' + date : '') + '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="removeBlacklistEntry(\'' + esc(e._id) + '\',this)">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeBlacklistEntry(' + jsArg(e._id) + ',this)">Remove</button>' +
         '</div>';
     });
     html += '</div>';
@@ -1511,7 +1527,7 @@ function renderDispatchExtras(data) {
     var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
     var name = ch ? ch.label : id;
     return '<span class="channel-tag">' + esc(name) +
-      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'patrol\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'patrol\',' + jsArg(id) + ')" title="Remove">&#x2715;</button></span>';
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
@@ -1533,7 +1549,7 @@ function renderDispatchExtras(data) {
     var r = (data.roles || []).find(function(r) { return r.value === id; });
     var name = r ? r.label : id;
     return '<span class="channel-tag">' + esc(name) +
-      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'leo\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+      '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'leo\',' + jsArg(id) + ')" title="Remove">&#x2715;</button></span>';
   }).join('');
 
   html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:8px;">' +
@@ -1590,7 +1606,7 @@ function addDispatchChannel(type) {
   if (tagsEl) {
     var span = document.createElement('span');
     span.className = 'channel-tag';
-    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeDispatchChannel(\'' + type + '\',\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeDispatchChannel(' + jsArg(type) + ',' + jsArg(id) + ')" title="Remove">&#x2715;</button>';
     if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
     tagsEl.appendChild(span);
   }
@@ -1611,7 +1627,7 @@ function removeDispatchChannel(type, id) {
     var tags = tagsEl.querySelectorAll('.channel-tag');
     tags.forEach(function(tag) {
       var btn = tag.querySelector('.channel-tag-remove');
-      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) {
+      if (btn && handlerMentions(btn, id)) {
         tag.remove();
       }
     });
@@ -1635,7 +1651,7 @@ function renderTicketTypesSection(data) {
   var html = '<div class="config-section" style="margin-top:14px;" id="ticket-types-section">' +
     '<div class="config-section-header"><h3>Ticket Types</h3>' +
     '<span style="font-size:11px;color:var(--text-dim);">' + count + ' / ' + limit + ' types</span>' +
-    (count > 0 ? '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="showTicketPanelPicker(' + JSON.stringify(data.ticketTypes) + ')">Send Panel to Discord</button>' : '') +
+    (count > 0 ? '<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="showTicketPanelPicker(' + esc(JSON.stringify(data.ticketTypes)) + ')">Send Panel to Discord</button>' : '') +
     '</div>';
 
   if (count === 0) {
@@ -1656,7 +1672,7 @@ function renderTicketTypesSection(data) {
         '<div class="config-sublabel">' + (roleNames ? 'Staff: ' + esc(roleNames) : 'All staff can see') + ' \u00b7 ' + esc(buttonColorLabels[t.buttonColor] || t.buttonColor || 'Blue') + ' button</div>' +
         '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(\'' + esc(t.id) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteTicketType(' + jsArg(t.id) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -1792,7 +1808,7 @@ function renderRoleRequestSettings(data) {
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
         '<div class="config-sublabel">Approvers: ' + (approverNames ? esc(approverNames) : 'None set, so any staff can approve') + '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteRoleRequest(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleRequest(' + jsArg(r.roleId) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -1850,7 +1866,7 @@ function renderMovemeSettings(data) {
     var ch = (data.voiceChannels || []).find(function(c) { return c.value === id; });
     var name = ch ? ch.label : id;
     return '<span class="channel-tag">' + esc(name) +
-      '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button></span>';
+      '<button class="channel-tag-remove" onclick="removeMovemeChannel(' + jsArg(id) + ')" title="Remove">&#x2715;</button></span>';
   }).join('');
 
   var html = renderSettingsFields(data, 'moveme');
@@ -1891,7 +1907,7 @@ function addMovemeChannel() {
   if (tagsEl) {
     var span = document.createElement('span');
     span.className = 'channel-tag';
-    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeMovemeChannel(\'' + esc(id) + '\')" title="Remove">&#x2715;</button>';
+    span.innerHTML = esc(label) + '<button class="channel-tag-remove" onclick="removeMovemeChannel(' + jsArg(id) + ')" title="Remove">&#x2715;</button>';
     if (tagsEl.querySelector('span[style]')) tagsEl.innerHTML = '';
     tagsEl.appendChild(span);
   }
@@ -1908,7 +1924,7 @@ function removeMovemeChannel(id) {
     var tags = tagsEl.querySelectorAll('.channel-tag');
     tags.forEach(function(tag) {
       var btn = tag.querySelector('.channel-tag-remove');
-      if (btn && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf('\'' + id + '\'') !== -1) tag.remove();
+      if (btn && handlerMentions(btn, id)) tag.remove();
     });
     if (!tagsEl.querySelectorAll('.channel-tag').length) {
       tagsEl.innerHTML = '<span style="font-size:12px;color:var(--text-dim);">No channels set, so every voice channel is allowed.</span>';
@@ -1957,7 +1973,7 @@ function renderCivJobsSettings(data) {
         (j.durationHours ? ' | Shift: ' + esc(String(j.durationHours)) + 'h' : '') +
         '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteCivJob(\'' + esc(j.jobId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCivJob(' + jsArg(j.jobId) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2102,8 +2118,8 @@ function renderAppySettings(data) {
           (t.reviewPingRoleNames && t.reviewPingRoleNames.length ? ' | Ping roles: ' + t.reviewPingRoleNames.map(function(n) { return '@' + esc(n); }).join(', ') : '') + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
-          '<button class="btn btn-secondary btn-sm" onclick="loadAppyEditForm(\'' + esc(t.typeId) + '\')">Edit</button>' +
-          '<button class="btn btn-danger btn-sm" onclick="deleteAppyType(\'' + esc(t.typeId) + '\')">Remove</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="loadAppyEditForm(' + jsArg(t.typeId) + ')">Edit</button>' +
+          '<button class="btn btn-danger btn-sm" onclick="deleteAppyType(' + jsArg(t.typeId) + ')">Remove</button>' +
           '</div></div>';
       }).join('');
 
@@ -2282,7 +2298,7 @@ function renderCalendarEventsSection(data) {
         '<span class="config-label">' + esc(e.day) + (e.time ? ' at ' + esc(e.time) : '') + (e.timezone ? ' ' + esc(e.timezone) : '') + '</span>' +
         '<div class="config-sublabel">' + esc(e.description || 'No description') + (e.person ? ' · Host: ' + esc(e.person) : '') + '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteCalendarEvent(\'' + esc(e.id) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteCalendarEvent(' + jsArg(e.id) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2354,7 +2370,7 @@ function renderWhitelistedLinksSection(data) {
     links.forEach(function(l) {
       html += '<div class="config-row" style="justify-content:space-between;">' +
         '<span class="config-label" style="font-family:monospace;font-size:12px;">' + esc(l) + '</span>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteWhitelistedLink(\'' + esc(l) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteWhitelistedLink(' + jsArg(l) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2443,7 +2459,7 @@ function renderEconomySettings(data) {
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
         '<div class="config-sublabel">Earns ' + esc(String(r.amount)) + ' every ' + esc(String(r.cooldown)) + 'h</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteRoleIncome(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleIncome(' + jsArg(r.roleId) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2479,7 +2495,7 @@ function renderEconomySettings(data) {
         '<span class="config-label">@' + esc(r.roleName) + '</span>' +
         '<div class="config-sublabel">Deducts ' + esc(String(r.amount)) + ' &mdash; ' + esc(r.label || 'Deduction') + '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteRoleDeduction(\'' + esc(r.roleId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoleDeduction(' + jsArg(r.roleId) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2514,7 +2530,7 @@ function renderEconomySettings(data) {
         (item.usable ? ' | Usable' : '') +
         '</div>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(\'' + esc(item.id) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStoreItem(' + jsArg(item.id) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2564,10 +2580,10 @@ function renderEconomySettings(data) {
         '</div>' +
         '</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-        '<button class="btn btn-secondary btn-sm" onclick="loadBizLedger(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')">Ledger</button>' +
-        (b.incomeAmount ? '<button class="btn btn-secondary btn-sm" onclick="grantBizIncome(\'' + esc(b.accountId) + '\',\'' + esc(b.name) + '\')" title="Credit one passive income cycle without resetting the cooldown timer">Send Income</button>' : '') +
-        '<button class="btn btn-secondary btn-sm" onclick="showBizEditForm(\'' + esc(b.accountId) + '\')">Edit</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteBizAccount(\'' + esc(b.accountId) + '\')">Remove</button>' +
+        '<button class="btn btn-secondary btn-sm" onclick="loadBizLedger(' + jsArg(b.accountId) + ',' + jsArg(b.name) + ')">Ledger</button>' +
+        (b.incomeAmount ? '<button class="btn btn-secondary btn-sm" onclick="grantBizIncome(' + jsArg(b.accountId) + ',' + jsArg(b.name) + ')" title="Credit one passive income cycle without resetting the cooldown timer">Send Income</button>' : '') +
+        '<button class="btn btn-secondary btn-sm" onclick="showBizEditForm(' + jsArg(b.accountId) + ')">Edit</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteBizAccount(' + jsArg(b.accountId) + ')">Remove</button>' +
         '</div></div>';
     });
   }
@@ -2777,7 +2793,7 @@ function searchMembersForMoney(query) {
         resultsEl2.innerHTML = '<div style="padding:8px 12px;font-size:13px;color:var(--text-dim);">No members found</div>';
       } else {
         resultsEl2.innerHTML = members.map(function(m) {
-          return '<div onclick="selectMemberForMoney(\'' + esc(m.id) + '\',\'' + esc(m.username) + '\')" ' +
+          return '<div onclick="selectMemberForMoney(' + jsArg(m.id) + ',' + jsArg(m.username) + ')" ' +
             'style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border,#333);" ' +
             'onmouseover="this.style.background=\'var(--bg-3,#2a2a3e)\'" onmouseout="this.style.background=\'\'">' +
             esc(m.displayName || m.username) + ' <span style="color:var(--text-dim);font-size:11px;">@' + esc(m.username) + '</span>' +
@@ -2930,7 +2946,7 @@ function renderStaffSettings(data) {
           '<span class="config-label">@' + esc(r.roleName) + '</span>' +
           '<span style="margin-left:10px;font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">' + esc(r.position) + '</span>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(\'' + esc(r.id) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(' + jsArg(r.id) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -2959,7 +2975,7 @@ function renderStaffSettings(data) {
           '<span class="config-label">' + esc(u.username) + '</span>' +
           '<span style="margin-left:10px;font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 7px;">' + esc(u.position) + '</span>' +
         '</div>' +
-        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(\'' + esc(u.id) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeStaffEntry(' + jsArg(u.id) + ')">Remove</button>' +
         '</div>';
     });
   }
@@ -3090,7 +3106,7 @@ function renderStickySettings(data) {
       html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
         '<span class="config-label">#' + esc(s.channelName) + '</span>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteStickyMessage(\'' + esc(s.channelId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteStickyMessage(' + jsArg(s.channelId) + ')">Remove</button>' +
         '</div>' +
         '<div style="font-size:12px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;width:100%;box-sizing:border-box;white-space:pre-wrap;word-break:break-word;">' + esc(s.messageContent) + '</div>' +
         '<div style="font-size:11px;color:var(--text-dim);">Reposted ' + s.messageCount + ' times</div>' +
@@ -3148,7 +3164,7 @@ function renderReactionRolesSettings(data) {
       html += '<div class="config-row" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">' +
         '<span class="config-label">#' + esc(r.channelName) + '</span>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteReactionRole(\'' + esc(r.messageId) + '\')">Remove</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteReactionRole(' + jsArg(r.messageId) + ')">Remove</button>' +
         '</div>' +
         '<div style="font-size:11px;color:var(--text-muted);">Message ID: <code style="font-size:11px;">' + esc(r.messageId) + '</code></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">' +
@@ -3207,26 +3223,26 @@ function renderOneField(field, mod) {
   if (field.locked) html += '<div style="pointer-events:none;opacity:0.4;user-select:none;" title="Needs Premium">';
 
   if (field.type === 'toggle') {
-    html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,\'' + mod + '\',\'' + field.key + '\')" data-key="' + field.key + '" title="' + esc(field.label) + '"></div>';
+    html += '<div class="toggle ' + (field.value ? 'active' : '') + '" onclick="toggleField(this,' + jsArg(mod) + ',' + jsArg(field.key) + ')" data-key="' + field.key + '" title="' + esc(field.label) + '"></div>';
   } else if (field.type === 'select' || field.type === 'role') {
-    html += '<select class="config-select" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
+    html += '<select class="config-select" onchange="changeField(' + jsArg(mod) + ',' + jsArg(field.key) + ',this.value)" data-key="' + field.key + '">';
     html += '<option value="">- Not Set -</option>';
     (field.options || []).forEach(function(opt) {
       html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
     });
     html += '</select>';
   } else if (field.type === 'action') {
-    html += '<select class="config-action" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '">';
+    html += '<select class="config-action" onchange="changeField(' + jsArg(mod) + ',' + jsArg(field.key) + ',this.value)" data-key="' + field.key + '">';
     (field.options || []).forEach(function(opt) {
       html += '<option value="' + esc(opt.value) + '" ' + (opt.value === field.value ? 'selected' : '') + '>' + esc(opt.label) + '</option>';
     });
     html += '</select>';
   } else if (field.type === 'number') {
-    html += '<input type="number" class="config-input" value="' + (field.value !== undefined ? field.value : '') + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" min="' + (field.min || 0) + '" max="' + (field.max || 999999) + '">';
+    html += '<input type="number" class="config-input" value="' + (field.value !== undefined ? field.value : '') + '" onchange="changeField(' + jsArg(mod) + ',' + jsArg(field.key) + ',this.value)" data-key="' + field.key + '" min="' + (field.min || 0) + '" max="' + (field.max || 999999) + '">';
   } else if (field.type === 'textarea') {
-    html += '<textarea class="config-textarea" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">' + esc(String(field.value || '')) + '</textarea>';
+    html += '<textarea class="config-textarea" onchange="changeField(' + jsArg(mod) + ',' + jsArg(field.key) + ',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">' + esc(String(field.value || '')) + '</textarea>';
   } else if (field.type === 'text') {
-    html += '<input type="text" class="config-input" value="' + esc(String(field.value || '')) + '" onchange="changeField(\'' + mod + '\',\'' + field.key + '\',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">';
+    html += '<input type="text" class="config-input" value="' + esc(String(field.value || '')) + '" onchange="changeField(' + jsArg(mod) + ',' + jsArg(field.key) + ',this.value)" data-key="' + field.key + '" placeholder="' + esc(field.placeholder || '') + '">';
   } else {
     html += '<span class="config-value">' + esc(String(field.value != null ? field.value : 'Not Set')) + '</span>';
   }
@@ -3255,8 +3271,8 @@ function showSaveBar(mod) {
   container.innerHTML =
     '<div class="save-bar">' +
     '<span style="color:var(--text-muted);font-size:12px;margin-right:auto;">Unsaved changes</span>' +
-    '<button class="btn btn-secondary btn-sm" onclick="discardChanges(\'' + mod + '\')">Discard</button>' +
-    '<button class="btn btn-success btn-sm" onclick="saveSettings(\'' + mod + '\')">Save Changes</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="discardChanges(' + jsArg(mod) + ')">Discard</button>' +
+    '<button class="btn btn-success btn-sm" onclick="saveSettings(' + jsArg(mod) + ')">Save Changes</button>' +
     '</div>';
 }
 

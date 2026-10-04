@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PermissionsBitField } from 'discord.js';
-import axios from 'axios';
+import { discordUserGet } from '../../utils/discordUserApi.js';
 import { cadAuth, cadStreamAuth, issueStreamTicket } from './cadAuth.js';
 import { isPremiumGuild, getGuildLimits, checkFeatureAccess } from '../../utils/premiumCheck.js';
 import CADConfig from '../../models/CADConfig.js';
@@ -65,10 +65,7 @@ async function fetchUserGuilds(session) {
   const cached = cacheGet(guildListCache, session.userId, GUILD_CACHE_MS);
   if (cached) return cached;
 
-  const res = await axios.get('https://discord.com/api/users/@me/guilds', {
-    headers: { Authorization: `Bearer ${session.accessToken}` },
-    timeout: 10000,
-  });
+  const res = await discordUserGet('/users/@me/guilds', session.accessToken);
   cacheSet(guildListCache, session.userId, res.data);
   return res.data;
 }

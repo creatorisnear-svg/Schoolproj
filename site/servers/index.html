@@ -243,7 +243,9 @@
       document.getElementById('nav-hamburger').setAttribute('aria-expanded', 'false');
     }
 
-    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+    // Quotes too: server names go into title="..." and a name with a quote in
+    // it could otherwise add attributes of its own.
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
     function toast(msg) {
       var t = document.getElementById('toast');
       t.textContent = msg; t.style.display = 'block';

@@ -1,4 +1,5 @@
 import express from 'express';
+import { timingSafeEqual } from 'crypto';
 import { recordVote } from '../../utils/premiumCheck.js';
 
 export function createWebhooksRouter(client) {
@@ -16,7 +17,9 @@ export function createWebhooksRouter(client) {
       console.warn('[TopGG Webhook] Rejected: TOPGG_WEBHOOK_SECRET is not set.');
       return res.status(503).json({ error: 'Webhook is not configured.' });
     }
-    if (req.headers['authorization'] !== secret) {
+    const given = Buffer.from(String(req.headers['authorization'] || ''));
+    const wanted = Buffer.from(secret);
+    if (given.length !== wanted.length || !timingSafeEqual(given, wanted)) {
       console.warn('[TopGG Webhook] Auth failed.');
       return res.status(401).json({ error: 'Unauthorized' });
     }

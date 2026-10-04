@@ -78,7 +78,16 @@ function sameSecret(a, b) {
   if (ab.length !== bb.length) return false;
   return timingSafeEqual(ab, bb);
 }
-const sessions = new Set();
+// Session token -> expiry. The cookie lasts a day, and so does the session it
+// names: a copied cookie used to keep working until the next restart.
+const SESSION_MS = 24 * 60 * 60 * 1000;
+const sessions = new Map();
+function sessionValid(token) {
+  const exp = token && sessions.get(token);
+  if (!exp) return false;
+  if (exp < Date.now()) { sessions.delete(token); return false; }
+  return true;
+}
 
 // Brute-force protection for dev login
 const _loginAttempts = new Map();
@@ -122,7 +131,7 @@ function devAuth(req, res, next) {
   if (!DEV_PASSWORD) return res.status(503).json({ error: 'Dev panel is not configured.' });
 
   const token = req.cookies?.dev_session;
-  if (token && sessions.has(token)) return next();
+  if (sessionValid(token)) return next();
 
   // The header route used to skip the lockout entirely, so the login form was
   // throttled to 5 tries per 15 minutes while `Authorization: Bearer x` on any
@@ -148,7 +157,8 @@ export function createDevRouter(client) {
   router.get('/login', (req, res) => {
     let error = '';
     if (req.query.error === 'locked') {
-      const min = req.query.min || '15';
+      // A number, never the raw query: this string goes into the page as HTML.
+      const min = String(Math.min(Math.max(parseInt(req.query.min, 10) || 15, 1), 60));
       error = `<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">Too many failed attempts. Try again in ${min} minute${min === '1' ? '' : 's'}.</div>`;
     } else if (req.query.error) {
       error = '<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">Incorrect password.</div>';
@@ -202,12 +212,13 @@ export function createDevRouter(client) {
     }
     clearLoginFail(req);
     const token = randomBytes(32).toString('hex');
-    sessions.add(token);
+    for (const [t, exp] of sessions) if (exp < Date.now()) sessions.delete(t);
+    sessions.set(token, Date.now() + SESSION_MS);
     res.cookie('dev_session', token, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: SESSION_MS,
     });
     res.redirect('/dev');
   });
@@ -225,7 +236,7 @@ export function createDevRouter(client) {
 
   router.get('/check', (req, res) => {
     const token = req.cookies?.dev_session;
-    res.json({ authorized: token ? sessions.has(token) : false });
+    res.json({ authorized: sessionValid(token) });
   });
 
   // GET /dev/logs: the bot's console as it prints, for the Logs tab, as

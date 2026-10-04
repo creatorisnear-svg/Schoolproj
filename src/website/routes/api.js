@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { REST, Routes } from 'discord.js';
 import axios from 'axios';
 import Announcement from '../../models/Announcement.js';
 import Changelog from '../../models/Changelog.js';
@@ -7,6 +6,25 @@ import PreviewVideo from '../../models/PreviewVideo.js';
 import FeatureFlag from '../../models/FeatureFlag.js';
 import { checkFeatureAccess, isFeaturePremiumGated, isPremiumGuild, hasPremiumAccess, getGuildLimits, trialUsed as hasUsedTrial, keyIsLive } from '../../utils/premiumCheck.js';
 import { FEATURES, DEFAULT_PREMIUM_FEATURES, PREMIUM_SETTINGS_MODS, FREE_TIER_TOGGLE_KEYS, getFeatureByMod } from '../../config/features.js';
+import { discordUserGet } from '../../utils/discordUserApi.js';
+import { identifyWithDiscord } from '../../utils/siteIdentity.js';
+
+const DISCORD_ID = /^\d{17,20}$/;
+/** Only Discord's own webhook URLs: the bot posts to this address. */
+const DISCORD_WEBHOOK = /^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\/\d{17,20}\/[\w-]{20,}$/;
+
+/**
+ * Billing, cancelling and moving a Premium key belong to the person who bought
+ * it (or activated it, for keys made by hand) and to the server owner, not to
+ * every administrator: the billing pages show the buyer's card, address and
+ * invoices, and a moved key could be put on any server.
+ */
+const KEY_HOLDER_ONLY = 'Only the person who bought Premium for this server, or the server owner, can do this.';
+async function mayManageKey(client, token, premiumKey, guildId) {
+  const me = await identifyWithDiscord(token);
+  const holder = premiumKey.purchasedBy || premiumKey.activatedBy;
+  return me.id === holder || me.id === client.guilds.cache.get(guildId)?.ownerId;
+}
 
 /** The paid fields of a partly free feature, locked on the dashboard until Premium or a trial. */
 const PAID_FIELDS = {
@@ -54,9 +72,7 @@ export async function verifyAdminAccess(token, guildId) {
   const cached = _adminAccessCache.get(key);
   if (cached && cached.exp > Date.now()) return cached.result;
 
-  const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const guildsRes = await discordUserGet('/users/@me/guilds', token);
   const userGuild = guildsRes.data.find(g => g.id === guildId);
   const result = !!userGuild && (BigInt(userGuild.permissions) & BigInt(0x8)) === BigInt(0x8);
   _adminAccessCache.set(key, { result, exp: Date.now() + _CACHE_TTL });
@@ -71,36 +87,6 @@ function getToken(req) {
 
 export function createApiRouter(client) {
   const router = Router();
-
-  router.get('/admin/clear-global-commands', async (req, res) => {
-    const secret = req.query.secret;
-    const adminSecret = process.env.ADMIN_SECRET;
-    const token = process.env.DISCORD_TOKEN;
-
-    if (!adminSecret) {
-      return res.status(500).json({ error: 'ADMIN_SECRET environment variable is not set on the server.' });
-    }
-    if (!secret || secret !== adminSecret) {
-      return res.status(403).json({ error: 'Forbidden - wrong or missing secret.' });
-    }
-    if (!token) {
-      return res.status(500).json({ error: 'DISCORD_TOKEN environment variable is not set on the server.' });
-    }
-
-    const appId = process.env.CLIENT_ID || client.user?.id || '1441306995641683978';
-    try {
-      const rest = new REST({ version: '10' }).setToken(token);
-      const before = await rest.get(Routes.applicationCommands(appId));
-      await rest.put(Routes.applicationCommands(appId), { body: [] });
-      res.json({
-        success: true,
-        cleared: before.length,
-        message: `Cleared ${before.length} global command(s) for app ${appId}. Discord may take up to 1 hour to reflect this globally.`,
-      });
-    } catch (err) {
-      res.status(500).json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3) });
-    }
-  });
 
   router.get('/stats', (req, res) => {
     const realGuilds = client.guilds.cache.filter(g => g.memberCount <= 10000);
@@ -312,12 +298,8 @@ export function createApiRouter(client) {
     }
 
     try {
-      const userRes = await axios.get('https://discord.com/api/users/@me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const userRes = await discordUserGet('/users/@me', token);
+      const guildsRes = await discordUserGet('/users/@me/guilds', token);
 
       const user = { id: userRes.data.id, username: userRes.data.username, avatar: userRes.data.avatar };
       const userGuilds = guildsRes.data;
@@ -1581,6 +1563,16 @@ export function createApiRouter(client) {
           for (const [k, v] of Object.entries(changes)) {
             if (allowed.includes(k)) update[k] = v;
           }
+          // The bot posts to this address, so it may only be a Discord webhook:
+          // anything else would let a server point the bot at machines on the
+          // network it runs on.
+          if ('webhookUrl' in update) {
+            const url = String(update.webhookUrl || '').trim();
+            if (url && !DISCORD_WEBHOOK.test(url)) {
+              return res.status(400).json({ error: 'The webhook URL must be a Discord webhook (https://discord.com/api/webhooks/...).' });
+            }
+            update.webhookUrl = url || null;
+          }
           await AppyConfig.findOneAndUpdate({ guildId: guild.id }, update, { upsert: true });
           break;
         }
@@ -2150,12 +2142,18 @@ export function createApiRouter(client) {
       let messageId = null;
 
       if (ac.useWebhook && ac.webhookUrl) {
+        // Checked again here for addresses saved before the check existed.
+        if (!DISCORD_WEBHOOK.test(ac.webhookUrl)) {
+          return res.status(400).json({ error: 'The saved webhook URL is not a Discord webhook. Paste the webhook URL again in Applications settings.' });
+        }
         const payload = {
           embeds: embeds.map(e => e.toJSON()),
           components: [row.toJSON()],
         };
         const response = await axios.post(ac.webhookUrl + '?wait=true', payload, {
           headers: { 'Content-Type': 'application/json' },
+          maxRedirects: 0,
+          timeout: 10000,
         });
         messageId = response.data?.id || null;
       } else {
@@ -2173,7 +2171,7 @@ export function createApiRouter(client) {
       res.json({ success: true });
     } catch (err) {
       console.error('[Appys] Send panel error:', err.message);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'Could not send the panel. Check the channel or webhook and try again.' });
     }
   });
 
@@ -2217,7 +2215,10 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     const guild = client.guilds.cache.get(req.params.id);
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
-    const { type, roleId, userId, position } = req.body;
+    const { type, position } = req.body;
+    // Ids as plain strings, so a JSON object cannot become a query operator.
+    const roleId = DISCORD_ID.test(String(req.body.roleId || '')) ? String(req.body.roleId) : null;
+    const userId = DISCORD_ID.test(String(req.body.userId || '')) ? String(req.body.userId) : null;
     if (!type || !['role', 'user'].includes(type)) return res.status(400).json({ error: 'type must be role or user' });
     const pos = ['staff', 'manager'].includes(position) ? position : 'staff';
     try {
@@ -2272,6 +2273,7 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+      if (!(await mayManageKey(client, token, premiumKey, guildId))) return res.status(403).json({ error: KEY_HOLDER_ONLY });
       if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire and cannot be cancelled.' });
       if (!['monthly', 'quarterly', 'yearly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No cancellable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No subscription found. This key was not purchased through Stripe.' });
@@ -2316,6 +2318,7 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+      if (!(await mayManageKey(client, token, premiumKey, guildId))) return res.status(403).json({ error: KEY_HOLDER_ONLY });
       if (premiumKey.plan === 'lifetime') return res.status(400).json({ error: 'Lifetime keys do not expire.' });
       if (!['monthly', 'quarterly', 'yearly'].includes(premiumKey.plan)) return res.status(400).json({ error: 'No reactivatable subscription found.' });
       if (!premiumKey.stripeSubscriptionId) return res.status(400).json({ error: 'No Stripe subscription found for this key.' });
@@ -2360,8 +2363,11 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No active premium key found for this server' });
+      // Other administrators see the plan, but not the buyer's invoices.
+      const canManage = await mayManageKey(client, token, premiumKey, guildId).catch(() => false);
 
       const billing = {
+        canManage,
         plan: premiumKey.plan || 'manual',
         status: premiumKey.subscriptionStatus || null,
         activatedAt: premiumKey.activatedAt || null,
@@ -2372,7 +2378,7 @@ export function createApiRouter(client) {
       };
 
       const stripeKey = process.env.STRIPE_SECRET_KEY;
-      if (stripeKey && premiumKey.stripeCustomerId) {
+      if (canManage && stripeKey && premiumKey.stripeCustomerId) {
         try {
           const { default: Stripe } = await import('stripe');
           const stripe = new Stripe(stripeKey, { apiVersion: '2024-04-10' });
@@ -2419,6 +2425,7 @@ export function createApiRouter(client) {
       const { default: PremiumKey } = await import('../../models/PremiumKey.js');
       const premiumKey = await PremiumKey.findOne({ guildId });
       if (!premiumKey) return res.status(404).json({ error: 'No premium key found for this server.' });
+      if (!(await mayManageKey(client, token, premiumKey, guildId))) return res.status(403).json({ error: KEY_HOLDER_ONLY });
       if (!premiumKey.stripeCustomerId) return res.status(400).json({ error: 'No billing account found. This key was not purchased through Stripe.' });
 
       const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -2466,6 +2473,7 @@ export function createApiRouter(client) {
           error: fund ? 'Premium your members paid for stays with this server, so there is no key to move.' : 'No active premium key found for this server',
         });
       }
+      if (!(await mayManageKey(client, token, premiumKey, guildId))) return res.status(403).json({ error: KEY_HOLDER_ONLY });
 
       const keyValue = premiumKey.key;
       premiumKey.guildId = null;
@@ -3008,7 +3016,8 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
-      const { userId, amount } = req.body || {};
+      const { amount } = req.body || {};
+      const userId = DISCORD_ID.test(String(req.body?.userId || '')) ? String(req.body.userId) : null;
       if (!userId) return res.status(400).json({ error: 'userId is required' });
       if (!amount || isNaN(amount) || Number(amount) < 1) return res.status(400).json({ error: 'Invalid amount' });
       const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
@@ -3033,7 +3042,8 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
-      const { userId, amount } = req.body || {};
+      const { amount } = req.body || {};
+      const userId = DISCORD_ID.test(String(req.body?.userId || '')) ? String(req.body.userId) : null;
       if (!userId) return res.status(400).json({ error: 'userId is required' });
       if (!amount || isNaN(amount) || Number(amount) < 1) return res.status(400).json({ error: 'Invalid amount' });
       const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
@@ -3057,7 +3067,7 @@ export function createApiRouter(client) {
       if (!isAdmin) return res.status(403).json({ error: 'No admin access' });
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
-      const { userId } = req.body || {};
+      const userId = DISCORD_ID.test(String(req.body?.userId || '')) ? String(req.body.userId) : null;
       if (!userId) return res.status(400).json({ error: 'userId is required' });
       const { default: EconomyConfig } = await import('../../models/EconomyConfig.js');
       const { default: EconomyBalance } = await import('../../models/EconomyBalance.js');
@@ -3421,7 +3431,8 @@ export function createApiRouter(client) {
       // check here, so any free server could run the blacklist from the site.
       const blacklistAccess = await checkFeatureAccess(req.params.id, 'blacklist');
       if (!blacklistAccess.allowed) return res.status(403).json({ error: 'Blacklist system requires a premium subscription.' });
-      const { discordId, discordUsername, gamertag, reason, ipBanned } = req.body;
+      const { discordUsername, gamertag, reason, ipBanned } = req.body;
+      const discordId = DISCORD_ID.test(String(req.body.discordId || '')) ? String(req.body.discordId) : null;
       if (!reason || (!discordId && !gamertag)) {
         return res.status(400).json({ error: 'Provide at least a Discord ID or gamertag plus a reason' });
       }
@@ -3475,73 +3486,15 @@ export function createApiRouter(client) {
     } catch { return res.status(401).json({ error: 'Invalid token' }); }
     try {
       const { default: Blacklist } = await import('../../models/Blacklist.js');
-      await Blacklist.findByIdAndUpdate(req.params.entryId, { active: false });
+      // Scoped to this server: the admin check above is for :id, and an entry
+      // id from another server must not be switched off from here.
+      await Blacklist.findOneAndUpdate({ _id: String(req.params.entryId), guildId: req.params.id }, { active: false });
       const { updateBlacklistPanel } = await import('../../handlers/blacklistHandler.js');
       await updateBlacklistPanel(client, req.params.id);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  });
-
-  /*
-   * Panic relay for the old portal.
-   *
-   * This was open on production. The check read "if a secret is configured and
-   * it does not match, reject", so with PORTAL_INTERNAL_SECRET unset there was
-   * no check at all, and anybody who found the URL could make the bot join a
-   * voice channel in any of the servers it is in, play a siren, and speak text
-   * they supplied, because officerName goes straight into what is read out.
-   *
-   * Fails closed now. The only caller is the dead fork under portal/, so if
-   * that is deleted this endpoint should go with it.
-   */
-  router.post('/internal/panic', async (req, res) => {
-    const expected = process.env.PORTAL_INTERNAL_SECRET;
-    if (!expected) {
-      return res.status(503).json({ error: 'Internal panic relay is not configured.' });
-    }
-    const secret = req.headers['x-internal-secret'];
-    if (typeof secret !== 'string' || secret !== expected) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { guildId } = req.body;
-    if (typeof guildId !== 'string' || !/^\d{17,20}$/.test(guildId)) {
-      return res.status(400).json({ error: 'guildId required' });
-    }
-    if (!client.guilds.cache.has(guildId)) {
-      return res.status(404).json({ error: 'Guild not found' });
-    }
-
-    // Spoken aloud, so it is capped and stripped of anything that is not part
-    // of a name or a place.
-    const clean = (v, max) => String(v == null ? '' : v)
-      .replace(/[^\p{L}\p{N} .,'-]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, max);
-    const officerName = clean(req.body.officerName, 60) || 'Unknown';
-    const location = clean(req.body.location, 80);
-
-    res.json({ success: true });
-
-    setImmediate(async () => {
-      try {
-        const { playDispatchVoice } = await import('../../utils/voiceListener.js');
-        const { generateDispatchTTSPublic, PANIC_SOUND_BUFFER } = await import('../../handlers/dispatchHandler.js');
-        const loc = location ? ` at ${location}` : '';
-        const ttsText = `Attention all units, 10-99, officer ${officerName} is in distress${loc}. All units respond immediately. This is not a drill.`;
-        if (PANIC_SOUND_BUFFER) {
-          await playDispatchVoice(guildId, PANIC_SOUND_BUFFER, { urgent: true, skipRadioWave: true });
-          await new Promise(r => setTimeout(r, 600));
-        }
-        const ttsBuffer = await generateDispatchTTSPublic(ttsText);
-        await playDispatchVoice(guildId, ttsBuffer, { urgent: false });
-      } catch (err) {
-        console.error('[Internal /panic] TTS error:', err.message);
-      }
-    });
   });
 
   // ── Data export ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { discordUserGet } from './discordUserApi.js';
 
 /**
  * Who is signed in on roleplaymanager.xyz, from the site's Discord token.
@@ -26,10 +26,9 @@ export async function identifyWithDiscord(token) {
   const cached = cache.get(token);
   if (cached && cached.exp > Date.now()) return cached.data;
 
-  const headers = { Authorization: `Bearer ${token}` };
   const [me, guilds] = await Promise.all([
-    axios.get('https://discord.com/api/users/@me', { headers }),
-    axios.get('https://discord.com/api/users/@me/guilds', { headers }),
+    discordUserGet('/users/@me', token),
+    discordUserGet('/users/@me/guilds', token),
   ]);
   const data = {
     id: me.data.id,
