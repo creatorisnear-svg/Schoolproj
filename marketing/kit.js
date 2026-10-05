@@ -338,19 +338,27 @@ function emphasisLine(line, cx, y, size, t, t0) {
   drawText(last, x + padX, yy, { size, weight: 800, color: pw > 0.5 ? C.bg : '#fff', alpha: p });
 }
 
+// An offer shown in a green chip beside the mark (startPromo's markTag).
+let MARK_TAG = null;
+
 function watermark(alpha) {
   if (alpha <= 0.001) return;
   ctx.save();
   ctx.globalAlpha = alpha * 0.9;
   const ls = 46 * S, size = 25 * S;
+  const ts = size * 0.88, gap = 18 * S;
+  const tagW = MARK_TAG ? textWidth(MARK_TAG, ts, 600) + ts * 1.6 : 0;
+  const tag = (x, y) => MARK_TAG && chip(MARK_TAG, x, y, { size: ts, align: 'left', color: C.green, fill: 'rgba(52,211,153,0.10)', stroke: 'rgba(52,211,153,0.45)' });
+  const tw = textWidth('roleplaymanager.xyz', size, 600);
   if (PORTRAIT) {
-    const tw = textWidth('roleplaymanager.xyz', size, 600);
-    const x = W / 2 - (ls + 14 * S + tw) / 2;
+    const x = W / 2 - (ls + 14 * S + tw + (MARK_TAG ? gap + tagW : 0)) / 2;
     drawLogo(x + ls / 2, 236 * S, ls);
     drawText('roleplaymanager.xyz', x + ls + 14 * S, 236 * S, { size, weight: 600, color: C.muted, baseline: 'middle' });
+    tag(x + ls + 14 * S + tw + gap, 236 * S);
   } else {
     drawLogo(80 * S, 78 * S, ls);
     drawText('roleplaymanager.xyz', 80 * S + ls / 2 + 14 * S, 78 * S, { size, weight: 600, color: C.muted, baseline: 'middle' });
+    tag(80 * S + ls / 2 + 14 * S + tw + gap, 78 * S);
   }
   ctx.restore();
 }
@@ -393,9 +401,11 @@ function renderFrame(t) {
 // ── Run the job and hand the result to the renderer ─────────────────────────
 // draw: scene id → function of the scene's own time. lights: the police lights
 // behind a scene, a number or a function of its time. marked: scenes with the
-// roleplaymanager.xyz mark. stills: designed stills by name. backdrop: drawn
-// over the background, under every scene.
-function startPromo({ draw, lights = {}, marked = [], stills = {}, backdrop = null }) {
+// roleplaymanager.xyz mark. markTag: an offer in a chip beside that mark.
+// stills: designed stills by name. backdrop: drawn over the background, under
+// every scene.
+function startPromo({ draw, lights = {}, marked = [], markTag = null, stills = {}, backdrop = null }) {
+  MARK_TAG = markTag;
   const send = (path, body) => fetch(path, { method: 'POST', body });
   const blobOf = (type, quality) => new Promise((r) => cv.toBlob(r, type, quality));
   (async () => {

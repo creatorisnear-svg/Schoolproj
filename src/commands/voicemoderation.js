@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChannelType, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { readTranscript, transcriptText } from '../cybercom/transcripts.js';
-import { cyberComSubscribed } from '../cybercom/access.js';
+import { isCyberComActive } from '../cybercom/access.js';
 import { canReadTranscripts, retentionDays, getVoiceModConfig } from '../cybercom/flags.js';
 import { TRANSCRIPT_DAYS } from '../models/VoiceTranscript.js';
 
@@ -66,7 +66,7 @@ export async function execute(interaction) {
   await interaction.deferReply({ flags: 64 });
   const lines = await readTranscript({ guildId: interaction.guildId, channelId: channel.id, day, userId: member?.id || null });
   if (!lines.length) {
-    const subscribed = await cyberComSubscribed(interaction.guildId).catch(() => false);
+    const subscribed = await isCyberComActive(interaction.guildId).catch(() => false);
     return interaction.editReply({
       content: subscribed
         ? `Nothing was said in <#${channel.id}> on ${day}${member ? ` by <@${member.id}>` : ''}. Only channels RPM CyberCom covers are transcribed, and transcripts are kept ${keptDays} days.`

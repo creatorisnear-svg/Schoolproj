@@ -403,7 +403,7 @@
       </div>
 
       <div class="trial-banner chipin-banner" id="cybercom">
-        <h2>RPM CyberCom: $9.99 a month, with or without Premium</h2>
+        <h2>RPM CyberCom: free for 4 days, then $9.99 a month</h2>
         <p>
           A bot in every voice channel. Officers say "Dispatch, show me on a 10-11 with" and a name, the
           bot moves them to a free traffic stop, and the person being pulled over is asked if they want to
@@ -412,9 +412,11 @@
           me to" and a name to join someone. Everything said is transcribed for your staff, and voice
           moderation flags slurs, real life threats and possible self harm while roleplay stays in the game.
           It includes the AI voice dispatcher on your police radio, so it works with or without Premium.
+          Try it free for 4 days first, once per server: no card, and nothing is charged when it ends.
           <a href="/cybercom/">See how it works</a>.
         </p>
-        <button class="plan-cta primary chipin-cta" onclick="openCheckout('cybercom')">Get RPM CyberCom</button>
+        <button class="plan-cta primary chipin-cta" onclick="openCheckout('cybercomtrial')">Try it free for 4 days</button>
+        <button class="plan-cta chipin-cta" onclick="openCheckout('cybercom')">Get RPM CyberCom</button>
       </div>
 
       <!-- FAQ -->
@@ -540,7 +542,7 @@
         <p class="modal-note" id="fund-progress" style="margin:8px 0 0;"></p>
       </div>
 
-      <div class="modal-section">
+      <div class="modal-section" id="modal-tos">
         <label class="tos-accept">
           <input type="checkbox" id="tos-checkbox">
           <span>I agree to the <a href="/tos" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span>
@@ -550,7 +552,7 @@
       <div class="modal-error" id="modal-error"></div>
 
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeCheckout()">Cancel</button>
+        <button class="btn-cancel" id="btn-cancel" onclick="closeCheckout()">Cancel</button>
         <button class="btn-pay" id="btn-pay" disabled onclick="startCheckout()">Continue to Payment</button>
       </div>
     </div>
@@ -611,8 +613,8 @@
       var opt = function (g) { return '<option value="' + escapeText(g.id) + '"' + (g.id === wanted ? ' selected' : '') + '>' + escapeText(g.name) + '</option>'; };
       var gifts = me.memberGuilds || [];
       var label = document.querySelector('label[for="guild-select"]');
-      if (selectedPlan === 'cybercom') {
-        if (label) label.textContent = 'Add RPM CyberCom to';
+      if (selectedPlan === 'cybercom' || selectedPlan === 'cybercomtrial') {
+        if (label) label.textContent = selectedPlan === 'cybercomtrial' ? 'Start the free trial on' : 'Add RPM CyberCom to';
         sel.innerHTML = me.guilds.length ? me.guilds.map(opt).join('') : '<option value="">You do not run a server the bot is in</option>';
         document.getElementById('modal-signed-as').textContent = 'Signed in as ' + me.user.username + '. Servers you run are listed.';
         return;
@@ -698,6 +700,7 @@
       try { pending = sessionStorage.getItem('rpm_pending_plan'); } catch (e) {}
       if (params.get('chipin') === '1' && !pending) setTimeout(function () { openCheckout('chipin'); }, 0);
       else if (params.get('from') === 'cybercom' && !pending) setTimeout(function () { openCheckout('cybercom'); }, 0);
+      else if (params.get('from') === 'cybercomtrial' && !pending) setTimeout(function () { openCheckout('cybercomtrial'); }, 0);
     })();
 
     // Back from signing in with a plan already chosen: reopen where they were.
@@ -716,11 +719,18 @@
       document.getElementById('modal-amount').style.display = chip ? '' : 'none';
       var note = document.getElementById('modal-signin-note');
       if (note) note.textContent = chip ? 'Sign in with Discord to pick the server you are chipping in for.'
-        : plan === 'cybercom' ? 'Sign in with Discord to pick the server to add RPM CyberCom to.' : SIGNIN_NOTE;
+        : plan === 'cybercom' ? 'Sign in with Discord to pick the server to add RPM CyberCom to.'
+        : plan === 'cybercomtrial' ? 'Sign in with Discord to pick the server to try RPM CyberCom on.' : SIGNIN_NOTE;
+      // A finished trial start hides the form; opening again brings it back.
+      ['modal-account', 'modal-tos', 'btn-pay'].forEach(function (id) { document.getElementById(id).style.display = ''; });
+      document.getElementById('btn-cancel').textContent = 'Cancel';
       renderAccount();
       if (plan === 'cybercom') {
         title.textContent = 'Get RPM CyberCom';
         sub.textContent = '$9.99 a month, with or without Premium. Cancel any time.';
+      } else if (plan === 'cybercomtrial') {
+        title.textContent = 'Try RPM CyberCom free';
+        sub.textContent = 'Free for 4 days, once per server. No card, and nothing is charged when it ends. Keeping it after that is $9.99 a month.';
       } else if (chip) {
         title.textContent = 'Chip in for Premium';
         sub.textContent = "A one-off payment toward a server's Premium, not a subscription. Every $5 raised turns Premium on for a month.";
@@ -742,8 +752,23 @@
       }
       document.getElementById('tos-checkbox').checked = false;
       document.getElementById('btn-pay').disabled = true;
+      document.getElementById('btn-pay').textContent = payLabel();
       document.getElementById('modal-error').classList.remove('show');
       modal.classList.add('open');
+    }
+
+    function payLabel() {
+      return selectedPlan === 'cybercomtrial' ? 'Start the free trial' : 'Continue to Payment';
+    }
+
+    // The trial is on: no payment page, so say so here and what to do next.
+    function showTrialStarted(d) {
+      var until = new Date(d.endsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      document.getElementById('modal-title').textContent = 'Your free trial is on';
+      document.getElementById('modal-sub').textContent = 'RPM CyberCom is on in ' + (d.guildName || 'your server') + ' until ' + until +
+        '. Next, run /config cybercom in your server to pick your voice channels and add the helper bots.';
+      ['modal-account', 'modal-amount', 'modal-tos', 'btn-pay'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+      document.getElementById('btn-cancel').textContent = 'Done';
     }
 
     function closeCheckout() {
@@ -777,7 +802,7 @@
 
       var btn = document.getElementById('btn-pay');
       btn.disabled = true;
-      btn.textContent = 'Redirecting...';
+      btn.textContent = selectedPlan === 'cybercomtrial' ? 'Starting...' : 'Redirecting...';
 
       var headers = { 'Content-Type': 'application/json' };
       if (dashToken) headers.Authorization = 'Bearer ' + dashToken;
@@ -807,6 +832,16 @@
         }
         endpoint = API_BASE + '/checkout/cybercom';
         payload = { guildId: guildId, tosAccepted: true, source: pageSource() };
+      } else if (selectedPlan === 'cybercomtrial') {
+        if (!guildId) {
+          errorEl.textContent = 'Sign in with Discord and pick the server to try RPM CyberCom on.';
+          errorEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = payLabel();
+          return;
+        }
+        endpoint = API_BASE + '/checkout/cybercom-trial';
+        payload = { guildId: guildId, tosAccepted: true, source: pageSource() };
       } else if (selectedPlan === 'monthly' && winbackGuild && guildId === winbackGuild) {
         payload.offer = 'winback';
       }
@@ -820,18 +855,20 @@
       .then(function(data) {
         if (data.url) {
           window.location.href = data.url;
+        } else if (data.ok && selectedPlan === 'cybercomtrial') {
+          showTrialStarted(data);
         } else {
           errorEl.textContent = data.error || 'Something went wrong. Please try again.';
           errorEl.classList.add('show');
           btn.disabled = false;
-          btn.textContent = 'Continue to Payment';
+          btn.textContent = payLabel();
         }
       })
       .catch(function() {
         errorEl.textContent = 'Network error. Please try again.';
         errorEl.classList.add('show');
         btn.disabled = false;
-        btn.textContent = 'Continue to Payment';
+        btn.textContent = payLabel();
       });
     }
   </script>

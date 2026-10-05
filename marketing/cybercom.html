@@ -619,30 +619,49 @@ function sceneSettings(t) {
 }
 
 // ── The offer ───────────────────────────────────────────────────────────────
+/** One line of text in two colours, centred on x, top at y. */
+function twoTone(a, b, x, y, size, colorB) {
+  const wa = textWidth(a, size, 800), wb = textWidth(b, size, 800);
+  ctx.save();
+  ctx.font = font(size, 800); ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#fff'; ctx.fillText(a, x - (wa + wb) / 2, y);
+  ctx.fillStyle = colorB; ctx.fillText(b, x - (wa + wb) / 2 + wa, y);
+  ctx.restore();
+}
+
 function sceneCta(t) {
   const L = PORTRAIT;
-  const size = (L ? 230 : 170) * S;
-  const cy = L ? H * 0.3 : H * 0.26;
+  const size = (L ? 210 : 150) * S;
+  const cy = L ? H * 0.27 : H * 0.2;
   const p = prog(t, 0.0, 0.6);
   ctx.save(); ctx.globalAlpha *= p; glowAt(W / 2, cy, size * 1.2, 'rgba(96,165,250,0.14)'); ctx.restore();
   drawLogo(W / 2, cy, size * (0.9 + 0.1 * p), p);
-  let y = cy + size / 2 + (L ? 100 : 86) * S;
+  let y = cy + size / 2 + (L ? 96 : 80) * S;
   const pw = prog(t, BT(1) - 0.1, 0.5);
-  ccWordmark(W / 2, y + (1 - pw) * 16 * S, (L ? 66 : 62) * S, pw);
-  y += (L ? 40 : 34) * S;
-  // The price lands on the bar.
+  ccWordmark(W / 2, y + (1 - pw) * 16 * S, (L ? 66 : 58) * S, pw);
+  y += (L ? 56 : 44) * S;
+  // The free trial lands on the bar: two lines in portrait, one in landscape.
   const pp = prog(t, BT(4) - 0.12, 0.4);
-  const ps = (L ? 120 : 112) * S;
+  const ps = (L ? 132 : 112) * S;
+  const blockH = L ? ps * 2.2 : ps * 1.2;
   ctx.save();
-  ctx.translate(W / 2, y + ps * 0.55); ctx.scale(1.12 - 0.12 * pp, 1.12 - 0.12 * pp);
-  drawText('$9.99 a month', 0, -ps * 0.55, { size: ps, weight: 800, color: '#fff', align: 'center', alpha: pp });
+  ctx.globalAlpha *= pp;
+  ctx.translate(W / 2, y + blockH / 2); ctx.scale(1.12 - 0.12 * pp, 1.12 - 0.12 * pp); ctx.translate(-W / 2, -(y + blockH / 2));
+  if (L) {
+    twoTone('Free for', '', W / 2, y, ps, C.green);
+    twoTone('', '4 days', W / 2, y + ps * 1.08, ps, C.green);
+  } else {
+    twoTone('Free for ', '4 days', W / 2, y, ps, C.green);
+  }
   ctx.restore();
-  y += ps * 1.18;
-  drawText(`With or without Premium.${L ? '\n' : ' '}Includes the AI voice dispatcher.`, W / 2, y, { size: (L ? 36 : 34) * S, weight: 500, color: C.muted, align: 'center', alpha: prog(t, BT(5) - 0.1, 0.5), maxW: (L ? 900 : 1500) * S, lh: 1.3 });
-  y += (L ? 130 : 84) * S;
-  const us = (L ? 46 : 44) * S;
-  urlPill('roleplaymanager.xyz/pricing', W / 2, y + us * 0.95, us, prog(t, BT(6) - 0.1, 0.5));
-  y += us * 1.9 + (L ? 76 : 60) * S;
+  y += blockH + (L ? 28 : 20) * S;
+  drawText(`Then $9.99 a month if you keep it.${L ? '\n' : ' '}No card needed to start.`, W / 2, y, { size: (L ? 38 : 34) * S, weight: 500, color: C.muted, align: 'center', alpha: prog(t, BT(5) - 0.1, 0.5), maxW: (L ? 940 : 1500) * S, lh: 1.3 });
+  y += (L ? 128 : 76) * S;
+  const us = (L ? 46 : 42) * S;
+  urlPill('roleplaymanager.xyz/cybercom', W / 2, y + us * 0.95, us, prog(t, BT(6) - 0.1, 0.5));
+  y += us * 1.9 + (L ? 30 : 24) * S;
+  drawText('or run /config cybercom in your server', W / 2, y, { size: (L ? 32 : 28) * S, weight: 500, color: C.muted, align: 'center', alpha: prog(t, BT(7) - 0.1, 0.5) });
+  y += (L ? 110 : 88) * S;
   beatChips(['Traffic stops', '10-80s', 'Voice moderation'], W / 2, y, 28 * S, t, BT(8) - 0.1);
 }
 
@@ -664,6 +683,7 @@ startPromo({
   },
   lights: { hook: 0.85, cybercom: cyberComLights },
   marked: ['cybercom', 'flags', 'roleplay', 'settings'],
+  markTag: 'Free for 4 days',
   backdrop,
 });
 </script>

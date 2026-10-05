@@ -1061,6 +1061,45 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
+  // POST /checkout/cybercom-trial - RPM CyberCom free for four days, once per
+  // server, nothing to pay (cybercom/trial.js). Same checks as buying it.
+  router.post('/cybercom-trial', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_rateLimitMap, ip, RATE_MAX)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again in an hour.' });
+    }
+    try {
+      const { guildId, tosAccepted, source } = req.body || {};
+      if (!tosAccepted) return res.status(400).json({ error: 'You must accept the Terms of Service.' });
+      const gid = String(guildId || '');
+      if (!ID.test(gid)) return res.status(400).json({ error: 'Pick a server.' });
+
+      const token = bearerToken(req);
+      if (!token) return res.status(401).json({ error: 'Sign in with Discord first.' });
+      let identity;
+      try { identity = await identify(token); } catch { return res.status(401).json({ error: 'Your sign-in has expired. Sign in again.' }); }
+      const g = identity.guilds.find((x) => x.id === gid);
+      if (!g || !g.admin) return res.status(403).json({ error: "Only the server's owner or admins can start the free trial." });
+      if (client && client.guilds?.cache && !client.guilds.cache.has(gid)) {
+        return res.status(400).json({ error: 'The bot is not in that server yet. Invite it first, then come back.' });
+      }
+
+      const { startCyberComTrial } = await import('../../cybercom/trial.js');
+      const r = await startCyberComTrial(gid, identity.id);
+      if (!r.ok) {
+        return res.status(409).json({ error: r.reason === 'subscribed' ? 'That server already has RPM CyberCom.' : 'That server has already used its free trial.' });
+      }
+      const guildName = client?.guilds?.cache?.get(gid)?.name || g.name || '';
+      console.log(`[CyberCom] free trial started in ${guildName} (${gid}) by ${identity.id} from the website`);
+      recordFunnel({ kind: 'trial', guildId: gid, userId: identity.id, plan: 'cybercom', source: clip(source, 40) || null });
+      sendCyberComWelcome(client, identity.id, guildName).catch(() => {});
+      res.json({ ok: true, endsAt: r.endsAt, guildName });
+    } catch (err) {
+      console.error('[Checkout] CyberCom trial error:', err?.message || err);
+      res.status(500).json({ error: 'Could not start the free trial. Please try again.' });
+    }
+  });
+
   // POST /checkout/track - the pricing page was opened, and from where
   router.post('/track', async (req, res) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';

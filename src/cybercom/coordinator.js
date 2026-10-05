@@ -163,6 +163,12 @@ export async function startCyberCom(client) {
   mainClient = client;
   setMainClient(client);
   setSessionLookup(sessionFor, (guildId) => sessionsInGuild(guildId).filter((s) => s.role === 'radio'));
+  // Free trials: the note the day before, and the end (trial.js). Runs even
+  // with no helpers online, so nobody misses being told.
+  const trialJob = () => import('./trial.js').then((m) => m.runCyberComTrialJob(client))
+    .catch((err) => console.error('[CyberCom] trial job:', err.message));
+  setTimeout(trialJob, 60000).unref?.();
+  setInterval(trialJob, 30 * 60000).unref?.();
   const count = await startHelpers();
   if (!count) return;
   // A helper moved or disconnected by someone: that session is over.

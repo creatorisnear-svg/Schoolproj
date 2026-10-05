@@ -36,7 +36,7 @@ async function addonStatuses(guildId) {
   const [listing, net, cyber, vmod, duty] = await Promise.all([
     load('../models/DirectoryListing.js', (m) => m.default.findOne({ guildId }).lean()),
     load('../models/SafetyNetworkConfig.js', (m) => m.default.findOne({ guildId }).lean()),
-    load('../cybercom/access.js', (m) => m.cyberComSubscribed(guildId)),
+    load('../cybercom/access.js', (m) => m.isCyberComActive(guildId)),
     load('../models/VoiceModConfig.js', (m) => m.default.findOne({ guildId }).lean()),
     load('../models/DutyConfig.js', (m) => m.default.findOne({ guildId }).lean()),
   ]);
@@ -55,7 +55,7 @@ async function addonStatuses(guildId) {
     {
       label: 'RPM CyberCom',
       status: cyber ? 'ready' : 'off',
-      detail: cyber ? '' : ': $9.99 a month, with or without Premium',
+      detail: cyber ? '' : ': free for 4 days, then $9.99 a month, with or without Premium',
     },
     {
       label: 'Voice moderation',

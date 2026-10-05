@@ -5,6 +5,7 @@ import CyberComConfig from '../models/CyberComConfig.js';
 import DispatchConfig from '../models/DispatchConfig.js';
 import { backRow } from '../utils/setupNav.js';
 import { cyberComSubscribed, isCyberComActive, clearCyberComCache } from '../cybercom/access.js';
+import { cyberComTrialOf, startCyberComTrial, CYBERCOM_TRIAL_DAYS } from '../cybercom/trial.js';
 import { hasPremiumAccess } from '../utils/premiumCheck.js';
 import { allHelpers, helperCount, helperEvents, inviteUrl } from '../cybercom/helpers.js';
 import { coveredChannels, forgetConfig } from '../cybercom/coordinator.js';
@@ -140,13 +141,15 @@ async function dispatchProblems(guild, dc, viewer) {
 }
 
 export async function cyberComView(guild, note = '', viewer = null) {
-  const [subscribed, active, cfg, dc, premium] = await Promise.all([
+  const [subscribed, active, cfg, dc, premium, trial] = await Promise.all([
     cyberComSubscribed(guild.id).catch(() => false),
     isCyberComActive(guild.id).catch(() => false),
     CyberComConfig.findOne({ guildId: guild.id }).lean(),
     DispatchConfig.findOne({ guildId: guild.id }).lean(),
     hasPremiumAccess(guild.id).catch(() => false),
+    cyberComTrialOf(guild.id).catch(() => null),
   ]);
+  const onTrial = !subscribed && !!trial && new Date(trial.endsAt) > new Date();
   const problems = (active || premium) ? await dispatchProblems(guild, dc, viewer).catch(() => []) : [];
   const { retentionDays } = await import('../cybercom/flags.js');
   const keptDays = await retentionDays(guild.id).catch(() => TRANSCRIPT_DAYS);
@@ -162,8 +165,10 @@ export async function cyberComView(guild, note = '', viewer = null) {
     'A bot in every voice channel. Officers run traffic stops by voice ("Dispatch, show me on a 10-11 with Blade"), the person pulled over is asked if they want to be moved in, plates and names are run inside the stop, and a 10-80 goes out on the radio so units can say "Dispatch, attach me to the 10-80". Civilians say "RPM, move me to" and a name to join someone.',
     '',
   );
-  if (active) lines.push('**Status:** on');
-  else lines.push('**Status:** off. RPM CyberCom is $9.99 a month, with or without Premium.');
+  if (onTrial) lines.push(`**Status:** free trial, ends <t:${Math.floor(new Date(trial.endsAt).getTime() / 1000)}:R>. After that RPM CyberCom is $9.99 a month, with or without Premium, and nothing is charged unless you subscribe.`);
+  else if (active) lines.push('**Status:** on');
+  else if (!trial) lines.push(`**Status:** off. Try it free for ${CYBERCOM_TRIAL_DAYS} days, no card needed. After that it is $9.99 a month, with or without Premium.`);
+  else lines.push('**Status:** off. The free trial has been used. RPM CyberCom is $9.99 a month, with or without Premium.');
   lines.push(premium
     ? '-# The AI voice dispatcher runs your police radio.'
     : '-# RPM CyberCom includes the AI voice dispatcher for your police radio.');
@@ -213,6 +218,9 @@ export async function cyberComView(guild, note = '', viewer = null) {
   };
 
   const buttons = [];
+  if (!subscribed && !trial && !active) {
+    buttons.push(new ButtonBuilder().setCustomId('cybercom_trial').setLabel(`Try it free for ${CYBERCOM_TRIAL_DAYS} days`).setStyle(ButtonStyle.Success));
+  }
   if (!subscribed) {
     buttons.push(new ButtonBuilder().setLabel('Get RPM CyberCom').setStyle(ButtonStyle.Link).setURL(`${SITE}/pricing?from=cybercom&guild=${guild.id}#cybercom`));
   }
@@ -251,6 +259,14 @@ export async function handleCyberCom(interaction) {
     return handleVoiceMod(interaction);
   }
   const guild = interaction.guild;
+  if (id === 'cybercom_trial') {
+    const r = await startCyberComTrial(guild.id, interaction.user.id);
+    const note = r.ok
+      ? `**Your free trial is on until <t:${Math.floor(r.endsAt.getTime() / 1000)}:F>.** Pick your channels below, then add the helper bots. Nothing is charged: when it ends the helpers leave, unless you subscribe.`
+      : r.reason === 'subscribed' ? '**This server already has RPM CyberCom.**' : '**This server has already used its free trial.**';
+    if (r.ok) console.log(`[CyberCom] free trial started in ${guild.name} (${guild.id}) by ${interaction.user.id}`);
+    return interaction.update(await cyberComView(guild, note, interaction.member));
+  }
   if (id === 'cybercom_helpers' || id === 'cybercom_helpers_check') return showSteps(interaction);
   if (id === 'cybercom_helpers_back') {
     openSteps.delete(guild.id);

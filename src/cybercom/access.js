@@ -1,9 +1,14 @@
 import CyberComSubscription from '../models/CyberComSubscription.js';
+import CyberComTrial from '../models/CyberComTrial.js';
 
 /**
  * Who has RPM CyberCom: its own subscription, $9.99 a month, with or without
- * Premium. It includes the AI voice dispatcher on the police radio
- * (checkFeatureAccess in premiumCheck.js lets 'dispatch' through for it).
+ * Premium, or the four day free trial (trial.js). It includes the AI voice
+ * dispatcher on the police radio (checkFeatureAccess in premiumCheck.js lets
+ * 'dispatch' through for it).
+ *
+ * cyberComSubscribed is the paid subscription only, so a server on its trial
+ * can still buy; isCyberComActive is whether it works, trial included.
  */
 export const CYBERCOM_PRICE_CENTS = 999;
 const ACTIVE = ['active', 'trialing', 'past_due', 'cancelling'];
@@ -15,12 +20,17 @@ export async function cyberComSubscribed(guildId) {
   return !!sub && ACTIVE.includes(sub.status);
 }
 
+/** A free trial that has not ended yet. */
+export async function cyberComTrialActive(guildId) {
+  return !!(await CyberComTrial.exists({ guildId, endsAt: { $gt: new Date() } }));
+}
+
 export async function isCyberComActive(guildId) {
   if (!guildId) return false;
   const hit = cache.get(guildId);
   if (hit && Date.now() - hit.at < TTL) return hit.value;
   let value = false;
-  try { value = await cyberComSubscribed(guildId); } catch {}
+  try { value = (await cyberComSubscribed(guildId)) || (await cyberComTrialActive(guildId)); } catch {}
   cache.set(guildId, { at: Date.now(), value });
   return value;
 }
