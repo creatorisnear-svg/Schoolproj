@@ -170,7 +170,9 @@ const TIMELINE = buildTimeline();
 const VOICE_LUFS = -17;
 const CLICK_LUFS = -22;
 const VOICE_DB = 4;
-const MUSIC = { open: 0.63, radio: 0.24, drop: 0.57 };
+// MUSIC_RADIO raises the song under the radio part: 0.4 for TikTok, where the
+// music is expected all the way through (the lines are on screen as well).
+const MUSIC = { open: 0.63, radio: Number(process.env.MUSIC_RADIO) || 0.24, drop: 0.57 };
 const MASTER_DB = 3;
 
 /** The soundtrack: its ffmpeg inputs, numbered from first, and a graph ending in [aout]. */
