@@ -11,6 +11,9 @@ import { CHIP_AMOUNTS, FUND_GOAL_CENTS, applyContribution, fundStatus, dollars }
 import CyberComSubscription from '../../models/CyberComSubscription.js';
 import { cyberComSubscribed, cyberComChanged, sendCyberComWelcome, CYBERCOM_PRICE_CENTS } from '../../cybercom/access.js';
 import {
+  recordDonation, announceDonation, publicDonations, cleanText, DONATION_MIN_CENTS, DONATION_MAX_CENTS, NAME_MAX, NOTE_MAX,
+} from '../../utils/donations.js';
+import {
   premiumContacts, dmUsers,
   paymentFailedMessage, subscriptionEndedMessage, premiumActivatedMessage,
 } from '../../utils/premiumNotify.js';
@@ -90,7 +93,12 @@ function getDomain(req) {
   return `${req.protocol}://${req.headers.host}`;
 }
 
+// For the test suite: a stand-in for Stripe, so tests never reach the real API.
+let _stripeForTests = null;
+export function setStripeClientForTests(fake) { _stripeForTests = fake; }
+
 async function getStripeClient() {
+  if (_stripeForTests) return _stripeForTests;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   const { default: Stripe } = await import('stripe');
@@ -243,6 +251,20 @@ export async function applyFundFromSession(session, ctx = {}) {
     }
   }
   return { ...result, guildId: m.guildId, guildName, amount };
+}
+
+// ── Donations to RolePlayManager (utils/donations.js) ────────────────────────
+
+/** Record a paid donation and tell the owner. Idempotent, like the others. */
+export async function applyDonationFromSession(session, ctx = {}) {
+  if (!session || session.status !== 'complete' || session.payment_status !== 'paid' || session.mode !== 'payment') return null;
+  if (session.metadata?.kind !== 'donation') return null;
+  const { doc, fresh } = await recordDonation(session);
+  if (fresh) {
+    console.log('[Donation] ' + dollars(doc.amountCents) + ' (session ' + session.id + ')');
+    announceDonation(ctx.client || null, doc).catch(() => {});
+  }
+  return doc;
 }
 
 // ── RPM CyberCom: the voice add-on, $9.99 a month, with or without Premium ─────────
@@ -639,6 +661,10 @@ export async function handleWebhookEvent(event, ctx = {}) {
     }
     if (session?.metadata?.kind === 'cybercom') {
       await applyCyberComFromSession(session, ctx);
+      return;
+    }
+    if (session?.metadata?.kind === 'donation') {
+      await applyDonationFromSession(session, ctx);
       return;
     }
     await issueKeyForCompletedSession(session, ctx);
@@ -1061,6 +1087,56 @@ export function createCheckoutRouter(client, deps = {}) {
     }
   });
 
+  // POST /checkout/donate - a donation to RolePlayManager, with a name and a
+  // note. No sign-in needed; a site sign-in links it to the donor's Discord
+  // account so they can be thanked.
+  router.post('/donate', async (req, res) => {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (limited(_rateLimitMap, ip, RATE_MAX)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again in an hour.' });
+    }
+    try {
+      const { amount, name, note, show, source } = req.body || {};
+      const cents = Math.round(Number(amount));
+      if (!Number.isFinite(cents) || cents < DONATION_MIN_CENTS || cents > DONATION_MAX_CENTS) {
+        return res.status(400).json({ error: 'Pick an amount from $1 to $500.' });
+      }
+      let discordId = null;
+      const token = bearerToken(req);
+      if (token) { try { discordId = (await identify(token)).id; } catch {} }
+
+      const stripe = await getStripeClient();
+      if (!stripe) return res.status(503).json({ error: 'Payments are not set up yet. Join our Discord for help.' });
+      const metadata = {
+        kind: 'donation', name: cleanText(name, NAME_MAX), note: cleanText(note, NOTE_MAX, true), show: show ? '1' : '0',
+      };
+      if (discordId) metadata.discordId = discordId;
+      if (source) metadata.source = clip(source, 40);
+      const site = process.env.SITE_ORIGIN || 'https://roleplaymanager.xyz';
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        submit_type: 'donate',
+        line_items: [{ price_data: { currency: 'usd', unit_amount: cents, product_data: { name: 'Donation to RolePlayManager' } }, quantity: 1 }],
+        metadata,
+        payment_intent_data: { description: 'Donation to RolePlayManager', metadata },
+        success_url: `${getDomain(req)}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${site}/donate/`,
+      });
+      res.json({ url: session.url });
+    } catch (err) {
+      const detail = err?.raw?.message || err?.message || String(err);
+      console.error('[Checkout] Donation error:', detail);
+      res.status(500).json({ error: err?.raw?.message ? 'Stripe error: ' + err.raw.message : 'Could not start the payment. Please try again.' });
+    }
+  });
+
+  // GET /checkout/donations - the donate page's list: names and notes donors
+  // chose to show, newest first.
+  router.get('/donations', async (req, res) => {
+    try { res.json({ donations: await publicDonations() }); }
+    catch { res.json({ donations: [] }); }
+  });
+
   // POST /checkout/cybercom-trial - RPM CyberCom free for four days, once per
   // server, nothing to pay (cybercom/trial.js). Same checks as buying it.
   router.post('/cybercom-trial', async (req, res) => {
@@ -1155,6 +1231,18 @@ export function createCheckoutRouter(client, deps = {}) {
                   + ' it turns on for a month. Anyone in the server can chip in from <code>/premium</code> in Discord.',
             primaryUrl: fund ? 'https://discord.com/channels/' + fund.guildId : 'https://roleplaymanager.xyz/pricing',
             primaryLabel: fund ? 'Back to Discord' : 'Back to pricing',
+          }));
+        }
+        if (session?.metadata?.kind === 'donation') {
+          const d = await applyDonationFromSession(session, ctx);
+          return res.send(renderPage({
+            headline: d ? 'Thank you' : 'Payment received',
+            lead: d
+              ? 'Your ' + escapeHtml(dollars(d.amountCents)) + ' donation keeps RolePlayManager running.'
+                + (d.note ? (d.showOnPage && !d.hidden ? ' Your note is on the donate page.' : ' Your note went to the developer.') : '')
+              : 'We could not confirm the payment just now. Refresh in a moment, or contact support.',
+            primaryUrl: 'https://roleplaymanager.xyz/donate/',
+            primaryLabel: 'Back to the donate page',
           }));
         }
         if (session?.metadata?.kind === 'cybercom') {

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donate to RolePlayManager | RolePlayManager</title>
+  <meta name="description" content="RolePlayManager is free for every GTA RP Discord server. Donate to keep it running, and leave a note for the developer with your donation.">
+  <link rel="canonical" href="https://roleplaymanager.xyz/donate/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Donate to RolePlayManager">
+  <meta property="og:description" content="RolePlayManager is free for every GTA RP Discord server. Donate to keep it running, and leave a note for the developer.">
+  <meta property="og:url" content="https://roleplaymanager.xyz/donate/">
+  <meta property="og:image" content="https://roleplaymanager.xyz/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="/img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/lp-styles.css?v=3">
+  <style>
+    .dn-page { padding: 96px 0 80px; }
+    .dn-hero { text-align: center; max-width: 720px; margin: 0 auto 32px; }
+    .dn-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--green); background: rgba(52,211,153,0.10); border: 1px solid rgba(52,211,153,0.28); border-radius: 999px; padding: 6px 12px; margin-bottom: 16px; }
+    .dn-hero h1 { font-size: 44px; font-weight: 800; line-height: 1.08; margin-bottom: 14px; letter-spacing: -0.5px; }
+    .dn-hero p { color: var(--text-muted); font-size: 17px; line-height: 1.65; margin: 0 auto; max-width: 620px; }
+    .dn-card { max-width: 560px; margin: 0 auto 56px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
+    .dn-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 8px; }
+    .dn-label span { color: var(--text-muted); font-weight: 500; }
+    .dn-amounts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+    .dn-amount { font: inherit; font-size: 15px; font-weight: 700; color: var(--text); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 0; cursor: pointer; }
+    .dn-amount:hover { border-color: var(--text-muted); }
+    .dn-amount[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .dn-other { display: none; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .dn-other.show { display: flex; }
+    .dn-other span { font-weight: 700; font-size: 18px; }
+    .dn-input, .dn-textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--text); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; outline: none; }
+    .dn-input:focus, .dn-textarea:focus { border-color: var(--text-muted); }
+    .dn-textarea { min-height: 104px; resize: vertical; line-height: 1.5; }
+    .dn-field { margin-top: 18px; }
+    .dn-count { text-align: right; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .dn-check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-muted); margin-top: 16px; line-height: 1.45; cursor: pointer; }
+    .dn-check input { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+    .dn-btn { width: 100%; margin-top: 20px; font-size: 16px; }
+    .dn-error { display: none; margin-top: 12px; color: #f87171; font-size: 14px; }
+    .dn-error.show { display: block; }
+    .dn-small { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; margin: 16px 0 0; }
+    .dn-small a { color: var(--text); }
+    .dn-wall { max-width: 760px; margin: 0 auto; }
+    .dn-wall h2 { font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+    .dn-wall > p { color: var(--text-muted); text-align: center; margin: 0 0 22px; }
+    .dn-notes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .dn-note { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+    .dn-note-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    .dn-note-head strong { font-size: 15px; overflow-wrap: anywhere; }
+    .dn-note-amt { font-size: 13px; font-weight: 700; color: var(--green); }
+    .dn-note-when { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+    .dn-note p { margin: 8px 0 0; color: var(--text-muted); font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .dn-empty { text-align: center; color: var(--text-muted); font-size: 14px; grid-column: 1 / -1; }
+    @media (max-width: 620px) {
+      .dn-hero h1 { font-size: 32px; }
+      .dn-hero p { font-size: 15px; }
+      .dn-card { padding: 20px; }
+      .dn-amounts { grid-template-columns: repeat(3, 1fr); }
+      .dn-notes { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+  <nav aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="logo" aria-label="RolePlayManager home">
+        <img src="/img/logo.png" alt="RolePlayManager logo">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="nav-links nav-links-wide" role="list">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/">CyberCom</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/dashboard/" class="btn btn-sm btn-secondary">Dashboard</a></li>
+        <li><a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-sm btn-primary">Add to Server</a></li>
+      </ul>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav-overlay">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay">
+    <a href="/#features" onclick="closeMobileNav()">Features</a>
+    <a href="/servers/" onclick="closeMobileNav()">Servers</a>
+    <a href="/cybercom/" onclick="closeMobileNav()">CyberCom</a>
+    <a href="/pricing" onclick="closeMobileNav()">Pricing</a>
+    <a href="/dashboard/" class="btn btn-secondary" style="margin-top:8px;">Dashboard</a>
+    <a href="https://discord.com/oauth2/authorize?client_id=1441306995641683978&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">Add to Server</a>
+  </div>
+
+  <main id="main-content" class="dn-page">
+    <div class="container">
+      <header class="dn-hero">
+        <div class="dn-eyebrow">Donate</div>
+        <h1>Support RolePlayManager</h1>
+        <p>RolePlayManager is free for every server. Donations help keep it that way: they pay for the server it runs on, the AI dispatcher's voice and the next features. Leave a note with yours. It goes straight to the developer.</p>
+      </header>
+
+      <form class="dn-card" id="dn-form" onsubmit="donate(); return false;">
+        <span class="dn-label" id="dn-amount-label">Amount</span>
+        <div class="dn-amounts" role="group" aria-labelledby="dn-amount-label">
+          <button type="button" class="dn-amount" data-cents="300" aria-pressed="false">$3</button>
+          <button type="button" class="dn-amount" data-cents="500" aria-pressed="true">$5</button>
+          <button type="button" class="dn-amount" data-cents="1000" aria-pressed="false">$10</button>
+          <button type="button" class="dn-amount" data-cents="2500" aria-pressed="false">$25</button>
+          <button type="button" class="dn-amount" data-cents="other" aria-pressed="false">Other</button>
+        </div>
+        <div class="dn-other" id="dn-other">
+          <span aria-hidden="true">$</span>
+          <input class="dn-input" id="dn-other-input" type="number" inputmode="decimal" min="1" max="500" step="0.01" placeholder="Any amount from 1 to 500" aria-label="Amount in dollars">
+        </div>
+
+        <div class="dn-field">
+          <label class="dn-label" for="dn-name">Your name <span>(optional)</span></label>
+          <input class="dn-input" id="dn-name" maxlength="40" autocomplete="nickname" placeholder="Shown with your note, or leave it blank">
+        </div>
+
+        <div class="dn-field">
+          <label class="dn-label" for="dn-note">Note <span>(optional)</span></label>
+          <textarea class="dn-textarea" id="dn-note" maxlength="300" placeholder="Say hi, share an idea, or tell us what your server uses RolePlayManager for."></textarea>
+          <div class="dn-count" id="dn-count">0 / 300</div>
+        </div>
+
+        <label class="dn-check"><input type="checkbox" id="dn-show" checked> Show my name and note on this page</label>
+        <label class="dn-check" id="dn-link-row" style="display:none;"><input type="checkbox" id="dn-link"> Send me a thank you on Discord. This links the donation to your Discord account.</label>
+
+        <button type="submit" class="btn btn-primary btn-lg dn-btn" id="dn-btn">Donate $5</button>
+        <div class="dn-error" id="dn-error" role="alert"></div>
+
+        <p class="dn-small">Payments go through Stripe. A donation is a one-off gift: it does not unlock anything, is not tax deductible and is not refunded. By donating you agree to the <a href="/tos">Terms of Service</a>.</p>
+      </form>
+
+      <section class="dn-wall" aria-labelledby="dn-wall-title">
+        <h2 id="dn-wall-title">Notes from supporters</h2>
+        <p>Thank you to everyone keeping RolePlayManager running.</p>
+        <div class="dn-notes" id="dn-notes"><div class="dn-empty">Loading...</div></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="container lp-footer-inner">
+      <a href="/" class="logo lp-footer-logo">
+        <img src="/img/logo.png" alt="RPM" width="28" height="28" style="width:28px;height:28px;max-width:28px;border-radius:50%;object-fit:cover;">
+        <span class="logo-text-bold">ROLEPLAY</span><span class="logo-text-light">MANAGER</span>
+      </a>
+      <ul class="lp-footer-links">
+        <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/servers/">Servers</a></li>
+        <li><a href="/cybercom/">CyberCom</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/donate/">Donate</a></li>
+        <li><a href="https://discord.gg/cSdhfGPeV2" target="_blank" rel="noopener">Support</a></li>
+        <li><a href="/tos">Terms</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+      </ul>
+      <p class="lp-footer-copy">RolePlayManager &copy; 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    var API_BASE = 'https://roleplaymanager.tail6dd18c.ts.net';
+    var MIN = 100, MAX = 50000;
+    var picked = 500;
+
+    function money(c) { return '$' + (c / 100).toFixed(c % 100 ? 2 : 0); }
+
+    // The amount in cents, or null when "Other" holds something that is not one.
+    function amountCents() {
+      if (picked !== 'other') return picked;
+      var v = parseFloat(document.getElementById('dn-other-input').value);
+      return isFinite(v) ? Math.round(v * 100) : null;
+    }
+
+    function refreshButton() {
+      var c = amountCents();
+      document.getElementById('dn-btn').textContent = c && c >= MIN && c <= MAX ? 'Donate ' + money(c) : 'Donate';
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.dn-amount'), function (b) {
+      b.addEventListener('click', function () {
+        Array.prototype.forEach.call(document.querySelectorAll('.dn-amount'), function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var other = b.getAttribute('data-cents') === 'other';
+        picked = other ? 'other' : Number(b.getAttribute('data-cents'));
+        document.getElementById('dn-other').classList.toggle('show', other);
+        if (other) document.getElementById('dn-other-input').focus();
+        refreshButton();
+      });
+    });
+    document.getElementById('dn-other-input').addEventListener('input', refreshButton);
+    document.getElementById('dn-note').addEventListener('input', function () {
+      document.getElementById('dn-count').textContent = this.value.length + ' / 300';
+    });
+
+    // Signed in on the site already (the dashboard's sign-in): offer the thank you.
+    var dashToken = null;
+    try { dashToken = localStorage.getItem('dash_token'); } catch (e) {}
+    if (dashToken) document.getElementById('dn-link-row').style.display = '';
+
+    function showError(msg) {
+      var el = document.getElementById('dn-error');
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+
+    function donate() {
+      document.getElementById('dn-error').classList.remove('show');
+      var c = amountCents();
+      if (!c || c < MIN || c > MAX) { showError('Pick an amount from $1 to $500.'); return; }
+      var btn = document.getElementById('dn-btn');
+      btn.disabled = true;
+      btn.textContent = 'Opening Stripe...';
+      var headers = { 'Content-Type': 'application/json' };
+      if (dashToken && document.getElementById('dn-link').checked) headers.Authorization = 'Bearer ' + dashToken;
+      fetch(API_BASE + '/checkout/donate', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          amount: c,
+          name: document.getElementById('dn-name').value,
+          note: document.getElementById('dn-note').value,
+          show: document.getElementById('dn-show').checked,
+          source: 'donate-page'
+        })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.url) { window.location.href = d.url; return; }
+          showError(d.error || 'Something went wrong. Please try again.');
+          btn.disabled = false; refreshButton();
+        })
+        .catch(function () {
+          showError('Network error. Please try again.');
+          btn.disabled = false; refreshButton();
+        });
+    }
+
+    function timeAgo(date) {
+      var s = Math.max(0, (Date.now() - date.getTime()) / 1000);
+      if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' min ago';
+      if (s < 86400) return Math.round(s / 3600) + ' h ago';
+      if (s < 86400 * 30) return Math.round(s / 86400) + ' d ago';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // Names and notes are other people's words: text nodes only, never HTML.
+    function loadNotes() {
+      var box = document.getElementById('dn-notes');
+      fetch(API_BASE + '/checkout/donations')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var list = d.donations || [];
+          box.textContent = '';
+          if (!list.length) {
+            var empty = document.createElement('div');
+            empty.className = 'dn-empty';
+            empty.textContent = 'No notes yet. Yours could be the first.';
+            box.appendChild(empty);
+            return;
+          }
+          list.forEach(function (x) {
+            var card = document.createElement('div'); card.className = 'dn-note';
+            var head = document.createElement('div'); head.className = 'dn-note-head';
+            var who = document.createElement('strong'); who.textContent = x.name || 'Someone';
+            var amt = document.createElement('span'); amt.className = 'dn-note-amt'; amt.textContent = money(x.amountCents);
+            var when = document.createElement('span'); when.className = 'dn-note-when'; when.textContent = timeAgo(new Date(x.at));
+            head.appendChild(who); head.appendChild(amt); head.appendChild(when);
+            card.appendChild(head);
+            if (x.note) { var p = document.createElement('p'); p.textContent = x.note; card.appendChild(p); }
+            box.appendChild(card);
+          });
+        })
+        .catch(function () {
+          box.textContent = '';
+          var empty = document.createElement('div');
+          empty.className = 'dn-empty';
+          empty.textContent = 'Could not load the notes right now.';
+          box.appendChild(empty);
+        });
+    }
+    loadNotes();
+
+    function toggleMobileNav() {
+      var overlay = document.getElementById('mobile-nav-overlay');
+      var btn = document.getElementById('nav-hamburger');
+      var open = !overlay.classList.contains('open');
+      overlay.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function closeMobileNav() {
+      document.getElementById('mobile-nav-overlay').classList.remove('open');
+      document.getElementById('nav-hamburger').setAttribute('aria-expanded', 'false');
+    }
+  </script>
+</body>
+</html>

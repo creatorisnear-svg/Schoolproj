@@ -664,6 +664,34 @@ export function createDevRouter(client) {
     res.json({ ok: true });
   });
 
+  // ── Donations (utils/donations.js): every one, with its note ──
+  router.get('/donations', devAuth, async (req, res) => {
+    try {
+      const { default: Donation } = await import('../../models/Donation.js');
+      const [docs, totals] = await Promise.all([
+        Donation.find().sort({ createdAt: -1 }).limit(300).lean(),
+        Donation.aggregate([{ $group: { _id: null, cents: { $sum: '$amountCents' }, count: { $sum: 1 } } }]),
+      ]);
+      res.json({
+        totalCents: totals[0]?.cents || 0,
+        count: totals[0]?.count || 0,
+        donations: docs.map((d) => ({
+          id: String(d._id), amountCents: d.amountCents, name: d.name, note: d.note, discordId: d.discordId,
+          showOnPage: d.showOnPage, hidden: d.hidden, hiddenReason: d.hiddenReason, at: d.createdAt,
+        })),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/donations/:id/hidden', devAuth, async (req, res) => {
+    const { setDonationHidden } = await import('../../utils/donations.js');
+    const doc = await setDonationHidden(req.params.id, !!req.body?.hidden).catch(() => null);
+    if (!doc) return res.status(404).json({ error: 'That donation is not there.' });
+    res.json({ ok: true, hidden: doc.hidden });
+  });
+
   router.post('/directory/:guildId/hide', devAuth, async (req, res) => {
     const { default: DirectoryListing } = await import('../../models/DirectoryListing.js');
     const { invalidateDirectory } = await import('../../utils/directory.js');

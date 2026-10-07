@@ -1480,6 +1480,10 @@ client.on('interactionCreate', async interaction => {
       } else if (interaction.customId.startsWith('cybercom_')) {
         const { handleCyberCom } = await import('./handlers/cybercomSetupHandler.js');
         await handleCyberCom(interaction);
+      } else if (interaction.customId.startsWith('donation_')) {
+        // "Hide from the page" on the owner's donation DM (utils/donations.js).
+        const { handleDonationButton } = await import('./utils/donations.js');
+        await handleDonationButton(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);

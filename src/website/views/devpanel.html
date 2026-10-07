@@ -383,6 +383,7 @@
       <button class="tab" onclick="switchTab('verified')">Verified Members</button>
       <button class="tab" onclick="switchTab('directory')">Directory</button>
       <button class="tab" onclick="switchTab('cybercom')">CyberCom</button>
+      <button class="tab" onclick="switchTab('donations')">Donations</button>
       <button class="tab" onclick="switchTab('logs')">Logs</button>
     </div>
   </div>
@@ -685,6 +686,15 @@
     </div>
   </div>
 
+  <div id="panel-donations" class="panel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="section-label" style="margin-bottom:6px;">Donations</div>
+      <p style="color:#7a818e;font-size:12.5px;margin:0 0 14px;">From roleplaymanager.xyz/donate. Donors choose whether their name and note show on that page; a note with a link or a slur never does. Each one also comes to you as a Discord DM.</p>
+      <div id="don-total" style="font-size:13px;margin-bottom:6px;"></div>
+      <div id="don-list"><div style="color:#7a818e;font-size:13px;">Loading...</div></div>
+    </div>
+  </div>
+
   <div id="panel-logs" class="panel">
     <div class="console">
       <div class="console-bar">
@@ -761,7 +771,7 @@
 </div>
 
 <script>
-  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory', 'cybercom', 'logs'];
+  var TABS = ['funnel', 'features', 'keys', 'announcements', 'changelogs', 'videos', 'broadcast', 'maintenance', 'stripe', 'verified', 'directory', 'cybercom', 'donations', 'logs'];
 
   function funnelStat(label, value, hint, tone) {
     var colour = tone === 'good' ? '#34d399' : tone === 'bad' ? '#f87171' : '#e8eaed';
@@ -884,6 +894,37 @@
     });
   }
 
+  // ── Donations ──
+  function donMoney(c) { return '$' + (c / 100).toFixed(c % 100 ? 2 : 0); }
+  function loadDonations() {
+    fetch('/dev/donations', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { document.getElementById('don-list').innerHTML = '<div style="color:#f87171;font-size:13px;">' + esc(d.error) + '</div>'; return; }
+      document.getElementById('don-total').textContent = d.count ? d.count + (d.count === 1 ? ' donation, ' : ' donations, ') + donMoney(d.totalCents) + ' in all.' : '';
+      var list = d.donations || [];
+      document.getElementById('don-list').innerHTML = list.length ? list.map(function (x) {
+        var id = /^[0-9a-f]{24}$/.test(x.id) ? x.id : '';
+        var status = !x.showOnPage ? 'Private' : x.hidden ? (x.hiddenReason === 'screened' ? 'Kept off the page: link or slur' : 'Hidden by you') : 'On the page';
+        var btn = id && x.showOnPage && x.hiddenReason !== 'screened'
+          ? '<button class="btn" style="font-size:12px;padding:4px 10px;" onclick="setDonationHidden(\'' + id + '\',' + (!x.hidden) + ')">' + (x.hidden ? 'Show on the page' : 'Hide from the page') + '</button>' : '';
+        return '<div style="border-top:1px solid #222;padding:12px 0;">'
+          + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;"><strong>' + donMoney(x.amountCents) + '</strong><span>' + esc(x.name || 'No name') + '</span>'
+          + (x.discordId ? '<span style="color:#7a818e;font-size:12px;">Discord ' + esc(x.discordId) + '</span>' : '')
+          + '<span style="color:#7a818e;font-size:12px;">' + esc(new Date(x.at).toLocaleString()) + '</span>'
+          + '<span style="color:#7a818e;font-size:12px;margin-left:auto;">' + status + '</span>' + btn + '</div>'
+          + (x.note ? '<div style="white-space:pre-wrap;margin-top:6px;color:#ddd;font-size:13px;">' + esc(x.note) + '</div>' : '')
+          + '</div>';
+      }).join('') : '<div style="color:#7a818e;font-size:13px;">No donations yet.</div>';
+    }).catch(function (err) {
+      document.getElementById('don-list').innerHTML = '<div style="color:#f87171;font-size:13px;">Could not load: ' + esc(err.message) + '</div>';
+    });
+  }
+  function setDonationHidden(id, hidden) {
+    fetch('/dev/donations/' + id + '/hidden', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hidden: hidden })
+    }).then(function (r) { return r.json(); }).then(function (d) { if (d.error) showAlert(d.error, 'error'); loadDonations(); })
+      .catch(function () { showAlert('Could not reach the server.', 'error'); });
+  }
+
   function grantCyberCom() {
     var id = document.getElementById('cc-guild').value.trim();
     if (!id) { showAlert('Enter a server ID first.', 'error'); return; }
@@ -983,6 +1024,7 @@
     if (name === 'verified') initVerifiedTab();
     if (name === 'directory') loadDirectory();
     if (name === 'cybercom') loadCyberCom();
+    if (name === 'donations') loadDonations();
     if (name === 'logs') startLogs();
   }
 
@@ -1010,7 +1052,7 @@
 
   function esc(str) {
     if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   async function loadAnnouncements() {
