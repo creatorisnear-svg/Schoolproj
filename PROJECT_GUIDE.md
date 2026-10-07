@@ -180,7 +180,7 @@ After every update session, the agent **must** update `changelog-next.json` in t
    | `site/js/dashboard.js` + `site/css/style.css` | Cloudflare Pages | All users at roleplaymanager.xyz — **edit this one** |
    | `src/website/public/js/dashboard.js` + `.../style.css` | Koyeb Express | Legacy/secondary, rarely needed |
 
-   Same rule for the dev panel: `roleplaymanager.xyz/dev` is served from **`site/dev/index.html`** (Cloudflare Pages), NOT `src/website/views/devpanel.html` (Koyeb-only). The dev panel calls the Koyeb API (`API_BASE` in that file) with `Authorization: Bearer <DEV_PASSWORD>`.
+   The dev panel is the exception: it is **`src/website/views/devpanel.html`**, served by the bot itself at `https://roleplaymanager.tail6dd18c.ts.net/dev` (Logs, CyberCom and Donations need the bot). `roleplaymanager.xyz/dev` (`site/dev/index.html`) only redirects there.
 
 2. **Replit is dev-only.** Changes must be pushed to GitHub to reach production — Cloudflare Pages auto-deploys in ~30s, Koyeb takes ~2min. The bot may not connect to MongoDB/Discord properly inside Replit itself. If users say changes aren't showing on the website, tell them to hard-refresh (Ctrl+Shift+R) to bypass CDN cache.
 
