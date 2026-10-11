@@ -7,7 +7,7 @@ import {
 } from 'discord.js';
 import { checkStaffPermission } from '../utils/permissions.js';
 import { errorEmbed } from '../utils/embedBuilder.js';
-import { featureGroups, getFeature } from '../config/features.js';
+import { FEATURES, featureGroups, getFeature } from '../config/features.js';
 import { getAllFeatureStatus, summarize } from '../utils/featureStatus.js';
 import { SUPPORTED_MODULES } from '../handlers/setupWizardHandler.js';
 import Config from '../models/Config.js';
@@ -180,6 +180,17 @@ export async function buildSetupPayload(guildId) {
     descParts.push(`### ${nextStepTitle}\n${nextStepText}`);
     descParts.push('─────────────────────────────');
   }
+  // Near the top, not under the feature list: every server that bought
+  // Premium started this trial from /setup first, and the offer used to sit
+  // at the very bottom, below the fold.
+  if (trialOffer) {
+    const premiumNames = FEATURES.filter((f) => f.premiumDefault).map((f) => f.label);
+    descParts.push(
+      `### Premium is free for ${trialOffer.days} days\n` +
+      `${premiumNames.slice(0, -1).join(', ')} and ${premiumNames.at(-1)}, with nothing to pay and no card. ` +
+      `Press **Start the free ${trialOffer.days} day trial** below and they switch on now.`
+    );
+  }
   descParts.push(
     '### Foundation\n' +
     `${hasLog ? MARK.ready : MARK.off} **Log channel**: ${hasLog ? `<#${config.logChannelId}>` : 'not set, pick "General Settings" below'}`
@@ -195,14 +206,6 @@ export async function buildSetupPayload(guildId) {
     '### Get new members\n' +
     'List this server in the free server directory at roleplaymanager.xyz/servers, where PS5 and Xbox players look for a GTA RP server. Pick **Server Directory** in the menu below.'
   );
-
-  if (trialOffer) {
-    descParts.push(
-      `### The three Premium features are free for ${trialOffer.days} days\n` +
-      'AI Voice Dispatch, the Priority Tracker and Applications, with nothing to pay ' +
-      'and no card. Press the button below and they switch on now.'
-    );
-  }
 
   const embed = new EmbedBuilder()
     .setColor(color)
@@ -268,9 +271,10 @@ export async function buildSetupPayload(guildId) {
       .addOptions(menuOptions.slice(0, 25))
   );
 
+  // The trial button above the menu, where it is seen first.
   const rows = [configRow];
   if (trialOffer) {
-    rows.push(new ActionRowBuilder().addComponents(
+    rows.unshift(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('premium_start_trial')
         .setLabel(`Start the free ${trialOffer.days} day trial`)

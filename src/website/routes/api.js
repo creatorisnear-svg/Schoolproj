@@ -2450,6 +2450,30 @@ export function createApiRouter(client) {
     }
   });
 
+  // Monthly to yearly: $39.99 a year instead of $60 (checkout.js).
+  router.post('/guild/:id/premium/switch-yearly', async (req, res) => {
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      if (!(await verifyAdminAccess(token, req.params.id))) return res.status(403).json({ error: 'No admin access' });
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    try {
+      const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+      const premiumKey = await PremiumKey.findOne({ guildId: req.params.id, plan: 'monthly' });
+      if (!premiumKey) return res.status(404).json({ error: 'This server has no monthly Premium subscription.' });
+      if (!(await mayManageKey(client, token, premiumKey, req.params.id))) return res.status(403).json({ error: KEY_HOLDER_ONLY });
+      const { switchPremiumToYearly } = await import('./checkout.js');
+      const r = await switchPremiumToYearly(req.params.id);
+      if (!r.ok) return res.status(400).json({ error: r.error });
+      res.json({ success: true, periodEnd: r.periodEnd });
+    } catch (err) {
+      console.error('[DASHBOARD] Switch to yearly error:', err.message);
+      res.status(500).json({ error: 'Could not switch the plan. Please try again.' });
+    }
+  });
+
   router.post('/guild/:id/premium/transfer', async (req, res) => {
     const token = getToken(req);
     if (!token) return res.status(401).json({ error: 'Not authenticated' });

@@ -812,6 +812,26 @@ function cancelSubscription() {
   });
 }
 
+// $39.99 a year instead of $60 in monthly payments. Only the buyer or the
+// server owner can; the API says so to anyone else.
+function switchToYearly() {
+  if (!confirm('Switch to yearly Premium for $39.99 a year? You are charged $39.99 today, minus the unused part of this month, and it renews once a year from today.')) return;
+  var btn = document.getElementById('yearly-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Switching...'; }
+  api('/guild/' + currentGuild.id + '/premium/switch-yearly', { method: 'POST' }).then(function(result) {
+    if (result && result.success) {
+      if (currentGuild.premiumDetails) {
+        currentGuild.premiumDetails.plan = 'yearly';
+        if (result.periodEnd) currentGuild.premiumDetails.subscriptionCurrentPeriodEnd = result.periodEnd;
+      }
+      toast('Switched to yearly. Premium now renews once a year.');
+      renderDashboard();
+    } else if (btn) {
+      btn.disabled = false; btn.textContent = 'Switch to yearly, save $20';
+    }
+  });
+}
+
 function reactivateSubscription() {
   var btn = document.getElementById('reactivate-sub-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Reactivating...'; }
@@ -872,6 +892,7 @@ function renderPremiumSection(g) {
       if (isCancelling) {
         actionBtns += '<button id="reactivate-sub-btn" class="btn btn-primary btn-sm" onclick="reactivateSubscription()">Reactivate</button>';
       } else {
+        if (pd.plan === 'monthly') actionBtns += '<button id="yearly-btn" class="btn btn-primary btn-sm" onclick="switchToYearly()">Switch to yearly, save $20</button>';
         actionBtns += '<button id="cancel-sub-btn" class="btn btn-secondary btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="cancelSubscription()">Cancel Subscription</button>';
       }
     }

@@ -437,6 +437,53 @@ const PRICE_SPECS = {
   },
 };
 
+/**
+ * Move a server's monthly Premium to the yearly price ($39.99 instead of $60).
+ * Changing the interval makes Stripe bill now: the yearly price less the
+ * unused part of the month, renewing yearly from today. error_if_incomplete
+ * means a declined card changes nothing. { ok, periodEnd } or { ok: false, error }.
+ */
+export async function switchPremiumToYearly(guildId) {
+  const { default: PremiumKey } = await import('../../models/PremiumKey.js');
+  const key = await PremiumKey.findOne({ guildId: String(guildId), plan: 'monthly', stripeSubscriptionId: { $nin: [null, ''] } });
+  if (!key) return { ok: false, error: 'This server has no monthly Premium subscription to switch.' };
+  if (key.subscriptionStatus && key.subscriptionStatus !== 'active') {
+    return { ok: false, error: key.subscriptionStatus === 'cancelling'
+      ? 'This subscription is set to cancel. Reactivate it on the dashboard first, then switch.'
+      : 'This subscription is not active right now, so it cannot be switched.' };
+  }
+  const stripe = await getStripeClient();
+  if (!stripe) return { ok: false, error: 'Payments are not set up yet.' };
+  try {
+    const { yearlyPriceId } = await getOrCreatePrices(stripe);
+    const sub = await stripe.subscriptions.retrieve(key.stripeSubscriptionId);
+    const item = sub?.items?.data?.[0];
+    if (!item) return { ok: false, error: 'Could not read the subscription. Nothing was changed.' };
+    let periodEnd = sub.current_period_end;
+    if (item.price?.id !== yearlyPriceId) {
+      const updated = await stripe.subscriptions.update(sub.id, {
+        items: [{ id: item.id, price: yearlyPriceId }],
+        proration_behavior: 'create_prorations',
+        payment_behavior: 'error_if_incomplete',
+      });
+      periodEnd = updated.current_period_end;
+    }
+    key.plan = 'yearly';
+    if (periodEnd) key.subscriptionCurrentPeriodEnd = new Date(periodEnd * 1000);
+    await key.save();
+    const { clearPremiumCache } = await import('../../utils/premiumCheck.js');
+    clearPremiumCache(String(guildId));
+    console.log(`[Premium] ${guildId} switched from monthly to yearly`);
+    return { ok: true, periodEnd: key.subscriptionCurrentPeriodEnd };
+  } catch (err) {
+    const detail = err?.raw?.message || err?.message || String(err);
+    console.error('[Premium] switch to yearly failed:', detail);
+    return { ok: false, error: err?.raw?.decline_code || err?.raw?.code === 'card_declined'
+      ? 'The card was declined, so nothing was changed. Update it in the billing portal on the dashboard and try again.'
+      : 'Stripe could not switch the plan just now, so nothing was changed. Try again later.' };
+  }
+}
+
 /** Does this Stripe price match the spec exactly (nickname, amount, cadence)? */
 function priceMatches(price, spec) {
   if (!price || !price.active || price.nickname !== spec.nickname) return false;

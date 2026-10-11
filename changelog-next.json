@@ -1,13 +1,8 @@
 {
-  "version": "1.19.0",
-  "title": "Try RPM CyberCom free for 4 days",
+  "version": "1.19.1",
+  "title": "Premium trial in one click, and yearly for less",
   "changes": [
-    "Every server can now try RPM CyberCom free for 4 days, once. No card needed. Open /config cybercom and press Try it free for 4 days, or start it at roleplaymanager.xyz/cybercom",
-    "The trial has everything: traffic stops and 10-80s by voice, civilians moving by voice, the AI voice dispatcher, transcripts and voice moderation",
-    "You get a message the day before it ends. Nothing is charged when it ends: the helper bots leave unless you keep it for $9.99 a month",
-    "You can now donate to RolePlayManager at roleplaymanager.xyz/donate and leave a note with it. Donors choose whether their name and note show on the page",
-    "Cancelling Premium, moving its key and opening its billing page are now limited to the person who bought it and the server owner. Other admins still see the plan on the dashboard",
-    "The Applications webhook setting only accepts a Discord webhook URL",
-    "Server names and nicknames with quote marks in them no longer break the dashboard or the server list"
+    "The free 7 day Premium trial is now one button, at the top of /setup and on the message the bot posts when it joins",
+    "Monthly Premium can switch to yearly from the Premium section of the dashboard: $39.99 a year instead of $60"
   ]
 }

@@ -609,7 +609,7 @@ client.on('guildCreate', async (guild) => {
         `**AI Voice Dispatch** · AI listens to patrol channels *(Premium)*\n` +
         `**Applications** · custom application panels for any purpose *(2 free)*\n` +
         `**Server Directory** · list your server free at roleplaymanager.xyz/servers so PS5 and Xbox players can find it\n` +
-        `\n**The Premium ones are free for 7 days.** Run \`/activatetrial\` and they switch on now, no card.\n` +
+        `\n**The Premium ones are free for 7 days.** Press **Start the free 7 day trial** below and they switch on now, no card.\n` +
         `Run \`/help\` for the full list`
       )
       .addFields(
@@ -644,6 +644,11 @@ client.on('guildCreate', async (guild) => {
         .setCustomId('setup_hub')
         .setLabel('Start Setup')
         .setStyle(ButtonStyle.Primary),
+      // Every server that has bought started with this trial, in its first days.
+      new ButtonBuilder()
+        .setCustomId('premium_start_trial')
+        .setLabel('Start the free 7 day trial')
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setLabel('Open Dashboard')
         .setStyle(ButtonStyle.Link)
@@ -682,8 +687,13 @@ client.on('guildCreate', async (guild) => {
     }
 
     // Start Setup reads interaction.guildId, and a button pressed inside a DM
-    // has no guild, so the owner gets links only.
+    // has no guild, so the owner gets links, plus the trial button, which
+    // carries the server in its id (utils/outreach.js).
     const dmButtons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`outreach_trial_${guild.id}`)
+        .setLabel('Start the free 7 day trial')
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setLabel('Open Dashboard')
         .setStyle(ButtonStyle.Link)
@@ -1484,6 +1494,10 @@ client.on('interactionCreate', async interaction => {
         // "Hide from the page" on the owner's donation DM (utils/donations.js).
         const { handleDonationButton } = await import('./utils/donations.js');
         await handleDonationButton(interaction);
+      } else if (interaction.customId.startsWith('outreach_')) {
+        // The one-time offers sent by DM (utils/outreach.js): free trials, yearly.
+        const { handleOutreachButton } = await import('./utils/outreach.js');
+        await handleOutreachButton(interaction);
       } else if (interaction.customId === 'directory_bump') {
         const { handleDirectoryBump } = await import('./commands/directory.js');
         await handleDirectoryBump(interaction);
@@ -1888,6 +1902,17 @@ connectDatabase().then(async () => {
 
   // Mirrors TRIAL_DAYS in premiumCheck.js, in milliseconds, for the midpoint.
   const TRIAL_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // One-time offers by DM every six hours (utils/outreach.js): the free trial
+  // to servers set up like the ones that buy, RPM CyberCom to Premium servers,
+  // yearly to monthly subscribers. First run ten minutes after a start.
+  const outreach = () => {
+    if (mongoose.connection.readyState !== 1) return;
+    import('./utils/outreach.js').then((m) => m.runOutreachJob(client))
+      .catch((err) => console.error('[Outreach] job failed:', err.message));
+  };
+  setTimeout(outreach, 10 * 60 * 1000);
+  setInterval(outreach, 6 * 60 * 60 * 1000);
 
   // Trial nudges and expiry, every 30 minutes.
   setInterval(async () => {
