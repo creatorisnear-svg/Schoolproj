@@ -1,8 +1,9 @@
 {
-  "version": "1.19.1",
-  "title": "Premium trial in one click, and yearly for less",
+  "version": "1.19.2",
+  "title": "RolePlayManager is back online",
   "changes": [
-    "The free 7 day Premium trial is now one button, at the top of /setup and on the message the bot posts when it joins",
-    "Monthly Premium can switch to yearly from the Premium section of the dashboard: $39.99 a year instead of $60"
+    "RolePlayManager was offline for a while because the server it runs on went down. It is running again on its backup host",
+    "Nothing was lost: your settings, CAD records, economy balances, tickets and Premium are stored separately and are all still there",
+    "If a panel or button stopped answering while it was down, run its command again. Still stuck? Ask in the support server: discord.gg/cSdhfGPeV2"
   ]
 }

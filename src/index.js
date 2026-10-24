@@ -343,6 +343,7 @@ app.get('/auth/site/callback', async (req, res) => {
   // Still an exact-origin comparison; a suffix match would reopen the redirect.
   const ALLOWED_REDIRECT_ORIGINS = [
     'https://roleplaymanager.xyz',
+    'https://severe-daryl-officialplaystation5-0f1738f5.koyeb.app',
     'https://roleplaymanager.tail6dd18c.ts.net',
     process.env.CAD_DOMAIN ? `https://${process.env.CAD_DOMAIN}` : null,
     process.env.SITE_ORIGIN || null,
@@ -1747,6 +1748,16 @@ async function refreshAllVerifyPanels(discordClient) {
 }
 
 connectDatabase().then(async () => {
+  // Only the host named in src/config/activeHost.js runs the bot. The other
+  // one (Koyeb or the Dell) runs this same code from main and waits here, so
+  // the two never answer Discord at once on the same token.
+  const { standingBy, thisHost, ACTIVE_HOST } = await import('./config/activeHost.js');
+  if (standingBy()) {
+    console.log(`[Host] This copy is on ${thisHost()}, and the bot runs on ${ACTIVE_HOST} (src/config/activeHost.js). Standing by: not logging in to Discord.`);
+    setInterval(() => {}, 1 << 30);
+    return;
+  }
+
   // One-time index migration. CAD license plates used to be unique across every
   // server on the platform, so one server registering ABC123 permanently blocked
   // all others. Runs here rather than as a manual script because production has
