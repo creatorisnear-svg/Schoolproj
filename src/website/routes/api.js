@@ -516,6 +516,9 @@ export function createApiRouter(client) {
           }
         } catch {}
       }
+      // Free Premium given to the server (utils/premiumGift.js), separate from its trial.
+      const { giftUntil } = await import('../../utils/premiumGift.js');
+      const premiumGiftUntil = premium ? null : await giftUntil(guild.id, 'premium').catch(() => null);
 
       res.json({
         id: guild.id,
@@ -526,8 +529,9 @@ export function createApiRouter(client) {
         premiumDetails,
         onTrial,
         trialExpiresAt,
-        // What the dashboard should unlock: Premium or a running trial.
-        premiumAccess: premium || onTrial,
+        premiumGiftUntil,
+        // What the dashboard should unlock: Premium, a running trial or a gift.
+        premiumAccess: premium || onTrial || !!premiumGiftUntil,
         directoryListed: await import('../../models/DirectoryListing.js')
           .then((m) => m.default.exists({ guildId: guild.id, listed: true }))
           .then(Boolean)
@@ -2610,6 +2614,11 @@ export function createApiRouter(client) {
       const alreadyOnTrial = await isGuildOnTrial(guildId);
       if (alreadyOnTrial) {
         return res.status(400).json({ error: 'This server already has an active free trial running.' });
+      }
+      const { giftUntil } = await import('../../utils/premiumGift.js');
+      const giftEnds = await giftUntil(guildId, 'premium');
+      if (giftEnds) {
+        return res.status(400).json({ error: 'Premium is already on here, free until ' + giftEnds.toUTCString() + ', as a thank you for your patience after the outage. Start your own 7 day trial after that.' });
       }
 
       const result = await activateTrialForGuild(guildId, userId);

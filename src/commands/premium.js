@@ -2,6 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 import { isPremiumGuild, isGuildOnTrial, trialUsed, pricingUrl, chipInUrl, hasPaidPlan, TRIAL_DAYS } from '../utils/premiumCheck.js';
 import { fundStatus, dollars, progressBar, FUND_GOAL_CENTS } from '../utils/premiumFund.js';
 import GuildTrial from '../models/GuildTrial.js';
+import { giftUntil } from '../utils/premiumGift.js';
 
 export const data = new SlashCommandBuilder()
   .setName('premium')
@@ -28,6 +29,9 @@ export async function execute(interaction) {
     if (trial) trialExpiry = trial.expiresAt;
   }
 
+  // Free Premium given to the server (utils/premiumGift.js), separate from its trial.
+  const giftEnds = hasPremium ? null : await giftUntil(guildId, 'premium').catch(() => null);
+
   let statusLine;
   if (fromFund) {
     statusLine = `> **Active until <t:${Math.floor(fund.until.getTime() / 1000)}:D>.** Paid for by members of this server.`;
@@ -35,6 +39,8 @@ export async function execute(interaction) {
     statusLine = '> **Active.** This server has a Premium subscription.';
   } else if (onTrial && trialExpiry) {
     statusLine = `> **Free trial.** Expires <t:${Math.floor(trialExpiry.getTime() / 1000)}:R>.`;
+  } else if (giftEnds) {
+    statusLine = `> **Free until <t:${Math.floor(giftEnds.getTime() / 1000)}:F>.** A thank you for your patience after the outage.`;
   } else {
     statusLine = '> **Free plan.** The features below are switched off.';
   }
@@ -50,6 +56,12 @@ export async function execute(interaction) {
     howTo =
       '### Everything above is switched on right now\n' +
       'When the trial ends it all stops, but nothing is deleted. Your characters, tickets, shop and settings stay exactly where they are, and they come straight back if you subscribe later.\n' +
+      '-# Premium is $5 a month.';
+  } else if (giftEnds) {
+    howTo =
+      '### Everything above is switched on right now\n' +
+      `It switches off <t:${Math.floor(giftEnds.getTime() / 1000)}:R>. Nothing is deleted when it does, and ` +
+      (usedTrial ? 'everything you set up stays saved for when you subscribe.\n' : `your own free ${TRIAL_DAYS} day trial is still there to use afterwards.\n`) +
       '-# Premium is $5 a month.';
   } else if (usedTrial) {
     howTo =
@@ -73,7 +85,7 @@ export async function execute(interaction) {
   }
 
   const embed = new EmbedBuilder()
-    .setColor(hasPremium ? 0x43b581 : onTrial ? 0x5865f2 : 0x2d2d2d)
+    .setColor(hasPremium ? 0x43b581 : (onTrial || giftEnds) ? 0x5865f2 : 0x2d2d2d)
     .setTitle('RolePlayManager Premium')
     .setDescription(
       statusLine + '\n\n' +
@@ -91,7 +103,7 @@ export async function execute(interaction) {
     .setFooter({ text: 'RPM' });
 
   const buttons = [];
-  if (!hasPremium && !onTrial && !usedTrial) {
+  if (!hasPremium && !onTrial && !usedTrial && !giftEnds) {
     buttons.push(new ButtonBuilder()
       .setCustomId('premium_start_trial')
       .setLabel('Start the free ' + TRIAL_DAYS + ' day trial')

@@ -91,6 +91,8 @@ export async function buildSetupPayload(guildId) {
   // Whether this server can still take the free week. Asked here because
   // /setup lists three features tagged (Premium) and never mentions that a
   // trial exists, which is the screen every administrator passes through.
+  const { giftUntil } = await import('../utils/premiumGift.js');
+  const premiumGiftEnds = await giftUntil(guildId, 'premium').catch(() => null);
   const trialOffer = await (async () => {
     try {
       const { isPremiumGuild, isGuildOnTrial, TRIAL_DAYS } = await import('../utils/premiumCheck.js');
@@ -100,7 +102,8 @@ export async function buildSetupPayload(guildId) {
         isGuildOnTrial(guildId),
         GuildTrial.exists({ guildId }),
       ]);
-      if (paying || onTrial || used) return null;
+      // A gift running: the trial is offered once it is over, so none is wasted.
+      if (paying || onTrial || used || premiumGiftEnds) return null;
       return { days: TRIAL_DAYS };
     } catch {
       // Never let an upsell break the setup screen.
@@ -179,6 +182,12 @@ export async function buildSetupPayload(guildId) {
   if (nextStepTitle) {
     descParts.push(`### ${nextStepTitle}\n${nextStepText}`);
     descParts.push('─────────────────────────────');
+  }
+  if (premiumGiftEnds) {
+    descParts.push(
+      `### Premium is on, free until <t:${Math.floor(premiumGiftEnds.getTime() / 1000)}:F>\n` +
+      'A thank you for your patience after the outage. Everything marked Premium works until then, and your own free trial is still there for later.'
+    );
   }
   // Near the top, not under the feature list: every server that bought
   // Premium started this trial from /setup first, and the offer used to sit

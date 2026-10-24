@@ -1527,6 +1527,12 @@ client.on('interactionCreate', async interaction => {
           await reply('Trial Already Running', 'This server already has an active free trial.');
           return;
         }
+        const { giftUntil, giftTrialMessage } = await import('./utils/premiumGift.js');
+        const giftEnds = await giftUntil(interaction.guildId, 'premium');
+        if (giftEnds) {
+          await reply('Premium Is Already On', giftTrialMessage(giftEnds));
+          return;
+        }
 
         const result = await activateTrialForGuild(interaction.guildId, interaction.user.id);
         if (!result.success) {
@@ -1924,6 +1930,26 @@ connectDatabase().then(async () => {
   };
   setTimeout(outreach, 10 * 60 * 1000);
   setInterval(outreach, 6 * 60 * 60 * 1000);
+
+  // Sorry for the October outage (utils/giftCampaign.js): 3 free days of
+  // Premium and RPM CyberCom and a message to each owner, once, then the
+  // gifts switched off on time. Retried each minute until the bot is ready.
+  const outageGift = async () => {
+    if (mongoose.connection.readyState !== 1) return false;
+    const m = await import('./utils/giftCampaign.js');
+    const r = await m.runOutageGift(client);
+    return r.ready !== false;
+  };
+  const tryGift = () => outageGift().then((done) => { if (!done) setTimeout(tryGift, 60 * 1000); })
+    .catch((err) => { console.error('[Gift] campaign failed:', err.message); setTimeout(tryGift, 5 * 60 * 1000); });
+  setTimeout(tryGift, 60 * 1000);
+  const endGifts = () => {
+    if (mongoose.connection.readyState !== 1) return;
+    import('./utils/giftCampaign.js').then((m) => m.endGifts())
+      .catch((err) => console.error('[Gift] ending gifts failed:', err.message));
+  };
+  setTimeout(endGifts, 90 * 1000);
+  setInterval(endGifts, 5 * 60 * 1000);
 
   // Trial nudges and expiry, every 30 minutes.
   setInterval(async () => {

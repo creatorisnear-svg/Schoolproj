@@ -1,5 +1,6 @@
 import CyberComSubscription from '../models/CyberComSubscription.js';
 import CyberComTrial from '../models/CyberComTrial.js';
+import { giftUntil } from '../utils/premiumGift.js';
 
 /**
  * Who has RPM CyberCom: its own subscription, $9.99 a month, with or without
@@ -28,10 +29,20 @@ export async function cyberComTrialActive(guildId) {
 export async function isCyberComActive(guildId) {
   if (!guildId) return false;
   const hit = cache.get(guildId);
-  if (hit && Date.now() - hit.at < TTL) return hit.value;
+  // A gift's answer is only good until the gift ends, even inside the minute.
+  if (hit && Date.now() - hit.at < TTL && (!hit.until || hit.until > Date.now())) return hit.value;
   let value = false;
-  try { value = (await cyberComSubscribed(guildId)) || (await cyberComTrialActive(guildId)); } catch {}
-  cache.set(guildId, { at: Date.now(), value });
+  let until = null;
+  try {
+    value = (await cyberComSubscribed(guildId)) || (await cyberComTrialActive(guildId));
+    if (!value) {
+      // Free time given to the server (utils/premiumGift.js), until its end time.
+      const gift = await giftUntil(guildId, 'cybercom');
+      value = !!gift;
+      until = gift ? gift.getTime() : null;
+    }
+  } catch {}
+  cache.set(guildId, { at: Date.now(), value, until });
   return value;
 }
 

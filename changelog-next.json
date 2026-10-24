@@ -1,9 +1,10 @@
 {
-  "version": "1.19.2",
-  "title": "RolePlayManager is back online",
+  "version": "1.19.3",
+  "title": "Sorry for the downtime: 3 free days for every server",
   "changes": [
-    "RolePlayManager was offline for a while because the server it runs on went down. It is running again",
-    "Nothing was lost: your settings, CAD records, economy balances, tickets and Premium are stored separately and are all still there",
-    "If a panel or button stopped answering while it was down, run its command again. Still stuck? Ask in the support server: discord.gg/cSdhfGPeV2"
+    "RolePlayManager was offline from October 21 to October 23 because the server it runs on was switched off. Sorry for the trouble it caused",
+    "To make up for it, every server gets 3 days of Premium free, unless it already has Premium",
+    "Every server also gets 3 days of RPM CyberCom free: a bot in every voice channel for traffic stops, 10-80s and voice moderation. Set it up with /config cybercom",
+    "Both switch off on their own after 3 days. Nothing is charged, nothing you set up is deleted, and your own free trials are still there for later"
   ]
 }

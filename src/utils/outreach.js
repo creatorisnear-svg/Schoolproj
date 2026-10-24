@@ -1,5 +1,6 @@
 import { PermissionFlagsBits } from 'discord.js';
 import Outreach from '../models/Outreach.js';
+import { giftUntil } from './premiumGift.js';
 
 /**
  * One-time offers, each sent once per server, from what the sales showed
@@ -142,6 +143,8 @@ export async function runOutreachJob(client, deps = {}) {
     if (await alreadySent('trial', guild.id)) continue;
     if (await GuildTrial.exists({ guildId: guild.id })) continue;
     if (await isPremiumGuild(guild.id).catch(() => true)) continue;
+    // Free Premium given to it right now: offer the trial once that is over.
+    if (await giftUntil(guild.id, 'premium')) continue;
     const ready = await readyCount(guild.id).catch(() => 0);
     if (ready < MIN_FEATURES_READY) continue;
     if (await send(client, 'trial', guild.id, guild.ownerId, await trialOffer(guild, ready))) sent.trial++;
@@ -162,6 +165,7 @@ export async function runOutreachJob(client, deps = {}) {
     if (await alreadySent('cybercom', guild.id)) continue;
     if (await CyberComSubscription.exists({ guildId: guild.id })) continue;
     if (await CyberComTrial.exists({ guildId: guild.id })) continue;
+    if (await giftUntil(guild.id, 'cybercom')) continue;
     const to = key.purchasedBy || key.activatedBy || guild.ownerId;
     if (await send(client, 'cybercom', guild.id, to, await cyberComOffer(guild))) sent.cybercom++;
   }
@@ -212,6 +216,9 @@ export async function handleOutreachButton(interaction) {
     const { activateTrialForGuild, isPremiumGuild, isGuildOnTrial, clearPremiumCache } = await import('./premiumCheck.js');
     if (await isPremiumGuild(guildId)) return say(`**${guild.name}** already has Premium.`);
     if (await isGuildOnTrial(guildId)) return say(`**${guild.name}** already has its free trial running.`);
+    const { giftUntil, giftTrialMessage } = await import('./premiumGift.js');
+    const giftEnds = await giftUntil(guildId, 'premium');
+    if (giftEnds) return say(giftTrialMessage(giftEnds));
     const r = await activateTrialForGuild(guildId, userId);
     if (!r.success) return say(`**${guild.name}** has already used its free trial.`);
     clearPremiumCache(guildId);

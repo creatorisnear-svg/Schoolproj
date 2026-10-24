@@ -150,6 +150,9 @@ export async function cyberComView(guild, note = '', viewer = null) {
     cyberComTrialOf(guild.id).catch(() => null),
   ]);
   const onTrial = !subscribed && !!trial && new Date(trial.endsAt) > new Date();
+  // Free time given to the server (utils/premiumGift.js), separate from its trial.
+  const { giftUntil } = await import('../utils/premiumGift.js');
+  const giftEnds = subscribed || onTrial ? null : await giftUntil(guild.id, 'cybercom').catch(() => null);
   const problems = (active || premium) ? await dispatchProblems(guild, dc, viewer).catch(() => []) : [];
   const { retentionDays } = await import('../cybercom/flags.js');
   const keptDays = await retentionDays(guild.id).catch(() => TRANSCRIPT_DAYS);
@@ -166,6 +169,7 @@ export async function cyberComView(guild, note = '', viewer = null) {
     '',
   );
   if (onTrial) lines.push(`**Status:** free trial, ends <t:${Math.floor(new Date(trial.endsAt).getTime() / 1000)}:R>. After that RPM CyberCom is $9.99 a month, with or without Premium, and nothing is charged unless you subscribe.`);
+  else if (giftEnds) lines.push(`**Status:** free until <t:${Math.floor(giftEnds.getTime() / 1000)}:F>, a thank you for your patience after the outage. After that it is $9.99 a month, and your own free trial is still there for later.`);
   else if (active) lines.push('**Status:** on');
   else if (!trial) lines.push(`**Status:** off. Try it free for ${CYBERCOM_TRIAL_DAYS} days, no card needed. After that it is $9.99 a month, with or without Premium.`);
   else lines.push('**Status:** off. The free trial has been used. RPM CyberCom is $9.99 a month, with or without Premium.');

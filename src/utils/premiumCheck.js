@@ -3,6 +3,7 @@ import FeatureFlag from '../models/FeatureFlag.js';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { DEFAULT_PREMIUM_FEATURES } from '../config/features.js';
 import { recordFunnel } from './funnel.js';
+import { giftUntil, clearGiftCache } from './premiumGift.js';
 import { EventEmitter } from 'events';
 import mongoose from 'mongoose';
 
@@ -77,7 +78,9 @@ export async function isGuildOnTrial(guildId) {
  */
 export async function hasPremiumAccess(guildId) {
   if (await isPremiumGuild(guildId)) return true;
-  return isGuildOnTrial(guildId);
+  if (await isGuildOnTrial(guildId)) return true;
+  // Free Premium given to the server (utils/premiumGift.js), until its end time.
+  return !!(await giftUntil(guildId, 'premium'));
 }
 
 export function clearPremiumCache(guildId) {
@@ -90,6 +93,7 @@ export function clearPremiumCache(guildId) {
   }
   if (guildId) { premiumCache.delete(guildId); trialCache.delete(guildId); trialUsedCache.delete(guildId); }
   else { premiumCache.clear(); trialCache.clear(); trialUsedCache.clear(); }
+  clearGiftCache(guildId);
   // Every place that changes Premium clears this cache, so it is also the
   // one place to announce the change.
   if (guildId) premiumEvents.emit('changed', guildId);
@@ -169,6 +173,7 @@ export async function checkFeatureAccess(guildId, featureKey) {
   if (hasPremium) return { allowed: true };
   const onTrial = await isGuildOnTrial(guildId);
   if (onTrial) return { allowed: true, viaTrial: true };
+  if (await giftUntil(guildId, 'premium')) return { allowed: true, viaGift: true };
 
   // RPM CyberCom includes the AI voice dispatcher, with or without Premium.
   if (featureKey === 'dispatch') {
@@ -222,7 +227,8 @@ export async function getGuildLimits(guildId) {
   const premium = await isPremiumGuild(guildId);
   if (premium) return LIMITS.premium;
   const trial = await isGuildOnTrial(guildId);
-  return trial ? LIMITS.premium : LIMITS.free;
+  if (trial) return LIMITS.premium;
+  return (await giftUntil(guildId, 'premium')) ? LIMITS.premium : LIMITS.free;
 }
 
 const SITE = 'https://roleplaymanager.xyz';

@@ -39,6 +39,12 @@ export async function execute(interaction) {
     });
   }
 
+  const { giftUntil, giftTrialMessage } = await import('../utils/premiumGift.js');
+  const giftEnds = await giftUntil(guildId, 'premium');
+  if (giftEnds) {
+    return interaction.editReply({ embeds: [embed('Premium Is Already On', giftTrialMessage(giftEnds))] });
+  }
+
   // No vote credit is required any more. Asking someone to leave Discord, find
   // the bot on a listing site, vote and come back before they could hear AI
   // dispatch work was the largest barrier between a server and the paid features.
