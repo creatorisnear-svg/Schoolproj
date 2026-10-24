@@ -103,7 +103,7 @@ export async function handleDevSelect(interaction) {
       const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
       
       const clientId = process.env.DISCORD_CLIENT_ID;
-      const domain = process.env.DOMAIN || 'severe-daryl-officialplaystation5-0f1738f5.koyeb.app';
+      const domain = process.env.DOMAIN || 'roleplaymanager.tail6dd18c.ts.net';
       const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').split('/')[0];
       const redirectUri = `https://${cleanDomain}/callback`;
       const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds%20guilds.join%20connections%20voice`;

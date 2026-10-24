@@ -9,9 +9,10 @@ import { existsSync } from 'fs';
  * command twice. To move the bot, change this, point the website and the
  * Stripe webhook at the new host, and push.
  *
- * Back on Koyeb since 2026-10-24, when the Dell went down.
+ * The Dell again since 2026-10-24: it was down overnight and came back the
+ * next morning; Koyeb stays paused as the backup.
  */
-export const ACTIVE_HOST = 'koyeb';
+export const ACTIVE_HOST = 'dell';
 
 /** Where this copy is running, or null when that cannot be told (a laptop, a test). */
 export function thisHost() {
